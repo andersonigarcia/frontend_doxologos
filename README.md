@@ -8,13 +8,6 @@ Este README reúne os pontos essenciais para continuar desenvolvimento, integrar
 - SPA em `src/` com páginas de agendamento (`src/pages/AgendamentoPage.jsx`), contexto de autenticação (`src/contexts/SupabaseAuthContext.jsx`) e cliente Supabase em `src/lib/customSupabaseClient.js`.
 - Dependências chave: `@supabase/supabase-js`, `react`, `react-router-dom`, `framer-motion`.
 
-## Mudança aplicada
-- `src/lib/customSupabaseClient.js` foi atualizado para usar variáveis de ambiente:
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-
-  Não coloque a `service_role` no frontend. Use Edge Functions / backend para operações privilegiadas.
-
 ## Arquitetura resumida
 - Frontend (React) — leitura de profissionais, serviços, disponibilidade; criação de bookings (status `pending_payment`).
 - Supabase (Auth + Postgres) — armazena dados e autenticação.
@@ -119,12 +112,6 @@ npm run supabase:deploy:functions
 
 Observação: revise as variáveis de ambiente no painel Supabase > Settings > API & Environment Variables e adicione: `SUPABASE_SERVICE_ROLE_KEY`, `MP_ACCESS_TOKEN`, `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `ZOOM_BEARER_TOKEN`, `ZOOM_USER_ID`.
 
-## Próximos passos imediatos
-1. Habilitar RLS e criar policies para proteger dados.
-2. Implementar Edge Function para `mp/create_preference` e `mp/webhook`.
-3. Ajustar fluxo de sign-in para usar magic link/OTP. (O frontend já envia um magic link automaticamente quando um paciente cria um agendamento sem estar autenticado.)
-4. Criar backups e rotina de logs.
-
 ## Testes de notificação (SendGrid + Twilio)
 1. Configure as variáveis de ambiente do backend:
 
@@ -182,11 +169,3 @@ Para facilitar o desenvolvimento local você pode criar um arquivo `config/local
 O projeto inclui um loader usado pelas Edge Functions de exemplo para importar `config/local.env` em `process.env` quando rodando localmente. Não use `config/local.env` em produção — em produção configure variáveis de ambiente no provedor (Supabase, Hostinger, etc.).
 
 Lembrete: nunca comite chaves sensíveis no repositório.
-
----
-
-Para continuar eu posso:
-- Gerar o esboço da Edge Function para Mercado Pago (webhook + update DB) — já adicionado em `functions/mp-webhook/index.js`.
-- Criar um pequeno exemplo de `create_preference` Edge Function.
-
-Peça para eu aplicar o próximo passo (ex.: criar o endpoint create_preference, ajustar AgendamentoPage para chamar a função, ou criar policies RLS)."}EOF
