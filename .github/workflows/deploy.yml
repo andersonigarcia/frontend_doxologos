@@ -1,0 +1,60 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run tests
+      run: npm test -- --run
+    
+    - name: Build
+      run: npm run build
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_APP_NAME: ${{ secrets.VITE_APP_NAME }}
+    
+    # Deploy to Vercel (example - uncomment and configure)
+    # - name: Deploy to Vercel
+    #   uses: amondnet/vercel-action@v25
+    #   with:
+    #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+    #     vercel-args: '--prod'
+    
+    # Deploy to Netlify (example - uncomment and configure)
+    # - name: Deploy to Netlify
+    #   uses: nwtgck/actions-netlify@v2
+    #   with:
+    #     publish-dir: './dist'
+    #     production-branch: main
+    #     github-token: ${{ secrets.GITHUB_TOKEN }}
+    #     deploy-message: "Deploy from GitHub Actions"
+    #   env:
+    #     NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    #     NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    
+    # Deploy to GitHub Pages (example - uncomment and configure)
+    # - name: Deploy to GitHub Pages
+    #   uses: peaceiris/actions-gh-pages@v3
+    #   with:
+    #     github_token: ${{ secrets.GITHUB_TOKEN }}
+    #     publish_dir: ./dist
