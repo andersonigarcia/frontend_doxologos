@@ -1,8 +1,33 @@
 # 🗄️ Estrutura do Banco de Dados Supabase
 
-## ⚠️ Problema Identificado
+## 🎆 **NOVAS FUNCIONALIDADES IMPLEMENTADAS**
 
-O erro `PGRST200` indica que há um problema na estrutura das tabelas do Supabase. O sistema tentava fazer JOIN entre `reviews` e `users_public`, mas essa relação não existe.
+### 📅 **Disponibilidade por Mês/Ano**
+- Profissionais podem ter horários diferentes para o mesmo dia da semana em meses distintos
+- Interface com seletores de mês e ano no painel administrativo
+- Exemplo: Segunda às 9h em Janeiro, Segunda às 10h em Fevereiro
+
+### 🛠️ **Sistema de Serviços Múltiplos**
+- Profissionais podem atender múltiplos serviços
+- Substituição do campo "especialidade" por seleção múltipla de serviços
+- Interface melhorada com checkboxes para seleção
+
+### 🔄 **Agendamento Otimizado**
+- **Nova ordem:** Primeiro seleciona o serviço, depois o profissional
+- **Filtragem inteligente:** Apenas profissionais que atendem o serviço selecionado são exibidos
+- **Experiência melhorada:** Fluxo mais lógico e intuitivo
+
+### 🎨 **Melhorias Visuais**
+- Formatação monetária brasileira (R$ 150,00)
+- Conversão inteligente de tempo (90min → 1h 30min)
+- Labels e placeholders melhorados
+- Sistema de badges para serviços
+
+---
+
+## ⚠️ Problema Identificado (Resolvido)
+
+O erro `PGRST200` indicava um problema na estrutura das tabelas do Supabase. O sistema tentava fazer JOIN entre `reviews` e `users_public`, mas essa relação não existia.
 
 ## ✅ Soluções Aplicadas
 
@@ -26,16 +51,20 @@ Os componentes foram atualizados para usar campos diretos da tabela:
 
 ### Tabelas Principais:
 
-#### 1. **professionals**
+#### 1. **professionals** ✨ **ATUALIZADA**
 ```sql
 CREATE TABLE professionals (
     id UUID PRIMARY KEY REFERENCES auth.users(id),
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    specialty TEXT,
+    specialty TEXT, -- Campo mantido por compatibilidade
+    services_ids UUID[] DEFAULT '{}', -- 🆕 NOVO: Array de IDs dos serviços
     mini_curriculum TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Índice para melhor performance
+CREATE INDEX IF NOT EXISTS idx_professionals_services ON professionals USING GIN (services_ids);
 ```
 
 #### 2. **services**
@@ -79,14 +108,16 @@ CREATE TABLE reviews (
 );
 ```
 
-#### 5. **availability**
+#### 5. **availability** ✨ **ATUALIZADA**
 ```sql
 CREATE TABLE availability (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     professional_id UUID REFERENCES professionals(id),
     day_of_week TEXT NOT NULL,
     available_times JSONB,
-    UNIQUE(professional_id, day_of_week)
+    month INTEGER DEFAULT EXTRACT(MONTH FROM CURRENT_DATE), -- 🆕 NOVO
+    year INTEGER DEFAULT EXTRACT(YEAR FROM CURRENT_DATE),   -- 🆕 NOVO
+    UNIQUE(professional_id, day_of_week, month, year) -- 🔄 ATUALIZADA
 );
 ```
 
