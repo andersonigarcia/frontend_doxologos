@@ -1359,40 +1359,77 @@ const AdminPage = () => {
                                 <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><Users className="w-6 h-6 mr-2 text-[#2d8659]" /> Profissionais</h2>
                                     <div className="space-y-4">
-                                        {professionals.map(prof => (
-                                            <div key={prof.id} className="border rounded-lg p-4 flex justify-between items-center">
-                                                <div>
-                                                    <h3 className="font-bold text-lg">{prof.name}</h3>
-                                                    <div className="text-sm text-gray-500">
-                                                        {prof.services_ids && prof.services_ids.length > 0 ? (
-                                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                                {prof.services_ids.map(serviceId => {
-                                                                    const service = services.find(s => s.id === serviceId);
-                                                                    return service ? (
-                                                                        <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                            {service.name}
-                                                                        </span>
-                                                                    ) : null;
-                                                                })}
+                                        {professionals.map((prof, index) => (
+                                            <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                            } hover:bg-blue-50`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            {prof.image_url && (
+                                                                <img 
+                                                                    src={prof.image_url} 
+                                                                    alt={prof.name} 
+                                                                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                                                />
+                                                            )}
+                                                            <div>
+                                                                <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
+                                                                {prof.email && (
+                                                                    <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                                                        📧 {prof.email}
+                                                                    </p>
+                                                                )}
                                                             </div>
-                                                        ) : (
-                                                            <span className="text-orange-500">Nenhum serviço atribuído</span>
-                                                        )}
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
+                                                                {prof.services_ids && prof.services_ids.length > 0 ? (
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {prof.services_ids.map(serviceId => {
+                                                                            const service = services.find(s => s.id === serviceId);
+                                                                            return service ? (
+                                                                                <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                                    {service.name}
+                                                                                </span>
+                                                                            ) : null;
+                                                                        })}
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            {prof.mini_curriculum && (
+                                                                <div>
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
+                                                                    <p className="text-sm text-gray-600 line-clamp-3">
+                                                                        {prof.mini_curriculum.length > 150 
+                                                                            ? `${prof.mini_curriculum.substring(0, 150)}...` 
+                                                                            : prof.mini_curriculum
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
-                                                        <Edit className="w-4 h-4" />
-                                                    </Button>
-                                                    <Button 
-                                                        size="icon" 
-                                                        variant="ghost" 
-                                                        onClick={() => handleDeleteProfessional(prof.id)} 
-                                                        className="hover:bg-red-50"
-                                                        title="Excluir profissional"
-                                                    >
-                                                        <Trash2 className="w-4 h-4 text-red-500" />
-                                                    </Button>
+                                                    
+                                                    <div className="flex gap-2 ml-4">
+                                                        <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button 
+                                                            size="icon" 
+                                                            variant="ghost" 
+                                                            onClick={() => handleDeleteProfessional(prof.id)} 
+                                                            className="hover:bg-red-50"
+                                                            title="Excluir profissional"
+                                                        >
+                                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -1479,6 +1516,31 @@ const AdminPage = () => {
                                                 />
                                             </div>
                                         )}
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">URL da Foto</label>
+                                            <input 
+                                                name="image_url" 
+                                                value={professionalFormData.image_url} 
+                                                onChange={e => setProfessionalFormData({...professionalFormData, image_url: e.target.value})} 
+                                                type="url" 
+                                                placeholder="https://exemplo.com/foto.jpg" 
+                                                className="w-full input" 
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Cole o link direto para a imagem do profissional</p>
+                                            {professionalFormData.image_url && (
+                                                <div className="mt-2">
+                                                    <img 
+                                                        src={professionalFormData.image_url} 
+                                                        alt="Preview" 
+                                                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                                                        onError={(e) => {
+                                                            e.target.style.display = 'none';
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                         
                                         <div>
                                             <label className="block text-xs font-medium mb-1 text-gray-600">Mini-currículo</label>
@@ -1758,22 +1820,69 @@ const AdminPage = () => {
                                 <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços</h2>
                                     <div className="space-y-4">
-                                        {services.map(service => (
-                                            <div key={service.id} className="border rounded-lg p-4 flex justify-between items-center">
-                                                <div>
-                                                    <h3 className="font-bold text-lg">{service.name}</h3>
-                                                    <p className="text-sm text-gray-500">
-                                                        R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
-                                                        {' • '}
-                                                        {service.duration_minutes >= 60 
-                                                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}` 
-                                                            : `${service.duration_minutes}min`
-                                                        }
-                                                    </p>
+                                        {services.map((service, index) => {
+                                            // Contar quantos profissionais têm este serviço
+                                            const professionalsCount = professionals.filter(prof => 
+                                                prof.services_ids && prof.services_ids.includes(service.id)
+                                            ).length;
+                                            
+                                            return (
+                                                <div key={service.id} className={`border rounded-lg p-5 hover:shadow-md transition-all ${
+                                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                } hover:bg-blue-50`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-2">
+                                                                <h3 className="font-bold text-lg text-gray-900">{service.name}</h3>
+                                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                    {professionalsCount} {professionalsCount === 1 ? 'profissional' : 'profissionais'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Preço</span>
+                                                                    <span className="font-bold text-green-600">
+                                                                        R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Duração</span>
+                                                                    <span className="font-medium">
+                                                                        {service.duration_minutes >= 60 
+                                                                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}` 
+                                                                            : `${service.duration_minutes}min`
+                                                                        }
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            {professionalsCount > 0 && (
+                                                                <div className="mt-3">
+                                                                    <span className="text-xs text-gray-500 block mb-1">Profissionais que atendem:</span>
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {professionals
+                                                                            .filter(prof => prof.services_ids && prof.services_ids.includes(service.id))
+                                                                            .map(prof => (
+                                                                                <span key={prof.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                                                                    {prof.name}
+                                                                                </span>
+                                                                            ))
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-2 ml-4">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEditService(service)} title="Editar serviço">
+                                                                <Edit className="w-4 h-4" />
+                                                            </Button>
+                                                            <Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)} className="hover:bg-red-50" title="Excluir serviço">
+                                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2"><Button size="icon" variant="ghost" onClick={() => handleEditService(service)}><Edit className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
@@ -1851,18 +1960,87 @@ const AdminPage = () => {
                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
-                                    {events.map(event => (
-                                        <div key={event.id} className="border rounded-lg p-4 mb-4">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-bold text-lg">{event.titulo}</h3>
-                                                    <p className="text-sm text-gray-500">{new Date(event.data_inicio).toLocaleString('pt-BR')}</p>
-                                                    <div className="flex items-center text-xs mt-2 gap-4"><span className="flex items-center"><Users className="w-4 h-4 mr-1"/>{event.inscricoes_eventos[0].count} / {event.limite_participantes}</span></div>
+                                    {events.map((event, index) => {
+                                        const dataInicio = new Date(event.data_inicio);
+                                        const dataFim = new Date(event.data_fim);
+                                        const dataExpiracao = new Date(event.data_limite_inscricao);
+                                        const isExpired = dataExpiracao < new Date();
+                                        const inscricoes = event.inscricoes_eventos?.[0]?.count || 0;
+                                        
+                                        return (
+                                            <div key={event.id} className={`border rounded-lg p-6 mb-4 hover:shadow-md transition-all ${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                            } hover:bg-blue-50`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3 mb-3">
+                                                            <h3 className="font-bold text-lg text-gray-900">{event.titulo}</h3>
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                                            }`}>
+                                                                {isExpired ? 'Expirado' : 'Aberto'}
+                                                            </span>
+                                                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                {event.tipo_evento}
+                                                            </span>
+                                                        </div>
+                                                        
+                                                        {event.descricao && (
+                                                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                                                {event.descricao.length > 120 
+                                                                    ? `${event.descricao.substring(0, 120)}...` 
+                                                                    : event.descricao
+                                                                }
+                                                            </p>
+                                                        )}
+                                                        
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                                            <div>
+                                                                <span className="text-gray-500 block">Início</span>
+                                                                <span className="font-medium">
+                                                                    {dataInicio.toLocaleDateString('pt-BR')} às {dataInicio.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500 block">Fim</span>
+                                                                <span className="font-medium">
+                                                                    {dataFim.toLocaleDateString('pt-BR')} às {dataFim.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <span className="text-gray-500 block">Inscrições até</span>
+                                                                <span className={`font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
+                                                                    {dataExpiracao.toLocaleDateString('pt-BR')} às {dataExpiracao.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                                            <div className="flex items-center gap-4">
+                                                                <span className="flex items-center text-sm text-gray-600">
+                                                                    <Users className="w-4 h-4 mr-1"/>
+                                                                    {inscricoes} / {event.limite_participantes} inscritos
+                                                                </span>
+                                                                {event.link_slug && (
+                                                                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                                        Link: {event.link_slug}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 ml-4">
+                                                        <Button size="icon" variant="ghost" onClick={() => handleEditEvent(event)} title="Editar evento">
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button size="icon" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="hover:bg-red-50" title="Excluir evento">
+                                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                                        </Button>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-2"><Button size="icon" variant="ghost" onClick={() => handleEditEvent(event)}><Edit className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDeleteEvent(event.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
