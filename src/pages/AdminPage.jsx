@@ -85,11 +85,11 @@ const AdminPage = () => {
 
         
         const promises = [
-            isAdmin ? supabase.from('bookings').select('*, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, service:services(name)').eq('professional_id', professionalId),
+            isAdmin ? supabase.from('bookings').select('*, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, professional:professionals(name), service:services(name)').eq('professional_id', professionalId),
             supabase.from('services').select('*'),
-            supabase.from('professionals').select('*'),
-            supabase.from('availability').select('*'),
-            supabase.from('blocked_dates').select('*'),
+            isAdmin ? supabase.from('professionals').select('*') : supabase.from('professionals').select('*').eq('id', professionalId),
+            isAdmin ? supabase.from('availability').select('*') : supabase.from('availability').select('*').eq('professional_id', professionalId),
+            isAdmin ? supabase.from('blocked_dates').select('*') : supabase.from('blocked_dates').select('*').eq('professional_id', professionalId),
         ];
 
         if (isAdmin) {
@@ -114,13 +114,13 @@ const AdminPage = () => {
         setProfessionals(profsRes.data || []);
         if (profsRes.data && profsRes.data.length > 0) {
             // Para admin, usa o primeiro profissional da lista
-            // Para professional, encontra o registro que corresponde ao user_id
+            // Para professional, usa sempre o próprio ID
             let profIdToSelect;
             if (isAdmin) {
                 profIdToSelect = profsRes.data[0].id;
             } else {
-                const currentProfessional = profsRes.data.find(p => p.user_id === professionalId);
-                profIdToSelect = currentProfessional ? currentProfessional.id : null;
+                // Para professional, usa sempre o próprio ID (já filtrado na query)
+                profIdToSelect = profsRes.data.length > 0 ? profsRes.data[0].id : professionalId;
             }
             if (profIdToSelect) {
                 setSelectedAvailProfessional(profIdToSelect);
@@ -162,6 +162,16 @@ const AdminPage = () => {
     }, [user, userRole]);
 
     useEffect(() => { if (user) fetchAllData(); }, [user, fetchAllData]);
+
+    // Auto-inicializar edição para profissionais
+    useEffect(() => {
+        if (userRole === 'professional' && professionals.length > 0) {
+            const currentProfessional = professionals[0]; // Já filtrado para o profissional atual
+            if (currentProfessional && !isEditingProfessional) {
+                handleEditProfessional(currentProfessional);
+            }
+        }
+    }, [professionals, userRole, isEditingProfessional]);
 
     useEffect(() => {
         const profId = userRole === 'admin' ? selectedAvailProfessional : user?.id;
@@ -1353,11 +1363,14 @@ const AdminPage = () => {
                             </div>
                         </TabsContent>
                         
-                        {userRole === 'admin' && (
+                        {(userRole === 'admin' || userRole === 'professional') && (
                         <TabsContent value="professionals" className="mt-6">
                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6 flex items-center"><Users className="w-6 h-6 mr-2 text-[#2d8659]" /> Profissionais</h2>
+                                    <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                        <Users className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                        {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
+                                    </h2>
                                     <div className="space-y-4">
                                         {professionals.map((prof, index) => (
                                             <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${
@@ -1420,15 +1433,17 @@ const AdminPage = () => {
                                                         <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
                                                             <Edit className="w-4 h-4" />
                                                         </Button>
-                                                        <Button 
-                                                            size="icon" 
-                                                            variant="ghost" 
-                                                            onClick={() => handleDeleteProfessional(prof.id)} 
-                                                            className="hover:bg-red-50"
-                                                            title="Excluir profissional"
-                                                        >
-                                                            <Trash2 className="w-4 h-4 text-red-500" />
-                                                        </Button>
+                                                        {userRole === 'admin' && (
+                                                            <Button 
+                                                                size="icon" 
+                                                                variant="ghost" 
+                                                                onClick={() => handleDeleteProfessional(prof.id)} 
+                                                                className="hover:bg-red-50"
+                                                                title="Excluir profissional"
+                                                            >
+                                                                <Trash2 className="w-4 h-4 text-red-500" />
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1436,7 +1451,12 @@ const AdminPage = () => {
                                     </div>
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6">{isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional'}</h2>
+                                    <h2 className="text-2xl font-bold mb-6">
+                                        {userRole === 'admin' 
+                                            ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
+                                            : 'Editar Meu Perfil'
+                                        }
+                                    </h2>
                                     <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
                                         <div>
                                             <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
@@ -1682,7 +1702,10 @@ const AdminPage = () => {
                                         
                                         <div className="flex gap-2">
                                             <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
-                                                {isEditingProfessional ? 'Salvar' : 'Criar'}
+                                                {userRole === 'admin' 
+                                                    ? (isEditingProfessional ? 'Salvar' : 'Criar')
+                                                    : 'Salvar Alterações'
+                                                }
                                             </Button>
                                             {isEditingProfessional && (
                                                 <Button type="button" variant="outline" onClick={resetProfessionalForm}>
