@@ -124,8 +124,23 @@ const AgendamentoPage = () => {
             userId = authUser.id;
         }
 
+        // Get service details to capture current price
+        const serviceDetails = services.find(s => s.id === selectedService);
+        const valorConsulta = parseFloat(serviceDetails?.price || 0);
+
         // Store patient contact info directly on booking for unauthenticated users and send magic link
-        const bookingData = { professional_id: selectedProfessional, service_id: selectedService, user_id: userId, booking_date: selectedDate, booking_time: selectedTime, status: 'pending_payment', patient_name: patientData.name, patient_email: patientData.email, patient_phone: patientData.phone };
+        const bookingData = { 
+            professional_id: selectedProfessional, 
+            service_id: selectedService, 
+            user_id: userId, 
+            booking_date: selectedDate, 
+            booking_time: selectedTime, 
+            status: 'pending_payment', 
+            patient_name: patientData.name, 
+            patient_email: patientData.email, 
+            patient_phone: patientData.phone,
+            valor_consulta: valorConsulta // Valor histórico da consulta
+        };
 
         if (!authUser) {
           // send magic link so patient can later access area
