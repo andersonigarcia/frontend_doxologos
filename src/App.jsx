@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from '@/components/ui/toaster';
 import HomePage from '@/pages/HomePage';
 import AgendamentoPage from '@/pages/AgendamentoPage';
@@ -13,21 +14,23 @@ import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 function App() {
   return (
-    <Router>
-      <div className="min-h-screen">
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/agendamento" element={<AgendamentoPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/area-do-paciente" element={<PacientePage />} />
-          <Route path="/quem-somos" element={<QuemSomosPage />} />
-          <Route path="/trabalhe-conosco" element={<TrabalheConoscoPage />} />
-          <Route path="/evento/:slug" element={<EventoDetalhePage />} />
-        </Routes>
-        <Toaster />
-        <FloatingWhatsAppButton />
-      </div>
-    </Router>
+    <HelmetProvider>
+      <Router>
+        <div className="min-h-screen">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/agendamento" element={<AgendamentoPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/area-do-paciente" element={<PacientePage />} />
+            <Route path="/quem-somos" element={<QuemSomosPage />} />
+            <Route path="/trabalhe-conosco" element={<TrabalheConoscoPage />} />
+            <Route path="/evento/:slug" element={<EventoDetalhePage />} />
+          </Routes>
+          <Toaster />
+          <FloatingWhatsAppButton />
+        </div>
+      </Router>
+    </HelmetProvider>
   );
 }
 
