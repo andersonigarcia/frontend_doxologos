@@ -376,6 +376,7 @@ const HomePage = () => {
               <Link to="/trabalhe-conosco" className="block text-gray-400 hover:text-white transition-colors">Trabalhe Conosco</Link>
               <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Acesso Restrito</Link>
                <Link to="/area-do-paciente" className="block text-gray-400 hover:text-white transition-colors">Área do Paciente</Link>
+               <Link to="/criar-usuarios" className="block text-gray-400 hover:text-white transition-colors text-xs opacity-50">Dev: Criar Usuários</Link>
             </div>
           </div>
           <div>
