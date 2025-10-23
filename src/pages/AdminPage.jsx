@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
@@ -40,6 +41,16 @@ const AdminPage = () => {
 
     const [editingBooking, setEditingBooking] = useState(null);
     const [bookingEditData, setBookingEditData] = useState({ booking_date: '', booking_time: '', status: '' });
+    
+    // Estados para modais de confirmação
+    const [confirmDialog, setConfirmDialog] = useState({
+        isOpen: false,
+        title: '',
+        message: '',
+        warningMessage: '',
+        onConfirm: null,
+        type: 'danger'
+    });
 
     const fetchAllData = useCallback(async () => {
 
@@ -229,12 +240,169 @@ const AdminPage = () => {
     
     const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
     const handleDeleteService = async (serviceId) => {
-        const { error } = await supabase.from('services').delete().eq('id', serviceId);
-        if (error) toast({ variant: "destructive", title: "Erro ao deletar serviço" }); else { toast({ title: "Serviço deletado." }); fetchAllData(); }
+        const service = services.find(s => s.id === serviceId);
+        if (!service) return;
+
+        try {
+            // Verificar agendamentos usando este serviço
+            const { data: bookingsData } = await supabase
+                .from('bookings')
+                .select('id')
+                .eq('service_id', serviceId);
+
+            let warningMessage = '';
+            if (bookingsData?.length > 0) {
+                warningMessage = `Este serviço possui ${bookingsData.length} agendamento(s) associado(s).\nOs agendamentos serão mantidos mas ficarão sem serviço vinculado.`;
+            }
+
+            setConfirmDialog({
+                isOpen: true,
+                title: 'Excluir Serviço',
+                message: `Tem certeza que deseja excluir o serviço "${service.name}"?`,
+                warningMessage,
+                type: 'danger',
+                onConfirm: async () => {
+                    const { error } = await supabase.from('services').delete().eq('id', serviceId);
+                    if (error) {
+                        console.error('Erro ao excluir serviço:', error);
+                        toast({ variant: "destructive", title: "Erro ao excluir serviço", description: error.message });
+                    } else {
+                        toast({ title: "Serviço excluído com sucesso!" });
+                        fetchAllData();
+                    }
+                    setConfirmDialog({ ...confirmDialog, isOpen: false });
+                }
+            });
+        } catch (error) {
+            console.error('Erro inesperado:', error);
+            toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível verificar o serviço." });
+        }
     };
     
     const handleEditProfessional = (prof) => { setIsEditingProfessional(true); setProfessionalFormData({...prof, password: ''}); };
-    const handleDeleteProfessional = async (profId) => { toast({ variant: "destructive", title: "Funcionalidade desativada", description: "A exclusão de usuários precisa de permissões elevadas." }); };
+    const handleDeleteProfessional = async (profId) => {
+        const professional = professionals.find(p => p.id === profId);
+        if (!professional) return;
+
+        try {
+            // 1. Verificar dependências
+            const { data: bookingsData } = await supabase
+                .from('bookings')
+                .select('id')
+                .eq('professional_id', profId);
+
+            const { data: eventsData } = await supabase
+                .from('eventos')
+                .select('id')
+                .eq('professional_id', profId);
+
+            const { data: reviewsData } = await supabase
+                .from('reviews')
+                .select('id')
+                .eq('professional_id', profId);
+
+            const { data: availabilityData } = await supabase
+                .from('availability')
+                .select('id')
+                .eq('professional_id', profId);
+
+            const { data: blockedDatesData } = await supabase
+                .from('blocked_dates')
+                .select('id')
+                .eq('professional_id', profId);
+
+            const hasBookings = bookingsData?.length > 0;
+            const hasEvents = eventsData?.length > 0;
+            const hasReviews = reviewsData?.length > 0;
+            const hasAvailability = availabilityData?.length > 0;
+            const hasBlockedDates = blockedDatesData?.length > 0;
+
+            let warningMessage = '';
+            if (hasBookings || hasEvents || hasReviews || hasAvailability || hasBlockedDates) {
+                const items = [];
+                if (hasBookings) items.push(`${bookingsData.length} agendamento(s)`);
+                if (hasEvents) items.push(`${eventsData.length} evento(s)`);
+                if (hasReviews) items.push(`${reviewsData.length} avaliação(ões)`);
+                if (hasAvailability) items.push('configurações de disponibilidade');
+                if (hasBlockedDates) items.push(`${blockedDatesData.length} data(s) bloqueada(s)`);
+                
+                warningMessage = `Este profissional possui registros associados:\n• ${items.join('\n• ')}\n\nTodos esses registros serão removidos junto com o profissional.`;
+            }
+
+            // 2. Mostrar modal de confirmação
+            setConfirmDialog({
+                isOpen: true,
+                title: 'Excluir Profissional',
+                message: `Tem certeza que deseja excluir o profissional "${professional.name}"?`,
+                warningMessage,
+                type: 'danger',
+                onConfirm: async () => {
+                    await executeProfessionalDeletion(profId, {
+                        bookings: bookingsData || [],
+                        events: eventsData || [],
+                        reviews: reviewsData || [],
+                        availability: availabilityData || [],
+                        blockedDates: blockedDatesData || []
+                    });
+                    setConfirmDialog({ ...confirmDialog, isOpen: false });
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao verificar dependências:', error);
+            toast({ 
+                variant: "destructive", 
+                title: "Erro", 
+                description: "Não foi possível verificar os dados do profissional." 
+            });
+        }
+    };
+
+    const executeProfessionalDeletion = async (profId, dependencies) => {
+        try {
+            // Excluir dependências em ordem (foreign keys)
+            if (dependencies.reviews.length > 0) {
+                await supabase.from('reviews').delete().eq('professional_id', profId);
+            }
+            if (dependencies.bookings.length > 0) {
+                await supabase.from('bookings').delete().eq('professional_id', profId);
+            }
+            if (dependencies.availability.length > 0) {
+                await supabase.from('availability').delete().eq('professional_id', profId);
+            }
+            if (dependencies.blockedDates.length > 0) {
+                await supabase.from('blocked_dates').delete().eq('professional_id', profId);
+            }
+            if (dependencies.events.length > 0) {
+                // Para eventos, apenas remover a referência ao profissional
+                await supabase.from('eventos').update({ professional_id: null }).eq('professional_id', profId);
+            }
+
+            // Finalmente, excluir o profissional
+            const { error } = await supabase.from('professionals').delete().eq('id', profId);
+
+            if (error) {
+                console.error('Erro ao excluir profissional:', error);
+                toast({ 
+                    variant: "destructive", 
+                    title: "Erro ao excluir profissional", 
+                    description: error.message 
+                });
+            } else {
+                toast({ 
+                    title: "Profissional excluído com sucesso!",
+                    description: "Todos os registros associados foram removidos."
+                });
+                fetchAllData();
+            }
+        } catch (error) {
+            console.error('Erro inesperado:', error);
+            toast({ 
+                variant: "destructive", 
+                title: "Erro inesperado", 
+                description: "Não foi possível excluir o profissional completamente." 
+            });
+        }
+    };
 
     const handleEventSubmit = async (e) => {
         e.preventDefault();
@@ -280,8 +448,58 @@ const AdminPage = () => {
     const resetEventForm = () => { setIsEditingEvent(false); setEventFormData({ id: null, titulo: '', descricao: '', tipo_evento: 'Workshop', data_inicio: '', data_fim: '', professional_id: '', limite_participantes: '', data_limite_inscricao: '', link_slug: '' }); };
     const handleEditEvent = (event) => { setIsEditingEvent(true); setEventFormData({ ...event, data_inicio: new Date(event.data_inicio).toISOString().slice(0, 16), data_fim: new Date(event.data_fim).toISOString().slice(0, 16), data_limite_inscricao: new Date(event.data_limite_inscricao).toISOString().slice(0, 16) }); };
     const handleDeleteEvent = async (eventId) => {
-        const { error } = await supabase.from('eventos').delete().eq('id', eventId);
-        if (error) toast({ variant: "destructive", title: "Erro ao deletar evento" }); else { toast({ title: "Evento deletado." }); fetchAllData(); }
+        const event = events.find(e => e.id === eventId);
+        if (!event) return;
+
+        try {
+            // Verificar se há inscrições para este evento
+            const { data: inscricoesData } = await supabase
+                .from('inscricoes_eventos')
+                .select('id')
+                .eq('evento_id', eventId);
+
+            let warningMessage = '';
+            if (inscricoesData?.length > 0) {
+                warningMessage = `Este evento possui ${inscricoesData.length} inscrição(ões).\nAs inscrições também serão excluídas.`;
+            }
+
+            setConfirmDialog({
+                isOpen: true,
+                title: 'Excluir Evento',
+                message: `Tem certeza que deseja excluir o evento "${event.titulo}"?`,
+                warningMessage,
+                type: 'danger',
+                onConfirm: async () => {
+                    // Excluir inscrições primeiro se existir
+                    if (inscricoesData?.length > 0) {
+                        const { error: inscricoesError } = await supabase
+                            .from('inscricoes_eventos')
+                            .delete()
+                            .eq('evento_id', eventId);
+                            
+                        if (inscricoesError) {
+                            console.error('Erro ao excluir inscrições:', inscricoesError);
+                            toast({ variant: "destructive", title: "Erro ao excluir inscrições do evento" });
+                            setConfirmDialog({ ...confirmDialog, isOpen: false });
+                            return;
+                        }
+                    }
+
+                    const { error } = await supabase.from('eventos').delete().eq('id', eventId);
+                    if (error) {
+                        console.error('Erro ao excluir evento:', error);
+                        toast({ variant: "destructive", title: "Erro ao excluir evento", description: error.message });
+                    } else {
+                        toast({ title: "Evento excluído com sucesso!" });
+                        fetchAllData();
+                    }
+                    setConfirmDialog({ ...confirmDialog, isOpen: false });
+                }
+            });
+        } catch (error) {
+            console.error('Erro inesperado:', error);
+            toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível verificar o evento." });
+        }
     };
 
     if (!user) {
@@ -408,7 +626,20 @@ const AdminPage = () => {
                                         {professionals.map(prof => (
                                             <div key={prof.id} className="border rounded-lg p-4 flex justify-between items-center">
                                                 <div><h3 className="font-bold text-lg">{prof.name}</h3><p className="text-sm text-gray-500">{prof.specialty}</p></div>
-                                                <div className="flex gap-2"><Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)}><Edit className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDeleteProfessional(prof.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
+                                                <div className="flex gap-2">
+                                                    <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="ghost" 
+                                                        onClick={() => handleDeleteProfessional(prof.id)} 
+                                                        className="hover:bg-red-50"
+                                                        title="Excluir profissional"
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -557,6 +788,16 @@ const AdminPage = () => {
                     </Tabs>
                 </div>
             </div>
+            
+            <ConfirmDialog
+                isOpen={confirmDialog.isOpen}
+                onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                onConfirm={confirmDialog.onConfirm}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                warningMessage={confirmDialog.warningMessage}
+                type={confirmDialog.type}
+            />
         </>
     );
 };
