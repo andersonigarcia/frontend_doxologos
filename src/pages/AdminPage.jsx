@@ -1528,30 +1528,104 @@ const AdminPage = () => {
                                                     onChange={async (e) => {
                                                         const file = e.target.files[0];
                                                         if (file) {
-                                                            // Verificar tamanho do arquivo (máximo 5MB)
-                                                            if (file.size > 5 * 1024 * 1024) {
+                                                            // Verificar tamanho do arquivo (máximo 3MB)
+                                                            if (file.size > 3 * 1024 * 1024) {
                                                                 toast({ 
                                                                     variant: 'destructive', 
                                                                     title: 'Arquivo muito grande', 
-                                                                    description: 'Por favor, selecione uma imagem menor que 5MB' 
+                                                                    description: 'Por favor, selecione uma imagem menor que 3MB' 
                                                                 });
                                                                 return;
                                                             }
                                                             
-                                                            // Converter para base64 para preview e armazenamento
-                                                            const reader = new FileReader();
-                                                            reader.onload = (event) => {
+                                                            // Processar imagem localmente com compressão inteligente
+                                                            const canvas = document.createElement('canvas');
+                                                            const ctx = canvas.getContext('2d');
+                                                            const img = new Image();
+                                                            
+                                                            img.onload = () => {
+                                                                // Calcular dimensões otimizadas
+                                                                const maxSize = 400; // Aumentado para melhor qualidade
+                                                                let { width, height } = img;
+                                                                
+                                                                if (width > height) {
+                                                                    if (width > maxSize) {
+                                                                        height = (height * maxSize) / width;
+                                                                        width = maxSize;
+                                                                    }
+                                                                } else {
+                                                                    if (height > maxSize) {
+                                                                        width = (width * maxSize) / height;
+                                                                        height = maxSize;
+                                                                    }
+                                                                }
+                                                                
+                                                                canvas.width = width;
+                                                                canvas.height = height;
+                                                                
+                                                                // Desenhar com alta qualidade
+                                                                ctx.imageSmoothingEnabled = true;
+                                                                ctx.imageSmoothingQuality = 'high';
+                                                                ctx.drawImage(img, 0, 0, width, height);
+                                                                
+                                                                // Tentar diferentes níveis de compressão
+                                                                let quality = 0.8;
+                                                                let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                                                                
+                                                                // Reduzir qualidade se necessário para caber no banco
+                                                                while (compressedDataUrl.length > 200000 && quality > 0.3) {
+                                                                    quality -= 0.1;
+                                                                    compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                                                                }
+                                                                
+                                                                // Se ainda muito grande, redimensionar mais
+                                                                if (compressedDataUrl.length > 200000) {
+                                                                    const smallerSize = Math.floor(maxSize * 0.7);
+                                                                    const ratio = Math.min(smallerSize / width, smallerSize / height);
+                                                                    
+                                                                    canvas.width = width * ratio;
+                                                                    canvas.height = height * ratio;
+                                                                    
+                                                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                                                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                                                    compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                                                                }
+                                                                
+                                                                // Verificação final
+                                                                if (compressedDataUrl.length > 250000) {
+                                                                    toast({ 
+                                                                        variant: 'destructive', 
+                                                                        title: 'Não foi possível comprimir suficientemente', 
+                                                                        description: 'Tente uma imagem menor ou use uma URL externa' 
+                                                                    });
+                                                                    return;
+                                                                }
+                                                                
                                                                 setProfessionalFormData({
                                                                     ...professionalFormData, 
-                                                                    image_url: event.target.result
+                                                                    image_url: compressedDataUrl
+                                                                });
+                                                                
+                                                                toast({ 
+                                                                    title: 'Imagem processada!', 
+                                                                    description: `Imagem otimizada e redimensionada (${Math.round(canvas.width)}x${Math.round(canvas.height)}px)` 
                                                                 });
                                                             };
-                                                            reader.readAsDataURL(file);
+                                                            
+                                                            img.onerror = () => {
+                                                                toast({ 
+                                                                    variant: 'destructive', 
+                                                                    title: 'Erro ao processar imagem', 
+                                                                    description: 'Não foi possível carregar o arquivo selecionado' 
+                                                                });
+                                                            };
+                                                            
+                                                            img.src = URL.createObjectURL(file);
                                                         }
                                                     }}
                                                     className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
                                                 />
-                                                <p className="text-xs text-gray-500 mt-1">Selecione uma imagem do seu computador (máximo 5MB)</p>
+                                                <p className="text-xs text-gray-500 mt-1">Processamento e compressão automática local (até 3MB)</p>
                                             </div>
                                             
                                             {/* Campo de URL alternativo */}
