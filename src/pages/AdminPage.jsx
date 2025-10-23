@@ -1518,26 +1518,78 @@ const AdminPage = () => {
                                         )}
                                         
                                         <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">URL da Foto</label>
-                                            <input 
-                                                name="image_url" 
-                                                value={professionalFormData.image_url} 
-                                                onChange={e => setProfessionalFormData({...professionalFormData, image_url: e.target.value})} 
-                                                type="url" 
-                                                placeholder="https://exemplo.com/foto.jpg" 
-                                                className="w-full input" 
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Cole o link direto para a imagem do profissional</p>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
+                                            
+                                            {/* Upload de arquivo local */}
+                                            <div className="mb-3">
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            // Verificar tamanho do arquivo (máximo 5MB)
+                                                            if (file.size > 5 * 1024 * 1024) {
+                                                                toast({ 
+                                                                    variant: 'destructive', 
+                                                                    title: 'Arquivo muito grande', 
+                                                                    description: 'Por favor, selecione uma imagem menor que 5MB' 
+                                                                });
+                                                                return;
+                                                            }
+                                                            
+                                                            // Converter para base64 para preview e armazenamento
+                                                            const reader = new FileReader();
+                                                            reader.onload = (event) => {
+                                                                setProfessionalFormData({
+                                                                    ...professionalFormData, 
+                                                                    image_url: event.target.result
+                                                                });
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        }
+                                                    }}
+                                                    className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">Selecione uma imagem do seu computador (máximo 5MB)</p>
+                                            </div>
+                                            
+                                            {/* Campo de URL alternativo */}
+                                            <div className="mb-3">
+                                                <input 
+                                                    name="image_url" 
+                                                    value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : (professionalFormData.image_url || '')} 
+                                                    onChange={e => setProfessionalFormData({...professionalFormData, image_url: e.target.value})} 
+                                                    type="url" 
+                                                    placeholder="Ou cole o link direto: https://exemplo.com/foto.jpg" 
+                                                    className="w-full input text-sm" 
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">Alternativa: cole um link direto para a imagem</p>
+                                            </div>
+                                            
+                                            {/* Preview da imagem */}
                                             {professionalFormData.image_url && (
-                                                <div className="mt-2">
+                                                <div className="flex items-center gap-3 mt-3">
                                                     <img 
                                                         src={professionalFormData.image_url} 
                                                         alt="Preview" 
-                                                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                                                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
                                                         onError={(e) => {
                                                             e.target.style.display = 'none';
                                                         }}
                                                     />
+                                                    <div>
+                                                        <p className="text-sm font-medium text-gray-700">Preview da foto</p>
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            onClick={() => setProfessionalFormData({...professionalFormData, image_url: ''})}
+                                                            className="mt-1 text-xs"
+                                                        >
+                                                            Remover foto
+                                                        </Button>
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
