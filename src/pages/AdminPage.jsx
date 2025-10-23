@@ -141,9 +141,35 @@ const AdminPage = () => {
 
     useEffect(() => {
         const profId = userRole === 'admin' ? selectedAvailProfessional : user?.id;
+        console.log('🕒 [AdminPage] Carregando disponibilidade para profissional:', profId);
+        console.log('🕒 [AdminPage] Dados de disponibilidade disponíveis:', availability);
+        
         if (profId) {
-            setProfessionalAvailability(availability[profId] || { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] });
+            const profAvailability = availability[profId] || { 
+                monday: [], 
+                tuesday: [], 
+                wednesday: [], 
+                thursday: [], 
+                friday: [], 
+                saturday: [], 
+                sunday: [] 
+            };
+            
+            console.log('🕒 [AdminPage] Definindo disponibilidade para profissional:', profAvailability);
+            setProfessionalAvailability(profAvailability);
             setProfessionalBlockedDates(blockedDates.filter(d => d.professional_id === profId));
+        } else {
+            // Limpar quando não há profissional selecionado
+            setProfessionalAvailability({ 
+                monday: [], 
+                tuesday: [], 
+                wednesday: [], 
+                thursday: [], 
+                friday: [], 
+                saturday: [], 
+                sunday: [] 
+            });
+            setProfessionalBlockedDates([]);
         }
     }, [selectedAvailProfessional, availability, blockedDates, user, userRole]);
 
@@ -197,11 +223,65 @@ const AdminPage = () => {
 
     const handleSaveAvailability = async () => {
         const professionalId = userRole === 'admin' ? selectedAvailProfessional : user.id;
-        for (const day in professionalAvailability) {
-            await supabase.from('availability').upsert({ professional_id: professionalId, day_of_week: day, available_times: professionalAvailability[day] }, { onConflict: 'professional_id, day_of_week' });
+        
+        if (!professionalId) {
+            toast({ variant: "destructive", title: "Erro", description: "Selecione um profissional." });
+            return;
         }
-        toast({ title: "Disponibilidade atualizada!" });
-        fetchAllData();
+
+        try {
+            // 1. Primeiro, deletar registros existentes para este profissional
+            const { error: deleteError } = await supabase
+                .from('availability')
+                .delete()
+                .eq('professional_id', professionalId);
+
+            if (deleteError) {
+                console.error('Erro ao limpar disponibilidade existente:', deleteError);
+                toast({ variant: "destructive", title: "Erro ao atualizar disponibilidade", description: deleteError.message });
+                return;
+            }
+
+            // 2. Inserir novos registros apenas para dias com horários
+            const availabilityToInsert = [];
+            for (const day in professionalAvailability) {
+                const times = professionalAvailability[day];
+                if (times && times.length > 0) {
+                    // Validar e limpar horários
+                    const validTimes = times
+                        .filter(time => time && time.trim() !== '')
+                        .map(time => time.trim())
+                        .filter((time, index, array) => array.indexOf(time) === index); // Remove duplicatas
+
+                    if (validTimes.length > 0) {
+                        availabilityToInsert.push({
+                            professional_id: professionalId,
+                            day_of_week: day,
+                            available_times: validTimes
+                        });
+                    }
+                }
+            }
+
+            // 3. Inserir novos registros se houver
+            if (availabilityToInsert.length > 0) {
+                const { error: insertError } = await supabase
+                    .from('availability')
+                    .insert(availabilityToInsert);
+
+                if (insertError) {
+                    console.error('Erro ao inserir disponibilidade:', insertError);
+                    toast({ variant: "destructive", title: "Erro ao salvar disponibilidade", description: insertError.message });
+                    return;
+                }
+            }
+
+            toast({ title: "Disponibilidade atualizada com sucesso!" });
+            fetchAllData();
+        } catch (error) {
+            console.error('Erro inesperado ao salvar disponibilidade:', error);
+            toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível salvar a disponibilidade." });
+        }
     };
 
     const handleAddBlockedDate = async () => {
@@ -669,14 +749,118 @@ const AdminPage = () => {
                                     </select>
                                     )}
                                     <div className="space-y-4">
-                                    {Object.keys(professionalAvailability).map(day => (
-                                        <div key={day}>
-                                            <h3 className="font-bold capitalize mb-2">{day.replace('monday', 'Segunda').replace('tuesday', 'Terça').replace('wednesday', 'Quarta').replace('thursday', 'Quinta').replace('friday', 'Sexta').replace('saturday', 'Sábado').replace('sunday', 'Domingo')}</h3>
-                                            <input type="text" value={professionalAvailability[day]?.join(', ')} onChange={(e) => setProfessionalAvailability({...professionalAvailability, [day]: e.target.value.split(',').map(t => t.trim()).filter(t => t)})} placeholder="Ex: 09:00, 10:00, 11:00" className="w-full input"/>
-                                        </div>
-                                    ))}
+                                    {Object.keys(professionalAvailability).map(day => {
+                                        const dayName = day
+                                            .replace('monday', 'Segunda-feira')
+                                            .replace('tuesday', 'Terça-feira')
+                                            .replace('wednesday', 'Quarta-feira')
+                                            .replace('thursday', 'Quinta-feira')
+                                            .replace('friday', 'Sexta-feira')
+                                            .replace('saturday', 'Sábado')
+                                            .replace('sunday', 'Domingo');
+                                            
+                                        const currentTimes = professionalAvailability[day] || [];
+                                        
+                                        return (
+                                            <div key={day} className="border rounded-lg p-3">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h3 className="font-bold text-sm">{dayName}</h3>
+                                                    <span className="text-xs text-gray-500">
+                                                        {currentTimes.length > 0 ? `${currentTimes.length} horário(s)` : 'Sem horários'}
+                                                    </span>
+                                                </div>
+                                                <input 
+                                                    type="text" 
+                                                    value={currentTimes.join(', ') || ''} 
+                                                    onChange={(e) => {
+                                                        const inputValue = e.target.value;
+                                                        const times = inputValue.split(',').map(t => t.trim()).filter(t => t);
+                                                        
+                                                        // Validar formato de horário (HH:MM) em tempo real
+                                                        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                                                        const processedTimes = times.map(time => {
+                                                            if (time && !timeRegex.test(time)) {
+                                                                // Tentar formatar automaticamente
+                                                                const numericOnly = time.replace(/[^0-9]/g, '');
+                                                                if (numericOnly.length === 3) {
+                                                                    return numericOnly.charAt(0) + ':' + numericOnly.slice(1, 3);
+                                                                } else if (numericOnly.length === 4) {
+                                                                    return numericOnly.slice(0, 2) + ':' + numericOnly.slice(2, 4);
+                                                                }
+                                                            }
+                                                            return time;
+                                                        });
+                                                        
+                                                        // Remover duplicatas e ordenar
+                                                        const uniqueTimes = [...new Set(processedTimes)]
+                                                            .filter(time => time)
+                                                            .sort();
+                                                        
+                                                        setProfessionalAvailability({
+                                                            ...professionalAvailability, 
+                                                            [day]: uniqueTimes
+                                                        });
+                                                    }} 
+                                                    placeholder="Ex: 09:00, 10:00, 14:00, 15:30" 
+                                                    className="w-full input text-sm"
+                                                    title="Digite os horários separados por vírgula no formato HH:MM"
+                                                />
+                                                {currentTimes.length > 0 && (
+                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                        {currentTimes.map((time, index) => (
+                                                            <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                                {time}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const newTimes = currentTimes.filter((_, i) => i !== index);
+                                                                        setProfessionalAvailability({
+                                                                            ...professionalAvailability,
+                                                                            [day]: newTimes
+                                                                        });
+                                                                    }}
+                                                                    className="ml-1 text-green-600 hover:text-green-800"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                     </div>
-                                    <Button onClick={handleSaveAvailability} className="mt-6 bg-[#2d8659] hover:bg-[#236b47]">Salvar Horários</Button>
+                                    <div className="mt-6 space-y-4">
+                                        <div className="border-t pt-4">
+                                            <h4 className="font-medium text-sm mb-2">Horários Comuns (clique para adicionar):</h4>
+                                            <div className="flex flex-wrap gap-2">
+                                                {['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'].map(time => (
+                                                    <button
+                                                        key={time}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const selectedDay = Object.keys(professionalAvailability)[0]; // Para demonstração, adiciona na segunda
+                                                            const currentTimes = professionalAvailability['monday'] || [];
+                                                            if (!currentTimes.includes(time)) {
+                                                                setProfessionalAvailability({
+                                                                    ...professionalAvailability,
+                                                                    monday: [...currentTimes, time].sort()
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
+                                                    >
+                                                        {time}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">* Os horários são adicionados na Segunda-feira. Você pode copiá-los para outros dias.</p>
+                                        </div>
+                                        <Button onClick={handleSaveAvailability} className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                            Salvar Horários
+                                        </Button>
+                                    </div>
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><CalendarX className="w-6 h-6 mr-2 text-[#2d8659]" /> Datas e Horários Bloqueados</h2>
