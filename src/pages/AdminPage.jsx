@@ -47,7 +47,7 @@ const AdminPage = () => {
         const professionalId = user?.id;
     
         const promises = [
-            isAdmin ? supabase.from('bookings').select('*, professional:professionals(name), service:services(name), user:users_public(full_name)') : supabase.from('bookings').select('*, service:services(name), user:users_public(full_name)').eq('professional_id', professionalId),
+            isAdmin ? supabase.from('bookings').select('*, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, service:services(name)').eq('professional_id', professionalId),
             supabase.from('services').select('*'),
             supabase.from('professionals').select('*'),
             supabase.from('availability').select('*'),
@@ -56,10 +56,10 @@ const AdminPage = () => {
 
         if (isAdmin) {
             promises.push(supabase.from('eventos').select('*, professional:professionals(name), inscricoes_eventos(count)').order('data_inicio', { ascending: false }));
-            promises.push(supabase.from('reviews').select('*, patient:users_public(full_name), professional:professionals(name)'));
+            promises.push(supabase.from('reviews').select('*, professional:professionals(name)'));
         } else {
             promises.push(Promise.resolve({ data: [], error: null })); // events
-            promises.push(supabase.from('reviews').select('*, patient:users_public(full_name)').eq('professional_id', professionalId)); // reviews
+            promises.push(supabase.from('reviews').select('*').eq('professional_id', professionalId)); // reviews
         }
 
         const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
@@ -249,7 +249,7 @@ const AdminPage = () => {
                                 {bookings.map(b => (
                                     <div key={b.id} className="border rounded-lg p-4 flex justify-between items-center">
                                         <div>
-                                            <p><strong>Paciente:</strong> {b.user?.full_name || 'N/A'}</p>
+                                            <p><strong>Paciente:</strong> {b.patient_name || b.patient_email || 'N/A'}</p>
                                             {userRole === 'admin' && <p><strong>Profissional:</strong> {b.professional?.name || 'N/A'}</p>}
                                             <p><strong>Serviço:</strong> {b.service?.name || 'N/A'}</p>
                                             <p><strong>Data:</strong> {new Date(b.booking_date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} às {b.booking_time}</p>
@@ -287,7 +287,7 @@ const AdminPage = () => {
                                                         {[...Array(5)].map((_, i) => <Star key={i} className={`w-5 h-5 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />)}
                                                     </div>
                                                     <p className="italic">"{review.comment}"</p>
-                                                    <p className="text-sm text-gray-500 mt-2">- {review.patient?.full_name || 'Anônimo'} sobre {userRole === 'admin' ? review.professional?.name : 'seu atendimento'} em {new Date(review.created_at).toLocaleDateString()}</p>
+                                                    <p className="text-sm text-gray-500 mt-2">- {review.patient_name || 'Anônimo'} sobre {userRole === 'admin' ? review.professional?.name : 'seu atendimento'} em {new Date(review.created_at).toLocaleDateString()}</p>
                                                 </div>
                                                 {userRole === 'admin' && (
                                                     <div className="flex gap-2">
