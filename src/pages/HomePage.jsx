@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart, Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users } from 'lucide-react';
