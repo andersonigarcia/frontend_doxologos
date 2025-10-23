@@ -25,18 +25,14 @@ const AgendamentoPage = () => {
     const [patientData, setPatientData] = useState({ name: '', email: '', phone: '' });
 
     const fetchData = useCallback(async () => {
-        console.log('🔍 [Agendamento] Buscando profissionais...');
-        console.log('🔍 [Agendamento] Executando query profissionais:', "supabase.from('professionals').select('*')");
-        const professionalsQuery = supabase.from('professionals').select('*');
-        console.log('🔍 [Agendamento] Query object profissionais:', professionalsQuery);
-        const { data: profsData, error: profsError } = await professionalsQuery;
-        console.log('📊 [Agendamento] Resultado profissionais:', { data: profsData, error: profsError });
+        const { data: profsData, error: profsError } = await supabase
+            .from('professionals')
+            .select('*');
         
         if (profsError) {
-            console.error('❌ [Agendamento] Erro ao buscar profissionais:', profsError);
+            console.error('Erro ao buscar profissionais:', profsError);
             toast({ variant: 'destructive', title: 'Erro ao buscar profissionais', description: profsError.message });
         } else {
-            console.log('✅ [Agendamento] Profissionais carregados:', profsData?.length || 0, 'registros');
             setProfessionals(profsData || []);
         }
 
