@@ -43,7 +43,28 @@ const AdminPage = () => {
     const [isEditingEvent, setIsEditingEvent] = useState(false);
 
     const [editingBooking, setEditingBooking] = useState(null);
-    const [bookingEditData, setBookingEditData] = useState({ booking_date: '', booking_time: '', status: '' });
+    const [bookingEditData, setBookingEditData] = useState({ 
+        booking_date: '', 
+        booking_time: '', 
+        status: '', 
+        professional_id: '',
+        service_id: '',
+        patient_name: '',
+        patient_email: '',
+        patient_phone: '',
+        valor_consulta: ''
+    });
+    
+    // Estados para filtros de agendamentos
+    const [bookingFilters, setBookingFilters] = useState({
+        service_id: '',
+        professional_id: '',
+        status: '',
+        date_from: '',
+        date_to: '',
+        search: ''
+    });
+    const [showFilters, setShowFilters] = useState(false);
     
     // Estados para modais de confirmação
     const [confirmDialog, setConfirmDialog] = useState({
@@ -344,15 +365,136 @@ const AdminPage = () => {
 
     const handleUpdateBooking = async () => {
         if (!editingBooking) return;
-        const { error } = await supabase.from('bookings').update(bookingEditData).eq('id', editingBooking.id);
-        if (error) { toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message }); }
-        else { toast({ title: 'Agendamento atualizado!' }); setEditingBooking(null); fetchAllData(); }
+        
+        // Validar dados obrigatórios
+        if (!bookingEditData.professional_id || !bookingEditData.service_id || !bookingEditData.patient_name) {
+            toast({ variant: 'destructive', title: 'Erro', description: 'Preencha todos os campos obrigatórios.' });
+            return;
+        }
+        
+        const { error } = await supabase
+            .from('bookings')
+            .update({
+                booking_date: bookingEditData.booking_date,
+                booking_time: bookingEditData.booking_time,
+                status: bookingEditData.status,
+                professional_id: bookingEditData.professional_id,
+                service_id: bookingEditData.service_id,
+                patient_name: bookingEditData.patient_name,
+                patient_email: bookingEditData.patient_email,
+                patient_phone: bookingEditData.patient_phone,
+                valor_consulta: parseFloat(bookingEditData.valor_consulta) || null
+            })
+            .eq('id', editingBooking.id);
+            
+        if (error) { 
+            toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message }); 
+        } else { 
+            toast({ title: 'Agendamento atualizado com sucesso!' }); 
+            setEditingBooking(null); 
+            fetchAllData(); 
+        }
     };
 
     const handleReviewApproval = async (reviewId, isApproved) => {
         const { error } = await supabase.from('reviews').update({ is_approved: isApproved }).eq('id', reviewId);
         if (error) { toast({ variant: 'destructive', title: 'Erro ao atualizar avaliação' }); }
         else { toast({ title: `Avaliação ${isApproved ? 'aprovada' : 'reprovada'}.` }); fetchAllData(); }
+    };
+    
+    // Função para filtrar agendamentos
+    const getFilteredBookings = () => {
+        return bookings.filter(booking => {
+            // Filtro por serviço
+            if (bookingFilters.service_id && booking.service_id !== bookingFilters.service_id) {
+                return false;
+            }
+            
+            // Filtro por profissional
+            if (bookingFilters.professional_id && booking.professional_id !== bookingFilters.professional_id) {
+                return false;
+            }
+            
+            // Filtro por status
+            if (bookingFilters.status && booking.status !== bookingFilters.status) {
+                return false;
+            }
+            
+            // Filtro por período - data inicial
+            if (bookingFilters.date_from && booking.booking_date < bookingFilters.date_from) {
+                return false;
+            }
+            
+            // Filtro por período - data final
+            if (bookingFilters.date_to && booking.booking_date > bookingFilters.date_to) {
+                return false;
+            }
+            
+            // Filtro por busca de texto (nome do paciente ou email)
+            if (bookingFilters.search) {
+                const searchTerm = bookingFilters.search.toLowerCase();
+                const patientName = (booking.patient_name || '').toLowerCase();
+                const patientEmail = (booking.patient_email || '').toLowerCase();
+                
+                if (!patientName.includes(searchTerm) && !patientEmail.includes(searchTerm)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    };
+    
+    const clearFilters = () => {
+        setBookingFilters({
+            service_id: '',
+            professional_id: '',
+            status: '',
+            date_from: '',
+            date_to: '',
+            search: ''
+        });
+    };
+    
+    // Funções para calcular totalizadores
+    const calculateTotals = (bookingsList) => {
+        const totals = {
+            totalBookings: bookingsList.length,
+            totalValue: 0,
+            confirmedValue: 0,
+            completedValue: 0,
+            pendingValue: 0,
+            cancelledValue: 0
+        };
+        
+        bookingsList.forEach(booking => {
+            // Usa valor histórico se disponível, senão usa preço atual do serviço
+            const servicePrice = booking.valor_consulta 
+                ? parseFloat(booking.valor_consulta) 
+                : (booking.service?.price ? parseFloat(booking.service.price) : 0);
+            
+            // Totaliza todos os serviços independente do status
+            totals.totalValue += servicePrice;
+            
+            // Separa por status para análise detalhada
+            switch (booking.status) {
+                case 'confirmed':
+                    totals.confirmedValue += servicePrice;
+                    break;
+                case 'completed':
+                    totals.completedValue += servicePrice;
+                    break;
+                case 'pending_payment':
+                    totals.pendingValue += servicePrice;
+                    break;
+                case 'cancelled_by_patient':
+                case 'cancelled_by_professional':
+                    totals.cancelledValue += servicePrice;
+                    break;
+            }
+        });
+        
+        return totals;
     };
 
     const resetServiceForm = () => { 
@@ -688,34 +830,498 @@ const AdminPage = () => {
                         
                         <TabsContent value="bookings" className="mt-6">
                             <div className="bg-white rounded-xl shadow-lg p-6">
-                                <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Agendamentos</h2>
-                                <div className="space-y-4">
-                                {bookings.map(b => (
-                                    <div key={b.id} className="border rounded-lg p-4 flex justify-between items-center">
-                                        <div>
-                                            <p><strong>Paciente:</strong> {b.patient_name || b.patient_email || 'N/A'}</p>
-                                            {userRole === 'admin' && <p><strong>Profissional:</strong> {b.professional?.name || 'N/A'}</p>}
-                                            <p><strong>Serviço:</strong> {b.service?.name || 'N/A'}</p>
-                                            <p><strong>Data:</strong> {new Date(b.booking_date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} às {b.booking_time}</p>
-                                            <p><strong>Status:</strong> {b.status}</p>
-                                        </div>
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <Button size="icon" variant="ghost" onClick={() => { setEditingBooking(b); setBookingEditData({ booking_date: b.booking_date, booking_time: b.booking_time, status: b.status }); }}><Edit className="w-4 h-4" /></Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader><DialogTitle>Editar Agendamento</DialogTitle></DialogHeader>
-                                                <div className="space-y-4 py-4">
-                                                    <div><label>Data</label><input type="date" value={bookingEditData.booking_date} onChange={e => setBookingEditData({...bookingEditData, booking_date: e.target.value})} className="w-full input" /></div>
-                                                    <div><label>Horário</label><input type="time" value={bookingEditData.booking_time} onChange={e => setBookingEditData({...bookingEditData, booking_time: e.target.value})} className="w-full input" /></div>
-                                                    <div><label>Status</label><select value={bookingEditData.status} onChange={e => setBookingEditData({...bookingEditData, status: e.target.value})} className="w-full input"><option value="pending_payment">Pendente</option><option value="confirmed">Confirmado</option><option value="completed">Concluído</option><option value="cancelled_by_patient">Cancelado (Paciente)</option><option value="cancelled_by_professional">Cancelado (Profissional)</option></select></div>
-                                                </div>
-                                                <DialogFooter><DialogClose asChild><Button variant="outline">Cancelar</Button></DialogClose><Button onClick={handleUpdateBooking}>Salvar</Button></DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </div>
-                                ))}
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold flex items-center">
+                                        <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                        Agendamentos 
+                                        <span className="ml-2 text-lg text-gray-500">({getFilteredBookings().length}/{bookings.length})</span>
+                                    </h2>
+                                    
+                                    <Button 
+                                        onClick={() => setShowFilters(!showFilters)} 
+                                        variant="outline" 
+                                        size="sm"
+                                        className="flex items-center"
+                                    >
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                        </svg>
+                                        {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
+                                        {(() => {
+                                            const activeFilters = Object.values(bookingFilters).filter(value => value !== '').length;
+                                            return activeFilters > 0 ? (
+                                                <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                    {activeFilters}
+                                                </span>
+                                            ) : null;
+                                        })()} 
+                                    </Button>
                                 </div>
+                                
+                                {/* Totalizadores */}
+                                {(() => {
+                                    const filteredBookings = getFilteredBookings();
+                                    const totals = calculateTotals(filteredBookings);
+                                    
+                                    return (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+                                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                                                <div className="flex items-center">
+                                                    <Calendar className="w-8 h-8 text-blue-600 mr-3" />
+                                                    <div>
+                                                        <p className="text-sm text-blue-600 font-medium">Total de Agendamentos</p>
+                                                        <p className="text-2xl font-bold text-blue-900">{totals.totalBookings}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                                                <div className="flex items-center">
+                                                    <svg className="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                                    </svg>
+                                                    <div>
+                                                        <p className="text-sm text-green-600 font-medium">Valor Total</p>
+                                                        <p className="text-2xl font-bold text-green-900">
+                                                            R$ {totals.totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
+                                                <div className="flex items-center">
+                                                    <svg className="w-8 h-8 text-emerald-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <div>
+                                                        <p className="text-sm text-emerald-600 font-medium">Concluídos</p>
+                                                        <p className="text-2xl font-bold text-emerald-900">
+                                                            R$ {totals.completedValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
+                                                <div className="flex items-center">
+                                                    <svg className="w-8 h-8 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <div>
+                                                        <p className="text-sm text-yellow-600 font-medium">Pendentes</p>
+                                                        <p className="text-2xl font-bold text-yellow-900">
+                                                            R$ {totals.pendingValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            {totals.cancelledValue > 0 && (
+                                                <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
+                                                    <div className="flex items-center">
+                                                        <svg className="w-8 h-8 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                        <div>
+                                                            <p className="text-sm text-red-600 font-medium">Cancelados</p>
+                                                            <p className="text-2xl font-bold text-red-900">
+                                                                R$ {totals.cancelledValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                                
+                                {/* Seção de Filtros - Recolhível */}
+                                {showFilters && (
+                                    <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
+                                        <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
+                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                            </svg>
+                                            Filtros Avançados
+                                        </h3>                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                                        {/* Busca por nome/email */}
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Buscar Paciente</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Nome ou email..."
+                                                value={bookingFilters.search}
+                                                onChange={(e) => setBookingFilters({...bookingFilters, search: e.target.value})}
+                                                className="w-full input text-sm"
+                                            />
+                                        </div>
+                                        
+                                        {/* Filtro por Serviço */}
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Serviço</label>
+                                            <select
+                                                value={bookingFilters.service_id}
+                                                onChange={(e) => setBookingFilters({...bookingFilters, service_id: e.target.value})}
+                                                className="w-full input text-sm"
+                                            >
+                                                <option value="">Todos os serviços</option>
+                                                {services.map(service => (
+                                                    <option key={service.id} value={service.id}>{service.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        
+                                        {/* Filtro por Profissional */}
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Profissional</label>
+                                            <select
+                                                value={bookingFilters.professional_id}
+                                                onChange={(e) => setBookingFilters({...bookingFilters, professional_id: e.target.value})}
+                                                className="w-full input text-sm"
+                                            >
+                                                <option value="">Todos os profissionais</option>
+                                                {professionals.map(prof => (
+                                                    <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        
+                                        {/* Filtro por Status */}
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Status</label>
+                                            <select
+                                                value={bookingFilters.status}
+                                                onChange={(e) => setBookingFilters({...bookingFilters, status: e.target.value})}
+                                                className="w-full input text-sm"
+                                            >
+                                                <option value="">Todos os status</option>
+                                                <option value="pending_payment">Pendente Pagamento</option>
+                                                <option value="confirmed">Confirmado</option>
+                                                <option value="completed">Concluído</option>
+                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                            </select>
+                                        </div>
+                                        
+                                        {/* Filtro por Período - Data Inicial */}
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">De</label>
+                                            <input
+                                                type="date"
+                                                value={bookingFilters.date_from}
+                                                onChange={(e) => setBookingFilters({...bookingFilters, date_from: e.target.value})}
+                                                className="w-full input text-sm"
+                                            />
+                                        </div>
+                                        
+                                        {/* Filtro por Período - Data Final */}
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Até</label>
+                                            <input
+                                                type="date"
+                                                value={bookingFilters.date_to}
+                                                onChange={(e) => setBookingFilters({...bookingFilters, date_to: e.target.value})}
+                                                className="w-full input text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                        {/* Botão para limpar filtros */}
+                                        <div className="mt-4 flex justify-end">
+                                            <Button 
+                                                onClick={clearFilters}
+                                                variant="outline" 
+                                                size="sm"
+                                                className="text-gray-600 hover:text-gray-800"
+                                            >
+                                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                                Limpar Filtros
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {(() => {
+                                    const filteredBookings = getFilteredBookings();
+                                    
+                                    if (bookings.length === 0) {
+                                        return (
+                                            <div className="text-center py-12">
+                                                <Calendar className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                                                <p className="text-gray-500 text-lg">Nenhum agendamento encontrado</p>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    if (filteredBookings.length === 0) {
+                                        return (
+                                            <div className="text-center py-12">
+                                                <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                                <p className="text-gray-500 text-lg mb-2">Nenhum agendamento encontrado com os filtros aplicados</p>
+                                                <p className="text-gray-400 text-sm">Tente ajustar os filtros ou limpar para ver todos os agendamentos</p>
+                                                <Button onClick={clearFilters} variant="outline" className="mt-4">
+                                                    Limpar Filtros
+                                                </Button>
+                                            </div>
+                                        );
+                                    }
+                                    
+                                    return (
+                                        <div className="space-y-2">
+                                            {filteredBookings.map((b, index) => {
+                                            const statusColors = {
+                                                'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                'confirmed': 'bg-green-100 text-green-800 border-green-200',
+                                                'completed': 'bg-blue-100 text-blue-800 border-blue-200',
+                                                'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
+                                                'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200'
+                                            };
+                                            
+                                            const statusLabels = {
+                                                'pending_payment': 'Pendente Pagamento',
+                                                'confirmed': 'Confirmado',
+                                                'completed': 'Concluído',
+                                                'cancelled_by_patient': 'Cancelado pelo Paciente',
+                                                'cancelled_by_professional': 'Cancelado pelo Profissional'
+                                            };
+                                            
+                                            // Usa valor histórico se disponível, senão usa preço atual do serviço
+                                            const servicePrice = b.valor_consulta 
+                                                ? parseFloat(b.valor_consulta) 
+                                                : (b.service?.price ? parseFloat(b.service.price) : 0);
+                                            
+                                            return (
+                                                <div key={b.id} className={`border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${
+                                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                } hover:bg-blue-50`}>
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-3">
+                                                                <h3 className="font-semibold text-lg text-gray-900">
+                                                                    {b.patient_name || 'Nome não informado'}
+                                                                </h3>
+                                                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
+                                                                    {statusLabels[b.status] || b.status}
+                                                                </span>
+                                                                {servicePrice > 0 && (
+                                                                    <span className="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200">
+                                                                        R$ {servicePrice.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Profissional</span>
+                                                                    <span className="font-medium">{b.professional?.name || 'N/A'}</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Serviço</span>
+                                                                    <span className="font-medium">{b.service?.name || 'N/A'}</span>
+                                                                    {b.service?.duration_minutes && (
+                                                                        <span className="text-blue-600 block text-xs">
+                                                                            {b.service.duration_minutes >= 60 
+                                                                                ? `${Math.floor(b.service.duration_minutes / 60)}h${b.service.duration_minutes % 60 > 0 ? ` ${b.service.duration_minutes % 60}min` : ''}` 
+                                                                                : `${b.service.duration_minutes}min`
+                                                                            }
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Valor</span>
+                                                                    <span className="font-bold text-green-700">
+                                                                        {servicePrice > 0 
+                                                                            ? `R$ ${servicePrice.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` 
+                                                                            : 'N/A'
+                                                                        }
+                                                                    </span>
+                                                                    {b.service?.name && servicePrice === 0 && (
+                                                                        <span className="text-orange-500 block text-xs">Valor não definido</span>
+                                                                    )}
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Data e Horário</span>
+                                                                    <span className="font-medium">
+                                                                        {new Date(b.booking_date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
+                                                                    </span>
+                                                                    <span className="block text-blue-600">{b.booking_time}h</span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Contato</span>
+                                                                    <span className="font-medium block text-xs">{b.patient_email || 'N/A'}</span>
+                                                                    <span className="block text-xs">{b.patient_phone || 'N/A'}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div className="flex gap-2 ml-4">
+                                                            <Dialog>
+                                                                <DialogTrigger asChild>
+                                                                    <Button 
+                                                                        size="sm" 
+                                                                        variant="outline" 
+                                                                        onClick={() => { 
+                                                                            setEditingBooking(b); 
+                                                                            setBookingEditData({ 
+                                                                                booking_date: b.booking_date, 
+                                                                                booking_time: b.booking_time, 
+                                                                                status: b.status,
+                                                                                professional_id: b.professional_id || '',
+                                                                                service_id: b.service_id || '',
+                                                                                patient_name: b.patient_name || '',
+                                                                                patient_email: b.patient_email || '',
+                                                                                patient_phone: b.patient_phone || '',
+                                                                                valor_consulta: b.valor_consulta || ''
+                                                                            }); 
+                                                                        }}
+                                                                        className="hover:bg-blue-50"
+                                                                    >
+                                                                        <Edit className="w-4 h-4 mr-1" />
+                                                                        Editar
+                                                                    </Button>
+                                                                </DialogTrigger>
+                                                                <DialogContent className="max-w-2xl">
+                                                                    <DialogHeader>
+                                                                        <DialogTitle className="flex items-center">
+                                                                            <Edit className="w-5 h-5 mr-2" />
+                                                                            Editar Agendamento
+                                                                        </DialogTitle>
+                                                                    </DialogHeader>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
+                                                                            <input 
+                                                                                type="text" 
+                                                                                value={bookingEditData.patient_name} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, patient_name: e.target.value})} 
+                                                                                className="w-full input" 
+                                                                                placeholder="Nome completo"
+                                                                                required
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Email</label>
+                                                                            <input 
+                                                                                type="email" 
+                                                                                value={bookingEditData.patient_email} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, patient_email: e.target.value})} 
+                                                                                className="w-full input" 
+                                                                                placeholder="email@exemplo.com"
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Telefone</label>
+                                                                            <input 
+                                                                                type="tel" 
+                                                                                value={bookingEditData.patient_phone} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, patient_phone: e.target.value})} 
+                                                                                className="w-full input" 
+                                                                                placeholder="(11) 99999-9999"
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Status *</label>
+                                                                            <select 
+                                                                                value={bookingEditData.status} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, status: e.target.value})} 
+                                                                                className="w-full input"
+                                                                            >
+                                                                                <option value="pending_payment">Pendente Pagamento</option>
+                                                                                <option value="confirmed">Confirmado</option>
+                                                                                <option value="completed">Concluído</option>
+                                                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Profissional *</label>
+                                                                            <select 
+                                                                                value={bookingEditData.professional_id} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, professional_id: e.target.value})} 
+                                                                                className="w-full input"
+                                                                                required
+                                                                            >
+                                                                                <option value="">Selecione um profissional</option>
+                                                                                {professionals.map(prof => (
+                                                                                    <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Serviço *</label>
+                                                                            <select 
+                                                                                value={bookingEditData.service_id} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, service_id: e.target.value})} 
+                                                                                className="w-full input"
+                                                                                required
+                                                                            >
+                                                                                <option value="">Selecione um serviço</option>
+                                                                                {services.map(service => (
+                                                                                    <option key={service.id} value={service.id}>
+                                                                                        {service.name} - R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Data *</label>
+                                                                            <input 
+                                                                                type="date" 
+                                                                                value={bookingEditData.booking_date} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, booking_date: e.target.value})} 
+                                                                                className="w-full input" 
+                                                                                required
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Horário *</label>
+                                                                            <input 
+                                                                                type="time" 
+                                                                                value={bookingEditData.booking_time} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, booking_time: e.target.value})} 
+                                                                                className="w-full input" 
+                                                                                required
+                                                                            />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
+                                                                            <input 
+                                                                                type="number" 
+                                                                                step="0.01"
+                                                                                min="0"
+                                                                                value={bookingEditData.valor_consulta} 
+                                                                                onChange={e => setBookingEditData({...bookingEditData, valor_consulta: e.target.value})} 
+                                                                                className="w-full input" 
+                                                                                placeholder="150.00"
+                                                                            />
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                Valor histórico preservado no momento do agendamento
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <DialogFooter>
+                                                                        <DialogClose asChild>
+                                                                            <Button variant="outline">Cancelar</Button>
+                                                                        </DialogClose>
+                                                                        <Button onClick={handleUpdateBooking} className="bg-[#2d8659] hover:bg-[#236b47]">
+                                                                            Salvar Alterações
+                                                                        </Button>
+                                                                    </DialogFooter>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </TabsContent>
 
