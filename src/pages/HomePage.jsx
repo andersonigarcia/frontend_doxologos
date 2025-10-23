@@ -40,6 +40,7 @@ const HomePage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      console.log('🔍 [HomePage] Executando query eventos:', "supabase.from('eventos').select('*, professional:professionals(name)').eq('status', 'aberto').gt('data_limite_inscricao', new Date().toISOString()).order('data_inicio', { ascending: true })");
       const { data: eventsData, error: eventsError } = await supabase
         .from('eventos')
         .select(`*, professional:professionals(name)`)
@@ -50,16 +51,25 @@ const HomePage = () => {
       if (eventsError) console.error('Erro ao buscar eventos:', eventsError);
       else setActiveEvents(eventsData);
 
-      const { data: profsData, error: profsError } = await supabase
-        .from('professionals')
-        .select('*');
+      console.log('🔍 [HomePage] Buscando profissionais...');
+      console.log('🔍 [HomePage] Executando query profissionais:', "supabase.from('professionals').select('*')");
+      const professionalsQuery = supabase.from('professionals').select('*');
+      console.log('🔍 [HomePage] Query object profissionais:', professionalsQuery);
+      const { data: profsData, error: profsError } = await professionalsQuery;
       
-      if (profsError) console.error('Erro ao buscar profissionais:', profsError);
-      else setProfessionals(profsData);
+      console.log('📊 [HomePage] Resultado profissionais:', { data: profsData, error: profsError });
+      if (profsError) {
+        console.error('❌ [HomePage] Erro ao buscar profissionais:', profsError);
+        toast({ variant: 'destructive', title: 'Erro ao carregar profissionais', description: profsError.message });
+      } else {
+        console.log('✅ [HomePage] Profissionais carregados:', profsData?.length || 0, 'registros');
+        setProfessionals(profsData || []);
+      }
 
+      console.log('🔍 [HomePage] Executando query reviews:', "supabase.from('reviews').select('*').eq('is_approved', true).order('created_at', { ascending: false })");
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
-        .select('*, patient:users_public(full_name)')
+        .select('*')
         .eq('is_approved', true)
         .order('created_at', { ascending: false });
       
@@ -262,9 +272,18 @@ const HomePage = () => {
           <h2 className="text-4xl font-bold mb-4">Conheça Nossa Equipe </h2>
           <p className="text-xl text-gray-600">Equipe qualificada e comprometida com seu bem-estar</p>
         </motion.div>
+        {console.log('🔍 [HomePage] Renderizando seção profissionais. Total:', professionals.length)}
         <div className="relative">
-          <motion.div ref={professionalsCarouselRef} className="flex overflow-x-auto space-x-8 pb-8 scroll-smooth carousel-container" style={{ scrollSnapType: 'x mandatory' }}>
-            {professionals.map((prof, index) => (
+          {professionals.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">Nenhum profissional encontrado.</p>
+              <p className="text-gray-400 text-sm mt-2">Verifique se há registros na tabela professionals do Supabase.</p>
+            </div>
+          ) : (
+            <motion.div ref={professionalsCarouselRef} className="flex overflow-x-auto space-x-8 pb-8 scroll-smooth carousel-container" style={{ scrollSnapType: 'x mandatory' }}>
+              {professionals.map((prof, index) => {
+                console.log('👤 [HomePage] Renderizando profissional:', prof);
+                return (
               <motion.div key={prof.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-gray-50 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4" style={{ scrollSnapAlign: 'start' }}>
                 <img class="w-full h-64 object-cover" alt={prof.name} src="https://images.unsplash.com/photo-1603991414220-51b87b89a371" />
                 <div className="p-6">
@@ -273,12 +292,16 @@ const HomePage = () => {
                   <p className="text-gray-600 text-sm">{prof.mini_curriculum || prof.description}</p>
                 </div>
               </motion.div>
-            ))}
-          </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
         </div>
-        <div className="flex justify-center mt-8 space-x-2">
-          {professionals.map((_, index) => <button key={index} onClick={() => scrollCarousel(professionalsCarouselRef, index)} className={`w-3 h-3 rounded-full transition-colors ${activeProfIndex === index ? 'bg-[#2d8659]' : 'bg-gray-300 hover:bg-gray-400'}`} />)}
-        </div>
+        {professionals.length > 0 && (
+          <div className="flex justify-center mt-8 space-x-2">
+            {professionals.map((_, index) => <button key={index} onClick={() => scrollCarousel(professionalsCarouselRef, index)} className={`w-3 h-3 rounded-full transition-colors ${activeProfIndex === index ? 'bg-[#2d8659]' : 'bg-gray-300 hover:bg-gray-400'}`} />)}
+          </div>
+        )}
       </div>
     </section>
 
@@ -297,7 +320,7 @@ const HomePage = () => {
                   {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />)}
                 </div>
                 <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
-                <p className="font-bold text-[#2d8659]">- {testimonial.patient.full_name}</p>
+                <p className="font-bold text-[#2d8659]">- {testimonial.patient_name || 'Paciente Anônimo'}</p>
               </motion.div>
             ))}
           </motion.div>
