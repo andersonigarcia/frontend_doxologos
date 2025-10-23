@@ -36,6 +36,8 @@ const AdminPage = () => {
     const [professionalBlockedDates, setProfessionalBlockedDates] = useState([]);
     const [newBlockedDate, setNewBlockedDate] = useState({ date: '', start_time: '', end_time: '', reason: '' });
     const [focusedDay, setFocusedDay] = useState('monday'); // Controla o dia focado para adicionar horários
+    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     const [eventFormData, setEventFormData] = useState({ id: null, titulo: '', descricao: '', tipo_evento: 'Workshop', data_inicio: '', data_fim: '', professional_id: '', limite_participantes: '', data_limite_inscricao: '', link_slug: '' });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -142,22 +144,54 @@ const AdminPage = () => {
 
     useEffect(() => {
         const profId = userRole === 'admin' ? selectedAvailProfessional : user?.id;
-        console.log('🕒 [AdminPage] Carregando disponibilidade para profissional:', profId);
-        console.log('🕒 [AdminPage] Dados de disponibilidade disponíveis:', availability);
         
         if (profId) {
-            const profAvailability = availability[profId] || { 
-                monday: [], 
-                tuesday: [], 
-                wednesday: [], 
-                thursday: [], 
-                friday: [], 
-                saturday: [], 
-                sunday: [] 
+            // Carregar disponibilidade específica do mês/ano selecionados
+            const fetchMonthlyAvailability = async () => {
+                try {
+                    const { data: availData, error } = await supabase
+                        .from('availability')
+                        .select('*')
+                        .eq('professional_id', profId)
+                        .eq('month', selectedMonth)
+                        .eq('year', selectedYear);
+                    
+                    if (!error && availData) {
+                        const monthlyAvailability = {
+                            monday: [],
+                            tuesday: [],
+                            wednesday: [],
+                            thursday: [],
+                            friday: [],
+                            saturday: [],
+                            sunday: []
+                        };
+                        
+                        availData.forEach(item => {
+                            if (item.available_times) {
+                                monthlyAvailability[item.day_of_week] = item.available_times;
+                            }
+                        });
+                        
+                        setProfessionalAvailability(monthlyAvailability);
+                    } else {
+                        // Se não há dados para este mês/ano, inicializar vazio
+                        setProfessionalAvailability({
+                            monday: [],
+                            tuesday: [],
+                            wednesday: [],
+                            thursday: [],
+                            friday: [],
+                            saturday: [],
+                            sunday: []
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar disponibilidade mensal:', error);
+                }
             };
             
-            console.log('🕒 [AdminPage] Definindo disponibilidade para profissional:', profAvailability);
-            setProfessionalAvailability(profAvailability);
+            fetchMonthlyAvailability();
             setProfessionalBlockedDates(blockedDates.filter(d => d.professional_id === profId));
         } else {
             // Limpar quando não há profissional selecionado
@@ -172,7 +206,7 @@ const AdminPage = () => {
             });
             setProfessionalBlockedDates([]);
         }
-    }, [selectedAvailProfessional, availability, blockedDates, user, userRole]);
+    }, [selectedAvailProfessional, user, userRole, selectedMonth, selectedYear, blockedDates]);
 
     const handleLogin = async (e) => { e.preventDefault(); await signIn(loginData.email, loginData.password); };
     const handleLogout = async () => { await signOut(); setLoginData({ email: '', password: '' }); };
@@ -231,11 +265,13 @@ const AdminPage = () => {
         }
 
         try {
-            // 1. Primeiro, deletar registros existentes para este profissional
+            // 1. Primeiro, deletar registros existentes para este profissional no mês/ano selecionados
             const { error: deleteError } = await supabase
                 .from('availability')
                 .delete()
-                .eq('professional_id', professionalId);
+                .eq('professional_id', professionalId)
+                .eq('month', selectedMonth)
+                .eq('year', selectedYear);
 
             if (deleteError) {
                 console.error('Erro ao limpar disponibilidade existente:', deleteError);
@@ -258,7 +294,9 @@ const AdminPage = () => {
                         availabilityToInsert.push({
                             professional_id: professionalId,
                             day_of_week: day,
-                            available_times: validTimes
+                            available_times: validTimes,
+                            month: selectedMonth,
+                            year: selectedYear
                         });
                     }
                 }
@@ -277,7 +315,8 @@ const AdminPage = () => {
                 }
             }
 
-            toast({ title: "Disponibilidade atualizada com sucesso!" });
+            const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            toast({ title: `Disponibilidade de ${monthNames[selectedMonth]}/${selectedYear} atualizada com sucesso!` });
             fetchAllData();
         } catch (error) {
             console.error('Erro inesperado ao salvar disponibilidade:', error);
@@ -753,8 +792,58 @@ const AdminPage = () => {
                                     </select>
                                     )}
                                     
+                                    {/* Seletores de Mês e Ano */}
+                                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                        <h4 className="font-semibold text-sm mb-3 text-blue-800 flex items-center">
+                                            📅 Período
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Mês</label>
+                                                <select 
+                                                    value={selectedMonth} 
+                                                    onChange={(e) => {
+                                                        setSelectedMonth(parseInt(e.target.value));
+                                                    }}
+                                                    className="w-full input text-sm"
+                                                >
+                                                    <option value={1}>Janeiro</option>
+                                                    <option value={2}>Fevereiro</option>
+                                                    <option value={3}>Março</option>
+                                                    <option value={4}>Abril</option>
+                                                    <option value={5}>Maio</option>
+                                                    <option value={6}>Junho</option>
+                                                    <option value={7}>Julho</option>
+                                                    <option value={8}>Agosto</option>
+                                                    <option value={9}>Setembro</option>
+                                                    <option value={10}>Outubro</option>
+                                                    <option value={11}>Novembro</option>
+                                                    <option value={12}>Dezembro</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Ano</label>
+                                                <select 
+                                                    value={selectedYear} 
+                                                    onChange={(e) => {
+                                                        setSelectedYear(parseInt(e.target.value));
+                                                    }}
+                                                    className="w-full input text-sm"
+                                                >
+                                                    {Array.from({length: 3}, (_, i) => {
+                                                        const year = new Date().getFullYear() + i;
+                                                        return <option key={year} value={year}>{year}</option>
+                                                    })}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-blue-600 mt-2">
+                                            Gerenciando: {['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][selectedMonth]} de {selectedYear}
+                                        </p>
+                                    </div>
+                                    
                                     {/* Seção de Horários Comuns no topo */}
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                                         <h4 className="font-medium text-sm mb-3 text-blue-800 flex items-center">
                                             <Clock className="w-4 h-4 mr-2" />
                                             Horários Comuns (clique para adicionar ao dia selecionado)
