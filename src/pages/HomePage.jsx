@@ -40,33 +40,50 @@ const HomePage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      console.log('🔍 [HomePage] Executando query eventos:', "supabase.from('eventos').select('*, professional:professionals(name)').eq('status', 'aberto').gt('data_limite_inscricao', new Date().toISOString()).order('data_inicio', { ascending: true })");
       const { data: eventsData, error: eventsError } = await supabase
         .from('eventos')
-        .select(`*, professional:professionals(name)`)
+        .select('*')
         .eq('status', 'aberto')
         .gt('data_limite_inscricao', new Date().toISOString())
         .order('data_inicio', { ascending: true });
 
-      if (eventsError) console.error('Erro ao buscar eventos:', eventsError);
-      else setActiveEvents(eventsData);
+      if (eventsError) {
+        console.error('Erro ao buscar eventos:', eventsError);
+      } else {
+        // Buscar profissionais dos eventos se houver eventos
+        if (eventsData && eventsData.length > 0) {
+          const professionalIds = [...new Set(eventsData.map(event => event.professional_id).filter(Boolean))];
+          if (professionalIds.length > 0) {
+            const { data: eventProfessionals } = await supabase
+              .from('professionals')
+              .select('id, name')
+              .in('id', professionalIds);
+            
+            // Mapear profissionais aos eventos
+            const eventsWithProfessionals = eventsData.map(event => ({
+              ...event,
+              professional: eventProfessionals?.find(p => p.id === event.professional_id)
+            }));
+            setActiveEvents(eventsWithProfessionals);
+          } else {
+            setActiveEvents(eventsData);
+          }
+        } else {
+          setActiveEvents(eventsData);
+        }
+      }
 
-      console.log('🔍 [HomePage] Buscando profissionais...');
-      console.log('🔍 [HomePage] Executando query profissionais:', "supabase.from('professionals').select('*')");
-      const professionalsQuery = supabase.from('professionals').select('*');
-      console.log('🔍 [HomePage] Query object profissionais:', professionalsQuery);
-      const { data: profsData, error: profsError } = await professionalsQuery;
+      const { data: profsData, error: profsError } = await supabase
+        .from('professionals')
+        .select('*');
       
-      console.log('📊 [HomePage] Resultado profissionais:', { data: profsData, error: profsError });
       if (profsError) {
-        console.error('❌ [HomePage] Erro ao buscar profissionais:', profsError);
+        console.error('Erro ao buscar profissionais:', profsError);
         toast({ variant: 'destructive', title: 'Erro ao carregar profissionais', description: profsError.message });
       } else {
-        console.log('✅ [HomePage] Profissionais carregados:', profsData?.length || 0, 'registros');
         setProfessionals(profsData || []);
       }
 
-      console.log('🔍 [HomePage] Executando query reviews:', "supabase.from('reviews').select('*').eq('is_approved', true).order('created_at', { ascending: false })");
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
         .select('*')

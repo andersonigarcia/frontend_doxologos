@@ -28,7 +28,7 @@ const AdminPage = () => {
     const [serviceFormData, setServiceFormData] = useState({ id: null, name: '', price: '', duration_minutes: 50 });
 
     const [isEditingProfessional, setIsEditingProfessional] = useState(false);
-    const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '' });
+    const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '', description: '', image_url: '' });
 
     const [selectedAvailProfessional, setSelectedAvailProfessional] = useState('');
     const [professionalAvailability, setProfessionalAvailability] = useState({});
@@ -42,10 +42,13 @@ const AdminPage = () => {
     const [bookingEditData, setBookingEditData] = useState({ booking_date: '', booking_time: '', status: '' });
 
     const fetchAllData = useCallback(async () => {
+
         setLoading(true);
         const isAdmin = userRole === 'admin';
         const professionalId = user?.id;
     
+
+        
         const promises = [
             isAdmin ? supabase.from('bookings').select('*, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, service:services(name)').eq('professional_id', professionalId),
             supabase.from('services').select('*'),
@@ -55,8 +58,9 @@ const AdminPage = () => {
         ];
 
         if (isAdmin) {
-            promises.push(supabase.from('eventos').select('*, professional:professionals(name), inscricoes_eventos(count)').order('data_inicio', { ascending: false }));
-            promises.push(supabase.from('reviews').select('*, professional:professionals(name)'));
+            // Buscar eventos sem JOIN por enquanto - faremos a associação depois
+            promises.push(supabase.from('eventos').select('*').order('data_inicio', { ascending: false }));
+            promises.push(supabase.from('reviews').select('*'));
         } else {
             promises.push(Promise.resolve({ data: [], error: null })); // events
             promises.push(supabase.from('reviews').select('*').eq('professional_id', professionalId)); // reviews
@@ -64,16 +68,51 @@ const AdminPage = () => {
 
         const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
         
+        if (profsRes.error) {
+            console.error('❌ [AdminPage] Erro ao buscar profissionais:', profsRes.error);
+        }
+        
+
+        
         setBookings(bookingsRes.data || []);
         setServices(servicesRes.data || []);
         setProfessionals(profsRes.data || []);
         if (profsRes.data && profsRes.data.length > 0) {
-            const profIdToSelect = isAdmin ? profsRes.data[0].id : professionalId;
-            setSelectedAvailProfessional(profIdToSelect);
+            // Para admin, usa o primeiro profissional da lista
+            // Para professional, encontra o registro que corresponde ao user_id
+            let profIdToSelect;
+            if (isAdmin) {
+                profIdToSelect = profsRes.data[0].id;
+            } else {
+                const currentProfessional = profsRes.data.find(p => p.user_id === professionalId);
+                profIdToSelect = currentProfessional ? currentProfessional.id : null;
+            }
+            if (profIdToSelect) {
+                setSelectedAvailProfessional(profIdToSelect);
+            }
         }
-        setEvents(eventsRes.data || []);
+        // Mapear profissionais aos eventos e reviews
+        const eventsWithProfessionals = (eventsRes.data || []).map(event => {
+            const professional = (profsRes.data || []).find(p => p.id === event.professional_id);
+            return {
+                ...event,
+                professional: professional ? { name: professional.name } : null,
+                // Simular contagem de inscrições por enquanto
+                inscricoes_eventos: [{ count: 0 }]
+            };
+        });
+        
+        const reviewsWithProfessionals = (reviewsRes.data || []).map(review => {
+            const professional = (profsRes.data || []).find(p => p.id === review.professional_id);
+            return {
+                ...review,
+                professional: professional ? { name: professional.name } : null
+            };
+        });
+        
+        setEvents(eventsWithProfessionals);
         setBlockedDates(blockedDatesRes.data || []);
-        setReviews(reviewsRes.data || []);
+        setReviews(reviewsWithProfessionals);
 
         const availabilityMap = {};
         (availRes.data || []).forEach(avail => {
@@ -118,7 +157,7 @@ const AdminPage = () => {
             const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: profData.name, role: 'professional' } } });
             if (signUpError) { toast({ variant: "destructive", title: "Erro ao criar usuário", description: signUpError.message }); return; }
             if(!authData.user) { toast({ variant: 'destructive', title: 'Erro ao criar profissional', description: "Não foi possível criar o usuário." }); return; }
-            const { error: profError } = await supabase.from('professionals').insert([{ ...profData, id: authData.user.id, email }]);
+            const { error: profError } = await supabase.from('professionals').insert([{ ...profData, user_id: authData.user.id }]);
             if (profError) { toast({ variant: "destructive", title: "Erro ao criar profissional", description: profError.message }); }
             else { toast({ title: "Profissional criado com sucesso!" }); resetProfessionalForm(); fetchAllData(); }
         }
@@ -165,7 +204,7 @@ const AdminPage = () => {
     };
 
     const resetServiceForm = () => { setIsEditingService(false); setServiceFormData({ id: null, name: '', price: '', duration_minutes: 50 }); };
-    const resetProfessionalForm = () => { setIsEditingProfessional(false); setProfessionalFormData({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '' }); };
+    const resetProfessionalForm = () => { setIsEditingProfessional(false); setProfessionalFormData({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '', description: '', image_url: '' }); };
     
     const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
     const handleDeleteService = async (serviceId) => {
@@ -429,7 +468,10 @@ const AdminPage = () => {
                                         <input name="titulo" value={eventFormData.titulo} onChange={e => setEventFormData({...eventFormData, titulo: e.target.value})} placeholder="Título do Evento" className="w-full input" required />
                                         <textarea name="descricao" value={eventFormData.descricao} onChange={e => setEventFormData({...eventFormData, descricao: e.target.value})} placeholder="Descrição" className="w-full input" rows="3"></textarea>
                                         <select name="tipo_evento" value={eventFormData.tipo_evento} onChange={e => setEventFormData({...eventFormData, tipo_evento: e.target.value})} className="w-full input"><option>Workshop</option><option>Palestra</option></select>
-                                        <select name="professional_id" value={eventFormData.professional_id} onChange={e => setEventFormData({...eventFormData, professional_id: e.target.value})} className="w-full input" required><option value="">Selecione o Profissional</option>{professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                                        <select name="professional_id" value={eventFormData.professional_id} onChange={e => setEventFormData({...eventFormData, professional_id: e.target.value})} className="w-full input" required>
+                                            <option value="">Selecione o Profissional</option>
+                                            {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
                                         <div className="grid grid-cols-2 gap-4"><input type="datetime-local" name="data_inicio" value={eventFormData.data_inicio} onChange={e => setEventFormData({...eventFormData, data_inicio: e.target.value})} className="w-full input" required/><input type="datetime-local" name="data_fim" value={eventFormData.data_fim} onChange={e => setEventFormData({...eventFormData, data_fim: e.target.value})} className="w-full input" required/><input type="number" name="limite_participantes" value={eventFormData.limite_participantes} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Vagas" className="w-full input" required/><input type="datetime-local" name="data_limite_inscricao" value={eventFormData.data_limite_inscricao} onChange={e => setEventFormData({...eventFormData, data_limite_inscricao: e.target.value})} className="w-full input" required/></div>
                                         <input name="link_slug" value={eventFormData.link_slug} onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value})} placeholder="Link" className="w-full input" required/>
                                         <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
