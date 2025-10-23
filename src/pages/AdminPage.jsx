@@ -29,7 +29,7 @@ const AdminPage = () => {
     const [serviceFormData, setServiceFormData] = useState({ id: null, name: '', price: '', duration_minutes: 50 });
 
     const [isEditingProfessional, setIsEditingProfessional] = useState(false);
-    const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '', description: '', image_url: '' });
+    const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '' });
 
     const [selectedAvailProfessional, setSelectedAvailProfessional] = useState('');
     const [professionalAvailability, setProfessionalAvailability] = useState({});
@@ -359,7 +359,7 @@ const AdminPage = () => {
         setIsEditingService(false); 
         setServiceFormData({ id: null, name: '', price: '', duration_minutes: '' }); 
     };
-    const resetProfessionalForm = () => { setIsEditingProfessional(false); setProfessionalFormData({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '', description: '', image_url: '' }); };
+    const resetProfessionalForm = () => { setIsEditingProfessional(false); setProfessionalFormData({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '' }); };
     
     const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
     const handleDeleteService = async (serviceId) => {
@@ -402,7 +402,14 @@ const AdminPage = () => {
         }
     };
     
-    const handleEditProfessional = (prof) => { setIsEditingProfessional(true); setProfessionalFormData({...prof, password: ''}); };
+    const handleEditProfessional = (prof) => { 
+        setIsEditingProfessional(true); 
+        setProfessionalFormData({
+            ...prof, 
+            password: '', 
+            services_ids: prof.services_ids || [] 
+        }); 
+    };
     const handleDeleteProfessional = async (profId) => {
         const professional = professionals.find(p => p.id === profId);
         if (!professional) return;
@@ -748,7 +755,25 @@ const AdminPage = () => {
                                     <div className="space-y-4">
                                         {professionals.map(prof => (
                                             <div key={prof.id} className="border rounded-lg p-4 flex justify-between items-center">
-                                                <div><h3 className="font-bold text-lg">{prof.name}</h3><p className="text-sm text-gray-500">{prof.specialty}</p></div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg">{prof.name}</h3>
+                                                    <div className="text-sm text-gray-500">
+                                                        {prof.services_ids && prof.services_ids.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                {prof.services_ids.map(serviceId => {
+                                                                    const service = services.find(s => s.id === serviceId);
+                                                                    return service ? (
+                                                                        <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                            {service.name}
+                                                                        </span>
+                                                                    ) : null;
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-orange-500">Nenhum serviço atribuído</span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                                 <div className="flex gap-2">
                                                     <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
                                                         <Edit className="w-4 h-4" />
@@ -770,12 +795,107 @@ const AdminPage = () => {
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6">{isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional'}</h2>
                                     <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
-                                        <input name="name" value={professionalFormData.name} onChange={e => setProfessionalFormData({...professionalFormData, name: e.target.value})} placeholder="Nome Completo" className="w-full input" required />
-                                        <input name="specialty" value={professionalFormData.specialty} onChange={e => setProfessionalFormData({...professionalFormData, specialty: e.target.value})} placeholder="Especialidade" className="w-full input" />
-                                        <input name="email" value={professionalFormData.email} onChange={e => setProfessionalFormData({...professionalFormData, email: e.target.value})} type="email" placeholder="Email de acesso" className="w-full input" disabled={isEditingProfessional} required={!isEditingProfessional} />
-                                        {!isEditingProfessional && <input name="password" value={professionalFormData.password} onChange={e => setProfessionalFormData({...professionalFormData, password: e.target.value})} type="password" placeholder="Senha de acesso" className="w-full input" required />}
-                                        <textarea name="mini_curriculum" value={professionalFormData.mini_curriculum} onChange={e => setProfessionalFormData({...professionalFormData, mini_curriculum: e.target.value})} placeholder="Mini-currículo" className="w-full input" rows="5"></textarea>
-                                        <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingProfessional ? 'Salvar' : 'Criar'}</Button>{isEditingProfessional && <Button type="button" variant="outline" onClick={resetProfessionalForm}>Cancelar</Button>}</div>
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
+                                            <input 
+                                                name="name" 
+                                                value={professionalFormData.name} 
+                                                onChange={e => setProfessionalFormData({...professionalFormData, name: e.target.value})} 
+                                                placeholder="Ex: Dr. João Silva" 
+                                                className="w-full input" 
+                                                required 
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
+                                            <div className="border rounded-lg p-3 max-h-32 overflow-y-auto bg-gray-50">
+                                                {services.length === 0 ? (
+                                                    <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
+                                                ) : (
+                                                    services.map(service => (
+                                                        <label key={service.id} className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={professionalFormData.services_ids.includes(service.id)}
+                                                                onChange={(e) => {
+                                                                    const serviceId = service.id;
+                                                                    const currentServices = professionalFormData.services_ids;
+                                                                    
+                                                                    if (e.target.checked) {
+                                                                        setProfessionalFormData({
+                                                                            ...professionalFormData,
+                                                                            services_ids: [...currentServices, serviceId]
+                                                                        });
+                                                                    } else {
+                                                                        setProfessionalFormData({
+                                                                            ...professionalFormData,
+                                                                            services_ids: currentServices.filter(id => id !== serviceId)
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                className="rounded"
+                                                            />
+                                                            <span className="text-sm">{service.name}</span>
+                                                            <span className="text-xs text-gray-500">R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
+                                                        </label>
+                                                    ))
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
+                                            <input 
+                                                name="email" 
+                                                value={professionalFormData.email} 
+                                                onChange={e => setProfessionalFormData({...professionalFormData, email: e.target.value})} 
+                                                type="email" 
+                                                placeholder="joao@clinica.com" 
+                                                className="w-full input" 
+                                                disabled={isEditingProfessional}
+                                                required={!isEditingProfessional} 
+                                            />
+                                        </div>
+                                        
+                                        {!isEditingProfessional && (
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
+                                                <input 
+                                                    name="password" 
+                                                    value={professionalFormData.password} 
+                                                    onChange={e => setProfessionalFormData({...professionalFormData, password: e.target.value})} 
+                                                    type="password" 
+                                                    placeholder="******" 
+                                                    className="w-full input" 
+                                                    required 
+                                                />
+                                            </div>
+                                        )}
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Mini-currículo</label>
+                                            <textarea 
+                                                name="mini_curriculum" 
+                                                value={professionalFormData.mini_curriculum} 
+                                                onChange={e => setProfessionalFormData({...professionalFormData, mini_curriculum: e.target.value})} 
+                                                placeholder="Formação, experiências, especializações..." 
+                                                className="w-full input" 
+                                                rows="5"
+                                            ></textarea>
+                                        </div>
+                                        
+                                        <div className="flex gap-2">
+                                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                                {isEditingProfessional ? 'Salvar' : 'Criar'}
+                                            </Button>
+                                            {isEditingProfessional && (
+                                                <Button type="button" variant="outline" onClick={resetProfessionalForm}>
+                                                    Cancelar
+                                                </Button>
+                                            )}
+                                        </div>
                                     </form>
                                 </div>
                             </div>

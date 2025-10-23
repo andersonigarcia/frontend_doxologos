@@ -184,31 +184,58 @@ const AgendamentoPage = () => {
           case 1:
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-3xl font-bold mb-6 flex items-center"><User className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha o Profissional</h2>
+                <h2 className="text-3xl font-bold mb-6 flex items-center"><CreditCard className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha o Serviço</h2>
                 <div className="space-y-4">
-                  {professionals.map((prof) => (
-                    <button key={prof.id} onClick={() => { setSelectedProfessional(prof.id); setStep(2); }} className={`w-full p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left ${selectedProfessional === prof.id ? 'border-[#2d8659] bg-[#2d8659]/5' : 'border-gray-200 hover:border-[#2d8659]'}`}>
-                      <h3 className="font-bold text-xl mb-1">{prof.name}</h3>
-                      <p className="text-gray-600">{prof.specialty}</p>
+                  {services.map((service) => (
+                    <button key={service.id} onClick={() => { setSelectedService(service.id); setStep(2); }} className={`w-full p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left ${selectedService === service.id ? 'border-[#2d8659] bg-[#2d8659]/5' : 'border-gray-200 hover:border-[#2d8659]'}`}>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-bold text-xl mb-1">{service.name}</h3>
+                          <p className="text-gray-600">{service.duration_minutes >= 60 ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}` : `${service.duration_minutes}min`}</p>
+                        </div>
+                        <div className="text-2xl font-bold text-[#2d8659]">R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                      </div>
                     </button>
                   ))}
                 </div>
               </motion.div>
             );
           case 2:
+            const availableProfessionals = professionals.filter(prof => 
+              prof.services_ids && prof.services_ids.includes(selectedService)
+            );
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-                <h2 className="text-3xl font-bold mb-6 flex items-center"><CreditCard className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha o Serviço</h2>
-                <div className="space-y-4">
-                  {services.map((service) => (
-                    <button key={service.id} onClick={() => { setSelectedService(service.id); setStep(3); }} className={`w-full p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left ${selectedService === service.id ? 'border-[#2d8659] bg-[#2d8659]/5' : 'border-gray-200 hover:border-[#2d8659]'}`}>
-                      <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-xl mb-1">{service.name}</h3>
-                        <div className="text-2xl font-bold text-[#2d8659]">R$ {parseFloat(service.price).toFixed(2)}</div>
-                      </div>
-                    </button>
-                  ))}
+                <h2 className="text-3xl font-bold mb-6 flex items-center"><User className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha o Profissional</h2>
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Serviço selecionado:</strong> {services.find(s => s.id === selectedService)?.name}
+                  </p>
                 </div>
+                {availableProfessionals.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500 mb-4">Nenhum profissional disponível para este serviço.</p>
+                    <Button onClick={() => setStep(1)} variant="outline">Escolher outro serviço</Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {availableProfessionals.map((prof) => (
+                      <button key={prof.id} onClick={() => { setSelectedProfessional(prof.id); setStep(3); }} className={`w-full p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left ${selectedProfessional === prof.id ? 'border-[#2d8659] bg-[#2d8659]/5' : 'border-gray-200 hover:border-[#2d8659]'}`}>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-bold text-xl mb-2">{prof.name}</h3>
+                            {prof.mini_curriculum && (
+                              <p className="text-gray-600 text-sm">{prof.mini_curriculum.substring(0, 100)}...</p>
+                            )}
+                          </div>
+                          {prof.image_url && (
+                            <img src={prof.image_url} alt={prof.name} className="w-12 h-12 rounded-full object-cover ml-4" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <Button onClick={() => setStep(1)} variant="outline" className="mt-6">Voltar</Button>
               </motion.div>
             );
@@ -217,6 +244,12 @@ const AgendamentoPage = () => {
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
                 <h2 className="text-3xl font-bold mb-6 flex items-center"><Clock className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha Data e Horário</h2>
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Serviço:</strong> {services.find(s => s.id === selectedService)?.name} | 
+                    <strong> Profissional:</strong> {professionals.find(p => p.id === selectedProfessional)?.name}
+                  </p>
+                </div>
                 <div className="mb-6">
                   <label className="block text-sm font-medium mb-2">Data</label>
                   <input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }} min={new Date().toISOString().split('T')[0]} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" />
@@ -308,8 +341,8 @@ const AgendamentoPage = () => {
       };
 
       const progressSteps = [
-        { id: 1, label: 'Profissional' },
-        { id: 2, label: 'Serviço' },
+        { id: 1, label: 'Serviço' },
+        { id: 2, label: 'Profissional' },
         { id: 3, label: 'Data/Hora' },
         { id: 4, label: 'Dados' },
       ];
