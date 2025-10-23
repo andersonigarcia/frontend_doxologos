@@ -316,7 +316,10 @@ const AdminPage = () => {
         else { toast({ title: `Avaliação ${isApproved ? 'aprovada' : 'reprovada'}.` }); fetchAllData(); }
     };
 
-    const resetServiceForm = () => { setIsEditingService(false); setServiceFormData({ id: null, name: '', price: '', duration_minutes: 50 }); };
+    const resetServiceForm = () => { 
+        setIsEditingService(false); 
+        setServiceFormData({ id: null, name: '', price: '', duration_minutes: '' }); 
+    };
     const resetProfessionalForm = () => { setIsEditingProfessional(false); setProfessionalFormData({ id: null, name: '', specialty: '', email: '', password: '', mini_curriculum: '', description: '', image_url: '' }); };
     
     const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
@@ -942,7 +945,17 @@ const AdminPage = () => {
                                     <div className="space-y-4">
                                         {services.map(service => (
                                             <div key={service.id} className="border rounded-lg p-4 flex justify-between items-center">
-                                                <div><h3 className="font-bold text-lg">{service.name}</h3><p className="text-sm text-gray-500">R$ {service.price} - {service.duration_minutes} min</p></div>
+                                                <div>
+                                                    <h3 className="font-bold text-lg">{service.name}</h3>
+                                                    <p className="text-sm text-gray-500">
+                                                        R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
+                                                        {' • '}
+                                                        {service.duration_minutes >= 60 
+                                                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}` 
+                                                            : `${service.duration_minutes}min`
+                                                        }
+                                                    </p>
+                                                </div>
                                                 <div className="flex gap-2"><Button size="icon" variant="ghost" onClick={() => handleEditService(service)}><Edit className="w-4 h-4" /></Button><Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button></div>
                                             </div>
                                         ))}
@@ -951,10 +964,67 @@ const AdminPage = () => {
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6">{isEditingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
                                     <form onSubmit={handleServiceSubmit} className="space-y-4 text-sm">
-                                        <input name="name" value={serviceFormData.name} onChange={e => setServiceFormData({...serviceFormData, name: e.target.value})} placeholder="Nome do Serviço" className="w-full input" required />
-                                        <input name="price" value={serviceFormData.price} onChange={e => setServiceFormData({...serviceFormData, price: e.target.value})} type="number" placeholder="Preço" className="w-full input" required />
-                                        <input name="duration_minutes" value={serviceFormData.duration_minutes} onChange={e => setServiceFormData({...serviceFormData, duration_minutes: e.target.value})} type="number" placeholder="Duração (minutos)" className="w-full input" required />
-                                        <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingService ? 'Salvar' : 'Criar'}</Button>{isEditingService && <Button type="button" variant="outline" onClick={resetServiceForm}>Cancelar</Button>}</div>
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Serviço</label>
+                                            <input 
+                                                name="name" 
+                                                value={serviceFormData.name} 
+                                                onChange={e => setServiceFormData({...serviceFormData, name: e.target.value})} 
+                                                placeholder="Ex: Consulta Psicológica, Terapia de Casal" 
+                                                className="w-full input" 
+                                                required 
+                                            />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Preço</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                                                <input 
+                                                    name="price" 
+                                                    value={serviceFormData.price} 
+                                                    onChange={e => {
+                                                        const value = e.target.value.replace(/[^0-9.,]/g, '');
+                                                        setServiceFormData({...serviceFormData, price: value});
+                                                    }} 
+                                                    type="text" 
+                                                    placeholder="150,00" 
+                                                    className="w-full input pl-8" 
+                                                    required 
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Duração</label>
+                                            <div className="relative">
+                                                <input 
+                                                    name="duration_minutes" 
+                                                    value={serviceFormData.duration_minutes} 
+                                                    onChange={e => {
+                                                        const value = e.target.value.replace(/[^0-9]/g, '');
+                                                        setServiceFormData({...serviceFormData, duration_minutes: value});
+                                                    }} 
+                                                    type="text" 
+                                                    placeholder="50" 
+                                                    className="w-full input pr-12" 
+                                                    required 
+                                                />
+                                                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">min</span>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Duração em minutos (ex: 50 para 50min, 90 para 1h30min)</p>
+                                        </div>
+                                        
+                                        <div className="flex gap-2">
+                                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                                {isEditingService ? 'Salvar' : 'Criar'}
+                                            </Button>
+                                            {isEditingService && (
+                                                <Button type="button" variant="outline" onClick={resetServiceForm}>
+                                                    Cancelar
+                                                </Button>
+                                            )}
+                                        </div>
                                     </form>
                                 </div>
                             </div>
