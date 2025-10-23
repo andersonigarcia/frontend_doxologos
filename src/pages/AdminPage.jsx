@@ -35,6 +35,7 @@ const AdminPage = () => {
     const [professionalAvailability, setProfessionalAvailability] = useState({});
     const [professionalBlockedDates, setProfessionalBlockedDates] = useState([]);
     const [newBlockedDate, setNewBlockedDate] = useState({ date: '', start_time: '', end_time: '', reason: '' });
+    const [focusedDay, setFocusedDay] = useState('monday'); // Controla o dia focado para adicionar horários
 
     const [eventFormData, setEventFormData] = useState({ id: null, titulo: '', descricao: '', tipo_evento: 'Workshop', data_inicio: '', data_fim: '', professional_id: '', limite_participantes: '', data_limite_inscricao: '', link_slug: '' });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -748,6 +749,68 @@ const AdminPage = () => {
                                         {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
                                     )}
+                                    
+                                    {/* Seção de Horários Comuns no topo */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                                        <h4 className="font-medium text-sm mb-3 text-blue-800 flex items-center">
+                                            <Clock className="w-4 h-4 mr-2" />
+                                            Horários Comuns (clique para adicionar ao dia selecionado)
+                                        </h4>
+                                        
+                                        {/* Seletor do dia para adicionar horários */}
+                                        <div className="mb-3">
+                                            <label className="block text-xs font-medium mb-2 text-blue-700">Adicionar horários em:</label>
+                                            <select 
+                                                value={focusedDay} 
+                                                onChange={(e) => setFocusedDay(e.target.value)}
+                                                className="input text-sm w-full max-w-xs"
+                                            >
+                                                <option value="monday">Segunda-feira</option>
+                                                <option value="tuesday">Terça-feira</option>
+                                                <option value="wednesday">Quarta-feira</option>
+                                                <option value="thursday">Quinta-feira</option>
+                                                <option value="friday">Sexta-feira</option>
+                                                <option value="saturday">Sábado</option>
+                                                <option value="sunday">Domingo</option>
+                                            </select>
+                                        </div>
+                                        
+                                        {/* Botões de horários comuns */}
+                                        <div className="flex flex-wrap gap-2">
+                                            {['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30'].map(time => {
+                                                const currentTimes = professionalAvailability[focusedDay] || [];
+                                                const isAlreadyAdded = currentTimes.includes(time);
+                                                
+                                                return (
+                                                    <button
+                                                        key={time}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!isAlreadyAdded) {
+                                                                const newTimes = [...currentTimes, time].sort();
+                                                                setProfessionalAvailability({
+                                                                    ...professionalAvailability,
+                                                                    [focusedDay]: newTimes
+                                                                });
+                                                            }
+                                                        }}
+                                                        disabled={isAlreadyAdded}
+                                                        className={`px-3 py-1 text-xs border rounded transition-colors ${
+                                                            isAlreadyAdded 
+                                                                ? 'bg-green-100 text-green-700 border-green-300 cursor-not-allowed' 
+                                                                : 'hover:bg-blue-100 border-blue-300 text-blue-700'
+                                                        }`}
+                                                        title={isAlreadyAdded ? 'Horário já adicionado' : `Adicionar ${time} na ${focusedDay === 'monday' ? 'Segunda' : focusedDay === 'tuesday' ? 'Terça' : focusedDay === 'wednesday' ? 'Quarta' : focusedDay === 'thursday' ? 'Quinta' : focusedDay === 'friday' ? 'Sexta' : focusedDay === 'saturday' ? 'Sábado' : 'Domingo'}`}
+                                                    >
+                                                        {time} {isAlreadyAdded && '✓'}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-xs text-blue-600 mt-2">
+                                            💡 Dica: Selecione o dia da semana acima e clique nos horários para adicioná-los rapidamente.
+                                        </p>
+                                    </div>
                                     <div className="space-y-4">
                                     {Object.keys(professionalAvailability).map(day => {
                                         const dayName = day
@@ -762,9 +825,15 @@ const AdminPage = () => {
                                         const currentTimes = professionalAvailability[day] || [];
                                         
                                         return (
-                                            <div key={day} className="border rounded-lg p-3">
+                                            <div key={day} className={`border rounded-lg p-3 transition-colors ${
+                                                focusedDay === day ? 'border-blue-500 bg-blue-50' : ''
+                                            }`}>
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <h3 className="font-bold text-sm">{dayName}</h3>
+                                                    <h3 className={`font-bold text-sm ${
+                                                        focusedDay === day ? 'text-blue-800' : ''
+                                                    }`}>
+                                                        {dayName} {focusedDay === day && '⭐'}
+                                                    </h3>
                                                     <span className="text-xs text-gray-500">
                                                         {currentTimes.length > 0 ? `${currentTimes.length} horário(s)` : 'Sem horários'}
                                                     </span>
@@ -772,6 +841,7 @@ const AdminPage = () => {
                                                 <input 
                                                     type="text" 
                                                     value={currentTimes.join(', ') || ''} 
+                                                    onFocus={() => setFocusedDay(day)}
                                                     onChange={(e) => {
                                                         const inputValue = e.target.value;
                                                         const times = inputValue.split(',').map(t => t.trim()).filter(t => t);
@@ -802,7 +872,9 @@ const AdminPage = () => {
                                                         });
                                                     }} 
                                                     placeholder="Ex: 09:00, 10:00, 14:00, 15:30" 
-                                                    className="w-full input text-sm"
+                                                    className={`w-full input text-sm transition-colors ${
+                                                        focusedDay === day ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                                                    }`}
                                                     title="Digite os horários separados por vírgula no formato HH:MM"
                                                 />
                                                 {currentTimes.length > 0 && (
@@ -831,36 +903,9 @@ const AdminPage = () => {
                                         );
                                     })}
                                     </div>
-                                    <div className="mt-6 space-y-4">
-                                        <div className="border-t pt-4">
-                                            <h4 className="font-medium text-sm mb-2">Horários Comuns (clique para adicionar):</h4>
-                                            <div className="flex flex-wrap gap-2">
-                                                {['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'].map(time => (
-                                                    <button
-                                                        key={time}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            const selectedDay = Object.keys(professionalAvailability)[0]; // Para demonstração, adiciona na segunda
-                                                            const currentTimes = professionalAvailability['monday'] || [];
-                                                            if (!currentTimes.includes(time)) {
-                                                                setProfessionalAvailability({
-                                                                    ...professionalAvailability,
-                                                                    monday: [...currentTimes, time].sort()
-                                                                });
-                                                            }
-                                                        }}
-                                                        className="px-2 py-1 text-xs border rounded hover:bg-gray-50"
-                                                    >
-                                                        {time}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">* Os horários são adicionados na Segunda-feira. Você pode copiá-los para outros dias.</p>
-                                        </div>
-                                        <Button onClick={handleSaveAvailability} className="w-full bg-[#2d8659] hover:bg-[#236b47]">
-                                            Salvar Horários
-                                        </Button>
-                                    </div>
+                                    <Button onClick={handleSaveAvailability} className="mt-6 w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                        Salvar Horários
+                                    </Button>
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><CalendarX className="w-6 h-6 mr-2 text-[#2d8659]" /> Datas e Horários Bloqueados</h2>
