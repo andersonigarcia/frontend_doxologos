@@ -141,9 +141,30 @@ const AdminPage = () => {
 
     const handleServiceSubmit = async (e) => {
         e.preventDefault();
-        const { error } = isEditingService ? await supabase.from('services').update({ name: serviceFormData.name, price: serviceFormData.price, duration_minutes: serviceFormData.duration_minutes }).eq('id', serviceFormData.id) : await supabase.from('services').insert([serviceFormData]);
-        if (error) { toast({ variant: "destructive", title: "Erro ao salvar serviço", description: error.message }); } 
-        else { toast({ title: `Serviço ${isEditingService ? 'atualizado' : 'criado'}!` }); resetServiceForm(); fetchAllData(); }
+        
+        let result;
+        if (isEditingService) {
+            // Para edição, usar campos específicos
+            const { name, price, duration_minutes } = serviceFormData;
+            result = await supabase.from('services').update({ name, price, duration_minutes }).eq('id', serviceFormData.id);
+        } else {
+            // Para inserção, remover o id
+            const { id, ...serviceDataWithoutId } = serviceFormData;
+            result = await supabase.from('services').insert([serviceDataWithoutId]);
+        }
+        
+        if (result.error) {
+            console.error('Erro ao salvar serviço:', result.error);
+            toast({ 
+                variant: "destructive", 
+                title: "Erro ao salvar serviço", 
+                description: result.error.message 
+            });
+        } else {
+            toast({ title: `Serviço ${isEditingService ? 'atualizado' : 'criado'} com sucesso!` });
+            resetServiceForm();
+            fetchAllData();
+        }
     };
 
     const handleProfessionalSubmit = async (e) => {
@@ -217,8 +238,44 @@ const AdminPage = () => {
 
     const handleEventSubmit = async (e) => {
         e.preventDefault();
-        const { error } = isEditingEvent ? await supabase.from('eventos').update(eventFormData).eq('id', eventFormData.id) : await supabase.from('eventos').insert([eventFormData]);
-        if (error) toast({ variant: "destructive", title: "Erro ao salvar evento" }); else { toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'}!` }); resetEventForm(); fetchAllData(); }
+        
+        // Validações básicas
+        if (!eventFormData.titulo?.trim()) {
+            toast({ variant: "destructive", title: "Título é obrigatório" });
+            return;
+        }
+        if (!eventFormData.professional_id) {
+            toast({ variant: "destructive", title: "Selecione um profissional" });
+            return;
+        }
+        if (!eventFormData.data_inicio || !eventFormData.data_fim) {
+            toast({ variant: "destructive", title: "Datas de início e fim são obrigatórias" });
+            return;
+        }
+        
+        let result;
+        if (isEditingEvent) {
+            // Para edição, usar todos os campos incluindo o id
+            const { id, ...updateData } = eventFormData;
+            result = await supabase.from('eventos').update(updateData).eq('id', id);
+        } else {
+            // Para inserção, remover o id para deixar o banco gerar automaticamente
+            const { id, ...eventDataWithoutId } = eventFormData;
+            result = await supabase.from('eventos').insert([eventDataWithoutId]);
+        }
+        
+        if (result.error) {
+            console.error('Erro ao salvar evento:', result.error);
+            toast({ 
+                variant: "destructive", 
+                title: "Erro ao salvar evento", 
+                description: result.error.message 
+            });
+        } else {
+            toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!` });
+            resetEventForm();
+            fetchAllData();
+        }
     };
     const resetEventForm = () => { setIsEditingEvent(false); setEventFormData({ id: null, titulo: '', descricao: '', tipo_evento: 'Workshop', data_inicio: '', data_fim: '', professional_id: '', limite_participantes: '', data_limite_inscricao: '', link_slug: '' }); };
     const handleEditEvent = (event) => { setIsEditingEvent(true); setEventFormData({ ...event, data_inicio: new Date(event.data_inicio).toISOString().slice(0, 16), data_fim: new Date(event.data_fim).toISOString().slice(0, 16), data_limite_inscricao: new Date(event.data_limite_inscricao).toISOString().slice(0, 16) }); };
@@ -472,7 +529,24 @@ const AdminPage = () => {
                                             <option value="">Selecione o Profissional</option>
                                             {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                         </select>
-                                        <div className="grid grid-cols-2 gap-4"><input type="datetime-local" name="data_inicio" value={eventFormData.data_inicio} onChange={e => setEventFormData({...eventFormData, data_inicio: e.target.value})} className="w-full input" required/><input type="datetime-local" name="data_fim" value={eventFormData.data_fim} onChange={e => setEventFormData({...eventFormData, data_fim: e.target.value})} className="w-full input" required/><input type="number" name="limite_participantes" value={eventFormData.limite_participantes} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Vagas" className="w-full input" required/><input type="datetime-local" name="data_limite_inscricao" value={eventFormData.data_limite_inscricao} onChange={e => setEventFormData({...eventFormData, data_limite_inscricao: e.target.value})} className="w-full input" required/></div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1">Data/Hora Início</label>
+                                                <input type="datetime-local" name="data_inicio" value={eventFormData.data_inicio} onChange={e => setEventFormData({...eventFormData, data_inicio: e.target.value})} className="w-full input" required/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1">Data/Hora Fim</label>
+                                                <input type="datetime-local" name="data_fim" value={eventFormData.data_fim} onChange={e => setEventFormData({...eventFormData, data_fim: e.target.value})} className="w-full input" required/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1">Limite de Vagas</label>
+                                                <input type="number" name="limite_participantes" value={eventFormData.limite_participantes} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Ex: 20" className="w-full input" min="1" max="500" required/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1">Limite para Inscrição</label>
+                                                <input type="datetime-local" name="data_limite_inscricao" value={eventFormData.data_limite_inscricao} onChange={e => setEventFormData({...eventFormData, data_limite_inscricao: e.target.value})} className="w-full input" required/>
+                                            </div>
+                                        </div>
                                         <input name="link_slug" value={eventFormData.link_slug} onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value})} placeholder="Link" className="w-full input" required/>
                                         <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
                                     </form>
