@@ -201,10 +201,10 @@ const DepoimentoPage = () => {
         <div className="min-h-screen bg-gradient-to-b from-green-50/50 to-white">
             {/* Header com Logo */}
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-                <nav className="container mx-auto px-4 py-4">
+                <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
+                            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center space-x-4">
@@ -248,7 +248,7 @@ const DepoimentoPage = () => {
                         transition={{ duration: 0.8, delay: 0.2 }}
                     >
                         <Card className="p-8">
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                            <form onSubmit={handleSubmit} className="space-y-6" role="form" aria-labelledby="testimonial-form-title">
                                 <div>
                                     <h2 className="text-2xl font-bold mb-2">Deixe seu Depoimento</h2>
                                     <p className="text-gray-600 mb-6">
