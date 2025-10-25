@@ -268,7 +268,8 @@ const HomePage = () => {
             <p className="text-xl text-gray-600 mb-8">Cuidamos da sua saúde mental com um olhar atento ao que torna você único e ao que dá sentido à sua vida! Oferecemos uma abordagem integral, que une ciência e fé para promover uma transformação profunda e duradoura.</p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/agendamento"><Button size="lg" className="bg-[#2d8659] hover:bg-[#236b47] text-lg px-8">Encontre seu psicólogo</Button></Link>
-              <a href="#como-funciona"><Button size="lg" variant="outline" className="text-lg px-8 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white">Saiba Mais</Button></a>
+              <Link to="/doacao"><Button size="lg" variant="outline" className="text-lg px-8 border-green-500 text-green-600 hover:bg-green-500 hover:text-white">💚 Apoie nossa missão</Button></Link>
+              <a href="#como-funciona"><Button size="lg" variant="ghost" className="text-lg px-8 text-[#2d8659] hover:bg-[#2d8659]/10">Saiba Mais</Button></a>
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
@@ -546,6 +547,7 @@ const HomePage = () => {
           <div>
             <h3 className="font-bold text-lg mb-4">Institucional</h3>
             <div className="space-y-2">
+              <Link to="/doacao" className="block text-[#4ade80] hover:text-white transition-colors font-medium">💚 Faça uma Doação</Link>
               <Link to="/trabalhe-conosco" className="block text-gray-400 hover:text-white transition-colors">Trabalhe Conosco</Link>
               <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Acesso Restrito</Link>
                <Link to="/area-do-paciente" className="block text-gray-400 hover:text-white transition-colors">Área do Paciente</Link>
