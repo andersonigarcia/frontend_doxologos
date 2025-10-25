@@ -39,7 +39,21 @@ const AdminPage = () => {
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    const [eventFormData, setEventFormData] = useState({ id: null, titulo: '', descricao: '', tipo_evento: 'Workshop', data_inicio: '', data_fim: '', professional_id: '', limite_participantes: '', data_limite_inscricao: '', link_slug: '' });
+    const [eventFormData, setEventFormData] = useState({ 
+        id: null, 
+        titulo: '', 
+        descricao: '', 
+        tipo_evento: 'Workshop', 
+        data_inicio: '', 
+        data_fim: '', 
+        professional_id: '', 
+        limite_participantes: '', 
+        data_limite_inscricao: '', 
+        link_slug: '',
+        data_inicio_exibicao: '',
+        data_fim_exibicao: '',
+        ativo: true
+    });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
 
     const [editingBooking, setEditingBooking] = useState(null);
@@ -739,8 +753,40 @@ const AdminPage = () => {
             fetchAllData();
         }
     };
-    const resetEventForm = () => { setIsEditingEvent(false); setEventFormData({ id: null, titulo: '', descricao: '', tipo_evento: 'Workshop', data_inicio: '', data_fim: '', professional_id: '', limite_participantes: '', data_limite_inscricao: '', link_slug: '' }); };
-    const handleEditEvent = (event) => { setIsEditingEvent(true); setEventFormData({ ...event, data_inicio: new Date(event.data_inicio).toISOString().slice(0, 16), data_fim: new Date(event.data_fim).toISOString().slice(0, 16), data_limite_inscricao: new Date(event.data_limite_inscricao).toISOString().slice(0, 16) }); };
+    const resetEventForm = () => { 
+        setIsEditingEvent(false); 
+        setEventFormData({ 
+            id: null, 
+            titulo: '', 
+            descricao: '', 
+            tipo_evento: 'Workshop', 
+            data_inicio: '', 
+            data_fim: '', 
+            professional_id: '', 
+            limite_participantes: '', 
+            data_limite_inscricao: '', 
+            link_slug: '',
+            data_inicio_exibicao: '',
+            data_fim_exibicao: '',
+            ativo: true
+        }); 
+    };
+    const handleEditEvent = (event) => { 
+        setIsEditingEvent(true); 
+        setEventFormData({ 
+            ...event, 
+            data_inicio: new Date(event.data_inicio).toISOString().slice(0, 16), 
+            data_fim: new Date(event.data_fim).toISOString().slice(0, 16), 
+            data_limite_inscricao: new Date(event.data_limite_inscricao).toISOString().slice(0, 16),
+            // Tratar campos de exibição (podem ser null)
+            data_inicio_exibicao: event.data_inicio_exibicao ? new Date(event.data_inicio_exibicao).toISOString().slice(0, 16) : '',
+            data_fim_exibicao: event.data_fim_exibicao ? new Date(event.data_fim_exibicao).toISOString().slice(0, 16) : '',
+            // Garantir que professional_id nunca seja null
+            professional_id: event.professional_id || '',
+            // Garantir que ativo tenha valor padrão
+            ativo: event.ativo !== undefined ? event.ativo : true
+        }); 
+    };
     const handleDeleteEvent = async (eventId) => {
         const event = events.find(e => e.id === eventId);
         if (!event) return;
@@ -2172,6 +2218,42 @@ const AdminPage = () => {
                                                             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                                                                 {event.tipo_evento}
                                                             </span>
+                                                            
+                                                            {/* Novo badge: Status Ativo/Inativo */}
+                                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                                event.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                                                            }`}>
+                                                                {event.ativo ? '✅ Ativo' : '⏸️ Inativo'}
+                                                            </span>
+                                                            
+                                                            {/* Novo badge: Status de Exibição */}
+                                                            {event.data_inicio_exibicao && event.data_fim_exibicao && (
+                                                                (() => {
+                                                                    const agora = new Date();
+                                                                    const inicioExibicao = new Date(event.data_inicio_exibicao);
+                                                                    const fimExibicao = new Date(event.data_fim_exibicao);
+                                                                    
+                                                                    let statusExibicao = '';
+                                                                    let corExibicao = '';
+                                                                    
+                                                                    if (agora < inicioExibicao) {
+                                                                        statusExibicao = '🕒 Aguardando';
+                                                                        corExibicao = 'bg-yellow-100 text-yellow-800';
+                                                                    } else if (agora >= inicioExibicao && agora <= fimExibicao) {
+                                                                        statusExibicao = '👁️ Exibindo';
+                                                                        corExibicao = 'bg-purple-100 text-purple-800';
+                                                                    } else {
+                                                                        statusExibicao = '🚫 Oculto';
+                                                                        corExibicao = 'bg-gray-100 text-gray-600';
+                                                                    }
+                                                                    
+                                                                    return (
+                                                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${corExibicao}`}>
+                                                                            {statusExibicao}
+                                                                        </span>
+                                                                    );
+                                                                })()
+                                                            )}
                                                         </div>
                                                         
                                                         {event.descricao && (
@@ -2202,6 +2284,24 @@ const AdminPage = () => {
                                                                     {dataExpiracao.toLocaleDateString('pt-BR')} às {dataExpiracao.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
                                                                 </span>
                                                             </div>
+                                                            
+                                                            {/* Novas informações de exibição */}
+                                                            {event.data_inicio_exibicao && (
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Exibe de</span>
+                                                                    <span className="font-medium text-blue-600">
+                                                                        {new Date(event.data_inicio_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_inicio_exibicao).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            {event.data_fim_exibicao && (
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Exibe até</span>
+                                                                    <span className="font-medium text-blue-600">
+                                                                        {new Date(event.data_fim_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_fim_exibicao).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         
                                                         <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
@@ -2234,32 +2334,84 @@ const AdminPage = () => {
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
                                     <form onSubmit={handleEventSubmit} className="space-y-4 text-sm">
-                                        <input name="titulo" value={eventFormData.titulo} onChange={e => setEventFormData({...eventFormData, titulo: e.target.value})} placeholder="Título do Evento" className="w-full input" required />
-                                        <textarea name="descricao" value={eventFormData.descricao} onChange={e => setEventFormData({...eventFormData, descricao: e.target.value})} placeholder="Descrição" className="w-full input" rows="3"></textarea>
-                                        <select name="tipo_evento" value={eventFormData.tipo_evento} onChange={e => setEventFormData({...eventFormData, tipo_evento: e.target.value})} className="w-full input"><option>Workshop</option><option>Palestra</option></select>
-                                        <select name="professional_id" value={eventFormData.professional_id} onChange={e => setEventFormData({...eventFormData, professional_id: e.target.value})} className="w-full input" required>
+                                        <input name="titulo" value={eventFormData.titulo || ''} onChange={e => setEventFormData({...eventFormData, titulo: e.target.value})} placeholder="Título do Evento" className="w-full input" required />
+                                        <textarea name="descricao" value={eventFormData.descricao || ''} onChange={e => setEventFormData({...eventFormData, descricao: e.target.value})} placeholder="Descrição" className="w-full input" rows="3"></textarea>
+                                        <select name="tipo_evento" value={eventFormData.tipo_evento || 'Workshop'} onChange={e => setEventFormData({...eventFormData, tipo_evento: e.target.value})} className="w-full input"><option>Workshop</option><option>Palestra</option></select>
+                                        <select name="professional_id" value={eventFormData.professional_id || ''} onChange={e => setEventFormData({...eventFormData, professional_id: e.target.value})} className="w-full input" required>
                                             <option value="">Selecione o Profissional</option>
                                             {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                         </select>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Data/Hora Início</label>
-                                                <input type="datetime-local" name="data_inicio" value={eventFormData.data_inicio} onChange={e => setEventFormData({...eventFormData, data_inicio: e.target.value})} className="w-full input" required/>
+                                                <input type="datetime-local" name="data_inicio" value={eventFormData.data_inicio || ''} onChange={e => setEventFormData({...eventFormData, data_inicio: e.target.value})} className="w-full input" required/>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Data/Hora Fim</label>
-                                                <input type="datetime-local" name="data_fim" value={eventFormData.data_fim} onChange={e => setEventFormData({...eventFormData, data_fim: e.target.value})} className="w-full input" required/>
+                                                <input type="datetime-local" name="data_fim" value={eventFormData.data_fim || ''} onChange={e => setEventFormData({...eventFormData, data_fim: e.target.value})} className="w-full input" required/>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite de Vagas</label>
-                                                <input type="number" name="limite_participantes" value={eventFormData.limite_participantes} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Ex: 20" className="w-full input" min="1" max="500" required/>
+                                                <input type="number" name="limite_participantes" value={eventFormData.limite_participantes || ''} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Ex: 20" className="w-full input" min="1" max="500" required/>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite para Inscrição</label>
-                                                <input type="datetime-local" name="data_limite_inscricao" value={eventFormData.data_limite_inscricao} onChange={e => setEventFormData({...eventFormData, data_limite_inscricao: e.target.value})} className="w-full input" required/>
+                                                <input type="datetime-local" name="data_limite_inscricao" value={eventFormData.data_limite_inscricao || ''} onChange={e => setEventFormData({...eventFormData, data_limite_inscricao: e.target.value})} className="w-full input" required/>
                                             </div>
                                         </div>
-                                        <input name="link_slug" value={eventFormData.link_slug} onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value})} placeholder="Link" className="w-full input" required/>
+
+                                        {/* Nova seção: Período de Exibição */}
+                                        <div className="border-t pt-4 mt-4">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-3">📅 Período de Exibição na Página Principal</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Início da Exibição</label>
+                                                    <input 
+                                                        type="datetime-local" 
+                                                        name="data_inicio_exibicao" 
+                                                        value={eventFormData.data_inicio_exibicao || ''} 
+                                                        onChange={e => setEventFormData({...eventFormData, data_inicio_exibicao: e.target.value})} 
+                                                        className="w-full input"
+                                                        title="Data e hora que o evento começará a aparecer na página principal"
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Quando começar a mostrar o evento</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Fim da Exibição</label>
+                                                    <input 
+                                                        type="datetime-local" 
+                                                        name="data_fim_exibicao" 
+                                                        value={eventFormData.data_fim_exibicao || ''} 
+                                                        onChange={e => setEventFormData({...eventFormData, data_fim_exibicao: e.target.value})} 
+                                                        className="w-full input"
+                                                        title="Data e hora que o evento deixará de aparecer na página principal"
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Quando parar de mostrar o evento</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Nova seção: Status Ativo */}
+                                        <div className="border-t pt-4 mt-4">
+                                            <div className="flex items-center gap-3">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="evento_ativo"
+                                                    name="ativo" 
+                                                    checked={eventFormData.ativo === true} 
+                                                    onChange={e => setEventFormData({...eventFormData, ativo: e.target.checked})} 
+                                                    className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
+                                                />
+                                                <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                    ✅ Evento Ativo (visível na página principal)
+                                                </label>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2 ml-7">
+                                                Desmarque para ocultar o evento temporariamente, mesmo dentro do período de exibição
+                                            </p>
+                                        </div>
+
+                                        <input name="link_slug" value={eventFormData.link_slug || ''} onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value})} placeholder="Link do evento (URL amigável)" className="w-full input" required/>
                                         <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
                                     </form>
                                 </div>

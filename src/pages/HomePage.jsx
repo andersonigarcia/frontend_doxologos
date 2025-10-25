@@ -74,7 +74,10 @@ const HomePage = () => {
         .from('eventos')
         .select('*')
         .eq('status', 'aberto')
+        .eq('ativo', true) // Só eventos ativos
         .gt('data_limite_inscricao', new Date().toISOString())
+        .lte('data_inicio_exibicao', new Date().toISOString()) // Já começou a exibir
+        .gte('data_fim_exibicao', new Date().toISOString()) // Ainda não terminou de exibir
         .order('data_inicio', { ascending: true });
 
       if (eventsError) {

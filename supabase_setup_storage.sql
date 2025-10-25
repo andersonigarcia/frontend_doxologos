@@ -39,3 +39,23 @@ ALTER COLUMN image_url TYPE TEXT;
 
 -- Opcional: Comentário para documentar a mudança
 COMMENT ON COLUMN professionals.image_url IS 'URL pública da foto do profissional armazenada no Supabase Storage ou link externo';
+
+-- 6. Adicionar novos campos para controle de exibição de eventos
+ALTER TABLE eventos 
+ADD COLUMN IF NOT EXISTS data_inicio_exibicao TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS data_fim_exibicao TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT true;
+
+-- Comentários para documentar os novos campos
+COMMENT ON COLUMN eventos.data_inicio_exibicao IS 'Data e hora que o evento começará a aparecer na página principal';
+COMMENT ON COLUMN eventos.data_fim_exibicao IS 'Data e hora que o evento deixará de aparecer na página principal';
+COMMENT ON COLUMN eventos.ativo IS 'Status do evento (ativo/inativo) - permite ocultar eventos a qualquer momento';
+
+-- Opcional: Atualizar eventos existentes com valores padrão para exibição
+-- (Execute apenas se quiser que eventos antigos apareçam imediatamente)
+UPDATE eventos 
+SET 
+    data_inicio_exibicao = COALESCE(data_inicio_exibicao, created_at),
+    data_fim_exibicao = COALESCE(data_fim_exibicao, data_limite_inscricao),
+    ativo = COALESCE(ativo, true)
+WHERE data_inicio_exibicao IS NULL OR data_fim_exibicao IS NULL;
