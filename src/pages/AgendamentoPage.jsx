@@ -148,7 +148,7 @@ const AgendamentoPage = () => {
             await supabase.auth.signInWithOtp({ email: patientData.email });
             toast({ title: 'Magic link enviado', description: 'Verifique seu email para completar o cadastro.' });
           } catch (e) {
-            console.warn('magic link failed', e);
+            // Magic link failed silently
           }
         }
         const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
@@ -170,7 +170,7 @@ const AgendamentoPage = () => {
 
           if (!resp.ok) {
             const txt = await resp.text();
-            console.error('create preference failed', txt);
+            console.error('Erro ao criar preferência de pagamento');
             toast({ title: 'Agendamento criado', description: 'Não foi possível iniciar o pagamento. Tente novamente mais tarde.' });
             setStep(5);
             return;
