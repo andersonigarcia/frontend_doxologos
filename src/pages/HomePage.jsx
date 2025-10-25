@@ -45,6 +45,8 @@ const HomePage = () => {
     }
   ];
   const [currentVideo, setCurrentVideo] = useState(videos[0]);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
 
   const faqs = [
       { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual. Cada sessão tem duração média de 50 minutos, tempo ideal para um atendimento terapêutico efetivo.' },      
@@ -184,11 +186,38 @@ const HomePage = () => {
     }
   }, [activeEvents.length]);
 
-  // Função para abrir vídeo em nova aba
-
+  // Funções para controlar vídeo inline
   const getEmbedUrl = (videoId) => {
-    // Usando youtube-nocookie.com para melhor compatibilidade
-    return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&showinfo=0&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0`;
+    // Usando parâmetros mais compatíveis e testando diferentes domínios
+    const params = new URLSearchParams({
+      autoplay: '1',
+      mute: '1', // Iniciar mutado para evitar bloqueios do autoplay
+      controls: '1',
+      rel: '0',
+      modestbranding: '1',
+      fs: '1',
+      enablejsapi: '1',
+      origin: window.location.origin
+    });
+    // Tentativa com domínio padrão primeiro, pois às vezes funciona melhor
+    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  };
+
+  const playVideoInline = (videoId) => {
+    if (currentVideo.videoId !== videoId) {
+      setCurrentVideo(videos.find(v => v.videoId === videoId));
+    }
+    setIsVideoPlaying(true);
+    setIframeError(false); // Reset error state
+  };
+
+  const stopVideoPlayback = () => {
+    setIsVideoPlaying(false);
+    setIframeError(false);
+  };
+
+  const handleIframeError = () => {
+    setIframeError(true);
   };
 
   const openVideoInNewTab = (videoId) => {
@@ -315,39 +344,111 @@ const HomePage = () => {
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
             {/* Vídeo Principal */}
             <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group">
-              {/* Thumbnail de fundo */}
-              <img 
-                src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
-                alt={currentVideo.title}
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Overlay escuro */}
-              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors" />
-              
-              {/* Botão de Play Central */}
-              <button
-                onClick={() => openVideoInNewTab(currentVideo.videoId)}
-                className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform"
-              >
-                <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl">
-                  <Play className="w-12 h-12 text-white ml-1" fill="currentColor" />
-                </div>
-              </button>
-              
-              {/* Informações do Vídeo */}
-              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-2xl font-bold">{currentVideo.title}</h3>
+              {isVideoPlaying ? (
+                // Player ou Fallback quando reproduzindo
+                <>
+                  {!iframeError ? (
+                    // Tentativa de carregar iframe
+                    <>
+                      <iframe
+                        src={getEmbedUrl(currentVideo.videoId)}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={currentVideo.title}
+                        onError={handleIframeError}
+                      />
+                      
+                      {/* Botão alternativo caso o iframe não carregue */}
+                      <div className="absolute bottom-4 left-4">
+                        <button
+                          onClick={handleIframeError}
+                          className="bg-gray-600/80 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          Problemas? Clique aqui
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    // Fallback quando iframe não carrega
+                    <>
+                      <img 
+                        src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
+                        alt={currentVideo.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-center p-6">
+                        <div className="bg-red-500 rounded-full p-4 mb-4">
+                          <Play className="w-8 h-8" fill="currentColor" />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Player não disponível</h3>
+                        <p className="text-gray-300 mb-4">
+                          Não foi possível carregar o player integrado.
+                        </p>
+                        <button
+                          onClick={() => openVideoInNewTab(currentVideo.videoId)}
+                          className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-semibold transition-colors"
+                        >
+                          Assistir no YouTube
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  
+                  {/* Botão de fechar */}
                   <button
-                    onClick={() => openVideoInNewTab(currentVideo.videoId)}
-                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition-colors"
+                    onClick={stopVideoPlayback}
+                    className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors z-10"
                   >
-                    Assistir no YouTube
+                    <X className="w-5 h-5" />
                   </button>
-                </div>
-                <p className="text-white/90">{currentVideo.description}</p>
-              </div>
+                </>
+              ) : (
+                // Thumbnail quando não reproduzindo
+                <>
+                  {/* Thumbnail de fundo */}
+                  <img 
+                    src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
+                    alt={currentVideo.title}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Overlay escuro */}
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors" />
+                  
+                  {/* Botão de Play Central */}
+                  <button
+                    onClick={() => playVideoInline(currentVideo.videoId)}
+                    className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform"
+                  >
+                    <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl">
+                      <Play className="w-12 h-12 text-white ml-1" fill="currentColor" />
+                    </div>
+                  </button>
+                  
+                  {/* Informações do Vídeo */}
+                  <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-2xl font-bold">{currentVideo.title}</h3>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => playVideoInline(currentVideo.videoId)}
+                          className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          Assistir Aqui
+                        </button>
+                        <button
+                          onClick={() => openVideoInNewTab(currentVideo.videoId)}
+                          className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors"
+                        >
+                          Abrir no YouTube
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-white/90">{currentVideo.description}</p>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Miniaturas de Vídeos */}
@@ -369,16 +470,29 @@ const HomePage = () => {
                     <PlayCircle className="w-8 h-8 text-white/90" />
                   </div>
                   
-                  {/* Botão YouTube no hover */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openVideoInNewTab(video.videoId);
-                    }}
-                    className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <PlayCircle className="w-4 h-4 text-white" />
-                  </button>
+                  {/* Botões no hover */}
+                  <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        playVideoInline(video.videoId);
+                      }}
+                      className="bg-red-600 hover:bg-red-700 p-1.5 rounded text-white"
+                      title="Assistir aqui"
+                    >
+                      <Play className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openVideoInNewTab(video.videoId);
+                      }}
+                      className="bg-gray-600 hover:bg-gray-700 p-1.5 rounded text-white"
+                      title="Abrir no YouTube"
+                    >
+                      <PlayCircle className="w-3 h-3" />
+                    </button>
+                  </div>
                   
                   <div className="absolute bottom-1 left-1 right-1">
                     <div className="bg-black/70 backdrop-blur-sm rounded px-2 py-1">
