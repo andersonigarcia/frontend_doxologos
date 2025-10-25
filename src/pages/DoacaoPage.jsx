@@ -12,7 +12,6 @@ const DoacaoPage = () => {
 
     // PIX da clínica (substitua pela chave real)
     const pixKey = "doxologos@clinic.com";
-    const pixQRCode = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="; // Placeholder - substitua pelo QR Code real
 
     const predefinedAmounts = [25, 50, 100, 200, 500];
 
@@ -85,6 +84,11 @@ const DoacaoPage = () => {
                             <span className="gradient-text">Sua doação</span><br />
                             <span className="text-gray-800">transforma vidas</span>
                         </h1>
+                        <div className="bg-gradient-to-r from-[#2d8659]/10 to-green-100/50 rounded-2xl p-6 mb-6 max-w-2xl mx-auto">
+                            <p className="text-2xl md:text-3xl font-bold text-[#2d8659] text-center">
+                                "O valor é livre, o impacto é real"
+                            </p>
+                        </div>
                         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
                             Cada contribuição nos permite oferecer atendimento gratuito de qualidade, 
                             investir em equipamentos modernos e expandir nossos programas sociais.
@@ -180,11 +184,13 @@ const DoacaoPage = () => {
                         <Card className="p-8 text-center">
                             <h3 className="text-xl font-semibold mb-4">Escaneie o QR Code</h3>
                             <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300 mb-4">
-                                <img 
-                                    src={pixQRCode} 
-                                    alt="QR Code PIX"
-                                    className="w-48 h-48 mx-auto bg-gray-100 rounded-lg"
-                                />
+                                <div className="w-48 h-48 mx-auto bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                                    <div className="text-center text-gray-500">
+                                        <QrCode className="w-16 h-16 mx-auto mb-2" />
+                                        <p className="text-sm">QR Code PIX</p>
+                                        <p className="text-xs mt-1">Em breve</p>
+                                    </div>
+                                </div>
                             </div>
                             <p className="text-sm text-gray-600">
                                 Use o aplicativo do seu banco para escanear

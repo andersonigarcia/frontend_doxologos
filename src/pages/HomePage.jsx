@@ -267,9 +267,21 @@ const HomePage = () => {
             <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">Cuidado Integral para sua <span className="gradient-text">Saúde Mental</span></h1>
             <p className="text-xl text-gray-600 mb-8">Cuidamos da sua saúde mental com um olhar atento ao que torna você único e ao que dá sentido à sua vida! Oferecemos uma abordagem integral, que une ciência e fé para promover uma transformação profunda e duradoura.</p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to="/agendamento"><Button size="lg" className="bg-[#2d8659] hover:bg-[#236b47] text-lg px-8">Encontre seu psicólogo</Button></Link>
-              <Link to="/doacao"><Button size="lg" variant="outline" className="text-lg px-8 border-green-500 text-green-600 hover:bg-green-500 hover:text-white">💚 Apoie nossa missão</Button></Link>
-              <a href="#como-funciona"><Button size="lg" variant="ghost" className="text-lg px-8 text-[#2d8659] hover:bg-[#2d8659]/10">Saiba Mais</Button></a>
+              <Link to="/agendamento">
+                <Button size="lg" className="bg-[#2d8659] hover:bg-[#236b47] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap">
+                  Encontre seu psicólogo
+                </Button>
+              </Link>
+              <Link to="/doacao">
+                <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 border-green-500 text-green-600 hover:bg-green-500 hover:text-white w-full sm:w-auto whitespace-nowrap">
+                  💚 Apoie nossa missão
+                </Button>
+              </Link>
+              {/* <a href="#como-funciona">
+                <Button size="lg" variant="ghost" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 text-[#2d8659] hover:bg-[#2d8659]/10 w-full sm:w-auto whitespace-nowrap">
+                  Saiba Mais
+                </Button>
+              </a> */}
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
