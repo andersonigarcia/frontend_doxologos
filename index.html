@@ -1,11 +1,69 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="icon" type="image/svg+xml" href="/vite.svg" />
-		<meta name="generator" content="Hostinger Horizons" />
+		<meta name="generator" content="Doxologos Clínica" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hostinger Horizons</title>
+		<meta name="description" content="Clínica Doxologos - Cuidado integral para sua saúde mental com abordagem cristã. Agende sua consulta online." />
+		<meta name="keywords" content="psicologia, psicologia cristã, terapia online, saúde mental, atendimento psicológico" />
+		<meta name="author" content="Doxologos Clínica" />
+		
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Doxologos - Cuidado Integral para sua Saúde Mental" />
+		<meta property="og:description" content="Clínica especializada em psicologia cristã com atendimento online de qualidade." />
+		<meta property="og:url" content="https://doxologos.com.br" />
+		
+		<!-- Twitter -->
+		<meta property="twitter:card" content="summary_large_image" />
+		<meta property="twitter:title" content="Doxologos - Cuidado Integral para sua Saúde Mental" />
+		<meta property="twitter:description" content="Clínica especializada em psicologia cristã com atendimento online de qualidade." />
+		
+		<!-- Google Analytics 4 -->
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+			gtag('config', 'G-XXXXXXXXXX', {
+				page_title: document.title,
+				page_location: window.location.href,
+				custom_map: {'custom_parameter_1': 'clinic_page'}
+			});
+		</script>
+		
+		<!-- Performance Monitoring -->
+		<script>
+			// Performance Observer para Web Vitals
+			if ('PerformanceObserver' in window) {
+				// Monitor LCP (Largest Contentful Paint)
+				new PerformanceObserver((list) => {
+					for (const entry of list.getEntries()) {
+						if (entry.entryType === 'largest-contentful-paint') {
+							gtag('event', 'web_vitals', {
+								event_category: 'Performance',
+								event_label: 'LCP',
+								value: Math.round(entry.startTime)
+							});
+						}
+					}
+				}).observe({type: 'largest-contentful-paint', buffered: true});
+				
+				// Monitor FID (First Input Delay)
+				new PerformanceObserver((list) => {
+					for (const entry of list.getEntries()) {
+						gtag('event', 'web_vitals', {
+							event_category: 'Performance',
+							event_label: 'FID',
+							value: Math.round(entry.processingStart - entry.startTime)
+						});
+					}
+				}).observe({type: 'first-input', buffered: true});
+			}
+		</script>
+		
+		<title>Doxologos - Cuidado Integral para sua Saúde Mental</title>
 	</head>
 	<body>
 		<div id="root"></div>

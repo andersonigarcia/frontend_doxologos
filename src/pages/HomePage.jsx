@@ -7,6 +7,8 @@ import { Heart, Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu,
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useFormTracking, useVideoTracking, useEngagementTracking } from '@/hooks/useAnalytics';
+import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 
 const HomePage = () => {
   const { toast } = useToast();
@@ -17,6 +19,12 @@ const HomePage = () => {
   const [testimonials, setTestimonials] = useState([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
   const [showAllFaqs, setShowAllFaqs] = useState(false);
+
+  // Analytics and Error Tracking Hooks
+  const { trackFormStart, trackFormSubmit, trackFormError, trackFieldChange } = useFormTracking('home_contact');
+  const { trackVideoPlay, trackVideoProgress, trackVideoComplete } = useVideoTracking();
+  const { trackScrollDepth, trackTimeOnPage, trackElementView } = useEngagementTracking();
+  const { trackComponentError, trackAsyncError } = useComponentErrorTracking('HomePage');
 
   const videos = [
     { 
@@ -204,20 +212,36 @@ const HomePage = () => {
   };
 
   const handleVideoSelect = (video) => {
-    setIsVideoLoading(true);
-    setCurrentVideo(video);
-    setIsVideoPlaying(false);
-    setIframeError(false);
-    // Simular loading mínimo para melhor UX
-    setTimeout(() => setIsVideoLoading(false), 800);
+    try {
+      setIsVideoLoading(true);
+      setCurrentVideo(video);
+      setIsVideoPlaying(false);
+      setIframeError(false);
+      
+      // Track video selection
+      trackElementView('video_thumbnail_click', { video_id: video.videoId, video_title: video.title });
+      
+      // Simular loading mínimo para melhor UX
+      setTimeout(() => setIsVideoLoading(false), 800);
+    } catch (error) {
+      trackComponentError(error, 'video_select');
+    }
   };
 
   const playVideoInline = (videoId) => {
-    if (currentVideo.videoId !== videoId) {
-      setCurrentVideo(videos.find(v => v.videoId === videoId));
+    try {
+      if (currentVideo.videoId !== videoId) {
+        setCurrentVideo(videos.find(v => v.videoId === videoId));
+      }
+      setIsVideoPlaying(true);
+      setIframeError(false); // Reset error state
+      
+      // Track video play
+      const video = videos.find(v => v.videoId === videoId);
+      trackVideoPlay(videoId, video?.title || 'Unknown Video');
+    } catch (error) {
+      trackComponentError(error, 'video_play');
     }
-    setIsVideoPlaying(true);
-    setIframeError(false); // Reset error state
   };
 
   const stopVideoPlayback = () => {
@@ -272,13 +296,28 @@ const HomePage = () => {
     }
   }, [activeEvents.length]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    toast({
-      title: "🚧 Funcionalidade em desenvolvimento",
-      description: "O envio de formulário será implementado em breve!",
-    });
-    setFormData({ name: '', email: '', phone: '', message: '' });
+    
+    try {
+      trackFormSubmit(formData);
+      
+      toast({
+        title: "🚧 Funcionalidade em desenvolvimento",
+        description: "O envio de formulário será implementado em breve!",
+      });
+      
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (error) {
+      trackFormError(error);
+      trackComponentError(error, 'form_submit');
+      
+      toast({
+        variant: 'destructive',
+        title: 'Erro no formulário',
+        description: 'Ocorreu um erro ao processar seu formulário. Tente novamente.'
+      });
+    }
   };
 
   return (
