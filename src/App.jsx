@@ -11,6 +11,7 @@ import TrabalheConoscoPage from '@/pages/TrabalheConoscoPage';
 import EventoDetalhePage from '@/pages/EventoDetalhePage';
 import PacientePage from '@/pages/PacientePage';
 import CreateUsersPage from '@/pages/CreateUsersPage';
+import DoacaoPage from '@/pages/DoacaoPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
             <Route path="/area-do-paciente" element={<PacientePage />} />
             <Route path="/quem-somos" element={<QuemSomosPage />} />
             <Route path="/trabalhe-conosco" element={<TrabalheConoscoPage />} />
+            <Route path="/doacao" element={<DoacaoPage />} />
             <Route path="/evento/:slug" element={<EventoDetalhePage />} />
             <Route path="/criar-usuarios" element={<CreateUsersPage />} />
           </Routes>
