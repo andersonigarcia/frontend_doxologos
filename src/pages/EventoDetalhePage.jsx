@@ -41,7 +41,7 @@ const EventoDetalhePage = () => {
                 if (data.professional_id) {
                     const { data: professionalData } = await supabase
                         .from('professionals')
-                        .select('name, specialty, foto_url')
+                        .select('name, specialty, image_url')
                         .eq('id', data.professional_id)
                         .single();
                     
@@ -190,7 +190,7 @@ const EventoDetalhePage = () => {
                                                 <img 
                                                     className="w-20 h-20 rounded-full object-cover" 
                                                     alt={`Foto de ${event.professional.name}`} 
-                                                    src={event.professional.foto_url || "https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5?w=400&h=400&fit=crop&crop=face"} 
+                                                    src={event.professional.image_url || "https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5?w=400&h=400&fit=crop&crop=face"} 
                                                 />
                                                 <div>
                                                     <h4 className="text-xl font-bold">{event.professional.name}</h4>
