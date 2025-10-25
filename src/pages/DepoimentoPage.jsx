@@ -18,6 +18,7 @@ const DepoimentoPage = () => {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
     useEffect(() => {
@@ -76,6 +77,7 @@ const DepoimentoPage = () => {
             return;
         }
 
+        setIsSubmitting(true);
         setLoading(true);
 
         try {
@@ -123,6 +125,7 @@ const DepoimentoPage = () => {
             });
         } finally {
             setLoading(false);
+            setIsSubmitting(false);
         }
     };
 
@@ -374,23 +377,37 @@ const DepoimentoPage = () => {
                                 </div>
 
                                 {/* Submit Button */}
-                                <Button
-                                    type="submit"
-                                    disabled={loading || !formData.patient_name || !formData.comment || formData.comment.length < 20}
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] py-3 text-lg"
+                                <motion.div
+                                    whileHover={!isSubmitting ? { scale: 1.02, y: -1 } : {}}
+                                    whileTap={!isSubmitting ? { scale: 0.98 } : {}}
                                 >
-                                    {loading ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                            Enviando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="w-5 h-5 mr-2" />
-                                            Enviar Depoimento
-                                        </>
-                                    )}
-                                </Button>
+                                    <Button
+                                        type="submit"
+                                        disabled={isSubmitting || !formData.patient_name || !formData.comment || formData.comment.length < 20}
+                                        className={`w-full py-4 px-6 text-lg font-semibold transition-all duration-300 shadow-lg hover:shadow-xl flex items-center justify-center ${
+                                            isSubmitting 
+                                                ? 'bg-gray-400 cursor-not-allowed' 
+                                                : 'bg-[#2d8659] hover:bg-[#236b47]'
+                                        }`}
+                                        title={!formData.patient_name || !formData.comment || formData.comment.length < 20 ? 'Preencha todos os campos obrigatórios (mínimo 20 caracteres no comentário)' : ''}
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <motion.div 
+                                                    className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
+                                                    animate={{ rotate: 360 }}
+                                                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                                />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Send className="w-5 h-5 mr-2" />
+                                                Enviar Depoimento
+                                            </>
+                                        )}
+                                    </Button>
+                                </motion.div>
                             </form>
                         </Card>
                     </motion.div>

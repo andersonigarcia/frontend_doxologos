@@ -47,6 +47,7 @@ const HomePage = () => {
   const [currentVideo, setCurrentVideo] = useState(videos[0]);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [iframeError, setIframeError] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
 
   const faqs = [
       { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual. Cada sessão tem duração média de 50 minutos, tempo ideal para um atendimento terapêutico efetivo.' },      
@@ -202,6 +203,15 @@ const HomePage = () => {
     return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
   };
 
+  const handleVideoSelect = (video) => {
+    setIsVideoLoading(true);
+    setCurrentVideo(video);
+    setIsVideoPlaying(false);
+    setIframeError(false);
+    // Simular loading mínimo para melhor UX
+    setTimeout(() => setIsVideoLoading(false), 800);
+  };
+
   const playVideoInline = (videoId) => {
     if (currentVideo.videoId !== videoId) {
       setCurrentVideo(videos.find(v => v.videoId === videoId));
@@ -343,6 +353,16 @@ const HomePage = () => {
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
             {/* Vídeo Principal */}
             <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group">
+              {isVideoLoading && (
+                <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-10">
+                  <motion.div 
+                    className="w-12 h-12 border-4 border-[#2d8659] border-t-transparent rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  />
+                  <span className="ml-3 text-[#2d8659] font-semibold">Carregando vídeo...</span>
+                </div>
+              )}
               {isVideoPlaying ? (
                 // Player ou Fallback quando reproduzindo
                 <>
@@ -409,7 +429,7 @@ const HomePage = () => {
                   <img 
                     src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
                     alt={currentVideo.title}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover transition-opacity duration-300 ${isVideoLoading ? 'opacity-50' : 'opacity-100'}`}
                   />
                   
                   {/* Overlay escuro */}
@@ -419,6 +439,8 @@ const HomePage = () => {
                   <button
                     onClick={() => playVideoInline(currentVideo.videoId)}
                     className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform"
+                    title={`Assistir: ${currentVideo.title}`}
+                    disabled={isVideoLoading}
                   >
                     <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl">
                       <Play className="w-12 h-12 text-white ml-1" fill="currentColor" />
@@ -453,20 +475,41 @@ const HomePage = () => {
             {/* Miniaturas de Vídeos */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {videos.map(video => (
-                <div
+                <motion.div
                   key={video.id}
-                  className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-300 cursor-pointer ${
-                    currentVideo.id === video.id ? 'border-[#2d8659] shadow-lg' : 'border-transparent hover:border-[#2d8659]/50'
+                  className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-500 cursor-pointer ${
+                    currentVideo.id === video.id 
+                      ? 'border-[#2d8659] shadow-2xl scale-105 bg-gradient-to-br from-green-50 to-green-100' 
+                      : 'border-transparent hover:border-green-200 hover:shadow-xl'
                   }`}
-                  onClick={() => setCurrentVideo(video)}
+                  onClick={() => handleVideoSelect(video)}
+                  whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                  whileTap={{ scale: 0.95 }}
+                  title={video.title}
                 >
                   <img 
                     src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105" 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                     alt={video.title}
                   />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
-                    <PlayCircle className="w-8 h-8 text-white/90" />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-500 flex items-center justify-center">
+                    {currentVideo.id === video.id ? (
+                      <motion.div 
+                        className="bg-[#2d8659] text-white rounded-full p-3 shadow-lg"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          ▶
+                        </motion.div>
+                      </motion.div>
+                    ) : (
+                      <PlayCircle className="w-8 h-8 text-white/90 transition-transform group-hover:scale-110" />
+                    )}
                   </div>
                   
                   {/* Botões no hover */}
@@ -498,7 +541,7 @@ const HomePage = () => {
                       <p className="text-white text-xs font-medium truncate">{video.title}</p>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </motion.div>
