@@ -741,7 +741,7 @@ const AgendamentoPage = () => {
                                 isCompleted 
                                   ? 'bg-[#2d8659] text-white shadow-lg hover:bg-[#236b47] hover:scale-110' 
                                   : isCurrent 
-                                    ? 'bg-[#2d8659] text-white shadow-lg ring-4 ring-[#2d8659]/20 animate-pulse' 
+                                    ? 'bg-[#2d8659] text-white shadow-lg ring-4 ring-[#2d8659]/30 animate-glow' 
                                     : canAccess 
                                       ? 'bg-gray-300 text-gray-600 hover:bg-gray-400 cursor-pointer' 
                                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
