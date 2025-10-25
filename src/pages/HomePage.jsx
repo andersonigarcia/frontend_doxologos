@@ -16,14 +16,44 @@ const HomePage = () => {
   const [professionals, setProfessionals] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
 
-  const videoList = [
-      { id: 1, url: 'https://www.youtube.com/embed/InxlTnye_9Y', thumbnail: 'https://img.youtube.com/vi/InxlTnye_9Y/hqdefault.jpg', alt: 'Psicologia e Fé Cristã' },
-      { id: 2, url: 'https://www.youtube.com/embed/xag9XxfQYv0', thumbnail: 'https://img.youtube.com/vi/xag9XxfQYv0/hqdefault.jpg', alt: 'Psicologia Cristã' },
-      { id: 3, url: 'https://www.youtube.com/embed/yfht3LsQkbY', thumbnail: 'https://img.youtube.com/vi/yfht3LsQkbY/hqdefault.jpg', alt: 'Fé e Psicologia' },
-      { id: 4, url: 'https://www.youtube.com/embed/4OZlVyVrrzo', thumbnail: 'https://img.youtube.com/vi/4OZlVyVrrzo/hqdefault.jpg', alt: 'Cuidado e Fé' },
-      { id: 5, url: 'https://www.youtube.com/embed/InxlTnye_9Y', thumbnail: 'https://img.youtube.com/vi/InxlTnye_9Y/hqdefault.jpg', alt: 'Sessão de Terapia' }
+  const serviceCards = [
+      { 
+        id: 1, 
+        image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&h=600&fit=crop', 
+        title: 'Psicologia Cristã Individual', 
+        description: 'Atendimento personalizado que integra fé e ciência para seu crescimento pessoal e espiritual.',
+        features: ['Sessões de 50 minutos', 'Abordagem integrativa', 'Atendimento online']
+      },
+      { 
+        id: 2, 
+        image: 'https://images.unsplash.com/photo-1516302752625-fcc3c50ae61f?w=800&h=600&fit=crop', 
+        title: 'Terapia Familiar', 
+        description: 'Fortalecendo vínculos familiares através de uma perspectiva cristã e técnicas terapêuticas.',
+        features: ['Mediação de conflitos', 'Comunicação saudável', 'Valores cristãos']
+      },
+      { 
+        id: 3, 
+        image: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800&h=600&fit=crop', 
+        title: 'Aconselhamento Pastoral', 
+        description: 'Orientação espiritual combinada com conhecimento psicológico para questões da vida.',
+        features: ['Base bíblica', 'Suporte emocional', 'Crescimento espiritual']
+      },
+      { 
+        id: 4, 
+        image: 'https://images.unsplash.com/photo-1544027993-37dbfe43562a?w=800&h=600&fit=crop', 
+        title: 'Workshops & Palestras', 
+        description: 'Eventos educativos sobre saúde mental, relacionamentos e espiritualidade.',
+        features: ['Conteúdo prático', 'Interação ao vivo', 'Material de apoio']
+      },
+      { 
+        id: 5, 
+        image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop', 
+        title: 'Grupos de Apoio', 
+        description: 'Espaços seguros para compartilhar experiências e encontrar apoio mútuo.',
+        features: ['Ambiente acolhedor', 'Troca de experiências', 'Suporte contínuo']
+      }
   ];
-  const [currentVideo, setCurrentVideo] = useState(videoList[0]);
+  const [currentCard, setCurrentCard] = useState(serviceCards[0]);
 
   const faqs = [
       { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual.' },
@@ -204,22 +234,37 @@ const HomePage = () => {
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
-            <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4">
-               <iframe
-                key={currentVideo.url}
+            <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative">
+              <img 
+                src={currentCard.image} 
+                alt={currentCard.title}
                 className="w-full h-full object-cover"
-                src={`${currentVideo.url}?autoplay=1&mute=1&loop=1&playlist=${currentVideo.url.split('embed/')[1]}&controls=0`}
-                title="YouTube video player"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen>
-              </iframe>
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                <h3 className="text-2xl font-bold mb-2">{currentCard.title}</h3>
+                <p className="text-white/90 mb-4">{currentCard.description}</p>
+                <div className="flex flex-wrap gap-2">
+                  {currentCard.features.map((feature, index) => (
+                    <span key={index} className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-sm font-medium">
+                      {feature}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-5 gap-2">
-              {videoList.map(video => (
-                <button key={video.id} onClick={() => setCurrentVideo(video)} className={`aspect-video w-full rounded-md overflow-hidden relative group border-2 ${currentVideo.id === video.id ? 'border-[#2d8659]' : 'border-transparent'}`}>
-                  <img src={video.thumbnail} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={video.alt} />
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center"><PlayCircle className="w-6 h-6 text-white/80" /></div>
+              {serviceCards.map(card => (
+                <button key={card.id} onClick={() => setCurrentCard(card)} className={`aspect-video w-full rounded-md overflow-hidden relative group border-2 transition-all duration-300 ${currentCard.id === card.id ? 'border-[#2d8659] shadow-lg' : 'border-transparent hover:border-[#2d8659]/50'}`}>
+                  <img src={card.image} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt={card.title} />
+                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                    <Heart className="w-6 h-6 text-white/80" />
+                  </div>
+                  <div className="absolute bottom-1 left-1 right-1">
+                    <div className="bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                      <p className="text-white text-xs font-medium truncate">{card.title}</p>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -302,7 +347,7 @@ const HomePage = () => {
                 console.log('👤 [HomePage] Renderizando profissional:', prof);
                 return (
               <motion.div key={prof.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-gray-50 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4" style={{ scrollSnapAlign: 'start' }}>
-                <img class="w-full h-64 object-cover" alt={prof.name} src="https://images.unsplash.com/photo-1603991414220-51b87b89a371" />
+                <img className="w-full h-64 object-cover" alt={prof.name} src={prof.foto_url || "https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face"} />
                 <div className="p-6">
                   <h3 className="text-2xl font-bold mb-2">{prof.name}</h3>
                   <p className="text-[#2d8659] font-semibold mb-3">{prof.specialty}</p>

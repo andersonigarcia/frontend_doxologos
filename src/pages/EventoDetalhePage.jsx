@@ -29,7 +29,7 @@ const EventoDetalhePage = () => {
             setLoading(true);
             const { data, error } = await supabase
                 .from('eventos')
-                .select('*, professional:professionals(name, specialty, image_url), inscricoes_eventos(count)')
+                .select('*')
                 .eq('link_slug', slug)
                 .single();
 
@@ -37,8 +37,25 @@ const EventoDetalhePage = () => {
                 setError('Evento não encontrado.');
                 toast({ variant: 'destructive', title: 'Erro', description: 'Este evento não existe ou não está mais disponível.' });
             } else {
+                // Buscar profissional separadamente se existe professional_id
+                if (data.professional_id) {
+                    const { data: professionalData } = await supabase
+                        .from('professionals')
+                        .select('name, specialty, foto_url')
+                        .eq('id', data.professional_id)
+                        .single();
+                    
+                    data.professional = professionalData;
+                }
+
+                // Buscar contagem de inscrições
+                const { count } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('*', { count: 'exact' })
+                    .eq('evento_id', data.id);
+
                 setEvent(data);
-                setInscricoesCount(data.inscricoes_eventos[0]?.count || 0);
+                setInscricoesCount(count || 0);
             }
             setLoading(false);
         };
@@ -166,16 +183,22 @@ const EventoDetalhePage = () => {
                                         <p>{event.descricao}</p>
                                     </div>
 
-                                    <div className="mt-10 pt-8 border-t">
-                                        <h3 className="text-2xl font-bold mb-4">Ministrado por</h3>
-                                        <div className="flex items-center gap-4">
-                                            <img className="w-20 h-20 rounded-full object-cover" alt={`Foto de ${event.professional.name}`} src="https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5" />
-                                            <div>
-                                                <h4 className="text-xl font-bold">{event.professional.name}</h4>
-                                                <p className="text-[#2d8659] font-semibold">{event.professional.specialty}</p>
+                                    {event.professional && (
+                                        <div className="mt-10 pt-8 border-t">
+                                            <h3 className="text-2xl font-bold mb-4">Ministrado por</h3>
+                                            <div className="flex items-center gap-4">
+                                                <img 
+                                                    className="w-20 h-20 rounded-full object-cover" 
+                                                    alt={`Foto de ${event.professional.name}`} 
+                                                    src={event.professional.foto_url || "https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5?w=400&h=400&fit=crop&crop=face"} 
+                                                />
+                                                <div>
+                                                    <h4 className="text-xl font-bold">{event.professional.name}</h4>
+                                                    <p className="text-[#2d8659] font-semibold">{event.professional.specialty}</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </motion.div>
                             </div>
                             <div className="lg:col-span-2">
