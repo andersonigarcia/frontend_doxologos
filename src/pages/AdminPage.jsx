@@ -140,16 +140,31 @@ const AdminPage = () => {
                 setSelectedAvailProfessional(profIdToSelect);
             }
         }
-        // Mapear profissionais aos eventos e reviews
-        const eventsWithProfessionals = (eventsRes.data || []).map(event => {
+        // Mapear profissionais aos eventos e carregar contagem de inscrições
+        const eventsWithProfessionals = await Promise.all((eventsRes.data || []).map(async (event) => {
             const professional = (profsRes.data || []).find(p => p.id === event.professional_id);
+            
+            // Tentar buscar contagem real de inscrições
+            let inscricoesCount = 0;
+            try {
+                const { count, error } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('*', { count: 'exact' })
+                    .eq('evento_id', event.id);
+                    
+                if (!error) {
+                    inscricoesCount = count || 0;
+                }
+            } catch (error) {
+                console.log('Tabela inscricoes_eventos não encontrada, usando contagem 0');
+            }
+            
             return {
                 ...event,
                 professional: professional ? { name: professional.name } : null,
-                // Simular contagem de inscrições por enquanto
-                inscricoes_eventos: [{ count: 0 }]
+                inscricoes_eventos: [{ count: inscricoesCount }]
             };
-        });
+        }));
         
         const reviewsWithProfessionals = (reviewsRes.data || []).map(review => {
             const professional = (profsRes.data || []).find(p => p.id === review.professional_id);
@@ -792,11 +807,21 @@ const AdminPage = () => {
         if (!event) return;
 
         try {
-            // Verificar se há inscrições para este evento
-            const { data: inscricoesData } = await supabase
-                .from('inscricoes_eventos')
-                .select('id')
-                .eq('evento_id', eventId);
+            // Verificar se há inscrições para este evento (com tratamento de erro)
+            let inscricoesData = [];
+            try {
+                const { data, error } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('id')
+                    .eq('evento_id', eventId);
+                
+                if (!error) {
+                    inscricoesData = data || [];
+                }
+            } catch (error) {
+                console.log('Tabela inscricoes_eventos não encontrada, assumindo 0 inscrições');
+                inscricoesData = [];
+            }
 
             let warningMessage = '';
             if (inscricoesData?.length > 0) {
@@ -812,16 +837,20 @@ const AdminPage = () => {
                 onConfirm: async () => {
                     // Excluir inscrições primeiro se existir
                     if (inscricoesData?.length > 0) {
-                        const { error: inscricoesError } = await supabase
-                            .from('inscricoes_eventos')
-                            .delete()
-                            .eq('evento_id', eventId);
+                        try {
+                            const { error: inscricoesError } = await supabase
+                                .from('inscricoes_eventos')
+                                .delete()
+                                .eq('evento_id', eventId);
                             
-                        if (inscricoesError) {
-                            console.error('Erro ao excluir inscrições:', inscricoesError);
-                            toast({ variant: "destructive", title: "Erro ao excluir inscrições do evento" });
-                            setConfirmDialog({ ...confirmDialog, isOpen: false });
-                            return;
+                            if (inscricoesError) {
+                                console.error('Erro ao excluir inscrições:', inscricoesError);
+                                toast({ variant: "destructive", title: "Erro ao excluir inscrições do evento" });
+                                setConfirmDialog({ ...confirmDialog, isOpen: false });
+                                return;
+                            }
+                        } catch (error) {
+                            console.log('Não foi possível excluir inscrições (tabela pode não existir)');
                         }
                     }
 

@@ -51,6 +51,26 @@ COMMENT ON COLUMN eventos.data_inicio_exibicao IS 'Data e hora que o evento come
 COMMENT ON COLUMN eventos.data_fim_exibicao IS 'Data e hora que o evento deixará de aparecer na página principal';
 COMMENT ON COLUMN eventos.ativo IS 'Status do evento (ativo/inativo) - permite ocultar eventos a qualquer momento';
 
+-- 7. Criar tabela de inscrições em eventos se não existir
+CREATE TABLE IF NOT EXISTS inscricoes_eventos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    evento_id UUID REFERENCES eventos(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    patient_name TEXT NOT NULL,
+    patient_email TEXT NOT NULL,
+    patient_phone TEXT,
+    status_pagamento TEXT DEFAULT 'pendente',
+    valor_pago DECIMAL(10,2),
+    data_inscricao TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Índices para melhor performance
+CREATE INDEX IF NOT EXISTS idx_inscricoes_eventos_evento_id ON inscricoes_eventos(evento_id);
+CREATE INDEX IF NOT EXISTS idx_inscricoes_eventos_user_id ON inscricoes_eventos(user_id);
+CREATE INDEX IF NOT EXISTS idx_inscricoes_eventos_status ON inscricoes_eventos(status_pagamento);
+
 -- Opcional: Atualizar eventos existentes com valores padrão para exibição
 -- (Execute apenas se quiser que eventos antigos apareçam imediatamente)
 UPDATE eventos 
