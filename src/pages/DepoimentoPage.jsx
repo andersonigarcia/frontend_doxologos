@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { Star, Send, MessageCircle, Heart, CheckCircle, User, Mail, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -195,8 +196,25 @@ const DepoimentoPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-green-50/50 to-white">
+            {/* Header com Logo */}
+            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
+                <nav className="container mx-auto px-4 py-4">
+                    <div className="flex items-center justify-between">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        </Link>
+                        <div className="flex items-center space-x-4">
+                            <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
+                                ← Voltar ao Site
+                            </Link>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+
             {/* Hero Section */}
-            <section className="py-20 px-4">
+            <section className="py-20 px-4 pt-32">
                 <div className="max-w-4xl mx-auto text-center">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}

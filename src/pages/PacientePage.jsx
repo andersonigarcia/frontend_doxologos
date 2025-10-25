@@ -131,16 +131,26 @@ const PacientePage = () => {
     return (
         <>
             <Helmet><title>Meus Agendamentos - Doxologos</title></Helmet>
-            <header className="bg-white shadow-sm">
-                <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                    <Link to="/" className="flex items-center space-x-2"><Heart className="w-8 h-8 text-[#2d8659]" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
-                    <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]"><LogOut className="w-4 h-4 mr-2" /> Sair</Button>
+            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
+                <nav className="container mx-auto px-4 py-4">
+                    <div className="flex items-center justify-between">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        </Link>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-600">Olá, {user.user_metadata?.full_name || user.email.split('@')[0]}</span>
+                            <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                                <LogOut className="w-4 h-4 mr-2" /> Sair
+                            </Button>
+                        </div>
+                    </div>
                 </nav>
             </header>
-            <div className="min-h-screen bg-gray-50 py-12">
+            <div className="min-h-screen bg-gray-50 py-12 pt-24">
                 <div className="container mx-auto px-4 max-w-4xl">
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
-                    <p className="text-gray-500 mb-8">Bem-vindo(a), {user.user_metadata?.full_name || user.email}.</p>
+                    <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
                     <div className="bg-white rounded-xl shadow-lg p-6">
                         <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Meus Agendamentos</h2>
                         {loading ? <p>Carregando seus agendamentos...</p> : bookings.length === 0 ? (
