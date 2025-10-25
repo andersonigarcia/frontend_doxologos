@@ -15,6 +15,7 @@ const HomePage = () => {
   const [activeEvents, setActiveEvents] = useState([]);
   const [professionals, setProfessionals] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(true);
 
   const serviceCards = [
       { 
@@ -121,59 +122,29 @@ const HomePage = () => {
 
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
-        .select('*')
+        .select(`
+          *,
+          professionals(name),
+          bookings(patient_name, patient_email, booking_date, booking_time)
+        `)
         .eq('is_approved', true)
         .order('created_at', { ascending: false })
-        .limit(3);
+        .limit(7);
       
       if (reviewsError) {
         console.error('Erro ao buscar depoimentos:', reviewsError);
-        // Dados de exemplo caso não haja depoimentos na base de dados
-        setTestimonials([
-          {
-            id: 1,
-            patient_name: 'Ana Carolina Silva',
-            rating: 5,
-            comment: 'A equipe da Doxologos transformou minha vida! Depois de anos lutando contra a ansiedade, finalmente encontrei um tratamento que realmente funciona. A abordagem humanizada e o cuidado integral fizeram toda a diferença no meu processo de cura.'
-          },
-          {
-            id: 2,
-            patient_name: 'Roberto Santos',
-            rating: 5,
-            comment: 'Estou fazendo terapia há 6 meses e os resultados são incríveis. Minha autoestima melhorou muito e consegui superar a depressão que me acompanhava há anos. Recomendo de olhos fechados!'
-          },
-          {
-            id: 3,
-            patient_name: 'Maria Fernanda Costa',
-            rating: 5,
-            comment: 'O atendimento da Doxologos é excepcional. Desde a primeira consulta me senti acolhida e compreendida. A terapia me ajudou a encontrar paz interior e a reconectar com minha fé. Gratidão eterna!'
-          }
-        ]);
-      } else if (reviewsData && reviewsData.length > 0) {
-        setTestimonials(reviewsData);
+        toast({ 
+          variant: 'destructive', 
+          title: 'Erro ao carregar depoimentos', 
+          description: reviewsError.message 
+        });
+        setTestimonials([]);
       } else {
-        // Dados de exemplo caso a tabela esteja vazia
-        setTestimonials([
-          {
-            id: 1,
-            patient_name: 'Ana Carolina Silva',
-            rating: 5,
-            comment: 'A equipe da Doxologos transformou minha vida! Depois de anos lutando contra a ansiedade, finalmente encontrei um tratamento que realmente funciona. A abordagem humanizada e o cuidado integral fizeram toda a diferença no meu processo de cura.'
-          },
-          {
-            id: 2,
-            patient_name: 'Roberto Santos',
-            rating: 5,
-            comment: 'Estou fazendo terapia há 6 meses e os resultados são incríveis. Minha autoestima melhorou muito e consegui superar a depressão que me acompanhava há anos. Recomendo de olhos fechados!'
-          },
-          {
-            id: 3,
-            patient_name: 'Maria Fernanda Costa',
-            rating: 5,
-            comment: 'O atendimento da Doxologos é excepcional. Desde a primeira consulta me senti acolhida e compreendida. A terapia me ajudou a encontrar paz interior e a reconectar com minha fé. Gratidão eterna!'
-          }
-        ]);
+        console.log('Depoimentos carregados da base de dados:', reviewsData);
+        console.log('Quantidade de depoimentos aprovados:', reviewsData?.length || 0);
+        setTestimonials(reviewsData || []);
       }
+      setTestimonialsLoading(false);
     };
     fetchData();
   }, []);
@@ -521,7 +492,12 @@ const HomePage = () => {
           <h2 className="text-4xl font-bold mb-4">O Que Dizem Nossos Pacientes</h2>
           <p className="text-xl text-gray-600">Histórias reais de transformação</p>
         </motion.div>
-        {testimonials.length > 0 ? (
+        {testimonialsLoading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d8659] mx-auto mb-4"></div>
+            <p className="text-gray-500 text-lg">Carregando depoimentos...</p>
+          </div>
+        ) : testimonials.length > 0 ? (
           <div className="relative">
             <motion.div ref={testimonialsCarouselRef} className="flex overflow-x-auto space-x-8 pb-8 scroll-smooth carousel-container" style={{ scrollSnapType: 'x mandatory' }}>
               {testimonials.map((testimonial, index) => (
@@ -530,7 +506,7 @@ const HomePage = () => {
                     {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />)}
                   </div>
                   <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
-                  <p className="font-bold text-[#2d8659]">- {testimonial.patient_name || 'Paciente Anônimo'}</p>
+                  <p className="font-bold text-[#2d8659]">- {testimonial.bookings?.patient_name || testimonial.patient_name || 'Paciente Anônimo'}</p>
                 </motion.div>
               ))}
             </motion.div>
@@ -539,9 +515,30 @@ const HomePage = () => {
             </div>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Carregando depoimentos...</p>
-            <p className="text-gray-400 text-sm mt-2">Em breve, histórias reais de transformação aparecerão aqui.</p>
+          <div className="text-center py-16">
+            <div className="bg-blue-50 rounded-lg p-8 max-w-2xl mx-auto">
+              <MessageCircle className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Seja o Primeiro a Compartilhar</h3>
+              <p className="text-gray-600 mb-6">
+                Ainda não temos depoimentos públicos, mas você pode ser o primeiro! 
+                Compartilhe sua experiência conosco.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button 
+                  onClick={() => window.location.href = '/depoimento'}
+                  className="bg-[#2d8659] hover:bg-[#236b47]"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  Deixar Depoimento
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => document.getElementById('contato').scrollIntoView({ behavior: 'smooth' })}
+                >
+                  Entre em Contato
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -610,6 +607,7 @@ const HomePage = () => {
             <h3 className="font-bold text-lg mb-4">Institucional</h3>
             <div className="space-y-2">
               <Link to="/doacao" className="block text-[#4ade80] hover:text-white transition-colors font-medium">💚 Faça uma Doação</Link>
+              <Link to="/depoimento" className="block text-yellow-400 hover:text-white transition-colors font-medium">⭐ Deixe seu Depoimento</Link>
               <Link to="/trabalhe-conosco" className="block text-gray-400 hover:text-white transition-colors">Trabalhe Conosco</Link>
               <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Acesso Restrito</Link>
                <Link to="/area-do-paciente" className="block text-gray-400 hover:text-white transition-colors">Área do Paciente</Link>

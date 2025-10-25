@@ -12,6 +12,8 @@ import EventoDetalhePage from '@/pages/EventoDetalhePage';
 import PacientePage from '@/pages/PacientePage';
 import CreateUsersPage from '@/pages/CreateUsersPage';
 import DoacaoPage from '@/pages/DoacaoPage';
+import DepoimentoPage from '@/pages/DepoimentoPage';
+import DepoimentosAdminPage from '@/pages/DepoimentosAdminPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 function App() {
@@ -27,6 +29,8 @@ function App() {
             <Route path="/quem-somos" element={<QuemSomosPage />} />
             <Route path="/trabalhe-conosco" element={<TrabalheConoscoPage />} />
             <Route path="/doacao" element={<DoacaoPage />} />
+            <Route path="/depoimento" element={<DepoimentoPage />} />
+            <Route path="/admin/depoimentos" element={<DepoimentosAdminPage />} />
             <Route path="/evento/:slug" element={<EventoDetalhePage />} />
             <Route path="/criar-usuarios" element={<CreateUsersPage />} />
           </Routes>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -898,6 +898,7 @@ const AdminPage = () => {
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
             { value: 'services', label: 'Serviços', icon: Briefcase },
             { value: 'events', label: 'Eventos', icon: Calendar },
+            { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
         ],
         professional: [
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
@@ -2443,6 +2444,89 @@ const AdminPage = () => {
                                         <input name="link_slug" value={eventFormData.link_slug || ''} onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value})} placeholder="Link do evento (URL amigável)" className="w-full input" required/>
                                         <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
                                     </form>
+                                </div>
+                            </div>
+                        </TabsContent>
+                        )}
+
+                        {/* Depoimentos Section */}
+                        {userRole === 'admin' && (
+                        <TabsContent value="testimonials" className="mt-6">
+                            <div className="bg-white rounded-xl shadow-lg p-8">
+                                <div className="text-center mb-8">
+                                    <h2 className="text-2xl font-bold mb-4 flex items-center justify-center">
+                                        <MessageCircle className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                        Gestão de Depoimentos
+                                    </h2>
+                                    <p className="text-gray-600 mb-6">
+                                        Gerencie todos os depoimentos enviados pelos usuários, modere conteúdo e 
+                                        controle quais aparecem no site principal.
+                                    </p>
+                                    
+                                    <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                        <div className="bg-blue-50 p-6 rounded-lg">
+                                            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-4">
+                                                <MessageCircle className="w-6 h-6 text-blue-600" />
+                                            </div>
+                                            <h3 className="font-semibold text-lg mb-2">Página de Depoimentos</h3>
+                                            <p className="text-gray-600 text-sm mb-4">
+                                                Local público onde usuários podem enviar seus depoimentos sobre a clínica.
+                                            </p>
+                                            <Button
+                                                onClick={() => window.open('/depoimento', '_blank')}
+                                                variant="outline"
+                                                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                                            >
+                                                Ver Página Pública
+                                            </Button>
+                                        </div>
+                                        
+                                        <div className="bg-green-50 p-6 rounded-lg">
+                                            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-4">
+                                                <Star className="w-6 h-6 text-green-600" />
+                                            </div>
+                                            <h3 className="font-semibold text-lg mb-2">Painel de Moderação</h3>
+                                            <p className="text-gray-600 text-sm mb-4">
+                                                Gerencie todos os depoimentos: aprovar, editar, organizar e controlar exibição.
+                                            </p>
+                                            <Button
+                                                onClick={() => window.open('/admin/depoimentos', '_blank')}
+                                                className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                                            >
+                                                Acessar Gestão
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-gray-50 p-6 rounded-lg">
+                                        <h4 className="font-semibold mb-3">Funcionalidades Disponíveis:</h4>
+                                        <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-600" />
+                                                <span>Aprovar/Ocultar depoimentos</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-600" />
+                                                <span>Editar texto e correções</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-600" />
+                                                <span>Adicionar depoimentos externos</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-600" />
+                                                <span>Sistema de busca e filtros</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-600" />
+                                                <span>Controle de exibição no site</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Check className="w-4 h-4 text-green-600" />
+                                                <span>Moderação completa de conteúdo</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </TabsContent>
