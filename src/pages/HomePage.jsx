@@ -16,6 +16,7 @@ const HomePage = () => {
   const [professionals, setProfessionals] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [testimonialsLoading, setTestimonialsLoading] = useState(true);
+  const [showAllFaqs, setShowAllFaqs] = useState(false);
 
   const serviceCards = [
       { 
@@ -57,11 +58,19 @@ const HomePage = () => {
   const [currentCard, setCurrentCard] = useState(serviceCards[0]);
 
   const faqs = [
-      { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual.' },
-      { question: 'Qual a duração das sessões?', answer: 'Cada sessão tem duração de 50 minutos, tempo ideal para um atendimento terapêutico efetivo.' },
+      { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual. Cada sessão tem duração média de 50 minutos, tempo ideal para um atendimento terapêutico efetivo.' },      
       { question: 'Como faço para agendar?', answer: 'Basta acessar nossa página de agendamento, escolher o profissional, serviço e horário de sua preferência. Após o pagamento, você receberá a confirmação por email.' },
-      { question: 'Vocês aceitam convênios?', answer: 'Atualmente trabalhamos apenas com atendimento particular, mas fornecemos recibos para reembolso junto ao seu convênio.' },
-      { question: 'É possível remarcar uma consulta?', answer: 'Sim, você pode remarcar com até 24 horas de antecedência através da sua Área do Paciente ou entrando em contato conosco.' }
+      { question: 'Vocês aceitam convênios?', answer: 'Atualmente trabalhamos apenas com atendimento particular, mas fornecemos recibos para reembolso junto ao seu convênio. Caso necessário, realize o agendamento e entre com contato pelo email contato@doxologos.com.br informando seu convênio.' },
+      { question: 'É possível remarcar uma consulta?', answer: 'Sim, você pode remarcar com até 24 horas de antecedência através da sua Área do Paciente ou entrando em contato conosco.' },
+      { question: 'A Doxologos atende apenas pessoas cristãs?', answer: 'Não. Embora nossos profissionais sejam psicólogos cristãos, atendemos pessoas de todas as crenças e convicções. Nosso compromisso é oferecer um ambiente de respeito, empatia e acolhimento para todos.' },
+      { question: 'Os psicólogos da Doxologos falam sobre religião durante as sessões?', answer: 'Os psicólogos podem falar sobre religião na sessão se o tema for relevante para o bem-estar do paciente. Este assunto pode ser abordado com total respeito, sem julgamentos ou proselitismo, focando sempre em como a religião se relaciona com as questões emocionais do paciente.' },
+      { question: 'O que significa ser atendido por um psicólogo cristão?', answer: 'Significa ser atendido por um profissional que, além de qualificado nas ciências psicológicas, agirá honestamente quanto aos valores cristãos em sua prática, oferecendo uma perspectiva que integra fé e ciência.' },
+      { question: 'Eu preciso ser cristão para me beneficiar das terapias da Doxologos?', answer: 'Não. Nossos serviços são voltados para qualquer pessoa que busque um atendimento que respeite a espiritualidade e promova o bem-estar, independentemente de sua crença.' },
+      { question: 'As sessões de terapia são diferentes das tradicionais?', answer: 'Nossas sessões seguem práticas psicológicas contemporâneas, mas têm a vantagem de incluir, quando solicitado pelo paciente, uma perspectiva que valoriza o aspecto espiritual e ético.' },
+      { question: 'Posso escolher um profissional que atenda mais às minhas necessidades?', answer: 'Sim, na Doxologos, você pode conhecer o perfil dos nossos psicólogos e escolher aquele que melhor atenda às suas necessidades e expectativas.' },
+      { question: 'Quais são as abordagens terapêuticas dos especialistas da Doxologos?', answer: 'Nossos profissionais utilizam diversas abordagens, como terapia cognitivo-comportamental (TCC), fenomenologia, psicanálise, terapia humanista e outras práticas contemporâneas. Todas as abordagens podem, se desejado, ser combinadas com uma visão que respeita a espiritualidade e valores cristãos.' },
+      { question: 'Como posso agendar minha primeira consulta?', answer: 'Basta acessar nosso site, selecionar o profissional de sua preferência e agendar a consulta no horário que for mais conveniente para você.' },
+      { question: ' As terapias têm custo acessível?', answer: 'Sim, na Doxologos nos comprometemos a oferecer atendimento de alta qualidade a preços justos, garantindo que mais pessoas possam cuidar da sua saúde mental.' }
   ];
   
   const professionalsCarouselRef = useRef(null);
@@ -545,19 +554,44 @@ const HomePage = () => {
     </section>
 
     <section className="py-20 bg-white">
-      <div className="container mx-auto px-4 max-w-4xl">
+      <div className="container mx-auto px-4 max-w-6xl">
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
           <h2 className="text-4xl font-bold mb-4">Perguntas Frequentes</h2>
           <p className="text-xl text-gray-600">Tire suas dúvidas</p>
         </motion.div>
-        <div className="space-y-4">
-          {faqs.map((faq, index) => (
-            <motion.details key={index} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.05 }} className="bg-gray-50 rounded-lg p-6 shadow-md group">
-              <summary className="font-bold text-lg cursor-pointer flex items-center justify-between">{faq.question}<ChevronDown className="w-5 h-5 group-open:rotate-180 transition-transform" /></summary>
-              <p className="mt-4 text-gray-600">{faq.answer}</p>
+        
+        {/* Grid de 2 colunas para melhor aproveitamento do espaço */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {faqs.slice(0, showAllFaqs ? faqs.length : 8).map((faq, index) => (
+            <motion.details 
+              key={index} 
+              initial={{ opacity: 0, y: 20 }} 
+              whileInView={{ opacity: 1, y: 0 }} 
+              viewport={{ once: true }} 
+              transition={{ delay: index * 0.05 }} 
+              className="bg-gray-50 rounded-lg p-6 shadow-md group hover:shadow-lg transition-all duration-300"
+            >
+              <summary className="font-bold text-lg cursor-pointer flex items-center justify-between">
+                <span className="pr-4">{faq.question}</span>
+                <ChevronDown className="w-5 h-5 group-open:rotate-180 transition-transform flex-shrink-0" />
+              </summary>
+              <p className="mt-4 text-gray-600 leading-relaxed">{faq.answer}</p>
             </motion.details>
           ))}
         </div>
+
+        {/* Botão Ver mais/Ver menos */}
+        {faqs.length > 8 && (
+          <div className="text-center mt-8">
+            <Button
+              onClick={() => setShowAllFaqs(!showAllFaqs)}
+              variant="outline"
+              className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white"
+            >
+              {showAllFaqs ? 'Ver menos perguntas' : `Ver mais ${faqs.length - 8} perguntas`}
+            </Button>
+          </div>
+        )}
       </div>
     </section>
 
@@ -578,10 +612,10 @@ const HomePage = () => {
             </form>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-8">
-            <div className="flex items-start space-x-4"><div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0"><Phone className="w-6 h-6 text-[#2d8659]" /></div><div><h3 className="font-bold text-lg mb-1">Telefone</h3><p className="text-gray-600">(11) 9999-9999</p></div></div>
+            <div className="flex items-start space-x-4"><div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0"><Phone className="w-6 h-6 text-[#2d8659]" /></div><div><h3 className="font-bold text-lg mb-1">Telefone</h3><p className="text-gray-600">(31) 97198-2947</p></div></div>
             <div className="flex items-start space-x-4"><div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0"><Mail className="w-6 h-6 text-[#2d8659]" /></div><div><h3 className="font-bold text-lg mb-1">Email</h3><p className="text-gray-600">contato@doxologos.com.br</p></div></div>
-            <div className="flex items-start space-x-4"><div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0"><MapPin className="w-6 h-6 text-[#2d8659]" /></div><div><h3 className="font-bold text-lg mb-1">Atendimento</h3><p className="text-gray-600">100% Online - Atendemos todo o Brasil</p></div></div>
-            <div className="bg-white p-6 rounded-xl"><h3 className="font-bold text-lg mb-2">Horário de Atendimento</h3><p className="text-gray-600">Segunda a Sexta: 8h às 20h</p><p className="text-gray-600">Sábado: 8h às 14h</p></div>
+            <div className="flex items-start space-x-4"><div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0"><MapPin className="w-6 h-6 text-[#2d8659]" /></div><div><h3 className="font-bold text-lg mb-1">Atendimento</h3><p className="text-gray-600">100% Online - Presença global: onde você estiver, nós atendemos.</p></div></div>
+            <div className="bg-white p-6 rounded-xl"><h3 className="font-bold text-lg mb-2">Horário de Atendimento</h3><p className="text-gray-600">Segunda a Sexta: 8h às 22h</p><p className="text-gray-600">Sábado: 8h às 14h</p></div>
           </motion.div>
         </div>
       </div>
@@ -616,7 +650,7 @@ const HomePage = () => {
           </div>
           <div>
             <h3 className="font-bold text-lg mb-4">Contato</h3>
-            <div className="space-y-2 text-gray-400"><p>contato@doxologos.com.br</p><p>(11) 9999-9999</p></div>
+            <div className="space-y-2 text-gray-400"><p>contato@doxologos.com.br</p><p>(31) 97198-2947</p></div>
           </div>
         </div>
         <div className="border-t border-gray-800 pt-8 text-center text-gray-400"><p>&copy; 2025 Doxologos. Todos os direitos reservados.</p></div>

@@ -4,7 +4,7 @@ import { MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const FloatingWhatsAppButton = () => {
-  const phoneNumber = '551199999999'; // Substitua pelo número de telefone da clínica
+  const phoneNumber = '5531971982947'; // Número da clínica Doxologos
   const message = 'Olá, gostaria de mais informações sobre os atendimentos da Doxologos.';
   const whatsappLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
