@@ -7,6 +7,8 @@ import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, 
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { useBookingTracking, useFormTracking } from '@/hooks/useAnalytics';
+import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
@@ -25,6 +27,11 @@ const AgendamentoPage = () => {
     const [patientData, setPatientData] = useState({ name: '', email: '', phone: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
+
+    // Analytics and Error Tracking Hooks
+    const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
+    const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
+    const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
 
     const fetchData = useCallback(async () => {
         const { data: profsData, error: profsError } = await supabase
