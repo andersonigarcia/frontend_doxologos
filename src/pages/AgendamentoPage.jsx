@@ -23,6 +23,8 @@ const AgendamentoPage = () => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const [patientData, setPatientData] = useState({ name: '', email: '', phone: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoadingTimes, setIsLoadingTimes] = useState(false);
 
     const fetchData = useCallback(async () => {
         const { data: profsData, error: profsError } = await supabase
@@ -109,7 +111,19 @@ const AgendamentoPage = () => {
         return times;
     };
 
+    // Simular loading de horários quando data ou profissional mudam
+    useEffect(() => {
+        if (selectedDate && selectedProfessional) {
+            setIsLoadingTimes(true);
+            const timer = setTimeout(() => {
+                setIsLoadingTimes(false);
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedDate, selectedProfessional]);
+
     const handleBooking = async () => {
+        setIsSubmitting(true);
         const tempPassword = Math.random().toString(36).slice(-8);
         const { data: { user: authUser }, error: getUserError } = await supabase.auth.getUser();
 
@@ -191,6 +205,8 @@ const AgendamentoPage = () => {
           console.error('Error creating MP preference', err);
           toast({ title: 'Agendamento criado', description: 'Erro ao iniciar pagamento.' });
           setStep(5);
+        } finally {
+          setIsSubmitting(false);
         }
     };
       
@@ -430,22 +446,34 @@ const AgendamentoPage = () => {
                         })}
                       </p>
                     </div>
-                    {availableTimes.length > 0 ? (
+                    {isLoadingTimes ? (
+                      <div className="flex items-center justify-center py-8">
+                        <motion.div 
+                          className="w-8 h-8 border-4 border-[#2d8659] border-t-transparent rounded-full"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        />
+                        <span className="ml-3 text-gray-600">Carregando horários...</span>
+                      </div>
+                    ) : availableTimes.length > 0 ? (
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                         {availableTimes.map((time) => {
                           const isBooked = bookedSlots.includes(time);
                           return (
-                            <button 
+                            <motion.button 
                               key={time} 
                               onClick={() => !isBooked && setSelectedTime(time)} 
                               disabled={isBooked}
-                              className={`p-4 rounded-lg border-2 transition-all font-medium relative group ${
+                              className={`p-4 rounded-lg border-2 transition-all duration-300 font-medium relative group ${
                                 isBooked 
                                   ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through' 
                                   : selectedTime === time 
-                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg scale-105' 
-                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-[#2d8659]/5 hover:scale-105'
+                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg' 
+                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
                               }`}
+                              whileHover={!isBooked ? { scale: 1.02, y: -2 } : {}}
+                              whileTap={!isBooked ? { scale: 0.98 } : {}}
+                              title={isBooked ? 'Horário não disponível' : `Agendar para ${time}`}
                             >
                               <div className="text-lg">{time}</div>
                               {!isBooked && selectedTime !== time && (
@@ -456,7 +484,7 @@ const AgendamentoPage = () => {
                               {isBooked && (
                                 <div className="text-xs text-gray-400 mt-1">Ocupado</div>
                               )}
-                            </button>
+                            </motion.button>
                           );
                         })}
                       </div>
@@ -589,7 +617,33 @@ const AgendamentoPage = () => {
                 </div>
                 <div className="flex gap-4 mt-6">
                   <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
-                  <Button onClick={handleBooking} disabled={!patientData.name || !patientData.email || !patientData.phone} className="bg-[#2d8659] hover:bg-[#236b47] flex-1">Ir para Pagamento</Button>
+                  <motion.div
+                    whileHover={!isSubmitting && patientData.name && patientData.email && patientData.phone ? { scale: 1.02, y: -1 } : {}}
+                    whileTap={!isSubmitting && patientData.name && patientData.email && patientData.phone ? { scale: 0.98 } : {}}
+                    className="flex-1"
+                  >
+                    <Button 
+                      onClick={handleBooking} 
+                      disabled={!patientData.name || !patientData.email || !patientData.phone || isSubmitting} 
+                      className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${
+                        isSubmitting ? 'cursor-not-allowed opacity-75' : ''
+                      }`}
+                      title={!patientData.name || !patientData.email || !patientData.phone ? 'Preencha todos os campos obrigatórios' : ''}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <motion.div 
+                            className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          />
+                          Processando...
+                        </>
+                      ) : (
+                        'Ir para Pagamento'
+                      )}
+                    </Button>
+                  </motion.div>
                 </div>
               </motion.div>
             );
@@ -698,22 +752,22 @@ const AgendamentoPage = () => {
             <title>Agendamento - Doxologos Clínica Online</title>
             <meta name="description" content="Agende sua consulta online com nossos profissionais qualificados." />
           </Helmet>
-          <header className="bg-white shadow-sm">
+          <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
             <nav className="container mx-auto px-4 py-4">
               <div className="flex items-center justify-between">
                 <Link to="/" className="flex items-center space-x-2">
                   <Heart className="w-8 h-8 text-[#2d8659]" />
                   <span className="text-2xl font-bold gradient-text">Doxologos</span>
                 </Link>
-                <Link to="/">
-                  <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                    <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
-                  </Button>
-                </Link>
+                <div className="flex items-center space-x-4">
+                  <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
+                    ← Voltar ao Site
+                  </Link>
+                </div>
               </div>
             </nav>
           </header>
-          <div className="min-h-screen bg-gray-50 py-12">
+          <div className="min-h-screen bg-gray-50 py-12 pt-24">
             <div className="container mx-auto px-4 max-w-4xl">
               {step < 5 && (
                 <div className="mb-12">
