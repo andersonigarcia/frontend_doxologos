@@ -289,10 +289,10 @@ const HomePage = () => {
     </Helmet>
 
     <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-      <nav className="container mx-auto px-4 py-4">
+      <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
         <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <Heart className="w-8 h-8 text-[#2d8659]" />
+          <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
             <span className="text-2xl font-bold gradient-text">Doxologos</span>
           </Link>
           <div className="hidden md:flex items-center space-x-8">
@@ -306,18 +306,31 @@ const HomePage = () => {
               <Button className="bg-[#2d8659] hover:bg-[#236b47]">Encontre seu psicólogo</Button>
             </Link>
           </div>
-          <button className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <button 
+            className="md:hidden" 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-menu"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" aria-hidden="true" /> : <Menu className="w-6 h-6" aria-hidden="true" />}
           </button>
         </div>
         {mobileMenuOpen && (
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="md:hidden mt-4 pb-4 space-y-4">
-            <a href="#inicio" className="block text-gray-700 hover:text-[#2d8659]">Início</a>
-            {activeEvents.length > 0 && <a href="#eventos" className="block text-gray-700 hover:text-[#2d8659]">Eventos</a>}
-            <a href="#profissionais" className="block text-gray-700 hover:text-[#2d8659]">Profissionais</a>
-            <a href="#depoimentos" className="block text-gray-700 hover:text-[#2d8659]">Depoimentos</a>
-            <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]">Área do Paciente</Link>
-            <a href="#contato" className="block text-gray-700 hover:text-[#2d8659]">Contato</a>
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            className="md:hidden mt-4 pb-4 space-y-4"
+            id="mobile-menu"
+            role="menu"
+            aria-labelledby="mobile-menu-button"
+          >
+            <a href="#inicio" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Início</a>
+            {activeEvents.length > 0 && <a href="#eventos" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Eventos</a>}
+            <a href="#profissionais" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Profissionais</a>
+            <a href="#depoimentos" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Depoimentos</a>
+            <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Área do Paciente</Link>
+            <a href="#contato" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Contato</a>
             <Link to="/agendamento">
               <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
             </Link>
@@ -330,16 +343,16 @@ const HomePage = () => {
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <motion.div initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }}>
-            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">Cuidado Integral para sua <span className="gradient-text">Saúde Mental</span></h1>
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight" id="hero-title">Cuidado Integral para sua <span className="gradient-text">Saúde Mental</span></h1>
             <p className="text-xl text-gray-600 mb-8">Cuidamos da sua saúde mental com um olhar atento ao que torna você único e ao que dá sentido à sua vida! Oferecemos uma abordagem integral, que une ciência e fé para promover uma transformação profunda e duradoura.</p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Link to="/agendamento">
-                <Button size="lg" className="bg-[#2d8659] hover:bg-[#236b47] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap">
+                <Button size="lg" className="bg-[#2d8659] hover:bg-[#236b47] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap" aria-label="Agendar consulta com psicólogo">
                   Encontre seu psicólogo
                 </Button>
               </Link>
               <Link to="/doacao">
-                <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 border-green-500 text-green-600 hover:bg-green-500 hover:text-white w-full sm:w-auto whitespace-nowrap">
+                <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 border-green-500 text-green-600 hover:bg-green-500 hover:text-white w-full sm:w-auto whitespace-nowrap" aria-label="Fazer doação para apoiar nossa missão">
                   💚 Apoie nossa missão
                 </Button>
               </Link>
@@ -352,7 +365,7 @@ const HomePage = () => {
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
             {/* Vídeo Principal */}
-            <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group">
+            <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group" role="region" aria-label="Player de vídeo principal">
               {isVideoLoading && (
                 <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-10">
                   <motion.div 
@@ -418,8 +431,9 @@ const HomePage = () => {
                   <button
                     onClick={stopVideoPlayback}
                     className="absolute top-4 right-4 bg-black/70 hover:bg-black/90 text-white p-2 rounded-full transition-colors z-10"
+                    aria-label="Fechar vídeo"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-5 h-5" aria-hidden="true" />
                   </button>
                 </>
               ) : (
@@ -473,7 +487,7 @@ const HomePage = () => {
             </div>
 
             {/* Miniaturas de Vídeos */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3" role="list" aria-label="Lista de vídeos disponíveis">
               {videos.map(video => (
                 <motion.div
                   key={video.id}
@@ -483,9 +497,13 @@ const HomePage = () => {
                       : 'border-transparent hover:border-green-200 hover:shadow-xl'
                   }`}
                   onClick={() => handleVideoSelect(video)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleVideoSelect(video)}
                   whileHover={{ y: -8, transition: { duration: 0.3 } }}
                   whileTap={{ scale: 0.95 }}
                   title={video.title}
+                  role="listitem"
+                  tabIndex={0}
+                  aria-label={`Selecionar vídeo: ${video.title}`}
                 >
                   <img 
                     src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}

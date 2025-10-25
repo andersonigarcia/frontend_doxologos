@@ -71,10 +71,10 @@ const DoacaoPage = () => {
         <div className="min-h-screen bg-gradient-to-b from-green-50/50 to-white">
             {/* Header com Logo */}
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-                <nav className="container mx-auto px-4 py-4">
+                <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
+                            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center space-x-4">
@@ -130,7 +130,7 @@ const DoacaoPage = () => {
             </section>
 
             {/* Valores Sugeridos */}
-            <section className="py-16 px-4">
+            <section className="py-16 px-4" role="main" aria-labelledby="donation-section">
                 <div className="max-w-4xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
@@ -138,11 +138,12 @@ const DoacaoPage = () => {
                         viewport={{ once: true }}
                         className="text-center mb-12"
                     >
-                        <h2 className="text-3xl font-bold mb-4">Escolha o valor da sua doação</h2>
+                        <h2 className="text-3xl md:text-4xl font-bold mb-6" id="donation-section">Escolha o valor da sua contribuição</h2>
                         <p className="text-gray-600">Qualquer valor faz a diferença na vida de alguém</p>
                     </motion.div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
+                            <span id="amount-selection" className="sr-only">Selecione o valor da doação</span>
                         {predefinedAmounts.map((amount, index) => (
                             <motion.button
                                 key={amount}

@@ -216,7 +216,7 @@ const AgendamentoPage = () => {
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
                 <div className="text-center mb-8">
-                  <h2 className="text-3xl font-bold mb-3 flex items-center justify-center"><CreditCard className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha o Serviço</h2>
+                  <h2 className="text-3xl font-bold mb-3 flex items-center justify-center" id="step-1-title"><CreditCard className="w-8 h-8 mr-3 text-[#2d8659]" aria-hidden="true" />Escolha o Serviço</h2>
                   <p className="text-gray-600 text-lg">Selecione o tipo de atendimento que você precisa</p>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -436,7 +436,7 @@ const AgendamentoPage = () => {
                 {selectedDate && (
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
-                      <label className="text-lg font-semibold text-gray-900">Horários Disponíveis</label>
+                      <label className="text-lg font-semibold text-gray-900" id="available-times-label">Horários Disponíveis</label>
                       <p className="text-sm text-gray-600">
                         {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { 
                           weekday: 'long', 
@@ -456,7 +456,7 @@ const AgendamentoPage = () => {
                         <span className="ml-3 text-gray-600">Carregando horários...</span>
                       </div>
                     ) : availableTimes.length > 0 ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" role="radiogroup" aria-labelledby="available-times-label">
                         {availableTimes.map((time) => {
                           const isBooked = bookedSlots.includes(time);
                           return (
@@ -753,10 +753,10 @@ const AgendamentoPage = () => {
             <meta name="description" content="Agende sua consulta online com nossos profissionais qualificados." />
           </Helmet>
           <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-            <nav className="container mx-auto px-4 py-4">
+            <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
               <div className="flex items-center justify-between">
-                <Link to="/" className="flex items-center space-x-2">
-                  <Heart className="w-8 h-8 text-[#2d8659]" />
+                <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
+                  <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
                   <span className="text-2xl font-bold gradient-text">Doxologos</span>
                 </Link>
                 <div className="flex items-center space-x-4">
