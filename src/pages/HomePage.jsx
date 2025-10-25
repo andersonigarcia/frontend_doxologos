@@ -347,7 +347,7 @@ const HomePage = () => {
                 console.log('👤 [HomePage] Renderizando profissional:', prof);
                 return (
               <motion.div key={prof.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-gray-50 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4" style={{ scrollSnapAlign: 'start' }}>
-                <img className="w-full h-64 object-cover" alt={prof.name} src={prof.foto_url || "https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face"} />
+                <img className="w-full h-64 object-cover" alt={prof.name} src={prof.image_url || "https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face"} />
                 <div className="p-6">
                   <h3 className="text-2xl font-bold mb-2">{prof.name}</h3>
                   <p className="text-[#2d8659] font-semibold mb-3">{prof.specialty}</p>

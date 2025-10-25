@@ -511,7 +511,19 @@ const AdminPage = () => {
         setIsEditingService(false); 
         setServiceFormData({ id: null, name: '', price: '', duration_minutes: '' }); 
     };
-    const resetProfessionalForm = () => { setIsEditingProfessional(false); setProfessionalFormData({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '' }); };
+    const resetProfessionalForm = () => { 
+        setIsEditingProfessional(false); 
+        setProfessionalFormData({ 
+            id: null, 
+            name: '', 
+            services_ids: [], 
+            email: '', 
+            password: '', 
+            mini_curriculum: '', 
+            description: '', 
+            image_url: '' 
+        }); 
+    };
     
     const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
     const handleDeleteService = async (serviceId) => {
@@ -1548,111 +1560,139 @@ const AdminPage = () => {
                                                     onChange={async (e) => {
                                                         const file = e.target.files[0];
                                                         if (file) {
-                                                            // Verificar tamanho do arquivo (máximo 3MB)
-                                                            if (file.size > 3 * 1024 * 1024) {
+                                                            // Verificar tamanho do arquivo (máximo 5MB)
+                                                            if (file.size > 5 * 1024 * 1024) {
                                                                 toast({ 
                                                                     variant: 'destructive', 
                                                                     title: 'Arquivo muito grande', 
-                                                                    description: 'Por favor, selecione uma imagem menor que 3MB' 
+                                                                    description: 'Por favor, selecione uma imagem menor que 5MB' 
                                                                 });
                                                                 return;
                                                             }
                                                             
-                                                            // Processar imagem localmente com compressão inteligente
-                                                            const canvas = document.createElement('canvas');
-                                                            const ctx = canvas.getContext('2d');
-                                                            const img = new Image();
-                                                            
-                                                            img.onload = () => {
-                                                                // Calcular dimensões otimizadas
-                                                                const maxSize = 400; // Aumentado para melhor qualidade
-                                                                let { width, height } = img;
+                                                            try {
+                                                                toast({ title: 'Fazendo upload...', description: 'Processando e enviando imagem...' });
                                                                 
-                                                                if (width > height) {
-                                                                    if (width > maxSize) {
-                                                                        height = (height * maxSize) / width;
-                                                                        width = maxSize;
-                                                                    }
-                                                                } else {
-                                                                    if (height > maxSize) {
-                                                                        width = (width * maxSize) / height;
-                                                                        height = maxSize;
-                                                                    }
-                                                                }
+                                                                // Gerar nome único para o arquivo
+                                                                const fileExt = file.name.split('.').pop();
+                                                                const fileName = `professional_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+                                                                const filePath = `professionals/${fileName}`;
                                                                 
-                                                                canvas.width = width;
-                                                                canvas.height = height;
+                                                                // Processar e comprimir imagem antes do upload
+                                                                const canvas = document.createElement('canvas');
+                                                                const ctx = canvas.getContext('2d');
+                                                                const img = new Image();
                                                                 
-                                                                // Desenhar com alta qualidade
-                                                                ctx.imageSmoothingEnabled = true;
-                                                                ctx.imageSmoothingQuality = 'high';
-                                                                ctx.drawImage(img, 0, 0, width, height);
-                                                                
-                                                                // Tentar diferentes níveis de compressão
-                                                                let quality = 0.8;
-                                                                let compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-                                                                
-                                                                // Reduzir qualidade se necessário para caber no banco
-                                                                while (compressedDataUrl.length > 200000 && quality > 0.3) {
-                                                                    quality -= 0.1;
-                                                                    compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-                                                                }
-                                                                
-                                                                // Se ainda muito grande, redimensionar mais
-                                                                if (compressedDataUrl.length > 200000) {
-                                                                    const smallerSize = Math.floor(maxSize * 0.7);
-                                                                    const ratio = Math.min(smallerSize / width, smallerSize / height);
+                                                                img.onload = async () => {
+                                                                    // Redimensionar para alta qualidade (800px max)
+                                                                    const maxSize = 800;
+                                                                    let { width, height } = img;
                                                                     
-                                                                    canvas.width = width * ratio;
-                                                                    canvas.height = height * ratio;
+                                                                    if (width > height) {
+                                                                        if (width > maxSize) {
+                                                                            height = (height * maxSize) / width;
+                                                                            width = maxSize;
+                                                                        }
+                                                                    } else {
+                                                                        if (height > maxSize) {
+                                                                            width = (width * maxSize) / height;
+                                                                            height = maxSize;
+                                                                        }
+                                                                    }
                                                                     
-                                                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                                                                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                                                    compressedDataUrl = canvas.toDataURL('image/jpeg', 0.6);
-                                                                }
+                                                                    canvas.width = width;
+                                                                    canvas.height = height;
+                                                                    
+                                                                    ctx.imageSmoothingEnabled = true;
+                                                                    ctx.imageSmoothingQuality = 'high';
+                                                                    ctx.drawImage(img, 0, 0, width, height);
+                                                                    
+                                                                    // Converter para blob com boa qualidade
+                                                                    canvas.toBlob(async (blob) => {
+                                                                        if (!blob) {
+                                                                            toast({ variant: 'destructive', title: 'Erro ao processar imagem' });
+                                                                            return;
+                                                                        }
+                                                                        
+                                                                        // Remover imagem anterior se existir
+                                                                        if (professionalFormData.image_url && professionalFormData.image_url.includes('supabase')) {
+                                                                            const oldPath = professionalFormData.image_url.split('/').slice(-2).join('/');
+                                                                            await supabase.storage.from('professional-photos').remove([oldPath]);
+                                                                        }
+                                                                        
+                                                                        // Upload para Supabase Storage
+                                                                        const { data, error } = await supabase.storage
+                                                                            .from('professional-photos')
+                                                                            .upload(filePath, blob, {
+                                                                                cacheControl: '3600',
+                                                                                upsert: false
+                                                                            });
+                                                                        
+                                                                        if (error) {
+                                                                            console.error('Erro no upload:', error);
+                                                                            toast({ 
+                                                                                variant: 'destructive', 
+                                                                                title: 'Erro no upload', 
+                                                                                description: 'Não foi possível fazer upload da imagem: ' + error.message 
+                                                                            });
+                                                                            return;
+                                                                        }
+                                                                        
+                                                                        // Obter URL pública
+                                                                        const { data: urlData } = supabase.storage
+                                                                            .from('professional-photos')
+                                                                            .getPublicUrl(filePath);
+                                                                        
+                                                                        if (urlData?.publicUrl) {
+                                                                            setProfessionalFormData({
+                                                                                ...professionalFormData, 
+                                                                                image_url: urlData.publicUrl
+                                                                            });
+                                                                            
+                                                                            toast({ 
+                                                                                title: 'Upload concluído!', 
+                                                                                description: `Imagem de alta qualidade salva (${Math.round(width)}x${Math.round(height)}px)` 
+                                                                            });
+                                                                        } else {
+                                                                            toast({ 
+                                                                                variant: 'destructive', 
+                                                                                title: 'Erro ao obter URL', 
+                                                                                description: 'Upload realizado mas não foi possível obter a URL' 
+                                                                            });
+                                                                        }
+                                                                    }, 'image/jpeg', 0.85);
+                                                                };
                                                                 
-                                                                // Verificação final
-                                                                if (compressedDataUrl.length > 250000) {
+                                                                img.onerror = () => {
                                                                     toast({ 
                                                                         variant: 'destructive', 
-                                                                        title: 'Não foi possível comprimir suficientemente', 
-                                                                        description: 'Tente uma imagem menor ou use uma URL externa' 
+                                                                        title: 'Erro ao processar imagem', 
+                                                                        description: 'Não foi possível carregar o arquivo selecionado' 
                                                                     });
-                                                                    return;
-                                                                }
+                                                                };
                                                                 
-                                                                setProfessionalFormData({
-                                                                    ...professionalFormData, 
-                                                                    image_url: compressedDataUrl
-                                                                });
+                                                                img.src = URL.createObjectURL(file);
                                                                 
-                                                                toast({ 
-                                                                    title: 'Imagem processada!', 
-                                                                    description: `Imagem otimizada e redimensionada (${Math.round(canvas.width)}x${Math.round(canvas.height)}px)` 
-                                                                });
-                                                            };
-                                                            
-                                                            img.onerror = () => {
+                                                            } catch (error) {
+                                                                console.error('Erro no upload:', error);
                                                                 toast({ 
                                                                     variant: 'destructive', 
-                                                                    title: 'Erro ao processar imagem', 
-                                                                    description: 'Não foi possível carregar o arquivo selecionado' 
+                                                                    title: 'Erro no upload', 
+                                                                    description: 'Não foi possível processar a imagem: ' + error.message 
                                                                 });
-                                                            };
-                                                            
-                                                            img.src = URL.createObjectURL(file);
+                                                            }
                                                         }
                                                     }}
                                                     className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
                                                 />
-                                                <p className="text-xs text-gray-500 mt-1">Processamento e compressão automática local (até 3MB)</p>
+                                                <p className="text-xs text-gray-500 mt-1">Upload seguro para Supabase Storage com alta qualidade (até 5MB)</p>
                                             </div>
                                             
                                             {/* Campo de URL alternativo */}
                                             <div className="mb-3">
                                                 <input 
                                                     name="image_url" 
-                                                    value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : (professionalFormData.image_url || '')} 
+                                                    value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : professionalFormData.image_url} 
                                                     onChange={e => setProfessionalFormData({...professionalFormData, image_url: e.target.value})} 
                                                     type="url" 
                                                     placeholder="Ou cole o link direto: https://exemplo.com/foto.jpg" 
