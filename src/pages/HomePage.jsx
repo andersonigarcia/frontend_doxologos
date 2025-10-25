@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users, Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Heart, Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -45,7 +45,6 @@ const HomePage = () => {
     }
   ];
   const [currentVideo, setCurrentVideo] = useState(videos[0]);
-  const [videoStates, setVideoStates] = useState(videos.reduce((acc, video) => ({ ...acc, [video.id]: { playing: false, muted: true } }), {}));
 
   const faqs = [
       { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual. Cada sessão tem duração média de 50 minutos, tempo ideal para um atendimento terapêutico efetivo.' },      
@@ -185,31 +184,15 @@ const HomePage = () => {
     }
   }, [activeEvents.length]);
 
-  // Funções para controlar vídeos
-  const toggleVideoPlay = (videoId) => {
-    setVideoStates(prev => ({
-      ...prev,
-      [videoId]: { ...prev[videoId], playing: !prev[videoId].playing }
-    }));
+  // Função para abrir vídeo em nova aba
+
+  const getEmbedUrl = (videoId) => {
+    // Usando youtube-nocookie.com para melhor compatibilidade
+    return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&controls=1&showinfo=0&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=0`;
   };
 
-  const toggleVideoMute = (videoId) => {
-    setVideoStates(prev => ({
-      ...prev,
-      [videoId]: { ...prev[videoId], muted: !prev[videoId].muted }
-    }));
-  };
-
-  const getEmbedUrl = (videoId, autoplay = false, muted = true) => {
-    const params = new URLSearchParams({
-      autoplay: autoplay ? '1' : '0',
-      mute: muted ? '1' : '0',
-      controls: '1',
-      enablejsapi: '1',
-      rel: '0',
-      modestbranding: '1'
-    });
-    return `https://www.youtube.com/embed/${videoId}?${params.toString()}`;
+  const openVideoInNewTab = (videoId) => {
+    window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank');
   };
 
   useEffect(() => {
@@ -331,71 +314,78 @@ const HomePage = () => {
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8 }} className="relative">
             {/* Vídeo Principal */}
-            <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative">
-              <iframe
-                src={getEmbedUrl(currentVideo.videoId, videoStates[currentVideo.id]?.playing, videoStates[currentVideo.id]?.muted)}
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={currentVideo.title}
+            <div className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group">
+              {/* Thumbnail de fundo */}
+              <img 
+                src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
+                alt={currentVideo.title}
+                className="w-full h-full object-cover"
               />
               
-              {/* Overlay de Controles */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+              {/* Overlay escuro */}
+              <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors" />
+              
+              {/* Botão de Play Central */}
+              <button
+                onClick={() => openVideoInNewTab(currentVideo.videoId)}
+                className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform"
+              >
+                <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl">
+                  <Play className="w-12 h-12 text-white ml-1" fill="currentColor" />
+                </div>
+              </button>
+              
+              {/* Informações do Vídeo */}
               <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-2xl font-bold">{currentVideo.title}</h3>
-                  <div className="flex space-x-2 pointer-events-auto">
-                    <button
-                      onClick={() => toggleVideoPlay(currentVideo.id)}
-                      className="bg-black/30 backdrop-blur-sm p-2 rounded-full hover:bg-black/50 transition-colors"
-                    >
-                      {videoStates[currentVideo.id]?.playing ? (
-                        <Pause className="w-5 h-5" />
-                      ) : (
-                        <Play className="w-5 h-5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => toggleVideoMute(currentVideo.id)}
-                      className="bg-black/30 backdrop-blur-sm p-2 rounded-full hover:bg-black/50 transition-colors"
-                    >
-                      {videoStates[currentVideo.id]?.muted ? (
-                        <VolumeX className="w-5 h-5" />
-                      ) : (
-                        <Volume2 className="w-5 h-5" />
-                      )}
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => openVideoInNewTab(currentVideo.videoId)}
+                    className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    Assistir no YouTube
+                  </button>
                 </div>
-                <p className="text-white/90 mb-4">{currentVideo.description}</p>
+                <p className="text-white/90">{currentVideo.description}</p>
               </div>
             </div>
 
             {/* Miniaturas de Vídeos */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {videos.map(video => (
-                <button 
-                  key={video.id} 
-                  onClick={() => setCurrentVideo(video)} 
-                  className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-300 ${
+                <div
+                  key={video.id}
+                  className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-300 cursor-pointer ${
                     currentVideo.id === video.id ? 'border-[#2d8659] shadow-lg' : 'border-transparent hover:border-[#2d8659]/50'
                   }`}
+                  onClick={() => setCurrentVideo(video)}
                 >
                   <img 
                     src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-110" 
+                    className="w-full h-full object-cover transition-transform group-hover:scale-105" 
                     alt={video.title}
                   />
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                     <PlayCircle className="w-8 h-8 text-white/90" />
                   </div>
+                  
+                  {/* Botão YouTube no hover */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openVideoInNewTab(video.videoId);
+                    }}
+                    className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 p-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <PlayCircle className="w-4 h-4 text-white" />
+                  </button>
+                  
                   <div className="absolute bottom-1 left-1 right-1">
-                    <div className="bg-black/60 backdrop-blur-sm rounded px-2 py-1">
+                    <div className="bg-black/70 backdrop-blur-sm rounded px-2 py-1">
                       <p className="text-white text-xs font-medium truncate">{video.title}</p>
                     </div>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </motion.div>
