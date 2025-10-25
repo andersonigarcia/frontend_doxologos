@@ -140,8 +140,7 @@ const HomePage = () => {
         });
         setTestimonials([]);
       } else {
-        console.log('Depoimentos carregados da base de dados:', reviewsData);
-        console.log('Quantidade de depoimentos aprovados:', reviewsData?.length || 0);
+
         setTestimonials(reviewsData || []);
       }
       setTestimonialsLoading(false);
@@ -618,7 +617,7 @@ const HomePage = () => {
           <h2 className="text-4xl font-bold mb-4">Conheça Nossa Equipe </h2>
           <p className="text-xl text-gray-600">Equipe qualificada e comprometida com seu bem-estar</p>
         </motion.div>
-        {console.log('🔍 [HomePage] Renderizando seção profissionais. Total:', professionals.length)}
+
         <div className="relative">
           {professionals.length === 0 ? (
             <div className="text-center py-12">
@@ -628,7 +627,7 @@ const HomePage = () => {
           ) : (
             <motion.div ref={professionalsCarouselRef} className="flex overflow-x-auto space-x-8 pb-8 scroll-smooth carousel-container" style={{ scrollSnapType: 'x mandatory' }}>
               {professionals.map((prof, index) => {
-                console.log('👤 [HomePage] Renderizando profissional:', prof);
+
                 return (
               <motion.div key={prof.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-gray-50 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow flex-shrink-0 w-full sm:w-1/2 md:w-1/3 lg:w-1/4" style={{ scrollSnapAlign: 'start' }}>
                 <img className="w-full h-64 object-cover" alt={prof.name} src={prof.image_url || "https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face"} />

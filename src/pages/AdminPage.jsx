@@ -118,7 +118,7 @@ const AdminPage = () => {
         const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
         
         if (profsRes.error) {
-            console.error('❌ [AdminPage] Erro ao buscar profissionais:', profsRes.error);
+            console.error('Erro ao buscar profissionais:', profsRes.error);
         }
         
 
@@ -156,7 +156,7 @@ const AdminPage = () => {
                     inscricoesCount = count || 0;
                 }
             } catch (error) {
-                console.log('Tabela inscricoes_eventos não encontrada, usando contagem 0');
+
             }
             
             return {
@@ -819,7 +819,7 @@ const AdminPage = () => {
                     inscricoesData = data || [];
                 }
             } catch (error) {
-                console.log('Tabela inscricoes_eventos não encontrada, assumindo 0 inscrições');
+
                 inscricoesData = [];
             }
 
@@ -850,7 +850,7 @@ const AdminPage = () => {
                                 return;
                             }
                         } catch (error) {
-                            console.log('Não foi possível excluir inscrições (tabela pode não existir)');
+
                         }
                     }
 
