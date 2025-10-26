@@ -192,7 +192,7 @@ class EnvironmentConfig {
       // Configurações específicas por ambiente
       ...(this.isProduction && {
         linker: {
-          domains: ['doxologos.com', 'www.doxologos.com']
+          domains: ['doxologos.com.br', 'www.doxologos.com.br']
         },
         conversion_linker: true
       }),
@@ -245,7 +245,7 @@ class EnvironmentConfig {
   // Método para configurar alertas baseado no ambiente
   getAlertConfig() {
     const baseAlerts = {
-      email: 'admin@doxologos.com',
+      email: 'monitoramento@doxologos.com.br',
       slack: process.env.SLACK_WEBHOOK_URL,
       enabled: this.config.errorTracking.enabled
     };
