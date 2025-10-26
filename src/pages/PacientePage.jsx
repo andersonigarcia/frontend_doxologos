@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 const PacientePage = () => {
@@ -42,7 +43,7 @@ const PacientePage = () => {
             .eq('patient_id', user.id);
         
         if (reviewsError) {
-            console.error("Error fetching reviews:", reviewsError);
+            logger.apiError('fetchReviews', reviewsError, { userId: user.id });
         } else {
             setReviews(reviewsData.map(r => r.booking_id));
         }

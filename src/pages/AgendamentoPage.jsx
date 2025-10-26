@@ -131,89 +131,178 @@ const AgendamentoPage = () => {
 
     const handleBooking = async () => {
         setIsSubmitting(true);
-        const tempPassword = Math.random().toString(36).slice(-8);
-        const { data: { user: authUser }, error: getUserError } = await supabase.auth.getUser();
-
-        let userId;
-
-        if (getUserError && getUserError.message !== "User not found") {
-            toast({ variant: "destructive", title: "Erro de Autenticação", description: getUserError.message });
-            return;
-        }
-
-        if (authUser) {
-            userId = authUser.id;
-        }
-
-        // Get service details to capture current price
-        const serviceDetails = services.find(s => s.id === selectedService);
-        const valorConsulta = parseFloat(serviceDetails?.price || 0);
-
-        // Store patient contact info directly on booking for unauthenticated users and send magic link
-        const bookingData = { 
-            professional_id: selectedProfessional, 
-            service_id: selectedService, 
-            user_id: userId, 
-            booking_date: selectedDate, 
-            booking_time: selectedTime, 
-            status: 'pending_payment', 
-            patient_name: patientData.name, 
-            patient_email: patientData.email, 
-            patient_phone: patientData.phone,
-            valor_consulta: valorConsulta // Valor histórico da consulta
-        };
-
-        if (!authUser) {
-          // send magic link so patient can later access area
-          try {
-            await supabase.auth.signInWithOtp({ email: patientData.email });
-            toast({ title: 'Magic link enviado', description: 'Verifique seu email para completar o cadastro.' });
-          } catch (e) {
-            // Magic link failed silently
-          }
-        }
-        const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
-
-        if (bookingError) {
-          toast({ variant: 'destructive', title: 'Erro ao criar agendamento', description: bookingError.message });
-          return;
-        }
-
-        const bookingId = bookingInsertData?.id;
-
+        
         try {
-          // Call backend Edge Function to create Mercado Pago preference
-          const resp = await fetch('/functions/mp-create-preference', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ booking_id: bookingId, payer: { email: patientData.email, name: patientData.name, phone: patientData.phone } })
-          });
+            // 1. Verificar se há usuário autenticado
+            const { data: { user: authUser }, error: getUserError } = await supabase.auth.getUser();
 
-          if (!resp.ok) {
-            const txt = await resp.text();
-            console.error('Erro ao criar preferência de pagamento');
-            toast({ title: 'Agendamento criado', description: 'Não foi possível iniciar o pagamento. Tente novamente mais tarde.' });
-            setStep(5);
-            return;
-          }
+            if (getUserError && getUserError.message !== "User not found") {
+                toast({ variant: "destructive", title: "Erro de Autenticação", description: getUserError.message });
+                setIsSubmitting(false);
+                return;
+            }
 
-          const json = await resp.json();
-          const initPoint = json.init_point || json.mp?.init_point;
-          if (initPoint) {
-            // Redirect user to Mercado Pago checkout
-            window.location.href = initPoint;
-            return;
-          } else {
-            toast({ title: 'Agendamento criado', description: 'Pagamento deverá ser realizado manualmente.' });
-            setStep(5);
-            return;
-          }
-        } catch (err) {
-          console.error('Error creating MP preference', err);
-          toast({ title: 'Agendamento criado', description: 'Erro ao iniciar pagamento.' });
-          setStep(5);
-        } finally {
-          setIsSubmitting(false);
+            let userId;
+
+            if (authUser) {
+                // Usuário já autenticado
+                userId = authUser.id;
+            } else {
+                // 2. Usuário não autenticado - buscar ou criar pelo email
+                
+                // Primeiro, tentar criar o usuário com signUp
+                const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+                
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+                    email: patientData.email,
+                    password: tempPassword,
+                    options: {
+                        data: {
+                            full_name: patientData.name,
+                            phone: patientData.phone,
+                            role: 'user'
+                        },
+                        emailRedirectTo: `${window.location.origin}/area-do-paciente`
+                    }
+                });
+
+                if (signUpError) {
+                    // Se o erro for "User already registered", buscar o usuário existente
+                    if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
+                        // Enviar magic link para login
+                        const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({ 
+                            email: patientData.email,
+                            options: {
+                                emailRedirectTo: `${window.location.origin}/area-do-paciente`
+                            }
+                        });
+
+                        if (otpError) {
+                            console.error('Erro ao enviar magic link:', otpError);
+                            toast({ 
+                                variant: 'destructive', 
+                                title: 'Erro ao processar agendamento', 
+                                description: 'Email já cadastrado. Entre em contato para agendar.' 
+                            });
+                            setIsSubmitting(false);
+                            return;
+                        }
+
+                        // Buscar o usuário na tabela auth.users pelo email
+                        // Como não temos acesso direto, vamos usar uma workaround:
+                        // Criar o agendamento sem user_id e notificar que precisará fazer login
+                        toast({ 
+                            title: 'Magic link enviado', 
+                            description: 'Verifique seu email para fazer login e confirmar o agendamento.' 
+                        });
+                        
+                        // Permitir continuar sem user_id (será vinculado depois)
+                        userId = null;
+                        
+                    } else {
+                        console.error('Erro ao criar usuário:', signUpError);
+                        toast({ 
+                            variant: 'destructive', 
+                            title: 'Erro ao criar cadastro', 
+                            description: signUpError.message 
+                        });
+                        setIsSubmitting(false);
+                        return;
+                    }
+                } else {
+                    // Usuário criado com sucesso
+                    userId = signUpData.user?.id;
+                    
+                    // Enviar email de confirmação (magic link)
+                    toast({ 
+                        title: 'Cadastro criado!', 
+                        description: 'Verifique seu email para confirmar e acessar sua área.' 
+                    });
+                }
+            }
+
+            // 3. Get service details to capture current price
+            const serviceDetails = services.find(s => s.id === selectedService);
+            const valorConsulta = parseFloat(serviceDetails?.price || 0);
+
+            // 4. Preparar dados do agendamento
+            const bookingData = { 
+                professional_id: selectedProfessional, 
+                service_id: selectedService, 
+                booking_date: selectedDate, 
+                booking_time: selectedTime, 
+                status: 'pending_payment', 
+                patient_name: patientData.name, 
+                patient_email: patientData.email, 
+                patient_phone: patientData.phone,
+                valor_consulta: valorConsulta
+            };
+            
+            // Adicionar user_id se disponível
+            if (userId) {
+                bookingData.user_id = userId;
+            }
+
+            // 5. Criar o agendamento
+            const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
+
+            if (bookingError) {
+                console.error('Erro ao criar agendamento:', bookingError);
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Erro ao criar agendamento', 
+                    description: bookingError.message || 'Verifique os dados e tente novamente.' 
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
+            const bookingId = bookingInsertData?.id;
+
+            // 6. Criar preferência de pagamento no Mercado Pago
+            try {
+                // Call backend Edge Function to create Mercado Pago preference
+                const resp = await fetch('/functions/mp-create-preference', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ booking_id: bookingId, payer: { email: patientData.email, name: patientData.name, phone: patientData.phone } })
+                });
+
+                if (!resp.ok) {
+                    const txt = await resp.text();
+                    console.error('Erro ao criar preferência de pagamento');
+                    toast({ title: 'Agendamento criado', description: 'Não foi possível iniciar o pagamento. Tente novamente mais tarde.' });
+                    setStep(5);
+                    return;
+                }
+
+                const json = await resp.json();
+                const initPoint = json.init_point || json.mp?.init_point;
+                if (initPoint) {
+                    // Redirect user to Mercado Pago checkout
+                    window.location.href = initPoint;
+                    return;
+                } else {
+                    toast({ title: 'Agendamento criado', description: 'Pagamento deverá ser realizado manualmente.' });
+                    setStep(5);
+                    return;
+                }
+            } catch (err) {
+                console.error('Error creating MP preference', err);
+                toast({ title: 'Agendamento criado', description: 'Erro ao iniciar pagamento.' });
+                setStep(5);
+            } finally {
+                setIsSubmitting(false);
+            }
+            
+        } catch (error) {
+            console.error('Erro geral no processo de agendamento:', error);
+            toast({ 
+                variant: 'destructive', 
+                title: 'Erro no agendamento', 
+                description: 'Ocorreu um erro inesperado. Tente novamente.' 
+            });
+            setIsSubmitting(false);
         }
     };
       

@@ -1,15 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configurações do Supabase com fallbacks seguros
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://ppwjtvzrhvjinsutrjwk.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwd2p0dnpyaHZqaW5zdXRyandrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA5Mzk3NDYsImV4cCI6MjA3NjUxNTc0Nn0.U8AvVoQU6Dsf_AS38CU9X3nXJUyLpvVMj-BrCOJbcmE';
+// Configurações do Supabase - REQUER variáveis de ambiente
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Validação de configuração obrigatória
+if (!supabaseUrl || !supabaseAnonKey) {
+  const errorMsg = '❌ ERRO: Variáveis de ambiente do Supabase não configuradas. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY';
+  console.error(errorMsg);
+  throw new Error(errorMsg);
+}
 
 // Log das configurações (apenas em desenvolvimento)
 if (import.meta.env.DEV) {
   console.log('🔗 Supabase Config:', {
     url: supabaseUrl,
     hasAnonKey: !!supabaseAnonKey,
-    anonKeyPrefix: supabaseAnonKey.substring(0, 20) + '...'
+    keyPrefix: supabaseAnonKey.substring(0, 20) + '...'
   });
 }
 
