@@ -1,13 +1,35 @@
 # Node
 node_modules/
 
-# build
+# Build
 dist/
+build/
 
-# local envs
+# Environment Variables
 config/local.env
 .env.local
+.env
 
 # IDE
 .vscode/
 .idea/
+.vs/
+
+# Temporary Files
+temp/
+*.tmp
+*.temp
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Cache
+.cache/
+.vite/
+node_modules/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
