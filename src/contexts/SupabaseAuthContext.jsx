@@ -3,44 +3,79 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 
-const AuthContext = createContext(undefined);
+const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const { toast } = useToast();
-
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const handleSession = useCallback(async (session) => {
+  // Processar sessão de forma mais simples
+  const handleSession = (session) => {
+    console.log('🔐 Processando sessão:', session ? 'ativa' : 'nula');
+    
     setSession(session);
     const currentUser = session?.user ?? null;
     setUser(currentUser);
+    
     if (currentUser) {
       setUserRole(currentUser.user_metadata?.role || 'user');
+      console.log('👤 Usuário logado:', currentUser.email);
     } else {
       setUserRole(null);
+      console.log('👤 Usuário deslogado');
     }
+    
     setLoading(false);
-  }, []);
+  };
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      handleSession(session);
+    let mounted = true;
+    
+    // Inicializar autenticação de forma robusta
+    const initializeAuth = async () => {
+      try {
+        console.log('🚀 Inicializando autenticação...');
+        
+        if (!mounted) return;
+        
+        // Tentar obter sessão atual
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('❌ Erro ao obter sessão:', error);
+          handleSession(null);
+        } else {
+          console.log('✅ Sessão inicial obtida');
+          handleSession(data.session);
+        }
+      } catch (error) {
+        console.error('❌ Erro na inicialização:', error);
+        if (mounted) {
+          handleSession(null);
+        }
+      }
     };
 
-    getSession();
+    initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+    // Listener para mudanças de estado
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (mounted) {
+        console.log('🔄 Mudança de estado auth:', event);
         handleSession(session);
       }
-    );
+    });
 
-    return () => subscription.unsubscribe();
-  }, [handleSession]);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const signUp = useCallback(async (email, password, options) => {
     const { error } = await supabase.auth.signUp({
@@ -117,10 +152,13 @@ export const AuthProvider = ({ children }) => {
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => {
+// Hook separado para compatibilidade com Fast Refresh
+function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
+
+export { useAuth };
