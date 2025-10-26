@@ -1,8 +1,10 @@
-# Doxologos - Frontend (Resumo de Integração)
+# 🌟 Doxologos - Plataforma de Telepsicologia
 
-Projeto: Frontend React (Vite) para plataforma de telepsicologia.
+> **Frontend React + Vite** com integração completa de pagamentos, videoconferência e sistema de agendamentos.
 
-Este README reúne os pontos essenciais para continuar desenvolvimento, integrar pagamentos (Mercado Pago), Zoom e deploy.
+📁 **Estrutura Organizacional**: [Ver detalhes da organização de pastas](docs/README.md)
+
+Este projeto oferece uma plataforma completa para telepsicologia com autenticação robusta, sistema de agendamentos e integrações avançadas.
 
 ## O que existe hoje
 - SPA em `src/` com páginas de agendamento (`src/pages/AgendamentoPage.jsx`), contexto de autenticação (`src/contexts/SupabaseAuthContext.jsx`) e cliente Supabase em `src/lib/customSupabaseClient.js`.
