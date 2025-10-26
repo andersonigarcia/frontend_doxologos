@@ -149,7 +149,8 @@ export function AuthProvider({ children }) {
     signInWithMagicLink,
   }), [user, session, userRole, loading, signUp, signIn, signOut, signInWithMagicLink]);
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  // Sempre renderiza children - componentes individuais decidem se mostram loading
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Hook separado para compatibilidade com Fast Refresh
