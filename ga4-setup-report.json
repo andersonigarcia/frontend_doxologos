@@ -1,0 +1,15 @@
+{
+  "timestamp": "2025-10-26T00:06:00.425Z",
+  "measurementId": "G-FSXFYQVCEC",
+  "environment": "production",
+  "features": {
+    "analytics": true,
+    "performance": true,
+    "errorTracking": true
+  },
+  "files": {
+    "config": "C:\\Users\\ander\\source\\repos\\frontend_doxologos\\.env.production",
+    "validation": "C:\\Users\\ander\\source\\repos\\frontend_doxologos\\ga4-validation.js",
+    "buildScript": "C:\\Users\\ander\\source\\repos\\frontend_doxologos\\scripts\\build-production.sh"
+  }
+}
