@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -31,6 +31,7 @@ const AgendamentoPage = () => {
     const [patientData, setPatientData] = useState({ name: '', email: '', phone: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
+    const [currentMonth, setCurrentMonth] = useState(new Date());
 
     // Analytics and Error Tracking Hooks
     const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
@@ -120,6 +121,61 @@ const AgendamentoPage = () => {
         }
         
         return times;
+    };
+
+    // Funções do calendário
+    const getDaysInMonth = (date) => {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+        
+        const days = [];
+        
+        // Adicionar dias vazios do mês anterior
+        for (let i = 0; i < startingDayOfWeek; i++) {
+            days.push(null);
+        }
+        
+        // Adicionar dias do mês atual
+        for (let day = 1; day <= daysInMonth; day++) {
+            days.push(new Date(year, month, day));
+        }
+        
+        return days;
+    };
+
+    const isDateDisabled = (date) => {
+        if (!date) return true;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return date < today;
+    };
+
+    const formatDateToString = (date) => {
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const nextMonth = () => {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+    };
+
+    const prevMonth = () => {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+    };
+
+    const isPrevMonthDisabled = () => {
+        const today = new Date();
+        const currentYear = currentMonth.getFullYear();
+        const currentMonthNum = currentMonth.getMonth();
+        return currentYear < today.getFullYear() || 
+               (currentYear === today.getFullYear() && currentMonthNum <= today.getMonth());
     };
 
     // Simular loading de horários quando data ou profissional mudam
@@ -647,76 +703,199 @@ const AgendamentoPage = () => {
                     </div>
                   </div>
                 </div>
-                <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">Data</label>
-                  <input type="date" value={selectedDate} onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(''); }} min={new Date().toISOString().split('T')[0]} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" />
-                </div>
-                {selectedDate && (
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <label className="text-lg font-semibold text-gray-900" id="available-times-label">Horários Disponíveis</label>
-                      <p className="text-sm text-gray-600">
-                        {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                          weekday: 'long', 
-                          day: 'numeric', 
-                          month: 'long',
-                          timeZone: 'UTC' 
-                        })}
-                      </p>
-                    </div>
-                    {isLoadingTimes ? (
-                      <div className="flex items-center justify-center py-8">
-                        <motion.div 
-                          className="w-8 h-8 border-4 border-[#2d8659] border-t-transparent rounded-full"
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        />
-                        <span className="ml-3 text-gray-600">Carregando horários...</span>
+                
+                {/* Layout em Grid: Calendário e Horários lado a lado */}
+                <div className="grid lg:grid-cols-2 gap-6 mb-6">
+                  {/* Calendário Visual */}
+                  <div>
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                      {/* Header do Calendário */}
+                      <div className="bg-gradient-to-r from-[#2d8659] to-[#236b47] text-white px-4 py-3">
+                        <div className="flex items-center justify-between">
+                          <button
+                            onClick={prevMonth}
+                            disabled={isPrevMonthDisabled()}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              isPrevMonthDisabled() 
+                                ? 'opacity-30 cursor-not-allowed' 
+                                : 'hover:bg-white/20 active:scale-95'
+                            }`}
+                            aria-label="Mês anterior"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          
+                          <h3 className="text-lg font-bold capitalize">
+                            {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                          </h3>
+                          
+                          <button
+                            onClick={nextMonth}
+                            className="p-1.5 rounded-lg hover:bg-white/20 active:scale-95 transition-all"
+                            aria-label="Próximo mês"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
-                    ) : availableTimes.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3" role="radiogroup" aria-labelledby="available-times-label">
-                        {availableTimes.map((time) => {
-                          const isBooked = bookedSlots.includes(time);
+                      
+                      {/* Dias da Semana */}
+                      <div className="grid grid-cols-7 gap-1 px-3 py-2 bg-gray-50">
+                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                          <div key={day} className="text-center text-xs font-semibold text-gray-600 py-1">
+                            {day}
+                          </div>
+                        ))}
+                      </div>
+                      
+                      {/* Grade de Dias */}
+                      <div className="grid grid-cols-7 gap-1.5 p-3">
+                        {getDaysInMonth(currentMonth).map((date, index) => {
+                          if (!date) {
+                            return <div key={`empty-${index}`} className="aspect-square" />;
+                          }
+                          
+                          const dateString = formatDateToString(date);
+                          const isSelected = selectedDate === dateString;
+                          const isDisabled = isDateDisabled(date);
+                          const isToday = date.toDateString() === new Date().toDateString();
+                          
                           return (
-                            <motion.button 
-                              key={time} 
-                              onClick={() => !isBooked && setSelectedTime(time)} 
-                              disabled={isBooked}
-                              className={`p-4 rounded-lg border-2 transition-all duration-300 font-medium relative group ${
-                                isBooked 
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through' 
-                                  : selectedTime === time 
-                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg' 
-                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                            <motion.button
+                              key={dateString}
+                              onClick={() => {
+                                if (!isDisabled) {
+                                  setSelectedDate(dateString);
+                                  setSelectedTime('');
+                                }
+                              }}
+                              disabled={isDisabled}
+                              className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all ${
+                                isDisabled
+                                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                                  : isSelected
+                                  ? 'bg-[#2d8659] text-white shadow-lg scale-105'
+                                  : isToday
+                                  ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200'
+                                  : 'text-gray-700 hover:bg-[#2d8659]/10 hover:scale-105 border border-gray-200'
                               }`}
-                              whileHover={!isBooked ? { scale: 1.02, y: -2 } : {}}
-                              whileTap={!isBooked ? { scale: 0.98 } : {}}
-                              title={isBooked ? 'Horário não disponível' : `Agendar para ${time}`}
+                              whileHover={!isDisabled ? { scale: 1.05 } : {}}
+                              whileTap={!isDisabled ? { scale: 0.95 } : {}}
                             >
-                              <div className="text-lg">{time}</div>
-                              {!isBooked && selectedTime !== time && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                  <Clock className="w-5 h-5" />
-                                </div>
-                              )}
-                              {isBooked && (
-                                <div className="text-xs text-gray-400 mt-1">Ocupado</div>
+                              <span className="text-base">{date.getDate()}</span>
+                              {isToday && !isSelected && (
+                                <span className="text-[9px] text-blue-600 font-bold">Hoje</span>
                               )}
                             </motion.button>
                           );
                         })}
                       </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                          <CalendarX className="w-8 h-8 text-gray-400" />
+                      
+                      {/* Legenda */}
+                      <div className="flex items-center justify-center gap-4 px-3 py-2 bg-gray-50 border-t text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 bg-blue-100 border-2 border-blue-400 rounded"></div>
+                          <span className="text-gray-600">Hoje</span>
                         </div>
-                        <p className="text-gray-500 font-medium mb-2">Nenhum horário disponível para esta data</p>
-                        <p className="text-sm text-gray-400">Por favor, selecione outra data</p>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 bg-[#2d8659] rounded"></div>
+                          <span className="text-gray-600">Selecionado</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 bg-gray-50 rounded border"></div>
+                          <span className="text-gray-600">Disponível</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Horários Disponíveis */}
+                  <div className="flex flex-col">
+                    {selectedDate ? (
+                      <>
+                        <div className="mb-4">
+                          <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 border border-blue-200">
+                            <p className="text-base font-semibold text-[#2d8659] text-center">
+                              📅 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { 
+                                weekday: 'long', 
+                                day: 'numeric', 
+                                month: 'long',
+                                timeZone: 'UTC' 
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex-1 bg-white rounded-xl shadow-md border border-gray-200 p-4">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4" id="available-times-label">
+                            ⏰ Horários Disponíveis
+                          </h3>
+                          
+                          {isLoadingTimes ? (
+                            <div className="flex flex-col items-center justify-center py-12">
+                              <motion.div 
+                                className="w-8 h-8 border-4 border-[#2d8659] border-t-transparent rounded-full"
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                              />
+                              <span className="mt-3 text-gray-600">Carregando horários...</span>
+                            </div>
+                          ) : availableTimes.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
+                              {availableTimes.map((time) => {
+                                const isBooked = bookedSlots.includes(time);
+                                return (
+                                  <motion.button 
+                                    key={time} 
+                                    onClick={() => !isBooked && setSelectedTime(time)} 
+                                    disabled={isBooked}
+                                    className={`p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${
+                                      isBooked 
+                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through' 
+                                        : selectedTime === time 
+                                          ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg' 
+                                          : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                    }`}
+                                    whileHover={!isBooked ? { scale: 1.02, y: -2 } : {}}
+                                    whileTap={!isBooked ? { scale: 0.98 } : {}}
+                                    title={isBooked ? 'Horário não disponível' : `Agendar para ${time}`}
+                                  >
+                                    <div className="text-base">{time}</div>
+                                    {!isBooked && selectedTime !== time && (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                        <Clock className="w-4 h-4" />
+                                      </div>
+                                    )}
+                                    {isBooked && (
+                                      <div className="text-xs text-gray-400 mt-1">Ocupado</div>
+                                    )}
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="text-center py-12">
+                              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CalendarX className="w-8 h-8 text-gray-400" />
+                              </div>
+                              <p className="text-gray-500 font-medium mb-2">Nenhum horário disponível</p>
+                              <p className="text-sm text-gray-400">Selecione outra data</p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center p-8">
+                        <div className="text-center">
+                          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                          <p className="text-gray-500 font-medium">Selecione uma data</p>
+                          <p className="text-sm text-gray-400 mt-1">Os horários disponíveis aparecerão aqui</p>
+                        </div>
                       </div>
                     )}
                   </div>
-                )}
+                </div>
+                
                 <div className="flex gap-4 mt-6">
                   <Button onClick={() => setStep(2)} variant="outline">Voltar</Button>
                   {selectedDate && selectedTime && <Button onClick={() => setStep(4)} className="bg-[#2d8659] hover:bg-[#236b47]">Continuar</Button>}
