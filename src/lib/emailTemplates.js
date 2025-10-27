@@ -2,177 +2,388 @@
   constructor() {
     this.brandColor = "#2d8659";
     this.baseUrl = import.meta.env.VITE_APP_URL || "https://doxologos.com.br";
-    this.supportEmail = "contato@doxologos.com.br";
+    this.supportEmail = "doxologos@doxologos.com.br";
   }
   
   baseTemplate(content, title = "Doxologos") {
-    return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>${title}</title><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5}  .container{max-width:600px;margin:0 auto;background:white;padding:30px;border-radius:8px}.header{color:${this.brandColor};border-bottom:3px solid ${this.brandColor};padding-bottom:15px;margin-bottom:20px}.footer{margin-top:30px;padding-top:15px;border-top:1px solid #eee;font-size:12px;color:#666}</style></head><body><div class="container"><div class="header"><h1>Doxologos Psicologia</h1></div>${content}<div class="footer"><p>Doxologos Psicologia | ${this.supportEmail}</p></div></div></body></html>`;
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>${title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+    .header { background: ${this.brandColor}; color: white; padding: 25px 30px; text-align: center; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+    .content { padding: 30px; }
+    .info-box { background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid ${this.brandColor}; }
+    .info-box p { margin: 8px 0; font-size: 15px; }
+    .info-box strong { color: #1f2937; font-weight: 600; }
+    .tips-box { background: #fffbeb; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b; }
+    .tips-box h3 { margin: 0 0 15px 0; color: #92400e; font-size: 16px; }
+    .tips-box ul { margin: 0; padding-left: 20px; }
+    .tips-box li { margin: 8px 0; color: #78350f; }
+    .btn { display: inline-block; padding: 14px 32px; background: ${this.brandColor}; color: white !important; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 10px 5px; transition: background 0.2s; }
+    .btn:hover { background: #236b47; }
+    .btn-secondary { background: #6b7280; }
+    .btn-secondary:hover { background: #4b5563; }
+    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb; }
+    .footer p { margin: 5px 0; }
+    .heart { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💙 Doxologos Psicologia</h1>
+    </div>
+    <div class="content">
+      ${content}
+    </div>
+    <div class="footer">
+      <p><strong>Doxologos Psicologia</strong></p>
+      <p>📧 ${this.supportEmail} | 🌐 <a href="${this.baseUrl}" style="color: ${this.brandColor};">${this.baseUrl}</a></p>
+      <p style="margin-top: 10px; font-size: 12px;">Feito com <span class="heart">❤️</span> para cuidar da sua saúde mental</p>
+    </div>
+  </div>
+</body>
+</html>`;
   }
   
   formatDate(dateString) {
     try {
-      return new Date(dateString).toLocaleDateString('pt-BR');
+      const date = new Date(dateString + 'T00:00:00');
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     } catch {
       return dateString;
     }
   }
   
+  // EMAIL 1: Confirmação de Agendamento (para o PACIENTE)
   bookingConfirmation(booking) {
     const content = `
-      <h2 style="color:${this.brandColor}">✅ Agendamento Confirmado!</h2>
-      <p>Olá <strong>${booking.patient_name}</strong>,</p>
-      <p>Seu agendamento foi realizado com sucesso! Estamos processando seu pagamento.</p>
-      <div style="background:#f9f9f9;padding:15px;margin:20px 0;border-left:4px solid ${this.brandColor}">
-        <p style="margin:5px 0"><strong>📋 Serviço:</strong> ${booking.service_name}</p>
-        <p style="margin:5px 0"><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
-        <p style="margin:5px 0"><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin:5px 0"><strong>🕐 Horário:</strong> ${booking.appointment_time}</p>
+      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${booking.patient_name}!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Seu agendamento foi realizado com sucesso! Seguem os detalhes:
+      </p>
+      
+      <div class="info-box">
+        <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
+        <p><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
+        <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
       </div>
-      <p><strong>Próximos passos:</strong></p>
-      <ol>
-        <li>Aguarde a confirmação do pagamento</li>
-        <li>Você receberá um email com os detalhes da consulta</li>
-        <li>Um lembrete será enviado 24h antes do horário</li>
-      </ol>
-      <p style="text-align:center;margin-top:30px">
-        <a href="${this.baseUrl}/area-do-paciente" style="display:inline-block;padding:12px 30px;background:${this.brandColor};color:white;text-decoration:none;border-radius:6px;font-weight:600">Acessar Minha Área</a>
+
+      <div class="tips-box">
+        <h3>📋 Próximos passos:</h3>
+        <ul>
+          <li>Aguarde a confirmação do pagamento</li>
+          <li>Você receberá um e-mail com o link da consulta após a aprovação</li>
+          <li>Um lembrete automático será enviado 24h antes do horário</li>
+        </ul>
+      </div>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/area-do-paciente" class="btn">Acessar Minha Área</a>
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Qualquer dúvida ou imprevisto, conte com a equipe de suporte.<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
       </p>
     `;
-    return this.baseTemplate(content, "Confirmação de Agendamento");
+    return this.baseTemplate(content, "Agendamento Confirmado - Doxologos");
   }
 
-  paymentApproved(booking) {
+  // EMAIL 2: Novo Agendamento (para o PROFISSIONAL)
+  newBookingForProfessional(booking) {
     const content = `
-      <h2 style="color:#059669">💳 Pagamento Aprovado!</h2>
-      <p>Olá <strong>${booking.patient_name}</strong>,</p>
-      <p>Ótimas notícias! Seu pagamento foi processado com sucesso e sua consulta está confirmada.</p>
-      <div style="background:#f0fdf4;padding:15px;margin:20px 0;border-left:4px solid #059669">
-        <p style="margin:5px 0"><strong>📋 Serviço:</strong> ${booking.service_name}</p>
-        <p style="margin:5px 0"><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
-        <p style="margin:5px 0"><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin:5px 0"><strong>🕐 Horário:</strong> ${booking.appointment_time}</p>
-        ${booking.meeting_link ? `<p style="margin:5px 0"><strong>🔗 Link da consulta:</strong> <a href="${booking.meeting_link}" style="color:#059669">${booking.meeting_link}</a></p>` : ''}
-      </div>
-      <p><strong>Importante:</strong></p>
-      <ul>
-        <li>Chegue 5 minutos antes do horário agendado</li>
-        <li>Tenha em mãos documentos e exames relevantes</li>
-        <li>Você receberá um lembrete 24h antes</li>
-      </ul>
-      <p style="text-align:center;margin-top:30px">
-        <a href="${this.baseUrl}/area-do-paciente" style="display:inline-block;padding:12px 30px;background:#059669;color:white;text-decoration:none;border-radius:6px;font-weight:600">Ver Detalhes da Consulta</a>
+      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${booking.professional_name}!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Temos uma nova consulta confirmada para você na Doxologos. Seguem os detalhes:
       </p>
-    `;
-    return this.baseTemplate(content, "Pagamento Aprovado");
-  }
+      
+      <div class="info-box">
+        <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
+        <p><strong>👤 Paciente:</strong> ${booking.patient_name}</p>
+        ${booking.patient_phone ? `<p><strong>📱 Telefone:</strong> ${booking.patient_phone}</p>` : ''}
+        ${booking.patient_email ? `<p><strong>📧 E-mail:</strong> ${booking.patient_email}</p>` : ''}
+        <p><strong>🖥️ Atendimento:</strong> ${booking.service_name} (via Zoom)</p>
+      </div>
 
-  bookingRescheduled(booking, oldDate, oldTime, reason = null) {
-    const content = `
-      <h2 style="color:#f59e0b">📅 Agendamento Reagendado</h2>
-      <p>Olá <strong>${booking.patient_name}</strong>,</p>
-      <p>Informamos que seu agendamento foi alterado.</p>
-      ${reason ? `<p style="background:#fef3c7;padding:10px;border-radius:4px;font-style:italic">"${reason}"</p>` : ''}
-      <div style="background:#f9f9f9;padding:15px;margin:20px 0;border-left:4px solid #dc2626">
-        <h3 style="margin-top:0;color:#dc2626">❌ Horário Anterior:</h3>
-        <p style="margin:5px 0"><strong>Data:</strong> ${this.formatDate(oldDate)}</p>
-        <p style="margin:5px 0"><strong>Horário:</strong> ${oldTime}</p>
-      </div>
-      <div style="background:#f0fdf4;padding:15px;margin:20px 0;border-left:4px solid #059669">
-        <h3 style="margin-top:0;color:#059669">✅ Novo Horário:</h3>
-        <p style="margin:5px 0"><strong>Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin:5px 0"><strong>Horário:</strong> ${booking.appointment_time}</p>
-        <p style="margin:5px 0"><strong>Profissional:</strong> ${booking.professional_name}</p>
-      </div>
-      <p>Se você tiver alguma dúvida ou não puder comparecer no novo horário, entre em contato conosco.</p>
-      <p style="text-align:center;margin-top:30px">
-        <a href="${this.baseUrl}/area-do-paciente" style="display:inline-block;padding:12px 30px;background:${this.brandColor};color:white;text-decoration:none;border-radius:6px;font-weight:600">Gerenciar Agendamento</a>
-      </p>
-    `;
-    return this.baseTemplate(content, "Reagendamento de Consulta");
-  }
-
-  bookingCancellation(booking, reason = null, refundInfo = null) {
-    const content = `
-      <h2 style="color:#dc2626">❌ Agendamento Cancelado</h2>
-      <p>Olá <strong>${booking.patient_name}</strong>,</p>
-      <p>Informamos que seu agendamento foi cancelado.</p>
-      ${reason ? `<p style="background:#fee2e2;padding:10px;border-radius:4px"><strong>Motivo:</strong> ${reason}</p>` : ''}
-      <div style="background:#f9f9f9;padding:15px;margin:20px 0;border-left:4px solid #dc2626">
-        <p style="margin:5px 0"><strong>Serviço:</strong> ${booking.service_name}</p>
-        <p style="margin:5px 0"><strong>Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin:5px 0"><strong>Horário:</strong> ${booking.appointment_time}</p>
-      </div>
-      ${refundInfo ? `
-        <div style="background:#dbeafe;padding:15px;margin:20px 0;border-radius:4px">
-          <p style="margin:5px 0"><strong>💰 Informações sobre reembolso:</strong></p>
-          <p style="margin:5px 0">${refundInfo}</p>
+      ${booking.meeting_link ? `
+        <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6;">
+          <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: 600;">🔗 Informações da Sala:</p>
+          <p style="margin: 5px 0;"><strong>Link:</strong> <a href="${booking.meeting_link}" style="color: #2563eb; word-break: break-all;">${booking.meeting_link}</a></p>
+          ${booking.meeting_password ? `<p style="margin: 5px 0;"><strong>Senha de acesso:</strong> <code style="background: white; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${booking.meeting_password}</code></p>` : ''}
         </div>
       ` : ''}
-      <p><strong>O que fazer agora:</strong></p>
-      <ul>
-        <li>Se desejar, você pode fazer um novo agendamento</li>
-        <li>Entre em contato conosco se tiver dúvidas</li>
-        <li>Estamos à disposição para ajudá-lo</li>
-      </ul>
-      <p style="text-align:center;margin-top:30px">
-        <a href="${this.baseUrl}/agendamento" style="display:inline-block;padding:12px 30px;background:${this.brandColor};color:white;text-decoration:none;border-radius:6px;font-weight:600">Fazer Novo Agendamento</a>
+
+      <div class="tips-box">
+        <h3>💡 Dica:</h3>
+        <ul>
+          <li>Abra a sala alguns minutos antes do horário agendado para garantir que tudo esteja pronto para o paciente</li>
+          <li>Teste o áudio, vídeo e compartilhe a tela se necessário</li>
+          <li>Caso o paciente tenha dificuldade para entrar, esteja disponível para auxiliá-lo com calma e empatia</li>
+        </ul>
+      </div>
+
+      <p style="background: #f0fdf4; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981; margin: 25px 0; font-size: 15px; color: #065f46;">
+        💙 <strong>Nosso objetivo</strong> é que cada paciente se sinta acolhido e bem atendido em todas as etapas.
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Qualquer dúvida ou imprevisto, conte com a equipe de suporte.<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
       </p>
     `;
-    return this.baseTemplate(content, "Cancelamento de Agendamento");
+    return this.baseTemplate(content, "Nova Consulta Agendada - Doxologos");
   }
 
+  // EMAIL 3: Pagamento Aprovado
+  paymentApproved(booking) {
+    const content = `
+      <h2 style="color: #059669; font-size: 22px; margin: 0 0 10px 0;">💳 Pagamento Aprovado!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${booking.patient_name}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Ótimas notícias! Seu pagamento foi processado com sucesso e sua consulta está <strong>confirmada</strong>.
+      </p>
+      
+      <div class="info-box">
+        <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
+        <p><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
+        <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
+      </div>
+
+      ${booking.meeting_link ? `
+        <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6;">
+          <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: 600;">🔗 Link da Consulta:</p>
+          <p style="margin: 5px 0;"><a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 14px; padding: 12px 24px;">Acessar Sala Zoom</a></p>
+          ${booking.meeting_password ? `<p style="margin: 10px 0 0 0; font-size: 14px;"><strong>Senha:</strong> <code style="background: white; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${booking.meeting_password}</code></p>` : ''}
+        </div>
+      ` : ''}
+
+      <div class="tips-box">
+        <h3>📋 Importante:</h3>
+        <ul>
+          <li>Entre na sala 5 minutos antes do horário agendado</li>
+          <li>Esteja em um local tranquilo e com boa iluminação</li>
+          <li>Tenha em mãos documentos e exames relevantes</li>
+          <li>Verifique sua conexão de internet e funcionamento de câmera/microfone</li>
+          <li>Você receberá um lembrete 24h antes da consulta</li>
+        </ul>
+      </div>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/area-do-paciente" class="btn">Ver Detalhes Completos</a>
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Estamos ansiosos para atendê-lo(a)!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, "Pagamento Aprovado - Doxologos");
+  }
+
+  // EMAIL 4: Reagendamento
+  bookingRescheduled(booking, oldDate, oldTime, reason = null) {
+    const content = `
+      <h2 style="color: #f59e0b; font-size: 22px; margin: 0 0 10px 0;">📅 Agendamento Reagendado</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${booking.patient_name}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Informamos que seu agendamento foi alterado.
+      </p>
+      
+      ${reason ? `
+        <div style="background: #fef3c7; padding: 15px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
+          <p style="margin: 0; color: #92400e; font-style: italic;"><strong>Motivo:</strong> "${reason}"</p>
+        </div>
+      ` : ''}
+
+      <div style="background: #fee2e2; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #dc2626;">
+        <h3 style="margin: 0 0 12px 0; color: #991b1b; font-size: 16px;">❌ Horário Anterior:</h3>
+        <p style="margin: 5px 0; color: #7f1d1d;"><strong>Data:</strong> ${this.formatDate(oldDate)}</p>
+        <p style="margin: 5px 0; color: #7f1d1d;"><strong>Horário:</strong> ${oldTime}</p>
+      </div>
+
+      <div style="background: #d1fae5; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #059669;">
+        <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 16px;">✅ Novo Horário:</h3>
+        <p style="margin: 5px 0; color: #064e3b;"><strong>Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p style="margin: 5px 0; color: #064e3b;"><strong>Horário:</strong> ${booking.appointment_time}</p>
+        <p style="margin: 5px 0; color: #064e3b;"><strong>Profissional:</strong> ${booking.professional_name}</p>
+      </div>
+
+      <p style="font-size: 15px; color: #4b5563; margin: 20px 0;">
+        Se você não puder comparecer no novo horário ou tiver alguma dúvida, entre em contato conosco o quanto antes.
+      </p>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/area-do-paciente" class="btn">Gerenciar Agendamento</a>
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, "Reagendamento - Doxologos");
+  }
+
+  // EMAIL 5: Cancelamento
+  bookingCancellation(booking, reason = null, refundInfo = null) {
+    const content = `
+      <h2 style="color: #dc2626; font-size: 22px; margin: 0 0 10px 0;">❌ Agendamento Cancelado</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${booking.patient_name}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Informamos que seu agendamento foi cancelado.
+      </p>
+      
+      ${reason ? `
+        <div style="background: #fee2e2; padding: 15px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #dc2626;">
+          <p style="margin: 0; color: #991b1b;"><strong>Motivo:</strong> ${reason}</p>
+        </div>
+      ` : ''}
+
+      <div class="info-box">
+        <p><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
+        <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
+        <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
+      </div>
+
+      ${refundInfo ? `
+        <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6;">
+          <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: 600;">💰 Informações sobre Reembolso:</p>
+          <p style="margin: 0; color: #1e3a8a;">${refundInfo}</p>
+        </div>
+      ` : ''}
+
+      <div class="tips-box">
+        <h3>📋 O que fazer agora:</h3>
+        <ul>
+          <li>Se desejar, você pode fazer um novo agendamento a qualquer momento</li>
+          <li>Entre em contato conosco se tiver dúvidas ou precisar de ajuda</li>
+          <li>Estamos sempre à disposição para atendê-lo(a)</li>
+        </ul>
+      </div>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/agendamento" class="btn">Fazer Novo Agendamento</a>
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Esperamos vê-lo(a) em breve!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, "Cancelamento - Doxologos");
+  }
+
+  // EMAIL 6: Lembrete (24h antes)
   bookingReminder(booking) {
     const content = `
-      <h2 style="color:${this.brandColor}">⏰ Lembrete: Sua Consulta é Amanhã!</h2>
-      <p>Olá <strong>${booking.patient_name}</strong>,</p>
-      <p>Este é um lembrete amigável de que sua consulta está agendada para <strong>amanhã</strong>!</p>
-      <div style="background:#fef3c7;padding:15px;margin:20px 0;border-left:4px solid #f59e0b">
-        <p style="margin:5px 0"><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
-        <p style="margin:5px 0"><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin:5px 0"><strong>🕐 Horário:</strong> ${booking.appointment_time}</p>
-        ${booking.meeting_link ? `<p style="margin:5px 0"><strong>🔗 Link:</strong> <a href="${booking.meeting_link}" style="color:#f59e0b;font-weight:600">${booking.meeting_link}</a></p>` : ''}
+      <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">⏰ Sua Consulta é Amanhã!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${booking.patient_name}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Este é um lembrete amigável de que sua consulta está agendada para <strong>amanhã</strong>!
+      </p>
+      
+      <div style="background: #fef3c7; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
+        <p style="margin: 8px 0; color: #78350f;"><strong>� Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p style="margin: 8px 0; color: #78350f;"><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
+        <p style="margin: 8px 0; color: #78350f;"><strong>�‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
+        <p style="margin: 8px 0; color: #78350f;"><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
       </div>
-      <p><strong>📋 Checklist antes da consulta:</strong></p>
-      <ul>
-        <li>✓ Verifique sua conexão de internet (se for online)</li>
-        <li>✓ Separe documentos e exames relevantes</li>
-        <li>✓ Esteja em um local tranquilo e privado</li>
-        <li>✓ Acesse o link 5 minutos antes</li>
-      </ul>
+
       ${booking.meeting_link ? `
-        <p style="text-align:center;margin-top:30px">
-          <a href="${booking.meeting_link}" style="display:inline-block;padding:12px 30px;background:${this.brandColor};color:white;text-decoration:none;border-radius:6px;font-weight:600">Acessar Consulta</a>
-        </p>
+        <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6; text-align: center;">
+          <p style="margin: 0 0 15px 0; color: #1e40af; font-weight: 600; font-size: 16px;">🔗 Link da Consulta</p>
+          <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 15px;">Acessar Sala Zoom</a>
+          ${booking.meeting_password ? `<p style="margin: 15px 0 0 0; font-size: 14px; color: #1e3a8a;"><strong>Senha:</strong> <code style="background: white; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${booking.meeting_password}</code></p>` : ''}
+        </div>
       ` : ''}
-      <p style="margin-top:20px;font-size:14px;color:#666">Caso precise cancelar ou reagendar, entre em contato o quanto antes.</p>
+
+      <div class="tips-box">
+        <h3>📋 Checklist antes da consulta:</h3>
+        <ul>
+          <li>✓ Verifique sua conexão de internet</li>
+          <li>✓ Teste câmera e microfone com antecedência</li>
+          <li>✓ Separe documentos e exames relevantes</li>
+          <li>✓ Esteja em um local tranquilo e privado</li>
+          <li>✓ Entre na sala 5 minutos antes do horário</li>
+        </ul>
+      </div>
+
+      <p style="background: #f0fdf4; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981; margin: 25px 0; font-size: 14px; color: #065f46;">
+        💡 <strong>Dica:</strong> Se precisar cancelar ou reagendar, entre em contato o quanto antes. Assim podemos disponibilizar o horário para outros pacientes.
+      </p>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/area-do-paciente" class="btn">Acessar Minha Área</a>
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Até amanhã!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
     `;
-    return this.baseTemplate(content, "Lembrete de Consulta");
+    return this.baseTemplate(content, "Lembrete de Consulta - Doxologos");
   }
 
+  // EMAIL 7: Agradecimento
   bookingThankYou(booking) {
     const content = `
-      <h2 style="color:${this.brandColor}">🙏 Obrigado pela sua Consulta!</h2>
-      <p>Olá <strong>${booking.patient_name}</strong>,</p>
-      <p>Esperamos que sua consulta com <strong>${booking.professional_name}</strong> tenha sido proveitosa!</p>
-      <div style="background:#f0fdf4;padding:15px;margin:20px 0;border-radius:8px;text-align:center">
-        <p style="font-size:18px;margin:10px 0">⭐⭐⭐⭐⭐</p>
-        <p style="margin:10px 0">Sua opinião é muito importante para nós!</p>
+      <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">🙏 Obrigado pela Consulta!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${booking.patient_name}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Esperamos que sua consulta com <strong>${booking.professional_name}</strong> tenha sido proveitosa!
+      </p>
+      
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; margin: 25px 0; border-radius: 8px; text-align: center; color: white;">
+        <p style="font-size: 28px; margin: 0 0 10px 0;">⭐⭐⭐⭐⭐</p>
+        <p style="font-size: 18px; margin: 0; font-weight: 600;">Sua opinião é muito importante!</p>
       </div>
-      <p><strong>Gostaríamos de ouvir você:</strong></p>
-      <ul>
-        <li>Como foi sua experiência?</li>
+
+      <p style="font-size: 16px; color: #4b5563; margin: 20px 0;">
+        <strong>Gostaríamos de ouvir você:</strong>
+      </p>
+      <ul style="color: #4b5563; line-height: 1.8;">
+        <li>Como foi sua experiência conosco?</li>
         <li>O profissional atendeu suas expectativas?</li>
         <li>Há algo que possamos melhorar?</li>
       </ul>
-      <p style="text-align:center;margin-top:30px">
-        <a href="${this.baseUrl}/depoimento" style="display:inline-block;padding:12px 30px;background:${this.brandColor};color:white;text-decoration:none;border-radius:6px;font-weight:600;margin:5px">Deixar Avaliação</a>
-        <a href="${this.baseUrl}/agendamento" style="display:inline-block;padding:12px 30px;background:#6b7280;color:white;text-decoration:none;border-radius:6px;font-weight:600;margin:5px">Agendar Nova Consulta</a>
+
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/depoimento" class="btn" style="font-size: 15px;">⭐ Deixar Avaliação</a>
+        <a href="${this.baseUrl}/agendamento" class="btn btn-secondary" style="font-size: 15px;">📅 Agendar Nova Consulta</a>
       </p>
-      <p style="margin-top:30px;padding:15px;background:#f9f9f9;border-radius:4px;font-style:italic;text-align:center">
-        "Cuidar da saúde mental é um ato de coragem e amor próprio. Continue sua jornada com a gente!"
+
+      <div style="background: linear-gradient(to right, #f0fdf4, #dbeafe); padding: 25px; margin: 30px 0; border-radius: 8px; border-left: 4px solid ${this.brandColor}; text-align: center;">
+        <p style="margin: 0; font-size: 16px; color: #1f2937; font-style: italic; line-height: 1.6;">
+          💙 <strong>"Cuidar da saúde mental é um ato de coragem e amor próprio.<br>Continue sua jornada com a gente!"</strong>
+        </p>
+      </div>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Conte sempre conosco!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
       </p>
     `;
-    return this.baseTemplate(content, "Obrigado pela Consulta");
+    return this.baseTemplate(content, "Obrigado - Doxologos");
   }
 }
 
