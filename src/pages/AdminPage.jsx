@@ -100,7 +100,7 @@ const AdminPage = () => {
 
         
         const promises = [
-            isAdmin ? supabase.from('bookings').select('*, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, professional:professionals(name), service:services(name)').eq('professional_id', professionalId),
+            isAdmin ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalId),
             supabase.from('services').select('*'),
             isAdmin ? supabase.from('professionals').select('*') : supabase.from('professionals').select('*').eq('id', professionalId),
             isAdmin ? supabase.from('availability').select('*') : supabase.from('availability').select('*').eq('professional_id', professionalId),
@@ -1309,6 +1309,55 @@ const AdminPage = () => {
                                                                     <span className="block text-xs">{b.patient_phone || 'N/A'}</span>
                                                                 </div>
                                                             </div>
+                                                            
+                                                            {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
+                                                            {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
+                                                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
+                                                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                        </svg>
+                                                                        Acesso ao Zoom
+                                                                    </h4>
+                                                                    <div className="space-y-2 text-sm">
+                                                                        <div>
+                                                                            <span className="text-gray-600 font-medium">Link da Reunião:</span>
+                                                                            <a 
+                                                                                href={b.meeting_link} 
+                                                                                target="_blank" 
+                                                                                rel="noopener noreferrer" 
+                                                                                className="block text-blue-600 hover:text-blue-800 underline break-all"
+                                                                            >
+                                                                                {b.meeting_link}
+                                                                            </a>
+                                                                        </div>
+                                                                        {b.meeting_password && (
+                                                                            <div>
+                                                                                <span className="text-gray-600 font-medium">Senha: </span>
+                                                                                <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
+                                                                                    {b.meeting_password}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                        {b.meeting_start_url && (
+                                                                            <div>
+                                                                                <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
+                                                                                <a 
+                                                                                    href={b.meeting_start_url} 
+                                                                                    target="_blank" 
+                                                                                    rel="noopener noreferrer" 
+                                                                                    className="block text-green-600 hover:text-green-800 underline break-all"
+                                                                                >
+                                                                                    {b.meeting_start_url}
+                                                                                </a>
+                                                                                <span className="text-xs text-gray-500 italic">
+                                                                                    ⚠️ Use este link para iniciar a reunião como anfitrião
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         
                                                         <div className="flex gap-2 ml-4">
