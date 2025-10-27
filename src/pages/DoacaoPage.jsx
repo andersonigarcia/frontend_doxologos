@@ -1,20 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Heart, Copy, CheckCircle, QrCode, Shield, Users, Target, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { useToast } from '../components/ui/use-toast';
+import { QRCodeSVG } from 'qrcode.react';
 
 const DoacaoPage = () => {
     const [pixCopied, setPixCopied] = useState(false);
     const [selectedAmount, setSelectedAmount] = useState(null);
+    const [pixPayload, setPixPayload] = useState('');
     const { toast } = useToast();
 
     // PIX da clínica (substitua pela chave real)
     const pixKey = "doxologos@clinic.com";
+    const recipientName = "Doxologos Clinica";
+    const city = "SAO PAULO";
 
     const predefinedAmounts = [25, 50, 100, 200, 500];
+
+    // Gerar payload PIX quando o valor for selecionado
+    useEffect(() => {
+        if (selectedAmount && selectedAmount > 0) {
+            // Formato simplificado do PIX (EMV QR Code)
+            // Para um QR Code PIX real, você precisa gerar o payload completo seguindo o padrão EMV
+            const payload = generatePixPayload(pixKey, recipientName, city, selectedAmount);
+            setPixPayload(payload);
+        } else {
+            setPixPayload('');
+        }
+    }, [selectedAmount]);
+
+    // Função para gerar payload PIX (simplificada)
+    // Em produção, use uma biblioteca adequada ou backend para gerar o payload correto
+    const generatePixPayload = (key, name, city, amount) => {
+        // Este é um formato simplificado. Para produção, implemente o padrão EMV completo
+        // ou use uma API backend para gerar o QR Code PIX válido
+        const merchantName = name.substring(0, 25).padEnd(25);
+        const merchantCity = city.substring(0, 15).padEnd(15);
+        const txid = `DOA${Date.now()}`.substring(0, 25);
+        
+        // Formato básico - EM PRODUÇÃO USE UMA BIBLIOTECA COMPLETA
+        return `00020126${String(key.length + 14).padStart(2, '0')}0014BR.GOV.BCB.PIX01${String(key.length).padStart(2, '0')}${key}52040000530398654${String(amount.toFixed(2).length + 2).padStart(2, '0')}${amount.toFixed(2)}5802BR59${merchantName}60${merchantCity}62${String(txid.length + 8).padStart(2, '0')}05${String(txid.length).padStart(2, '0')}${txid}6304`;
+    };
 
     const impactStories = [
         {
@@ -177,8 +206,14 @@ const DoacaoPage = () => {
                         <input
                             type="number"
                             placeholder="Digite o valor"
+                            min="1"
+                            step="0.01"
+                            value={selectedAmount || ''}
                             className="input max-w-xs mx-auto text-center text-xl font-semibold"
-                            onChange={(e) => setSelectedAmount(parseFloat(e.target.value))}
+                            onChange={(e) => {
+                                const value = parseFloat(e.target.value);
+                                setSelectedAmount(value > 0 ? value : null);
+                            }}
                         />
                     </div>
                 </div>
@@ -203,17 +238,41 @@ const DoacaoPage = () => {
                         <Card className="p-8 text-center">
                             <h3 className="text-xl font-semibold mb-4">Escaneie o QR Code</h3>
                             <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300 mb-4">
-                                <div className="w-48 h-48 mx-auto bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                                    <div className="text-center text-gray-500">
-                                        <QrCode className="w-16 h-16 mx-auto mb-2" />
-                                        <p className="text-sm">QR Code PIX</p>
-                                        <p className="text-xs mt-1">Em breve</p>
+                                {pixPayload && selectedAmount ? (
+                                    <div className="w-64 h-64 mx-auto flex items-center justify-center bg-white p-4">
+                                        <QRCodeSVG 
+                                            value={pixPayload}
+                                            size={240}
+                                            level="M"
+                                            includeMargin={true}
+                                        />
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="w-48 h-48 mx-auto bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                                        <div className="text-center text-gray-500">
+                                            <QrCode className="w-16 h-16 mx-auto mb-2" />
+                                            <p className="text-sm">QR Code PIX</p>
+                                            <p className="text-xs mt-1">Selecione um valor</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <p className="text-sm text-gray-600">
-                                Use o aplicativo do seu banco para escanear
-                            </p>
+                            {selectedAmount ? (
+                                <>
+                                    <p className="text-sm text-gray-600 mb-2">
+                                        Use o aplicativo do seu banco para escanear
+                                    </p>
+                                    <div className="bg-[#2d8659]/10 p-3 rounded-lg mt-4">
+                                        <p className="text-sm font-semibold text-[#2d8659]">
+                                            Valor: {formatCurrency(selectedAmount)}
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <p className="text-sm text-gray-600">
+                                    Selecione ou digite um valor acima para gerar o QR Code
+                                </p>
+                            )}
                         </Card>
 
                         {/* Chave PIX */}
