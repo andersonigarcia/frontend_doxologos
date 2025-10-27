@@ -4,6 +4,10 @@ import { createLogger, defineConfig } from 'vite';
 import inlineEditPlugin from './plugins/visual-editor/vite-plugin-react-inline-editor.js';
 import editModeDevPlugin from './plugins/visual-editor/vite-plugin-edit-mode.js';
 import iframeRouteRestorationPlugin from './plugins/vite-plugin-iframe-route-restoration.js';
+import { loadLocalEnv } from './functions/load-config.js';
+
+// Carregar variáveis de ambiente de config/local.env
+loadLocalEnv();
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -245,6 +249,44 @@ export default defineConfig({
 			'Cross-Origin-Embedder-Policy': 'credentialless',
 		},
 		allowedHosts: true,
+		proxy: {
+			'/functions': {
+				target: 'http://localhost:3000',
+				configure: (proxy, options) => {
+					// Middleware para simular Edge Functions em desenvolvimento
+					proxy.on('proxyReq', (proxyReq, req, res) => {
+						if (req.url.includes('/mp-create-preference')) {
+							// Interceptar e responder com mock
+							proxy.removeAllListeners('proxyReq');
+							proxy.removeAllListeners('proxyRes');
+							
+							let body = '';
+							req.on('data', chunk => { body += chunk.toString(); });
+							req.on('end', () => {
+								try {
+									const data = JSON.parse(body);
+									console.log('🔵 [DEV] Mock MP Preference:', data);
+									
+									// Simular resposta do Mercado Pago
+									res.writeHead(200, { 'Content-Type': 'application/json' });
+									res.end(JSON.stringify({
+										success: true,
+										init_point: `${process.env.VITE_APP_URL || 'http://localhost:3000'}/pagamento-simulado?booking_id=${data.booking_id}`,
+										mp: {
+											id: 'mock_preference_' + Date.now(),
+											init_point: `${process.env.VITE_APP_URL || 'http://localhost:3000'}/pagamento-simulado?booking_id=${data.booking_id}`
+										}
+									}));
+								} catch (err) {
+									res.writeHead(500, { 'Content-Type': 'application/json' });
+									res.end(JSON.stringify({ error: 'Mock MP error', details: err.message }));
+								}
+							});
+						}
+					});
+				}
+			}
+		}
 	},
 	resolve: {
 		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json', ],

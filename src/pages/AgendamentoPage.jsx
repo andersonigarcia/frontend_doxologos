@@ -8,11 +8,14 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useBookingTracking, useFormTracking } from '@/hooks/useAnalytics';
+import { BookingEmailManager } from '@/lib/bookingEmailManager';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
     const navigate = useNavigate();
+    const { user: authUser } = useAuth();
     const [step, setStep] = useState(1);
     const [professionals, setProfessionals] = useState([]);
     const [services, setServices] = useState([]);
@@ -133,15 +136,7 @@ const AgendamentoPage = () => {
         setIsSubmitting(true);
         
         try {
-            // 1. Verificar se há usuário autenticado
-            const { data: { user: authUser }, error: getUserError } = await supabase.auth.getUser();
-
-            if (getUserError && getUserError.message !== "User not found") {
-                toast({ variant: "destructive", title: "Erro de Autenticação", description: getUserError.message });
-                setIsSubmitting(false);
-                return;
-            }
-
+            // 1. Usar o usuário do contexto (já autenticado ou null)
             let userId;
 
             if (authUser) {
@@ -167,37 +162,69 @@ const AgendamentoPage = () => {
                 });
 
                 if (signUpError) {
-                    // Se o erro for "User already registered", buscar o usuário existente
+                    // Se o erro for "User already registered", buscar user_id existente
                     if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
-                        // Enviar magic link para login
-                        const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({ 
-                            email: patientData.email,
-                            options: {
-                                emailRedirectTo: `${window.location.origin}/area-do-paciente`
-                            }
-                        });
-
-                        if (otpError) {
-                            console.error('Erro ao enviar magic link:', otpError);
-                            toast({ 
-                                variant: 'destructive', 
-                                title: 'Erro ao processar agendamento', 
-                                description: 'Email já cadastrado. Entre em contato para agendar.' 
-                            });
-                            setIsSubmitting(false);
-                            return;
-                        }
-
-                        // Buscar o usuário na tabela auth.users pelo email
-                        // Como não temos acesso direto, vamos usar uma workaround:
-                        // Criar o agendamento sem user_id e notificar que precisará fazer login
-                        toast({ 
-                            title: 'Magic link enviado', 
-                            description: 'Verifique seu email para fazer login e confirmar o agendamento.' 
-                        });
                         
-                        // Permitir continuar sem user_id (será vinculado depois)
-                        userId = null;
+                        // IMPORTANTE: Buscar user_id usando função RPC do Supabase
+                        // Se a função RPC não existir, usa workaround (bookings anteriores)
+                        
+                        // Tentar usar função RPC primeiro
+                        const { data: rpcUserId, error: rpcError } = await supabase
+                            .rpc('get_user_id_by_email', { user_email: patientData.email });
+
+                        if (!rpcError && rpcUserId) {
+                            userId = rpcUserId;
+                            console.log('✅ user_id encontrado via RPC:', userId);
+                        } else {
+                            console.log('⚠️ RPC falhou, usando workaround...');
+                            // Workaround: Buscar user_id de agendamentos anteriores deste email
+                            const { data: existingBooking } = await supabase
+                                .from('bookings')
+                                .select('user_id')
+                                .eq('patient_email', patientData.email)
+                                .not('user_id', 'is', null)
+                                .limit(1)
+                                .single();
+
+                            if (existingBooking && existingBooking.user_id) {
+                                userId = existingBooking.user_id;
+                                console.log('✅ user_id encontrado via workaround:', userId);
+                            } else {
+                                // Se não encontrou user_id, ENVIAR magic link e pedir para fazer login
+                                console.log('❌ user_id não encontrado, enviando magic link...');
+                                
+                                const { error: otpError } = await supabase.auth.signInWithOtp({ 
+                                    email: patientData.email,
+                                    options: {
+                                        emailRedirectTo: `${window.location.origin}/area-do-paciente`
+                                    }
+                                });
+
+                                if (otpError) {
+                                    console.error('Erro ao enviar magic link:', otpError);
+                                    toast({ 
+                                        variant: 'destructive', 
+                                        title: 'Erro ao processar agendamento', 
+                                        description: otpError.message || 'Não foi possível enviar o link de acesso. Tente novamente.' 
+                                    });
+                                } else {
+                                    toast({ 
+                                        variant: 'default',
+                                        title: 'Email de acesso enviado', 
+                                        description: 'Clique no link do email para fazer login e completar seu agendamento.' 
+                                    });
+                                }
+                                
+                                setIsSubmitting(false);
+                                return;
+                            }
+                        }
+                        
+                        // Se chegou aqui, user_id foi encontrado - continuar com agendamento
+                        toast({ 
+                            title: 'Bem-vindo de volta!', 
+                            description: 'Processando seu agendamento...' 
+                        });
                         
                     } else {
                         console.error('Erro ao criar usuário:', signUpError);
@@ -258,6 +285,31 @@ const AgendamentoPage = () => {
             }
 
             const bookingId = bookingInsertData?.id;
+
+            // 5.5. Enviar email de confirmação do agendamento
+            try {
+                console.log('📧 Preparando envio de email de confirmação...');
+                const emailManager = new BookingEmailManager();
+                
+                const bookingDetails = {
+                    id: bookingId,
+                    patient_name: patientData.name,
+                    patient_email: patientData.email,
+                    patient_phone: patientData.phone,
+                    service_name: selectedService?.name || 'Consulta',
+                    professional_name: selectedProfessional?.name || 'Profissional',
+                    appointment_date: selectedDate,
+                    appointment_time: selectedTime,
+                    status: 'pending'
+                };
+
+                console.log('📧 Enviando email para:', patientData.email);
+                await emailManager.sendBookingConfirmation(bookingDetails);
+                console.log('✅ Email de confirmação enviado com sucesso!');
+            } catch (emailError) {
+                // Não bloquear o fluxo se o email falhar
+                console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
+            }
 
             // 6. Criar preferência de pagamento no Mercado Pago
             try {
