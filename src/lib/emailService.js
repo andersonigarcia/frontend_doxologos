@@ -20,14 +20,25 @@ class EmailService {
     });
   }
 
-  async sendEmail({ to, subject, html, replyTo = null, type = 'notification' }) {
+  async sendEmail({ to, subject, html, replyTo = null, cc = null, type = 'notification' }) {
     if (!this.enabled) {
       console.log('⚠️ Emails desabilitados');
       return { success: true, messageId: 'disabled', disabled: true };
     }
     
     try {
-      console.log('📧 Enviando email via Supabase Edge Function:', { to, subject, type });
+      console.log('📧 Enviando email via Supabase Edge Function:', { to, cc, subject, type });
+      
+      const emailPayload = {
+        from: { email: this.fromEmail, name: this.fromName },
+        to, subject, html,
+        replyTo: replyTo || this.fromEmail
+      };
+      
+      // Adiciona CC se fornecido
+      if (cc) {
+        emailPayload.cc = cc;
+      }
       
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -35,11 +46,7 @@ class EmailService {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`
         },
-        body: JSON.stringify({
-          from: { email: this.fromEmail, name: this.fromName },
-          to, subject, html,
-          replyTo: replyTo || this.fromEmail
-        })
+        body: JSON.stringify(emailPayload)
       });
       
       if (!response.ok) {
@@ -64,30 +71,7 @@ class EmailService {
       throw error;
     }
   }
-
-  isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  async checkStatus() {
-    if (!this.enabled) return { status: 'disabled' };
-    if (this.isDev) return { status: 'development' };
-    
-    try {
-      const response = await fetch(this.apiUrl, {
-        method: 'OPTIONS',
-        headers: { 'Authorization': `Bearer ${this.apiKey}` }
-      });
-      return { status: response.ok ? 'active' : 'error' };
-    } catch {
-      return { status: 'error' };
-    }
-  }
 }
 
 const emailService = new EmailService();
 export default emailService;
-
-export const sendEmail = (data) => emailService.sendEmail(data);
-export const validateEmail = (email) => emailService.isValidEmail(email);
-export const checkEmailService = () => emailService.checkStatus();
