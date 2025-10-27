@@ -81,6 +81,10 @@ const AdminPage = () => {
     });
     const [showFilters, setShowFilters] = useState(false);
     
+    // Estados de ordenação
+    const [bookingSortField, setBookingSortField] = useState('default'); // 'default', 'date', 'status', 'professional'
+    const [bookingSortOrder, setBookingSortOrder] = useState('asc'); // 'asc' ou 'desc'
+    
     // Estados para modais de confirmação
     const [confirmDialog, setConfirmDialog] = useState({
         isOpen: false,
@@ -493,6 +497,78 @@ const AdminPage = () => {
         const { error } = await supabase.from('reviews').update({ is_approved: isApproved }).eq('id', reviewId);
         if (error) { toast({ variant: 'destructive', title: 'Erro ao atualizar avaliação' }); }
         else { toast({ title: `Avaliação ${isApproved ? 'aprovada' : 'reprovada'}.` }); fetchAllData(); }
+    };
+    
+    // Função para ordenar bookings
+    const getSortedBookings = (bookingsToSort) => {
+        const statusPriority = {
+            'confirmed': 1,
+            'paid': 1,
+            'pending_payment': 2,
+            'completed': 3,
+            'cancelled_by_patient': 4,
+            'cancelled_by_professional': 4
+        };
+        
+        const sorted = [...bookingsToSort].sort((a, b) => {
+            if (bookingSortField === 'status') {
+                const priorityA = statusPriority[a.status] || 5;
+                const priorityB = statusPriority[b.status] || 5;
+                const statusCompare = priorityA - priorityB;
+                if (statusCompare !== 0) return bookingSortOrder === 'asc' ? statusCompare : -statusCompare;
+            }
+            
+            if (bookingSortField === 'professional') {
+                const nameA = a.professional?.name || '';
+                const nameB = b.professional?.name || '';
+                const nameCompare = nameA.localeCompare(nameB);
+                if (nameCompare !== 0) return bookingSortOrder === 'asc' ? nameCompare : -nameCompare;
+            }
+            
+            if (bookingSortField === 'date' || bookingSortField === 'default') {
+                const dateA = new Date(a.booking_date + 'T' + a.booking_time);
+                const dateB = new Date(b.booking_date + 'T' + b.booking_time);
+                const dateCompare = dateA - dateB;
+                if (dateCompare !== 0) {
+                    return bookingSortField === 'default' || bookingSortOrder === 'desc' ? -dateCompare : dateCompare;
+                }
+            }
+            
+            // Ordenação secundária por status se estiver ordenando por data ou profissional
+            if (bookingSortField === 'date' || bookingSortField === 'professional') {
+                const priorityA = statusPriority[a.status] || 5;
+                const priorityB = statusPriority[b.status] || 5;
+                return priorityA - priorityB;
+            }
+            
+            return 0;
+        });
+        
+        // Aplica ordenação default: confirmados > pendentes > cancelados, depois por data decrescente
+        if (bookingSortField === 'default') {
+            return sorted.sort((a, b) => {
+                const priorityA = statusPriority[a.status] || 5;
+                const priorityB = statusPriority[b.status] || 5;
+                const statusCompare = priorityA - priorityB;
+                if (statusCompare !== 0) return statusCompare;
+                
+                // Mesma prioridade, ordena por data decrescente (mais recente primeiro)
+                const dateA = new Date(a.booking_date + 'T' + a.booking_time);
+                const dateB = new Date(b.booking_date + 'T' + b.booking_time);
+                return dateB - dateA;
+            });
+        }
+        
+        return sorted;
+    };
+    
+    const handleBookingSort = (field) => {
+        if (bookingSortField === field) {
+            setBookingSortOrder(bookingSortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setBookingSortField(field);
+            setBookingSortOrder(field === 'date' ? 'desc' : 'asc');
+        }
     };
     
     // Função para filtrar agendamentos
@@ -1088,6 +1164,52 @@ const AdminPage = () => {
                                     );
                                 })()}
                                 
+                                {/* Ordenação de Agendamentos */}
+                                {bookings.length > 0 && (
+                                    <div className="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-200">
+                                        <h3 className="font-semibold mb-3 flex items-center text-blue-900">
+                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                            </svg>
+                                            Ordenação
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button 
+                                                onClick={() => handleBookingSort('default')} 
+                                                variant="outline" 
+                                                size="sm"
+                                                className={bookingSortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                            >
+                                                📋 Padrão (Status + Data)
+                                            </Button>
+                                            <Button 
+                                                onClick={() => handleBookingSort('status')} 
+                                                variant="outline" 
+                                                size="sm"
+                                                className={bookingSortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                            >
+                                                🎯 Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                            </Button>
+                                            <Button 
+                                                onClick={() => handleBookingSort('date')} 
+                                                variant="outline" 
+                                                size="sm"
+                                                className={bookingSortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                            >
+                                                📅 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                            </Button>
+                                            <Button 
+                                                onClick={() => handleBookingSort('professional')} 
+                                                variant="outline" 
+                                                size="sm"
+                                                className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                            >
+                                                👤 Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 {/* Seção de Filtros - Recolhível */}
                                 {showFilters && (
                                     <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
@@ -1225,7 +1347,7 @@ const AdminPage = () => {
                                     
                                     return (
                                         <div className="space-y-2">
-                                            {filteredBookings.map((b, index) => {
+                                            {getSortedBookings(filteredBookings).map((b, index) => {
                                             const statusColors = {
                                                 'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                 'confirmed': 'bg-green-100 text-green-800 border-green-200',

@@ -21,6 +21,75 @@ const PacientePage = () => {
 
     const [reviewingBooking, setReviewingBooking] = useState(null);
     const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
+    
+    // Estados de ordenação
+    const [sortField, setSortField] = useState('default'); // 'default', 'date', 'status'
+    const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
+    
+    // Função para ordenar bookings
+    const getSortedBookings = (bookingsToSort) => {
+        const statusPriority = {
+            'confirmed': 1,
+            'paid': 1,
+            'pending_payment': 2,
+            'completed': 3,
+            'cancelled_by_patient': 4,
+            'cancelled_by_professional': 4
+        };
+        
+        const sorted = [...bookingsToSort].sort((a, b) => {
+            if (sortField === 'status') {
+                const priorityA = statusPriority[a.status] || 5;
+                const priorityB = statusPriority[b.status] || 5;
+                const statusCompare = priorityA - priorityB;
+                if (statusCompare !== 0) return sortOrder === 'asc' ? statusCompare : -statusCompare;
+            }
+            
+            if (sortField === 'date' || sortField === 'default') {
+                const dateA = new Date(a.booking_date + 'T' + a.booking_time);
+                const dateB = new Date(b.booking_date + 'T' + b.booking_time);
+                const dateCompare = dateA - dateB;
+                if (dateCompare !== 0) {
+                    return sortField === 'default' || sortOrder === 'desc' ? -dateCompare : dateCompare;
+                }
+            }
+            
+            // Ordenação secundária por status se estiver ordenando por data
+            if (sortField === 'date') {
+                const priorityA = statusPriority[a.status] || 5;
+                const priorityB = statusPriority[b.status] || 5;
+                return priorityA - priorityB;
+            }
+            
+            return 0;
+        });
+        
+        // Aplica ordenação default: confirmados > pendentes > cancelados, depois por data decrescente
+        if (sortField === 'default') {
+            return sorted.sort((a, b) => {
+                const priorityA = statusPriority[a.status] || 5;
+                const priorityB = statusPriority[b.status] || 5;
+                const statusCompare = priorityA - priorityB;
+                if (statusCompare !== 0) return statusCompare;
+                
+                // Mesma prioridade, ordena por data decrescente (mais recente primeiro)
+                const dateA = new Date(a.booking_date + 'T' + a.booking_time);
+                const dateB = new Date(b.booking_date + 'T' + b.booking_time);
+                return dateB - dateA;
+            });
+        }
+        
+        return sorted;
+    };
+    
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder(field === 'date' ? 'desc' : 'asc');
+        }
+    };
 
     const fetchData = useCallback(async () => {
         if (!user) return;
@@ -161,7 +230,37 @@ const PacientePage = () => {
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
                     <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
                     <div className="bg-white rounded-xl shadow-lg p-6">
-                        <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Meus Agendamentos</h2>
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-bold flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Meus Agendamentos</h2>
+                            {bookings.length > 0 && (
+                                <div className="flex gap-2">
+                                    <Button 
+                                        onClick={() => handleSort('default')} 
+                                        variant="outline" 
+                                        size="sm"
+                                        className={sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                    >
+                                        Padrão
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleSort('status')} 
+                                        variant="outline" 
+                                        size="sm"
+                                        className={sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                    >
+                                        Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </Button>
+                                    <Button 
+                                        onClick={() => handleSort('date')} 
+                                        variant="outline" 
+                                        size="sm"
+                                        className={sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                    >
+                                        Data {sortField === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                         {loading ? <p>Carregando seus agendamentos...</p> : bookings.length === 0 ? (
                             <div className="text-center py-10">
                                 <p className="text-gray-500 mb-4">Você ainda não tem agendamentos.</p>
@@ -169,7 +268,7 @@ const PacientePage = () => {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {bookings.map((booking) => (
+                                {getSortedBookings(bookings).map((booking) => (
                                     <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
                                         <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
                                             <div>
