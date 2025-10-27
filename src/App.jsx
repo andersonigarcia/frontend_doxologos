@@ -18,6 +18,11 @@ import DoacaoPage from '@/pages/DoacaoPage';
 import DepoimentoPage from '@/pages/DepoimentoPage';
 import DepoimentosAdminPage from '@/pages/DepoimentosAdminPage';
 import PagamentoSimuladoPage from '@/pages/PagamentoSimuladoPage';
+import CheckoutPage from '@/pages/CheckoutPage';
+import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
+import CheckoutFailurePage from '@/pages/CheckoutFailurePage';
+import CheckoutPendingPage from '@/pages/CheckoutPendingPage';
+import PaymentsPage from '@/pages/PaymentsPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -89,6 +94,31 @@ function AppContent() {
         <Route path="/pagamento-simulado" element={
           <PageErrorBoundary pageName="Pagamento Simulado">
             <PagamentoSimuladoPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/checkout" element={
+          <PageErrorBoundary pageName="Checkout">
+            <CheckoutPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/checkout/success" element={
+          <PageErrorBoundary pageName="Checkout Success">
+            <CheckoutSuccessPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/checkout/failure" element={
+          <PageErrorBoundary pageName="Checkout Failure">
+            <CheckoutFailurePage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/checkout/pending" element={
+          <PageErrorBoundary pageName="Checkout Pending">
+            <CheckoutPendingPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/admin/pagamentos" element={
+          <PageErrorBoundary pageName="Gerenciamento de Pagamentos">
+            <PaymentsPage />
           </PageErrorBoundary>
         } />
       </Routes>

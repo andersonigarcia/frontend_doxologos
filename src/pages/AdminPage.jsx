@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1024,6 +1024,7 @@ const AdminPage = () => {
         admin: [
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
             { value: 'reviews', label: 'Avaliações', icon: Star },
+            { value: 'payments', label: 'Pagamentos', icon: DollarSign },
             { value: 'professionals', label: 'Profissionais', icon: Users },
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
             { value: 'services', label: 'Serviços', icon: Briefcase },
@@ -1672,6 +1673,31 @@ const AdminPage = () => {
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="payments" className="mt-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold flex items-center">
+                                        <DollarSign className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                        Pagamentos
+                                    </h2>
+                                </div>
+                                <div className="text-center py-12">
+                                    <DollarSign className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                                    <h3 className="text-xl font-semibold mb-2">Gerenciamento de Pagamentos</h3>
+                                    <p className="text-gray-600 mb-6">
+                                        Acesse o painel completo de pagamentos para visualizar transações, 
+                                        processar reembolsos e gerar relatórios.
+                                    </p>
+                                    <Link to="/admin/pagamentos">
+                                        <Button className="bg-[#2d8659] hover:bg-[#236b47]">
+                                            <DollarSign className="w-4 h-4 mr-2" />
+                                            Ir para Página de Pagamentos
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
                         </TabsContent>

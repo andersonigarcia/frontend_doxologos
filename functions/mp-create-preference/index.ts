@@ -17,10 +17,28 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN')!;
+    // Supabase URL and Service Role Key are automatically available in Edge Functions
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? `https://${Deno.env.get('SUPABASE_REFERENCE_ID')}.supabase.co`;
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
+    const mpAccessToken = Deno.env.get('MP_ACCESS_TOKEN');
 
+    if (!mpAccessToken) {
+      console.error('MP_ACCESS_TOKEN not configured');
+      return new Response(
+        JSON.stringify({ error: 'MP_ACCESS_TOKEN not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      console.error('Supabase credentials not available', { supabaseUrl: !!supabaseUrl, hasKey: !!supabaseServiceRoleKey });
+      return new Response(
+        JSON.stringify({ error: 'Supabase credentials not available' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Creating Supabase client...');
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, { 
       auth: { persistSession: false } 
     });
@@ -79,6 +97,28 @@ serve(async (req) => {
       email: booking.patient_email
     };
 
+    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:5173';
+
+    // Parse payment_methods se vier como string
+    let parsedPaymentMethods = payment_methods;
+    if (typeof payment_methods === 'string') {
+      try {
+        parsedPaymentMethods = JSON.parse(payment_methods);
+      } catch (e) {
+        console.error('Failed to parse payment_methods:', e);
+        parsedPaymentMethods = {
+          excluded_payment_methods: [],
+          excluded_payment_types: [],
+          installments: 12
+        };
+      }
+    }
+
+    // Garantir que excluded_payment_types é sempre array
+    if (parsedPaymentMethods && typeof parsedPaymentMethods.excluded_payment_types === 'string') {
+      parsedPaymentMethods.excluded_payment_types = [parsedPaymentMethods.excluded_payment_types];
+    }
+
     // Create preference payload
     const preference = {
       items: [
@@ -98,15 +138,15 @@ serve(async (req) => {
         identification: payerData.identification || {},
         address: payerData.address || {}
       },
-      payment_methods: payment_methods || {
+      payment_methods: parsedPaymentMethods || {
         excluded_payment_methods: [],
         excluded_payment_types: [],
         installments: 12
       },
       back_urls: {
-        success: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkout/success?external_reference=${booking_id}`,
-        failure: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkout/failure?external_reference=${booking_id}`,
-        pending: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/checkout/pending?external_reference=${booking_id}`
+        success: `${frontendUrl}/checkout/success?external_reference=${booking_id}`,
+        failure: `${frontendUrl}/checkout/failure?external_reference=${booking_id}`,
+        pending: `${frontendUrl}/checkout/pending?external_reference=${booking_id}`
       },
       auto_return: 'approved',
       notification_url: `${supabaseUrl}/functions/v1/mp-webhook`,
@@ -189,7 +229,7 @@ serve(async (req) => {
   } catch (err) {
     console.error('create preference error', err);
     return new Response(
-      JSON.stringify({ error: 'internal error', details: err.message }),
+      JSON.stringify({ error: 'internal error', details: (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
