@@ -85,6 +85,10 @@ const AdminPage = () => {
     const [bookingSortField, setBookingSortField] = useState('default'); // 'default', 'date', 'status', 'professional'
     const [bookingSortOrder, setBookingSortOrder] = useState('asc'); // 'asc' ou 'desc'
     
+    // Estados de paginação
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    
     // Estados para modais de confirmação
     const [confirmDialog, setConfirmDialog] = useState({
         isOpen: false,
@@ -492,6 +496,65 @@ const AdminPage = () => {
         setEditingBooking(null); 
         fetchAllData();
     };
+    
+    // Função para mudança rápida de status
+    const handleQuickStatusChange = async (bookingId, newStatus, bookingData) => {
+        try {
+            const { error } = await supabase
+                .from('bookings')
+                .update({ status: newStatus })
+                .eq('id', bookingId);
+            
+            if (error) throw error;
+            
+            // Enviar email de notificação baseado no novo status
+            try {
+                const emailData = {
+                    patient_name: bookingData.patient_name,
+                    patient_email: bookingData.patient_email,
+                    booking_date: bookingData.booking_date,
+                    booking_time: bookingData.booking_time,
+                    service_name: bookingData.service?.name || 'Consulta',
+                    professional_name: bookingData.professional?.name || 'Profissional'
+                };
+                
+                if (newStatus === 'confirmed' || newStatus === 'paid') {
+                    await bookingEmailManager.sendPaymentApproved(emailData);
+                } else if (newStatus === 'completed') {
+                    await bookingEmailManager.sendThankYou(emailData);
+                } else if (newStatus.includes('cancelled')) {
+                    await bookingEmailManager.sendCancellation(emailData, 'Cancelado pela administração');
+                }
+            } catch (emailError) {
+                console.error('Erro ao enviar email:', emailError);
+            }
+            
+            toast({ 
+                title: 'Status atualizado!', 
+                description: `Agendamento marcado como ${getStatusLabel(newStatus)}` 
+            });
+            
+            fetchAllData();
+        } catch (error) {
+            console.error('Erro ao atualizar status:', error);
+            toast({ 
+                variant: 'destructive', 
+                title: 'Erro ao atualizar status', 
+                description: error.message 
+            });
+        }
+    };
+    
+    const getStatusLabel = (status) => {
+        const labels = {
+            'pending_payment': 'Pendente Pagamento',
+            'confirmed': 'Confirmado',
+            'completed': 'Concluído',
+            'cancelled_by_patient': 'Cancelado pelo Paciente',
+            'cancelled_by_professional': 'Cancelado pelo Profissional'
+        };
+        return labels[status] || status;
+    };
 
     const handleReviewApproval = async (reviewId, isApproved) => {
         const { error } = await supabase.from('reviews').update({ is_approved: isApproved }).eq('id', reviewId);
@@ -509,6 +572,8 @@ const AdminPage = () => {
             'cancelled_by_patient': 4,
             'cancelled_by_professional': 4
         };
+        
+        const now = new Date();
         
         const sorted = [...bookingsToSort].sort((a, b) => {
             if (bookingSortField === 'status') {
@@ -528,9 +593,44 @@ const AdminPage = () => {
             if (bookingSortField === 'date' || bookingSortField === 'default') {
                 const dateA = new Date(a.booking_date + 'T' + a.booking_time);
                 const dateB = new Date(b.booking_date + 'T' + b.booking_time);
+                
+                // Para ordenação padrão, prioriza por status primeiro
+                if (bookingSortField === 'default') {
+                    const priorityA = statusPriority[a.status] || 5;
+                    const priorityB = statusPriority[b.status] || 5;
+                    const statusCompare = priorityA - priorityB;
+                    
+                    if (statusCompare !== 0) {
+                        // Dentro do mesmo status, agendamentos próximos primeiro
+                        if (priorityA === priorityB) {
+                            // Se ambos estão no futuro, mais próximo primeiro
+                            if (dateA >= now && dateB >= now) {
+                                return dateA - dateB;
+                            }
+                            // Se ambos estão no passado, mais recente primeiro
+                            if (dateA < now && dateB < now) {
+                                return dateB - dateA;
+                            }
+                            // Se um está no futuro e outro no passado, futuro primeiro
+                            return dateA >= now ? -1 : 1;
+                        }
+                        return statusCompare;
+                    }
+                    
+                    // Mesmo status: agendamentos próximos (futuros) primeiro, depois passados recentes
+                    if (dateA >= now && dateB >= now) {
+                        return dateA - dateB; // Futuro: mais próximo primeiro
+                    }
+                    if (dateA < now && dateB < now) {
+                        return dateB - dateA; // Passado: mais recente primeiro
+                    }
+                    return dateA >= now ? -1 : 1; // Futuro antes de passado
+                }
+                
+                // Para ordenação manual por data
                 const dateCompare = dateA - dateB;
                 if (dateCompare !== 0) {
-                    return bookingSortField === 'default' || bookingSortOrder === 'desc' ? -dateCompare : dateCompare;
+                    return bookingSortOrder === 'desc' ? -dateCompare : dateCompare;
                 }
             }
             
@@ -543,21 +643,6 @@ const AdminPage = () => {
             
             return 0;
         });
-        
-        // Aplica ordenação default: confirmados > pendentes > cancelados, depois por data decrescente
-        if (bookingSortField === 'default') {
-            return sorted.sort((a, b) => {
-                const priorityA = statusPriority[a.status] || 5;
-                const priorityB = statusPriority[b.status] || 5;
-                const statusCompare = priorityA - priorityB;
-                if (statusCompare !== 0) return statusCompare;
-                
-                // Mesma prioridade, ordena por data decrescente (mais recente primeiro)
-                const dateA = new Date(a.booking_date + 'T' + a.booking_time);
-                const dateB = new Date(b.booking_date + 'T' + b.booking_time);
-                return dateB - dateA;
-            });
-        }
         
         return sorted;
     };
@@ -623,7 +708,25 @@ const AdminPage = () => {
             date_to: '',
             search: ''
         });
+        setCurrentPage(1); // Resetar página ao limpar filtros
     };
+    
+    // Função para paginar resultados
+    const getPaginatedBookings = (bookingsList) => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        return bookingsList.slice(startIndex, endIndex);
+    };
+    
+    // Calcular total de páginas
+    const getTotalPages = (bookingsList) => {
+        return Math.ceil(bookingsList.length / itemsPerPage);
+    };
+    
+    // Resetar página quando filtros mudarem
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [bookingFilters, bookingSortField, bookingSortOrder]);
     
     // Funções para calcular totalizadores
     const calculateTotals = (bookingsList) => {
@@ -1321,6 +1424,9 @@ const AdminPage = () => {
                                 
                                 {(() => {
                                     const filteredBookings = getFilteredBookings();
+                                    const sortedBookings = getSortedBookings(filteredBookings);
+                                    const paginatedBookings = getPaginatedBookings(sortedBookings);
+                                    const totalPages = getTotalPages(sortedBookings);
                                     
                                     if (bookings.length === 0) {
                                         return (
@@ -1347,8 +1453,29 @@ const AdminPage = () => {
                                     }
                                     
                                     return (
-                                        <div className="space-y-2">
-                                            {getSortedBookings(filteredBookings).map((b, index) => {
+                                        <div>
+                                            {/* Info de paginação */}
+                                            <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+                                                <span>
+                                                    Mostrando <strong>{((currentPage - 1) * itemsPerPage) + 1}</strong> a <strong>{Math.min(currentPage * itemsPerPage, sortedBookings.length)}</strong> de <strong>{sortedBookings.length}</strong> agendamento(s)
+                                                </span>
+                                                <select 
+                                                    value={itemsPerPage}
+                                                    onChange={(e) => {
+                                                        setItemsPerPage(Number(e.target.value));
+                                                        setCurrentPage(1);
+                                                    }}
+                                                    className="input text-sm py-1"
+                                                >
+                                                    <option value="5">5 por página</option>
+                                                    <option value="10">10 por página</option>
+                                                    <option value="20">20 por página</option>
+                                                    <option value="50">50 por página</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                            {paginatedBookings.map((b, index) => {
                                             const statusColors = {
                                                 'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                 'confirmed': 'bg-green-100 text-green-800 border-green-200',
@@ -1483,7 +1610,24 @@ const AdminPage = () => {
                                                             )}
                                                         </div>
                                                         
-                                                        <div className="flex gap-2 ml-4">
+                                                        <div className="flex gap-2 ml-4 flex-col items-end">
+                                                            {/* Mudança rápida de status */}
+                                                            <div className="w-48">
+                                                                <label className="block text-xs text-gray-600 mb-1">Status Rápido:</label>
+                                                                <select
+                                                                    value={b.status}
+                                                                    onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
+                                                                    className="w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                                                >
+                                                                    <option value="pending_payment">Pendente Pagamento</option>
+                                                                    <option value="confirmed">Confirmado</option>
+                                                                    <option value="completed">Concluído</option>
+                                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                </select>
+                                                            </div>
+                                                            
+                                                            <div className="flex gap-2">
                                                             <Dialog>
                                                                 <DialogTrigger asChild>
                                                                     <Button 
@@ -1638,11 +1782,50 @@ const AdminPage = () => {
                                                                     </DialogFooter>
                                                                 </DialogContent>
                                                             </Dialog>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             );
                                             })}
+                                            
+                                            {/* Navegação de Páginas */}
+                                            {totalPages > 1 && (
+                                                <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t">
+                                                    <Button 
+                                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                                        disabled={currentPage === 1}
+                                                        variant="outline"
+                                                        size="sm"
+                                                    >
+                                                        ← Anterior
+                                                    </Button>
+                                                    
+                                                    <div className="flex gap-1">
+                                                        {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
+                                                            <Button
+                                                                key={page}
+                                                                onClick={() => setCurrentPage(page)}
+                                                                variant={currentPage === page ? "default" : "outline"}
+                                                                size="sm"
+                                                                className={currentPage === page ? "bg-[#2d8659] hover:bg-[#236b47]" : ""}
+                                                            >
+                                                                {page}
+                                                            </Button>
+                                                        ))}
+                                                    </div>
+                                                    
+                                                    <Button 
+                                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                                        disabled={currentPage === totalPages}
+                                                        variant="outline"
+                                                        size="sm"
+                                                    >
+                                                        Próxima →
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                         </div>
                                     );
                                 })()}
