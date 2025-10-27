@@ -11,6 +11,7 @@ import { useBookingTracking, useFormTracking } from '@/hooks/useAnalytics';
 import { BookingEmailManager } from '@/lib/bookingEmailManager';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { zoomService } from '@/lib/zoomService';
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
@@ -133,16 +134,30 @@ const AgendamentoPage = () => {
     }, [selectedDate, selectedProfessional]);
 
     const handleBooking = async () => {
+        console.log('🚀 [handleBooking] INÍCIO - Iniciando processo de agendamento');
+        console.log('🚀 [handleBooking] Dados do formulário:', {
+            selectedDate,
+            selectedTime,
+            selectedService,
+            selectedProfessional,
+            patientData,
+            authUser: !!authUser
+        });
+        
         setIsSubmitting(true);
         
         try {
             // 1. Usar o usuário do contexto (já autenticado ou null)
             let userId;
 
+            console.log('👤 [handleBooking] Verificando autenticação...');
+            
             if (authUser) {
                 // Usuário já autenticado
                 userId = authUser.id;
+                console.log('✅ [handleBooking] Usuário autenticado:', userId);
             } else {
+                console.log('⚠️ [handleBooking] Usuário NÃO autenticado - criando/buscando pelo email...');
                 // 2. Usuário não autenticado - buscar ou criar pelo email
                 
                 // Primeiro, tentar criar o usuário com signUp
@@ -215,6 +230,7 @@ const AgendamentoPage = () => {
                                     });
                                 }
                                 
+                                console.log('❌ [handleBooking] RETURN: user_id não encontrado, magic link enviado');
                                 setIsSubmitting(false);
                                 return;
                             }
@@ -228,6 +244,7 @@ const AgendamentoPage = () => {
                         
                     } else {
                         console.error('Erro ao criar usuário:', signUpError);
+                        console.log('❌ [handleBooking] RETURN: Erro ao criar cadastro');
                         toast({ 
                             variant: 'destructive', 
                             title: 'Erro ao criar cadastro', 
@@ -248,10 +265,19 @@ const AgendamentoPage = () => {
                 }
             }
 
+            console.log('💰 [handleBooking] Buscando detalhes do serviço...');
+            
             // 3. Get service details to capture current price
             const serviceDetails = services.find(s => s.id === selectedService);
             const valorConsulta = parseFloat(serviceDetails?.price || 0);
+            
+            console.log('💰 [handleBooking] Serviço encontrado:', { 
+                serviceName: serviceDetails?.name, 
+                price: valorConsulta 
+            });
 
+            console.log('📝 [handleBooking] Preparando dados do agendamento...');
+            
             // 4. Preparar dados do agendamento
             const bookingData = { 
                 professional_id: selectedProfessional, 
@@ -269,9 +295,81 @@ const AgendamentoPage = () => {
             if (userId) {
                 bookingData.user_id = userId;
             }
+            
+            console.log('✅ [handleBooking] bookingData preparado:', bookingData);
+            console.log('🎯 [handleBooking] Iniciando criação do Zoom...');
+
+            // 4.5. Criar sala do Zoom ANTES de inserir o agendamento
+            let zoomMeetingData = null;
+            try {
+                console.log('🎥 Criando sala do Zoom...');
+                console.log('🎥 Dados do agendamento:', {
+                    booking_date: selectedDate,
+                    booking_time: selectedTime,
+                    patient_name: patientData.name,
+                    service_name: selectedService?.name,
+                    professional_name: selectedProfessional?.name
+                });
+
+                zoomMeetingData = await zoomService.createBookingMeeting({
+                    booking_date: selectedDate,
+                    booking_time: selectedTime,
+                    patient_name: patientData.name,
+                    service_name: selectedService?.name || 'Consulta',
+                    professional_name: selectedProfessional?.name || 'Profissional'
+                });
+
+                if (zoomMeetingData) {
+                    console.log('✅ Sala do Zoom criada com sucesso!');
+                    console.log('🔗 Link:', zoomMeetingData.meeting_link);
+                    console.log('🔑 Senha:', zoomMeetingData.meeting_password);
+                    // Adicionar dados do Zoom ao booking
+                    bookingData.meeting_link = zoomMeetingData.meeting_link;
+                    bookingData.meeting_password = zoomMeetingData.meeting_password;
+                    bookingData.meeting_id = zoomMeetingData.meeting_id;
+                    bookingData.meeting_start_url = zoomMeetingData.start_url;
+                } else {
+                    console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
+                    toast({ 
+                        title: 'Aviso', 
+                        description: 'Não foi possível criar a sala do Zoom automaticamente. O link será enviado posteriormente.',
+                        variant: 'default'
+                    });
+                }
+            } catch (zoomError) {
+                console.error('❌ Erro ao criar sala do Zoom:', zoomError);
+                console.error('❌ Detalhes do erro:', {
+                    name: zoomError.name,
+                    message: zoomError.message,
+                    stack: zoomError.stack
+                });
+                
+                // Mostrar aviso ao usuário mas não bloquear o fluxo
+                toast({ 
+                    title: 'Aviso sobre Zoom', 
+                    description: 'Não foi possível criar a sala do Zoom automaticamente. O link será enviado posteriormente.',
+                    variant: 'default'
+                });
+            }
 
             // 5. Criar o agendamento
+            console.log('💾 Dados do agendamento antes de inserir no banco:', {
+                ...bookingData,
+                has_meeting_link: !!bookingData.meeting_link,
+                has_meeting_password: !!bookingData.meeting_password,
+                has_meeting_id: !!bookingData.meeting_id,
+                has_meeting_start_url: !!bookingData.meeting_start_url
+            });
+
             const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
+
+            console.log('💾 Resultado do insert:', {
+                success: !bookingError,
+                data: bookingInsertData,
+                error: bookingError,
+                meeting_link_saved: bookingInsertData?.meeting_link,
+                meeting_password_saved: bookingInsertData?.meeting_password
+            });
 
             if (bookingError) {
                 console.error('Erro ao criar agendamento:', bookingError);
@@ -300,7 +398,9 @@ const AgendamentoPage = () => {
                     professional_name: selectedProfessional?.name || 'Profissional',
                     appointment_date: selectedDate,
                     appointment_time: selectedTime,
-                    status: 'pending'
+                    status: 'pending',
+                    meeting_link: zoomMeetingData?.meeting_link,
+                    meeting_password: zoomMeetingData?.meeting_password
                 };
 
                 console.log('📧 Enviando email para:', patientData.email);

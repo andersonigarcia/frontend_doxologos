@@ -58,15 +58,26 @@ class EmailService {
       const result = await response.json();
       console.log('✅ Email enviado com sucesso:', result);
       
-      if (window.gtag) {
-        window.gtag('event', 'email_sent', { email_type: type });
+      // Enviar evento para Google Analytics (se disponível)
+      try {
+        if (window.gtag) {
+          window.gtag('event', 'email_sent', { email_type: type });
+        }
+      } catch (gtagError) {
+        console.warn('⚠️ Erro ao enviar evento para GA:', gtagError);
       }
       
       return result;
     } catch (error) {
-      if (window.gtag) {
-        window.gtag('event', 'email_failed', { email_type: type });
+      // Enviar evento de erro para Google Analytics (se disponível)
+      try {
+        if (window.gtag) {
+          window.gtag('event', 'email_failed', { email_type: type });
+        }
+      } catch (gtagError) {
+        console.warn('⚠️ Erro ao enviar evento para GA:', gtagError);
       }
+      
       console.error('❌ Erro ao enviar email:', error);
       throw error;
     }
