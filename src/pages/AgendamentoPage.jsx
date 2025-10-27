@@ -411,41 +411,11 @@ const AgendamentoPage = () => {
                 console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
             }
 
-            // 6. Criar preferência de pagamento no Mercado Pago
-            try {
-                // Call backend Edge Function to create Mercado Pago preference
-                const resp = await fetch('/functions/mp-create-preference', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ booking_id: bookingId, payer: { email: patientData.email, name: patientData.name, phone: patientData.phone } })
-                });
-
-                if (!resp.ok) {
-                    const txt = await resp.text();
-                    console.error('Erro ao criar preferência de pagamento');
-                    toast({ title: 'Agendamento criado', description: 'Não foi possível iniciar o pagamento. Tente novamente mais tarde.' });
-                    setStep(5);
-                    return;
-                }
-
-                const json = await resp.json();
-                const initPoint = json.init_point || json.mp?.init_point;
-                if (initPoint) {
-                    // Redirect user to Mercado Pago checkout
-                    window.location.href = initPoint;
-                    return;
-                } else {
-                    toast({ title: 'Agendamento criado', description: 'Pagamento deverá ser realizado manualmente.' });
-                    setStep(5);
-                    return;
-                }
-            } catch (err) {
-                console.error('Error creating MP preference', err);
-                toast({ title: 'Agendamento criado', description: 'Erro ao iniciar pagamento.' });
-                setStep(5);
-            } finally {
-                setIsSubmitting(false);
-            }
+            // 6. Redirecionar para checkout
+            console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
+            
+            // Redirecionar para página de checkout
+            navigate(`/checkout?booking_id=${bookingId}`);
             
         } catch (error) {
             console.error('Erro geral no processo de agendamento:', error);

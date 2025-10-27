@@ -1,0 +1,395 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { CreditCard, Smartphone, Barcode, Calendar, Lock, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
+import MercadoPagoService from '@/lib/mercadoPagoService';
+import { QRCodeSVG } from 'qrcode.react';
+
+const CheckoutPage = () => {
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    
+    const bookingId = searchParams.get('booking_id');
+    const [booking, setBooking] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+    const [selectedMethod, setSelectedMethod] = useState('pix');
+    const [preference, setPreference] = useState(null);
+    const [paymentStatus, setPaymentStatus] = useState(null);
+
+    const paymentMethods = [
+        {
+            id: 'pix',
+            name: 'PIX',
+            icon: <Smartphone className="w-6 h-6" />,
+            description: 'Aprovação imediata',
+            available: true
+        },
+        {
+            id: 'credit_card',
+            name: 'Cartão de Crédito',
+            icon: <CreditCard className="w-6 h-6" />,
+            description: 'Parcelamento em até 12x',
+            available: true
+        },
+        {
+            id: 'debit_card',
+            name: 'Cartão de Débito',
+            icon: <CreditCard className="w-6 h-6" />,
+            description: 'Débito em conta',
+            available: true
+        },
+        {
+            id: 'bank_transfer',
+            name: 'Boleto Bancário',
+            icon: <Barcode className="w-6 h-6" />,
+            description: 'Vencimento em 3 dias',
+            available: true
+        }
+    ];
+
+    useEffect(() => {
+        if (bookingId) {
+            fetchBooking();
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'ID do agendamento não informado'
+            });
+            navigate('/');
+        }
+    }, [bookingId]);
+
+    const fetchBooking = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('bookings')
+                .select(`
+                    *,
+                    service:services(name, price),
+                    professional:professionals(name)
+                `)
+                .eq('id', bookingId)
+                .single();
+
+            if (error) throw error;
+
+            if (!data) {
+                throw new Error('Agendamento não encontrado');
+            }
+
+            // Verificar se já foi pago
+            if (data.status === 'confirmed' || data.status === 'paid') {
+                navigate(`/paciente`);
+                return;
+            }
+
+            setBooking(data);
+        } catch (error) {
+            console.error('Erro ao buscar agendamento:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não foi possível carregar o agendamento'
+            });
+            navigate('/');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePayment = async () => {
+        setProcessing(true);
+
+        try {
+            const amount = booking.valor_consulta || booking.service?.price || 0;
+
+            if (!amount || amount <= 0) {
+                throw new Error('Valor inválido para pagamento');
+            }
+
+            // Configurar métodos de pagamento baseado na seleção
+            const payment_methods = {
+                excluded_payment_methods: [],
+                excluded_payment_types: [],
+                installments: selectedMethod === 'credit_card' ? 12 : 1
+            };
+
+            // Para PIX, não enviar restrições (PIX é sempre disponível)
+            // Para outros métodos, especificar apenas o que queremos INCLUIR
+            if (selectedMethod !== 'pix') {
+                // Não enviar payment_methods - deixar todos disponíveis
+                // O usuário escolhe no checkout do Mercado Pago
+            }
+
+            console.log('🔍 [CHECKOUT] payment_methods antes de enviar:', payment_methods);
+            console.log('🔍 [CHECKOUT] Tipo de excluded_payment_types:', typeof payment_methods.excluded_payment_types);
+            console.log('🔍 [CHECKOUT] É array?', Array.isArray(payment_methods.excluded_payment_types));
+
+            const requestPayload = {
+                booking_id: bookingId,
+                amount: amount,
+                description: `Consulta - ${booking.service?.name || 'Atendimento Psicológico'}`,
+                payer: {
+                    name: booking.patient_name,
+                    email: booking.patient_email,
+                    phone: {
+                        area_code: booking.patient_phone?.substring(0, 2) || '',
+                        number: booking.patient_phone?.substring(2) || ''
+                    }
+                }
+            };
+
+            // Não enviar payment_methods para evitar erro da API
+            // if (selectedMethod === 'credit_card') {
+            //     requestPayload.payment_methods = { installments: 12 };
+            // }
+
+            const result = await MercadoPagoService.createPreference(requestPayload);
+
+            if (result.success) {
+                setPreference(result);
+                
+                // Se for PIX, ficar na página para mostrar QR Code
+                // Caso contrário, redirecionar para o Mercado Pago
+                if (selectedMethod !== 'pix') {
+                    window.location.href = result.init_point;
+                }
+            } else {
+                throw new Error(result.error || 'Erro ao processar pagamento');
+            }
+
+        } catch (error) {
+            console.error('Erro ao processar pagamento:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao processar pagamento',
+                description: error.message
+            });
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d8659] mx-auto mb-4"></div>
+                    <p className="text-gray-600">Carregando...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!booking) {
+        return null;
+    }
+
+    return (
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
+            <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <div className="text-center mb-8">
+                    <h1 className="text-4xl font-bold mb-2">Finalizar Pagamento</h1>
+                    <p className="text-gray-600">Complete seu agendamento</p>
+                </div>
+
+                <div className="grid md:grid-cols-3 gap-6">
+                    {/* Métodos de Pagamento */}
+                    <div className="md:col-span-2">
+                        <Card className="p-6 mb-6">
+                            <h2 className="text-xl font-bold mb-4 flex items-center">
+                                <Lock className="w-5 h-5 mr-2 text-green-600" />
+                                Escolha o método de pagamento
+                            </h2>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {paymentMethods.map((method) => (
+                                    <button
+                                        key={method.id}
+                                        onClick={() => setSelectedMethod(method.id)}
+                                        disabled={!method.available || processing}
+                                        className={`p-4 rounded-lg border-2 transition-all ${
+                                            selectedMethod === method.id
+                                                ? 'border-[#2d8659] bg-[#2d8659]/5'
+                                                : 'border-gray-200 hover:border-[#2d8659]/50'
+                                        } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="text-[#2d8659]">{method.icon}</div>
+                                            <div className="text-left">
+                                                <p className="font-semibold">{method.name}</p>
+                                                <p className="text-xs text-gray-600">{method.description}</p>
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {selectedMethod === 'pix' && !preference && (
+                                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p className="text-sm text-blue-900">
+                                        ✨ <strong>PIX é instantâneo!</strong> Após o pagamento, seu agendamento será confirmado automaticamente.
+                                    </p>
+                                </div>
+                            )}
+
+                            {selectedMethod === 'bank_transfer' && !preference && (
+                                <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                    <p className="text-sm text-yellow-900">
+                                        ⏱️ <strong>Atenção:</strong> O boleto pode levar até 2 dias úteis para compensar.
+                                    </p>
+                                </div>
+                            )}
+                        </Card>
+
+                        {/* QR Code do PIX */}
+                        {preference && selectedMethod === 'pix' && (
+                            <Card className="p-6">
+                                <h3 className="text-lg font-bold mb-4 text-center">
+                                    Pague com PIX
+                                </h3>
+                                
+                                {preference.qr_code ? (
+                                    <div className="flex flex-col items-center">
+                                        <div className="bg-white p-4 rounded-lg border-2 mb-4">
+                                            <QRCodeSVG 
+                                                value={preference.qr_code}
+                                                size={256}
+                                                level="M"
+                                            />
+                                        </div>
+                                        <p className="text-sm text-gray-600 text-center mb-4">
+                                            Escaneie o QR Code com o app do seu banco
+                                        </p>
+                                        
+                                        <div className="w-full bg-gray-50 p-4 rounded-lg">
+                                            <p className="text-xs text-gray-600 mb-2">Ou copie o código PIX:</p>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={preference.qr_code}
+                                                    readOnly
+                                                    className="flex-1 input text-xs"
+                                                />
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(preference.qr_code);
+                                                        toast({ title: 'Código copiado!' });
+                                                    }}
+                                                >
+                                                    Copiar
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-6 text-center">
+                                            <div className="flex items-center justify-center gap-2 text-yellow-600 mb-2">
+                                                <Clock className="w-5 h-5" />
+                                                <p className="font-semibold">Aguardando pagamento...</p>
+                                            </div>
+                                            <p className="text-sm text-gray-600">
+                                                Você será notificado assim que o pagamento for confirmado
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <p className="text-gray-600">Gerando QR Code...</p>
+                                    </div>
+                                )}
+                            </Card>
+                        )}
+
+                        {!preference && (
+                            <Button
+                                onClick={handlePayment}
+                                disabled={processing}
+                                size="lg"
+                                className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                            >
+                                {processing ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                        Processando...
+                                    </>
+                                ) : (
+                                    <>
+                                        Continuar para Pagamento
+                                    </>
+                                )}
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Resumo do Pedido */}
+                    <div>
+                        <Card className="p-6 sticky top-8">
+                            <h3 className="text-lg font-bold mb-4">Resumo do Pedido</h3>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-sm text-gray-600">Serviço</p>
+                                    <p className="font-semibold">{booking.service?.name}</p>
+                                </div>
+
+                                <div>
+                                    <p className="text-sm text-gray-600">Profissional</p>
+                                    <p className="font-semibold">{booking.professional?.name}</p>
+                                </div>
+
+                                <div>
+                                    <p className="text-sm text-gray-600">Data e Horário</p>
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-gray-400" />
+                                        <p className="font-semibold">
+                                            {new Date(booking.booking_date).toLocaleDateString('pt-BR')}
+                                        </p>
+                                    </div>
+                                    <p className="text-sm">{booking.booking_time}</p>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <p className="text-gray-600">Subtotal</p>
+                                        <p className="font-semibold">
+                                            {MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
+                                        </p>
+                                    </div>
+                                    <div className="flex justify-between items-center text-lg font-bold">
+                                        <p>Total</p>
+                                        <p className="text-[#2d8659]">
+                                            {MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                    <div className="flex items-start gap-2">
+                                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                        <div className="text-sm text-green-900">
+                                            <p className="font-semibold mb-1">Pagamento Seguro</p>
+                                            <p className="text-xs">
+                                                Seus dados são protegidos pelo Mercado Pago, líder em segurança digital na América Latina.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default CheckoutPage;
