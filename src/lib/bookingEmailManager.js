@@ -1,15 +1,12 @@
 /**
  * Helper para Envio de E-mails de Agendamento
- * Simplifica o uso dos templates e do serviço de e-mail
+ * Gerencia todos os emails do fluxo de agendamento
  */
 
 import emailService from './emailService.js';
 import emailTemplates from './emailTemplates.js';
 import { logger } from './logger.js';
 
-/**
- * Classe para gerenciar envio de e-mails relacionados a agendamentos
- */
 class BookingEmailManager {
   constructor() {
     this.emailService = emailService;
@@ -17,225 +14,236 @@ class BookingEmailManager {
   }
 
   /**
-   * Envia e-mail de confirmação de agendamento
+   * 1. Email de Confirmação de Agendamento
+   * Enviado imediatamente após o registro
    */
-  async sendConfirmation(bookingData) {
+  async sendConfirmation(bookingData, sendCopy = true) {
     try {
-      const { patient_email, patient_name, service, professional, booking_date, booking_time, id } = bookingData;
-
       const html = this.templates.bookingConfirmation({
-        patientName: patient_name,
-        serviceName: service?.name || 'Serviço',
-        professionalName: professional?.name || 'Profissional',
-        bookingDate: this.formatDate(booking_date),
-        bookingTime: booking_time,
-        bookingId: id
+        patient_name: bookingData.patient_name,
+        service_name: bookingData.service_name || bookingData.service?.name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
       });
 
-      const result = await this.emailService.sendEmail({
-        to: patient_email,
-        subject: 'Agendamento Confirmado - Doxologos',
-        html
-      });
-
-      if (result.success) {
-        logger.success('E-mail de confirmação enviado', { to: patient_email, bookingId: id });
-      } else {
-        logger.error('Erro ao enviar e-mail de confirmação', result.error, { bookingId: id });
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '✅ Agendamento Confirmado - Doxologos',
+        html,
+        type: 'booking_confirmation'
+      };
+      
+      // Adiciona cópia para Doxologos se solicitado
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
       }
 
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de confirmação enviado', { to: bookingData.patient_email });
+      }
       return result;
     } catch (error) {
-      logger.error('Erro ao processar envio de confirmação', error);
+      logger.error('❌ Erro ao enviar confirmação', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Envia e-mail de aprovação (após pagamento)
+   * 2. Email de Pagamento Aprovado
+   * Enviado após confirmação do pagamento
    */
-  async sendApproval(bookingData, meetingLink = null) {
+  async sendPaymentApproved(bookingData, sendCopy = true) {
     try {
-      const { patient_email, patient_name, service, professional, booking_date, booking_time } = bookingData;
-
-      const html = this.templates.bookingApproved({
-        patientName: patient_name,
-        serviceName: service?.name || 'Serviço',
-        professionalName: professional?.name || 'Profissional',
-        bookingDate: this.formatDate(booking_date),
-        bookingTime: booking_time,
-        meetingLink
+      const html = this.templates.paymentApproved({
+        patient_name: bookingData.patient_name,
+        service_name: bookingData.service_name || bookingData.service?.name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        meeting_link: bookingData.meeting_link
       });
 
-      const result = await this.emailService.sendEmail({
-        to: patient_email,
-        subject: '🎉 Pagamento Confirmado - Doxologos',
-        html
-      });
-
-      if (result.success) {
-        logger.success('E-mail de aprovação enviado', { to: patient_email });
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '💳 Pagamento Aprovado - Consulta Confirmada - Doxologos',
+        html,
+        type: 'payment_approved'
+      };
+      
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
       }
 
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de pagamento aprovado enviado', { to: bookingData.patient_email });
+      }
       return result;
     } catch (error) {
-      logger.error('Erro ao enviar e-mail de aprovação', error);
+      logger.error('❌ Erro ao enviar pagamento aprovado', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Envia e-mail de reagendamento
+   * 3. Email de Reagendamento
+   * Enviado quando a data/hora é alterada
    */
-  async sendReschedule(bookingData, oldBookingData, reason = null) {
+  async sendRescheduled(bookingData, oldDate, oldTime, reason = null, sendCopy = true) {
     try {
-      const { patient_email, patient_name, service, professional, booking_date, booking_time } = bookingData;
-
-      const html = this.templates.bookingRescheduled({
-        patientName: patient_name,
-        serviceName: service?.name || 'Serviço',
-        professionalName: professional?.name || 'Profissional',
-        oldDate: this.formatDate(oldBookingData.booking_date),
-        oldTime: oldBookingData.booking_time,
-        newDate: this.formatDate(booking_date),
-        newTime: booking_time,
+      const html = this.templates.bookingRescheduled(
+        {
+          patient_name: bookingData.patient_name,
+          professional_name: bookingData.professional_name || bookingData.professional?.name,
+          appointment_date: bookingData.appointment_date || bookingData.booking_date,
+          appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        },
+        oldDate,
+        oldTime,
         reason
-      });
+      );
 
-      const result = await this.emailService.sendEmail({
-        to: patient_email,
-        subject: 'Agendamento Reagendado - Doxologos',
-        html
-      });
-
-      if (result.success) {
-        logger.success('E-mail de reagendamento enviado', { to: patient_email });
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '📅 Agendamento Reagendado - Doxologos',
+        html,
+        type: 'booking_rescheduled'
+      };
+      
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
       }
 
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de reagendamento enviado', { to: bookingData.patient_email });
+      }
       return result;
     } catch (error) {
-      logger.error('Erro ao enviar e-mail de reagendamento', error);
+      logger.error('❌ Erro ao enviar reagendamento', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Envia e-mail de cancelamento
+   * 4. Email de Cancelamento
+   * Enviado quando o agendamento é cancelado
    */
-  async sendCancellation(bookingData, reason = null, cancellationBy = null) {
+  async sendCancellation(bookingData, reason = null, refundInfo = null, sendCopy = true) {
     try {
-      const { patient_email, patient_name, service, booking_date, booking_time } = bookingData;
-
-      const html = this.templates.bookingCancelled({
-        patientName: patient_name,
-        serviceName: service?.name || 'Serviço',
-        bookingDate: this.formatDate(booking_date),
-        bookingTime: booking_time,
+      const html = this.templates.bookingCancellation(
+        {
+          patient_name: bookingData.patient_name,
+          service_name: bookingData.service_name || bookingData.service?.name,
+          appointment_date: bookingData.appointment_date || bookingData.booking_date,
+          appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        },
         reason,
-        cancellationBy
-      });
+        refundInfo
+      );
 
-      const result = await this.emailService.sendEmail({
-        to: patient_email,
-        subject: 'Agendamento Cancelado - Doxologos',
-        html
-      });
-
-      if (result.success) {
-        logger.success('E-mail de cancelamento enviado', { to: patient_email });
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '❌ Agendamento Cancelado - Doxologos',
+        html,
+        type: 'booking_cancelled'
+      };
+      
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
       }
 
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de cancelamento enviado', { to: bookingData.patient_email });
+      }
       return result;
     } catch (error) {
-      logger.error('Erro ao enviar e-mail de cancelamento', error);
+      logger.error('❌ Erro ao enviar cancelamento', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Envia lembrete de agendamento (24h antes)
+   * 5. Email de Lembrete (24h antes)
+   * Enviado automaticamente 1 dia antes da consulta
    */
-  async sendReminder(bookingData, meetingLink = null) {
+  async sendReminder(bookingData, sendCopy = false) {
     try {
-      const { patient_email, patient_name, service, professional, booking_date, booking_time } = bookingData;
-
       const html = this.templates.bookingReminder({
-        patientName: patient_name,
-        serviceName: service?.name || 'Serviço',
-        professionalName: professional?.name || 'Profissional',
-        bookingDate: this.formatDate(booking_date),
-        bookingTime: booking_time,
-        meetingLink
+        patient_name: bookingData.patient_name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        meeting_link: bookingData.meeting_link
       });
 
-      const result = await this.emailService.sendEmail({
-        to: patient_email,
-        subject: '⏰ Lembrete: Sua Consulta é Amanhã - Doxologos',
-        html
-      });
-
-      if (result.success) {
-        logger.success('E-mail de lembrete enviado', { to: patient_email });
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '⏰ Lembrete: Sua Consulta é Amanhã! - Doxologos',
+        html,
+        type: 'booking_reminder'
+      };
+      
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
       }
 
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de lembrete enviado', { to: bookingData.patient_email });
+      }
       return result;
     } catch (error) {
-      logger.error('Erro ao enviar e-mail de lembrete', error);
+      logger.error('❌ Erro ao enviar lembrete', error);
       return { success: false, error: error.message };
     }
   }
 
   /**
-   * Envia e-mail de agradecimento
+   * 6. Email de Agradecimento
+   * Enviado após a conclusão da consulta
    */
-  async sendThankYou(bookingData) {
+  async sendThankYou(bookingData, sendCopy = false) {
     try {
-      const { patient_email, patient_name, service, professional, booking_date } = bookingData;
-
       const html = this.templates.bookingThankYou({
-        patientName: patient_name,
-        serviceName: service?.name || 'Serviço',
-        professionalName: professional?.name || 'Profissional',
-        bookingDate: this.formatDate(booking_date)
+        patient_name: bookingData.patient_name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
       });
 
-      const result = await this.emailService.sendEmail({
-        to: patient_email,
-        subject: '🙏 Obrigado por Confiar em Nós - Doxologos',
-        html
-      });
-
-      if (result.success) {
-        logger.success('E-mail de agradecimento enviado', { to: patient_email });
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '🙏 Obrigado pela sua Consulta - Doxologos',
+        html,
+        type: 'booking_thankyou'
+      };
+      
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
       }
 
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de agradecimento enviado', { to: bookingData.patient_email });
+      }
       return result;
     } catch (error) {
-      logger.error('Erro ao enviar e-mail de agradecimento', error);
+      logger.error('❌ Erro ao enviar agradecimento', error);
       return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Formata data para exibição em português
-   */
-  formatDate(dateString) {
-    try {
-      const date = new Date(dateString + 'T00:00:00');
-      return date.toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch {
-      return dateString;
     }
   }
 
   // Alias para compatibilidade
-  async sendBookingConfirmation(bookingData) {
-    return this.sendConfirmation(bookingData);
+  async sendBookingConfirmation(bookingData, sendCopy = true) {
+    return this.sendConfirmation(bookingData, sendCopy);
   }
 }
 
@@ -244,4 +252,5 @@ export const bookingEmailManager = new BookingEmailManager();
 
 // Exportar classe para testes
 export { BookingEmailManager };
-export default BookingEmailManager;
+
+export default new BookingEmailManager();

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { bookingEmailManager } from '@/lib/bookingEmailManager';
 
 const AdminPage = () => {
     const { toast } = useToast();
@@ -411,6 +412,13 @@ const AdminPage = () => {
             return;
         }
         
+        // Capturar valores antigos antes da atualização
+        const oldStatus = editingBooking.status;
+        const oldDate = editingBooking.booking_date;
+        const oldTime = editingBooking.booking_time;
+        const statusChanged = oldStatus !== bookingEditData.status;
+        const dateChanged = oldDate !== bookingEditData.booking_date || oldTime !== bookingEditData.booking_time;
+        
         const { error } = await supabase
             .from('bookings')
             .update({
@@ -428,11 +436,57 @@ const AdminPage = () => {
             
         if (error) { 
             toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message }); 
-        } else { 
-            toast({ title: 'Agendamento atualizado com sucesso!' }); 
-            setEditingBooking(null); 
-            fetchAllData(); 
+            return;
         }
+        
+        // Enviar e-mails apropriados baseados nas alterações
+        try {
+            const emailData = {
+                patient_name: bookingEditData.patient_name,
+                patient_email: bookingEditData.patient_email,
+                booking_date: bookingEditData.booking_date,
+                booking_time: bookingEditData.booking_time,
+                service_name: services.find(s => s.id === bookingEditData.service_id)?.name || 'Consulta',
+                professional_name: professionals.find(p => p.id === bookingEditData.professional_id)?.name || 'Profissional'
+            };
+            
+            // Se o status mudou para 'confirmed' ou 'paid'
+            if (statusChanged && (bookingEditData.status === 'confirmed' || bookingEditData.status === 'paid')) {
+                await bookingEmailManager.sendPaymentApproved(emailData);
+                console.log('📧 Email de confirmação/pagamento enviado');
+            }
+            
+            // Se o status mudou para cancelado
+            if (statusChanged && bookingEditData.status.includes('cancelled')) {
+                const reason = oldStatus === 'pending_payment' ? 'Cancelado pela administração' : null;
+                await bookingEmailManager.sendCancellation(emailData, reason);
+                console.log('📧 Email de cancelamento enviado');
+            }
+            
+            // Se o status mudou para completed
+            if (statusChanged && bookingEditData.status === 'completed') {
+                await bookingEmailManager.sendThankYou(emailData);
+                console.log('📧 Email de agradecimento enviado');
+            }
+            
+            // Se a data/hora foi alterada (independente do status)
+            if (dateChanged && !bookingEditData.status.includes('cancelled')) {
+                await bookingEmailManager.sendRescheduled(emailData, oldDate, oldTime, 'Alterado pela administração');
+                console.log('📧 Email de reagendamento enviado');
+            }
+        } catch (emailError) {
+            console.error('❌ Erro ao enviar email:', emailError);
+            // Não bloqueia a atualização se o email falhar
+            toast({ 
+                variant: 'default', 
+                title: 'Agendamento atualizado', 
+                description: 'Atenção: O email de notificação não pôde ser enviado.' 
+            });
+        }
+        
+        toast({ title: 'Agendamento atualizado com sucesso!' }); 
+        setEditingBooking(null); 
+        fetchAllData();
     };
 
     const handleReviewApproval = async (reviewId, isApproved) => {
