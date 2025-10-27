@@ -27,7 +27,15 @@ const PacientePage = () => {
         setLoading(true);
         const { data: bookingsData, error: bookingsError } = await supabase
             .from('bookings')
-            .select(`*, professional:professionals(name), service:services(name)`)
+            .select(`
+                *,
+                meeting_link,
+                meeting_password,
+                meeting_id,
+                meeting_start_url,
+                professional:professionals(name),
+                service:services(name)
+            `)
             .eq('user_id', user.id)
             .order('booking_date', { ascending: false });
 
@@ -183,16 +191,50 @@ const PacientePage = () => {
                                             <p className="flex items-center"><Calendar className="w-4 h-4 mr-2" /> {new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
                                             <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {booking.booking_time}</p>
                                         </div>
+
+                                        {/* Exibir Link do Zoom para consultas confirmadas ou pagas */}
+                                        {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
+                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-4">
+                                                <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
+                                                    🎥 Link da Consulta Online
+                                                </h4>
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <a 
+                                                            href={booking.meeting_link} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                        >
+                                                            🔗 Entrar na Sala Zoom
+                                                        </a>
+                                                    </div>
+                                                    {booking.meeting_password && (
+                                                        <div className="bg-white p-3 rounded border border-blue-200">
+                                                            <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
+                                                            <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
+                                                                {booking.meeting_password}
+                                                            </code>
+                                                        </div>
+                                                    )}
+                                                    <div className="text-xs text-blue-800 space-y-1">
+                                                        <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
+                                                        <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {booking.status === 'pending_payment' && (
                                             <div className="flex items-center gap-2 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
                                                 <AlertTriangle className="w-5 h-5 text-yellow-600"/>
                                                 <p className="text-sm text-yellow-800">Aguardando confirmação de pagamento.</p>
                                             </div>
                                         )}
-                                        {booking.status === 'confirmed' && (
+                                        {booking.status === 'confirmed' && !booking.meeting_link && (
                                             <div className="flex items-center gap-2 bg-green-50 border-l-4 border-green-400 p-3 rounded-r-lg">
                                                 <CheckCircle className="w-5 h-5 text-green-600"/>
-                                                <p className="text-sm text-green-800">Seu agendamento está confirmado! O link será enviado por e-mail.</p>
+                                                <p className="text-sm text-green-800">Seu agendamento está confirmado! O link da consulta será disponibilizado em breve.</p>
                                             </div>
                                         )}
                                         <div className="mt-4 flex flex-wrap gap-2">
