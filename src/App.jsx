@@ -17,6 +17,7 @@ import CreateUsersPage from '@/pages/CreateUsersPage';
 import DoacaoPage from '@/pages/DoacaoPage';
 import DepoimentoPage from '@/pages/DepoimentoPage';
 import DepoimentosAdminPage from '@/pages/DepoimentosAdminPage';
+import PagamentoSimuladoPage from '@/pages/PagamentoSimuladoPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -83,6 +84,11 @@ function AppContent() {
         <Route path="/criar-usuarios" element={
           <PageErrorBoundary pageName="Criar Usuários">
             <CreateUsersPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/pagamento-simulado" element={
+          <PageErrorBoundary pageName="Pagamento Simulado">
+            <PagamentoSimuladoPage />
           </PageErrorBoundary>
         } />
       </Routes>
