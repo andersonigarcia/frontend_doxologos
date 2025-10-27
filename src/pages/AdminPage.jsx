@@ -12,6 +12,8 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { bookingEmailManager } from '@/lib/bookingEmailManager';
+import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
+import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 
 const AdminPage = () => {
     const { toast } = useToast();
@@ -89,12 +91,9 @@ const AdminPage = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     
-    // Estados de loading para operações individuais
-    const [loadingBookingId, setLoadingBookingId] = useState(null); // ID do booking em operação
-    const [loadingOperation, setLoadingOperation] = useState(null); // 'status' ou 'edit'
-    const [isSavingService, setIsSavingService] = useState(false);
-    const [isSavingProfessional, setIsSavingProfessional] = useState(false);
-    const [isSavingAvailability, setIsSavingAvailability] = useState(false);
+    // Sistema de Loading Global
+    const { isLoading, withLoading, isAnyLoading } = useLoadingState();
+    const { isItemLoading, withItemLoading, isAnyItemLoading } = useItemLoadingState();
     
     // Estados para modais de confirmação
     const [confirmDialog, setConfirmDialog] = useState({
@@ -339,69 +338,67 @@ const AdminPage = () => {
             toast({ variant: "destructive", title: "Erro", description: "Selecione um profissional." });
             return;
         }
-        
-        setIsSavingAvailability(true);
 
-        try {
-            // 1. Primeiro, deletar registros existentes para este profissional no mês/ano selecionados
-            const { error: deleteError } = await supabase
-                .from('availability')
-                .delete()
-                .eq('professional_id', professionalId)
-                .eq('month', selectedMonth)
-                .eq('year', selectedYear);
-
-            if (deleteError) {
-                console.error('Erro ao limpar disponibilidade existente:', deleteError);
-                toast({ variant: "destructive", title: "Erro ao atualizar disponibilidade", description: deleteError.message });
-                return;
-            }
-
-            // 2. Inserir novos registros apenas para dias com horários
-            const availabilityToInsert = [];
-            for (const day in professionalAvailability) {
-                const times = professionalAvailability[day];
-                if (times && times.length > 0) {
-                    // Validar e limpar horários
-                    const validTimes = times
-                        .filter(time => time && time.trim() !== '')
-                        .map(time => time.trim())
-                        .filter((time, index, array) => array.indexOf(time) === index); // Remove duplicatas
-
-                    if (validTimes.length > 0) {
-                        availabilityToInsert.push({
-                            professional_id: professionalId,
-                            day_of_week: day,
-                            available_times: validTimes,
-                            month: selectedMonth,
-                            year: selectedYear
-                        });
-                    }
-                }
-            }
-
-            // 3. Inserir novos registros se houver
-            if (availabilityToInsert.length > 0) {
-                const { error: insertError } = await supabase
+        await withLoading('saveAvailability', async () => {
+            try {
+                // 1. Primeiro, deletar registros existentes para este profissional no mês/ano selecionados
+                const { error: deleteError } = await supabase
                     .from('availability')
-                    .insert(availabilityToInsert);
+                    .delete()
+                    .eq('professional_id', professionalId)
+                    .eq('month', selectedMonth)
+                    .eq('year', selectedYear);
 
-                if (insertError) {
-                    console.error('Erro ao inserir disponibilidade:', insertError);
-                    toast({ variant: "destructive", title: "Erro ao salvar disponibilidade", description: insertError.message });
+                if (deleteError) {
+                    console.error('Erro ao limpar disponibilidade existente:', deleteError);
+                    toast({ variant: "destructive", title: "Erro ao atualizar disponibilidade", description: deleteError.message });
                     return;
                 }
-            }
 
-            const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-            toast({ title: `Disponibilidade de ${monthNames[selectedMonth]}/${selectedYear} atualizada com sucesso!` });
-            await fetchAllData();
-        } catch (error) {
-            console.error('Erro inesperado ao salvar disponibilidade:', error);
-            toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível salvar a disponibilidade." });
-        } finally {
-            setIsSavingAvailability(false);
-        }
+                // 2. Inserir novos registros apenas para dias com horários
+                const availabilityToInsert = [];
+                for (const day in professionalAvailability) {
+                    const times = professionalAvailability[day];
+                    if (times && times.length > 0) {
+                        // Validar e limpar horários
+                        const validTimes = times
+                            .filter(time => time && time.trim() !== '')
+                            .map(time => time.trim())
+                            .filter((time, index, array) => array.indexOf(time) === index); // Remove duplicatas
+
+                        if (validTimes.length > 0) {
+                            availabilityToInsert.push({
+                                professional_id: professionalId,
+                                day_of_week: day,
+                                available_times: validTimes,
+                                month: selectedMonth,
+                                year: selectedYear
+                            });
+                        }
+                    }
+                }
+
+                // 3. Inserir novos registros se houver
+                if (availabilityToInsert.length > 0) {
+                    const { error: insertError } = await supabase
+                        .from('availability')
+                        .insert(availabilityToInsert);
+
+                    if (insertError) {
+                        console.error('Erro ao inserir disponibilidade:', insertError);
+                        toast({ variant: "destructive", title: "Erro ao salvar disponibilidade", description: insertError.message });
+                        return;
+                    }
+                }
+
+                const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                toast({ title: `Disponibilidade de ${monthNames[selectedMonth]}/${selectedYear} atualizada com sucesso!` });
+                await fetchAllData();
+            } catch (error) {
+                console.error('Erro inesperado ao salvar disponibilidade:', error);
+                toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível salvar a disponibilidade." });
+            }
+        });
     };
 
     const handleAddBlockedDate = async () => {
@@ -425,162 +422,148 @@ const AdminPage = () => {
     const handleUpdateBooking = async () => {
         if (!editingBooking) return;
         
-        // Prevenir múltiplas operações simultâneas
-        if (loadingBookingId) return;
-        
         // Validar dados obrigatórios
         if (!bookingEditData.professional_id || !bookingEditData.service_id || !bookingEditData.patient_name) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Preencha todos os campos obrigatórios.' });
             return;
         }
         
-        setLoadingBookingId(editingBooking.id);
-        setLoadingOperation('edit');
-        
-        try {
-            // Capturar valores antigos antes da atualização
-            const oldStatus = editingBooking.status;
-            const oldDate = editingBooking.booking_date;
-            const oldTime = editingBooking.booking_time;
-            const statusChanged = oldStatus !== bookingEditData.status;
-            const dateChanged = oldDate !== bookingEditData.booking_date || oldTime !== bookingEditData.booking_time;
-            
-            const { error } = await supabase
-                .from('bookings')
-                .update({
-                    booking_date: bookingEditData.booking_date,
-                    booking_time: bookingEditData.booking_time,
-                    status: bookingEditData.status,
-                    professional_id: bookingEditData.professional_id,
-                    service_id: bookingEditData.service_id,
-                    patient_name: bookingEditData.patient_name,
-                    patient_email: bookingEditData.patient_email,
-                    patient_phone: bookingEditData.patient_phone,
-                    valor_consulta: parseFloat(bookingEditData.valor_consulta) || null
-                })
-                .eq('id', editingBooking.id);
-                
-            if (error) { 
-                toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message }); 
-                return;
-            }
-            
-            // Enviar e-mails apropriados baseados nas alterações
+        await withItemLoading('edit', editingBooking.id, async () => {
             try {
-                const emailData = {
-                    patient_name: bookingEditData.patient_name,
-                    patient_email: bookingEditData.patient_email,
-                    booking_date: bookingEditData.booking_date,
-                    booking_time: bookingEditData.booking_time,
-                    service_name: services.find(s => s.id === bookingEditData.service_id)?.name || 'Consulta',
-                    professional_name: professionals.find(p => p.id === bookingEditData.professional_id)?.name || 'Profissional'
-                };
+                // Capturar valores antigos antes da atualização
+                const oldStatus = editingBooking.status;
+                const oldDate = editingBooking.booking_date;
+                const oldTime = editingBooking.booking_time;
+                const statusChanged = oldStatus !== bookingEditData.status;
+                const dateChanged = oldDate !== bookingEditData.booking_date || oldTime !== bookingEditData.booking_time;
                 
-                // Se o status mudou para 'confirmed' ou 'paid'
-                if (statusChanged && (bookingEditData.status === 'confirmed' || bookingEditData.status === 'paid')) {
-                    await bookingEmailManager.sendPaymentApproved(emailData);
-                    console.log('📧 Email de confirmação/pagamento enviado');
+                const { error } = await supabase
+                    .from('bookings')
+                    .update({
+                        booking_date: bookingEditData.booking_date,
+                        booking_time: bookingEditData.booking_time,
+                        status: bookingEditData.status,
+                        professional_id: bookingEditData.professional_id,
+                        service_id: bookingEditData.service_id,
+                        patient_name: bookingEditData.patient_name,
+                        patient_email: bookingEditData.patient_email,
+                        patient_phone: bookingEditData.patient_phone,
+                        valor_consulta: parseFloat(bookingEditData.valor_consulta) || null
+                    })
+                    .eq('id', editingBooking.id);
+                    
+                if (error) { 
+                    toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message }); 
+                    return;
                 }
                 
-                // Se o status mudou para cancelado
-                if (statusChanged && bookingEditData.status.includes('cancelled')) {
-                    const reason = oldStatus === 'pending_payment' ? 'Cancelado pela administração' : null;
-                    await bookingEmailManager.sendCancellation(emailData, reason);
-                    console.log('📧 Email de cancelamento enviado');
+                // Enviar e-mails apropriados baseados nas alterações
+                try {
+                    const emailData = {
+                        patient_name: bookingEditData.patient_name,
+                        patient_email: bookingEditData.patient_email,
+                        booking_date: bookingEditData.booking_date,
+                        booking_time: bookingEditData.booking_time,
+                        service_name: services.find(s => s.id === bookingEditData.service_id)?.name || 'Consulta',
+                        professional_name: professionals.find(p => p.id === bookingEditData.professional_id)?.name || 'Profissional'
+                    };
+                    
+                    // Se o status mudou para 'confirmed' ou 'paid'
+                    if (statusChanged && (bookingEditData.status === 'confirmed' || bookingEditData.status === 'paid')) {
+                        await bookingEmailManager.sendPaymentApproved(emailData);
+                        console.log('📧 Email de confirmação/pagamento enviado');
+                    }
+                    
+                    // Se o status mudou para cancelado
+                    if (statusChanged && bookingEditData.status.includes('cancelled')) {
+                        const reason = oldStatus === 'pending_payment' ? 'Cancelado pela administração' : null;
+                        await bookingEmailManager.sendCancellation(emailData, reason);
+                        console.log('📧 Email de cancelamento enviado');
+                    }
+                    
+                    // Se o status mudou para completed
+                    if (statusChanged && bookingEditData.status === 'completed') {
+                        await bookingEmailManager.sendThankYou(emailData);
+                        console.log('📧 Email de agradecimento enviado');
+                    }
+                    
+                    // Se a data/hora foi alterada (independente do status)
+                    if (dateChanged && !bookingEditData.status.includes('cancelled')) {
+                        await bookingEmailManager.sendRescheduled(emailData, oldDate, oldTime, 'Alterado pela administração');
+                        console.log('📧 Email de reagendamento enviado');
+                    }
+                } catch (emailError) {
+                    console.error('❌ Erro ao enviar email:', emailError);
+                    // Não bloqueia a atualização se o email falhar
+                    toast({ 
+                        variant: 'default', 
+                        title: 'Agendamento atualizado', 
+                        description: 'Atenção: O email de notificação não pôde ser enviado.' 
+                    });
                 }
                 
-                // Se o status mudou para completed
-                if (statusChanged && bookingEditData.status === 'completed') {
-                    await bookingEmailManager.sendThankYou(emailData);
-                    console.log('📧 Email de agradecimento enviado');
-                }
-                
-                // Se a data/hora foi alterada (independente do status)
-                if (dateChanged && !bookingEditData.status.includes('cancelled')) {
-                    await bookingEmailManager.sendRescheduled(emailData, oldDate, oldTime, 'Alterado pela administração');
-                    console.log('📧 Email de reagendamento enviado');
-                }
-            } catch (emailError) {
-                console.error('❌ Erro ao enviar email:', emailError);
-                // Não bloqueia a atualização se o email falhar
+                toast({ title: 'Agendamento atualizado com sucesso!' }); 
+                setEditingBooking(null); 
+                await fetchAllData();
+            } catch (error) {
+                console.error('Erro ao atualizar agendamento:', error);
                 toast({ 
-                    variant: 'default', 
-                    title: 'Agendamento atualizado', 
-                    description: 'Atenção: O email de notificação não pôde ser enviado.' 
+                    variant: 'destructive', 
+                    title: 'Erro ao atualizar', 
+                    description: error.message 
                 });
             }
-            
-            toast({ title: 'Agendamento atualizado com sucesso!' }); 
-            setEditingBooking(null); 
-            await fetchAllData();
-        } catch (error) {
-            console.error('Erro ao atualizar agendamento:', error);
-            toast({ 
-                variant: 'destructive', 
-                title: 'Erro ao atualizar', 
-                description: error.message 
-            });
-        } finally {
-            setLoadingBookingId(null);
-            setLoadingOperation(null);
-        }
+        });
     };
     
     // Função para mudança rápida de status
     const handleQuickStatusChange = async (bookingId, newStatus, bookingData) => {
-        // Prevenir múltiplas operações simultâneas
-        if (loadingBookingId) return;
-        
-        setLoadingBookingId(bookingId);
-        setLoadingOperation('status');
-        
-        try {
-            const { error } = await supabase
-                .from('bookings')
-                .update({ status: newStatus })
-                .eq('id', bookingId);
-            
-            if (error) throw error;
-            
-            // Enviar email de notificação baseado no novo status
+        await withItemLoading('status', bookingId, async () => {
             try {
-                const emailData = {
-                    patient_name: bookingData.patient_name,
-                    patient_email: bookingData.patient_email,
-                    booking_date: bookingData.booking_date,
-                    booking_time: bookingData.booking_time,
-                    service_name: bookingData.service?.name || 'Consulta',
-                    professional_name: bookingData.professional?.name || 'Profissional'
-                };
+                const { error } = await supabase
+                    .from('bookings')
+                    .update({ status: newStatus })
+                    .eq('id', bookingId);
                 
-                if (newStatus === 'confirmed' || newStatus === 'paid') {
-                    await bookingEmailManager.sendPaymentApproved(emailData);
-                } else if (newStatus === 'completed') {
-                    await bookingEmailManager.sendThankYou(emailData);
-                } else if (newStatus.includes('cancelled')) {
-                    await bookingEmailManager.sendCancellation(emailData, 'Cancelado pela administração');
+                if (error) throw error;
+                
+                // Enviar email de notificação baseado no novo status
+                try {
+                    const emailData = {
+                        patient_name: bookingData.patient_name,
+                        patient_email: bookingData.patient_email,
+                        booking_date: bookingData.booking_date,
+                        booking_time: bookingData.booking_time,
+                        service_name: bookingData.service?.name || 'Consulta',
+                        professional_name: bookingData.professional?.name || 'Profissional'
+                    };
+                    
+                    if (newStatus === 'confirmed' || newStatus === 'paid') {
+                        await bookingEmailManager.sendPaymentApproved(emailData);
+                    } else if (newStatus === 'completed') {
+                        await bookingEmailManager.sendThankYou(emailData);
+                    } else if (newStatus.includes('cancelled')) {
+                        await bookingEmailManager.sendCancellation(emailData, 'Cancelado pela administração');
+                    }
+                } catch (emailError) {
+                    console.error('Erro ao enviar email:', emailError);
                 }
-            } catch (emailError) {
-                console.error('Erro ao enviar email:', emailError);
+                
+                toast({ 
+                    title: 'Status atualizado!', 
+                    description: `Agendamento marcado como ${getStatusLabel(newStatus)}` 
+                });
+                
+                await fetchAllData();
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+                toast({ 
+                    variant: 'destructive', 
+                    title: 'Erro ao atualizar status', 
+                    description: error.message 
+                });
             }
-            
-            toast({ 
-                title: 'Status atualizado!', 
-                description: `Agendamento marcado como ${getStatusLabel(newStatus)}` 
-            });
-            
-            await fetchAllData();
-        } catch (error) {
-            console.error('Erro ao atualizar status:', error);
-            toast({ 
-                variant: 'destructive', 
-                title: 'Erro ao atualizar status', 
-                description: error.message 
-            });
-        } finally {
-            setLoadingBookingId(null);
-            setLoadingOperation(null);
-        }
+        });
     };
     
     const getStatusLabel = (status) => {
@@ -1538,19 +1521,13 @@ const AdminPage = () => {
                                             return (
                                                 <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${
                                                     index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                } hover:bg-blue-50 ${loadingBookingId === b.id ? 'opacity-75' : ''}`}>
+                                                } hover:bg-blue-50 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
                                                     
-                                                    {/* Overlay de Loading */}
-                                                    {loadingBookingId === b.id && (
-                                                        <div className="absolute inset-0 bg-white bg-opacity-60 rounded-lg flex items-center justify-center z-10 backdrop-blur-sm">
-                                                            <div className="bg-white rounded-lg shadow-lg p-4 flex items-center gap-3">
-                                                                <Loader2 className="w-6 h-6 animate-spin text-[#2d8659]" />
-                                                                <span className="text-sm font-medium text-gray-700">
-                                                                    {loadingOperation === 'status' ? 'Atualizando status...' : 'Salvando alterações...'}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    {/* Overlay de Loading com novo componente */}
+                                                    <LoadingOverlay 
+                                                        isLoading={isItemLoading('status', b.id) || isItemLoading('edit', b.id)}
+                                                        message={isItemLoading('status', b.id) ? 'Atualizando status...' : 'Salvando alterações...'}
+                                                    />
                                                     
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div className="flex-1">
@@ -1666,29 +1643,26 @@ const AdminPage = () => {
                                                             <div className="w-48 relative">
                                                                 <label className="block text-xs text-gray-600 mb-1">
                                                                     Status Rápido:
-                                                                    {loadingBookingId === b.id && loadingOperation === 'status' && (
-                                                                        <Loader2 className="inline-block w-3 h-3 ml-1 animate-spin text-[#2d8659]" />
+                                                                    {isItemLoading('status', b.id) && (
+                                                                        <LoadingSpinner size="xs" className="inline-block ml-1 text-[#2d8659]" />
                                                                     )}
                                                                 </label>
-                                                                <select
-                                                                    value={b.status}
-                                                                    onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
-                                                                    disabled={loadingBookingId !== null}
-                                                                    className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${
-                                                                        loadingBookingId !== null ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
-                                                                    } ${loadingBookingId === b.id && loadingOperation === 'status' ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
-                                                                >
-                                                                    <option value="pending_payment">Pendente Pagamento</option>
-                                                                    <option value="confirmed">Confirmado</option>
-                                                                    <option value="completed">Concluído</option>
-                                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
-                                                                </select>
-                                                                {loadingBookingId === b.id && loadingOperation === 'status' && (
-                                                                    <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-60 rounded">
-                                                                        <Loader2 className="w-5 h-5 animate-spin text-[#2d8659]" />
-                                                                    </div>
-                                                                )}
+                                                                <LoadingInput isLoading={isItemLoading('status', b.id)}>
+                                                                    <select
+                                                                        value={b.status}
+                                                                        onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
+                                                                        disabled={isAnyItemLoading()}
+                                                                        className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${
+                                                                            isAnyItemLoading() ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
+                                                                        } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
+                                                                    >
+                                                                        <option value="pending_payment">Pendente Pagamento</option>
+                                                                        <option value="confirmed">Confirmado</option>
+                                                                        <option value="completed">Concluído</option>
+                                                                        <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                        <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                    </select>
+                                                                </LoadingInput>
                                                             </div>
                                                             
                                                             <div className="flex gap-2">
@@ -1697,7 +1671,7 @@ const AdminPage = () => {
                                                                     <Button 
                                                                         size="sm" 
                                                                         variant="outline"
-                                                                        disabled={loadingBookingId !== null}
+                                                                        disabled={isAnyItemLoading()}
                                                                         onClick={() => { 
                                                                             setEditingBooking(b); 
                                                                             setBookingEditData({ 
@@ -1713,11 +1687,11 @@ const AdminPage = () => {
                                                                             }); 
                                                                         }}
                                                                         className={`hover:bg-blue-50 transition-all ${
-                                                                            loadingBookingId !== null ? 'opacity-50 cursor-not-allowed' : ''
+                                                                            isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
                                                                         }`}
                                                                     >
-                                                                        {loadingBookingId === b.id && loadingOperation === 'edit' ? (
-                                                                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                                                        {isItemLoading('edit', b.id) ? (
+                                                                            <LoadingSpinner size="sm" className="mr-1" />
                                                                         ) : (
                                                                             <Edit className="w-4 h-4 mr-1" />
                                                                         )}
@@ -1847,25 +1821,19 @@ const AdminPage = () => {
                                                                         <DialogClose asChild>
                                                                             <Button 
                                                                                 variant="outline"
-                                                                                disabled={loadingBookingId === editingBooking?.id && loadingOperation === 'edit'}
+                                                                                disabled={isItemLoading('edit', editingBooking?.id)}
                                                                             >
                                                                                 Cancelar
                                                                             </Button>
                                                                         </DialogClose>
-                                                                        <Button 
-                                                                            onClick={handleUpdateBooking} 
-                                                                            disabled={loadingBookingId === editingBooking?.id && loadingOperation === 'edit'}
-                                                                            className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        <LoadingButton
+                                                                            isLoading={isItemLoading('edit', editingBooking?.id)}
+                                                                            loadingText="Salvando..."
+                                                                            onClick={handleUpdateBooking}
+                                                                            className="bg-[#2d8659] hover:bg-[#236b47] text-white px-4 py-2 rounded-md"
                                                                         >
-                                                                            {loadingBookingId === editingBooking?.id && loadingOperation === 'edit' ? (
-                                                                                <>
-                                                                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                                                    Salvando...
-                                                                                </>
-                                                                            ) : (
-                                                                                'Salvar Alterações'
-                                                                            )}
-                                                                        </Button>
+                                                                            Salvar Alterações
+                                                                        </LoadingButton>
                                                                     </DialogFooter>
                                                                 </DialogContent>
                                                             </Dialog>
@@ -2569,20 +2537,14 @@ const AdminPage = () => {
                                         );
                                     })}
                                     </div>
-                                    <Button 
-                                        onClick={handleSaveAvailability} 
-                                        disabled={isSavingAvailability}
-                                        className="mt-6 w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    <LoadingButton
+                                        isLoading={isLoading('saveAvailability')}
+                                        loadingText="Salvando..."
+                                        onClick={handleSaveAvailability}
+                                        className="mt-6 w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-2 rounded-md"
                                     >
-                                        {isSavingAvailability ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                                Salvando...
-                                            </>
-                                        ) : (
-                                            'Salvar Horários'
-                                        )}
-                                    </Button>
+                                        Salvar Horários
+                                    </LoadingButton>
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><CalendarX className="w-6 h-6 mr-2 text-[#2d8659]" /> Datas e Horários Bloqueados</h2>
