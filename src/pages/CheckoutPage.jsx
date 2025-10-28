@@ -200,18 +200,14 @@ const CheckoutPage = () => {
                         // Atualizar status no Supabase
                         await updateBookingPaymentStatus('confirmed');
                         
-                        toast({
-                            title: 'Pagamento confirmado!',
-                            description: 'Seu agendamento foi confirmado com sucesso.',
-                            variant: 'default'
-                        });
-                        
                         // Redirecionar para página de sucesso
-                        setTimeout(() => {
-                            navigate('/booking-success', { 
-                                state: { bookingId: booking.id } 
-                            });
-                        }, 2000);
+                        navigate('/checkout/success', { 
+                            state: { 
+                                bookingId: booking.id,
+                                paymentId: paymentId,
+                                paymentStatus: 'approved'
+                            } 
+                        });
                         
                     } else if (statusResult.status === 'rejected' || statusResult.status === 'cancelled') {
                         console.log('❌ Pagamento rejeitado/cancelado');
@@ -236,18 +232,17 @@ const CheckoutPage = () => {
     // Atualiza status do pagamento no booking
     const updateBookingPaymentStatus = async (status) => {
         try {
+            // Atualizar apenas o status do booking para 'confirmed' quando o pagamento for aprovado
             const { error } = await supabase
                 .from('bookings')
                 .update({ 
-                    payment_status: status,
-                    status: 'confirmed',
-                    updated_at: new Date().toISOString()
+                    status: 'confirmed'
                 })
                 .eq('id', booking.id);
 
             if (error) throw error;
             
-            console.log('✅ Status do booking atualizado:', status);
+            console.log('✅ Status do booking atualizado para confirmed');
         } catch (error) {
             console.error('Erro ao atualizar status do booking:', error);
         }
