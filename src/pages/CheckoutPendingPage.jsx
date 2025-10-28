@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
+import analytics from '@/lib/analytics';
+import { logger } from '@/lib/logger';
 
 const CheckoutPendingPage = () => {
     const [searchParams] = useSearchParams();
@@ -51,6 +53,21 @@ const CheckoutPendingPage = () => {
                     
                     if (bookingData) {
                         setBooking(bookingData);
+                        
+                        // Track pending payment
+                        logger.info('Payment pending - PIX', {
+                            bookingId: bookingData.id,
+                            paymentId,
+                            amount: bookingData.service?.price
+                        });
+                        
+                        analytics.trackEvent('payment_pending', {
+                            event_category: 'Checkout',
+                            event_label: 'PIX',
+                            value: bookingData.service?.price || 0,
+                            custom_parameter_1: bookingData.id,
+                            custom_parameter_2: paymentId
+                        });
                     }
                 }
             } catch (error) {
