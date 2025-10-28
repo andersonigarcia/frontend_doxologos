@@ -3,13 +3,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit } from 'lucide-react';
+import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { QRCodeSVG } from 'qrcode.react';
 
 const PacientePage = () => {
     const { toast } = useToast();
@@ -103,7 +104,8 @@ const PacientePage = () => {
                 meeting_id,
                 meeting_start_url,
                 professional:professionals(name),
-                service:services(name)
+                service:services(name),
+                payment:payments(id, mp_payment_id, status, qr_code, qr_code_base64, ticket_url, amount)
             `)
             .eq('user_id', user.id)
             .order('booking_date', { ascending: false });
@@ -325,9 +327,108 @@ const PacientePage = () => {
                                         )}
 
                                         {booking.status === 'pending_payment' && (
-                                            <div className="flex items-center gap-2 bg-yellow-50 border-l-4 border-yellow-400 p-3 rounded-r-lg">
-                                                <AlertTriangle className="w-5 h-5 text-yellow-600"/>
-                                                <p className="text-sm text-yellow-800">Aguardando confirmação de pagamento.</p>
+                                            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-r-lg p-4 mb-4">
+                                                <div className="flex items-start gap-3 mb-3">
+                                                    <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1"/>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-semibold text-amber-900 mb-1">
+                                                            Pagamento Pendente
+                                                        </h4>
+                                                        <p className="text-sm text-amber-800 mb-3">
+                                                            Complete o pagamento para confirmar seu agendamento
+                                                        </p>
+                                                        
+                                                        {/* Exibir QR Code PIX se disponível */}
+                                                        {booking.payment?.[0]?.qr_code && (
+                                                            <div className="bg-white rounded-lg p-4 border-2 border-amber-200">
+                                                                <div className="flex flex-col md:flex-row gap-4 items-start">
+                                                                    {/* QR Code */}
+                                                                    <div className="flex flex-col items-center">
+                                                                        <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                                                                            <QRCodeSVG 
+                                                                                value={booking.payment[0].qr_code} 
+                                                                                size={160}
+                                                                                level="H"
+                                                                            />
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-600 mt-2 text-center">
+                                                                            Escaneie com seu app bancário
+                                                                        </p>
+                                                                    </div>
+                                                                    
+                                                                    {/* Informações do Pagamento */}
+                                                                    <div className="flex-1 space-y-3">
+                                                                        <div>
+                                                                            <p className="text-sm font-medium text-gray-700 mb-1">
+                                                                                💰 Valor
+                                                                            </p>
+                                                                            <p className="text-2xl font-bold text-green-600">
+                                                                                R$ {(booking.payment[0].amount || 0).toFixed(2)}
+                                                                            </p>
+                                                                        </div>
+                                                                        
+                                                                        <div>
+                                                                            <p className="text-sm font-medium text-gray-700 mb-2">
+                                                                                📱 Código PIX Copia e Cola
+                                                                            </p>
+                                                                            <div className="flex gap-2">
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    value={booking.payment[0].qr_code}
+                                                                                    readOnly
+                                                                                    className="flex-1 text-xs font-mono p-2 bg-gray-50 border rounded truncate"
+                                                                                />
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="outline"
+                                                                                    onClick={() => {
+                                                                                        navigator.clipboard.writeText(booking.payment[0].qr_code);
+                                                                                        toast({
+                                                                                            title: "Código copiado!",
+                                                                                            description: "Cole no seu app bancário para pagar"
+                                                                                        });
+                                                                                    }}
+                                                                                >
+                                                                                    <Copy className="w-4 h-4" />
+                                                                                </Button>
+                                                                            </div>
+                                                                        </div>
+                                                                        
+                                                                        {booking.payment[0].ticket_url && (
+                                                                            <div>
+                                                                                <a
+                                                                                    href={booking.payment[0].ticket_url}
+                                                                                    target="_blank"
+                                                                                    rel="noopener noreferrer"
+                                                                                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                                                                >
+                                                                                    <ExternalLink className="w-4 h-4 mr-1" />
+                                                                                    Ver comprovante no Mercado Pago
+                                                                                </a>
+                                                                            </div>
+                                                                        )}
+                                                                        
+                                                                        <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                                                                            <p>💡 <strong>Dica:</strong> Após pagar, a confirmação pode levar alguns segundos</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {/* Caso não tenha QR Code (pagamento antigo ou outro método) */}
+                                                        {!booking.payment?.[0]?.qr_code && (
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <Link to={`/checkout?booking_id=${booking.id}`}>
+                                                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                                                                        <CreditCard className="w-4 h-4 mr-2" />
+                                                                        Realizar Pagamento
+                                                                    </Button>
+                                                                </Link>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                         {booking.status === 'confirmed' && !booking.meeting_link && (
