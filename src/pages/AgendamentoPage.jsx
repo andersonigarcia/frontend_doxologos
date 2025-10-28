@@ -32,6 +32,48 @@ const AgendamentoPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [emailError, setEmailError] = useState('');
+
+    // Função para formatar telefone com máscara (00) 00000-0000
+    const formatPhoneNumber = (value) => {
+        // Remove tudo que não é dígito
+        const numbers = value.replace(/\D/g, '');
+        
+        // Aplica a máscara
+        if (numbers.length <= 2) {
+            return numbers;
+        } else if (numbers.length <= 7) {
+            return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+        } else if (numbers.length <= 11) {
+            return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+        }
+        // Limita a 11 dígitos
+        return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+    };
+
+    // Função para validar email
+    const validateEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    // Handler para mudança de telefone com máscara
+    const handlePhoneChange = (e) => {
+        const formatted = formatPhoneNumber(e.target.value);
+        setPatientData({...patientData, phone: formatted});
+    };
+
+    // Handler para mudança de email com validação
+    const handleEmailChange = (e) => {
+        const email = e.target.value;
+        setPatientData({...patientData, email});
+        
+        if (email && !validateEmail(email)) {
+            setEmailError('Por favor, insira um email válido');
+        } else {
+            setEmailError('');
+        }
+    };
 
     // Analytics and Error Tracking Hooks
     const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
@@ -913,15 +955,42 @@ const AgendamentoPage = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-2">Nome Completo</label>
-                    <input type="text" required value={patientData.name} onChange={(e) => setPatientData({...patientData, name: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" />
+                    <input 
+                      type="text" 
+                      required 
+                      value={patientData.name} 
+                      onChange={(e) => setPatientData({...patientData, name: e.target.value})} 
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                      placeholder="Seu nome completo" 
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Email</label>
-                    <input type="email" required value={patientData.email} onChange={(e) => setPatientData({...patientData, email: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" />
+                    <input 
+                      type="email" 
+                      required 
+                      value={patientData.email} 
+                      onChange={handleEmailChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
+                        emailError ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                      placeholder="seu@email.com" 
+                    />
+                    {emailError && (
+                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">Telefone</label>
-                    <input type="tel" required value={patientData.phone} onChange={(e) => setPatientData({...patientData, phone: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" />
+                    <input 
+                      type="tel" 
+                      required 
+                      value={patientData.phone} 
+                      onChange={handlePhoneChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                      placeholder="(00) 00000-0000"
+                      maxLength="15"
+                    />
                   </div>
                 </div>
                 <div className="bg-gradient-to-br from-[#2d8659]/5 to-blue-50 p-8 rounded-xl border border-[#2d8659]/20 mt-8">
@@ -1015,17 +1084,23 @@ const AgendamentoPage = () => {
                 <div className="flex gap-4 mt-6">
                   <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
                   <motion.div
-                    whileHover={!isSubmitting && patientData.name && patientData.email && patientData.phone ? { scale: 1.02, y: -1 } : {}}
-                    whileTap={!isSubmitting && patientData.name && patientData.email && patientData.phone ? { scale: 0.98 } : {}}
+                    whileHover={!isSubmitting && patientData.name && patientData.email && patientData.phone && !emailError ? { scale: 1.02, y: -1 } : {}}
+                    whileTap={!isSubmitting && patientData.name && patientData.email && patientData.phone && !emailError ? { scale: 0.98 } : {}}
                     className="flex-1"
                   >
                     <Button 
                       onClick={handleBooking} 
-                      disabled={!patientData.name || !patientData.email || !patientData.phone || isSubmitting} 
+                      disabled={!patientData.name || !patientData.email || !patientData.phone || emailError || isSubmitting} 
                       className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${
                         isSubmitting ? 'cursor-not-allowed opacity-75' : ''
                       }`}
-                      title={!patientData.name || !patientData.email || !patientData.phone ? 'Preencha todos os campos obrigatórios' : ''}
+                      title={
+                        !patientData.name || !patientData.email || !patientData.phone 
+                          ? 'Preencha todos os campos obrigatórios' 
+                          : emailError 
+                            ? 'Digite um email válido' 
+                            : ''
+                      }
                     >
                       {isSubmitting ? (
                         <>
