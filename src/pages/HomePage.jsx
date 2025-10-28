@@ -355,71 +355,10 @@ const HomePage = () => {
       trackFormSubmit(formData);
       
       // Preparar o HTML do email
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #2d8659; border-bottom: 2px solid #2d8659; padding-bottom: 10px;">
-            Novo Contato - Site Doxologos
-          </h2>
-          
-          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 10px 0;"><strong>Nome:</strong> ${formData.name}</p>
-            <p style="margin: 10px 0;"><strong>Email:</strong> ${formData.email}</p>
-            <p style="margin: 10px 0;"><strong>Telefone:</strong> ${formData.phone}</p>
-          </div>
-          
-          <div style="margin: 20px 0;">
-            <h3 style="color: #2d8659;">Mensagem:</h3>
-            <p style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; white-space: pre-wrap;">
-              ${formData.message}
-            </p>
-          </div>
-          
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
-            <p>Este email foi enviado automaticamente através do formulário de contato do site Doxologos.</p>
-            <p>Data: ${new Date().toLocaleString('pt-BR')}</p>
-          </div>
-        </div>
-      `;
+      const emailHtml = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;"><h2 style="color: #2d8659; border-bottom: 2px solid #2d8659; padding-bottom: 10px; margin-bottom: 20px;">Novo Contato - Site Doxologos</h2><div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;"><p style="margin: 10px 0;"><strong>Nome:</strong> ${formData.name}</p><p style="margin: 10px 0;"><strong>Email:</strong> ${formData.email}</p><p style="margin: 10px 0;"><strong>Telefone:</strong> ${formData.phone}</p></div><div style="margin: 20px 0;"><h3 style="color: #2d8659; margin-bottom: 10px;">Mensagem:</h3><p style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; white-space: pre-wrap; margin: 0;">${formData.message}</p></div><div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;"><p style="margin: 5px 0;">Este email foi enviado automaticamente através do formulário de contato do site Doxologos.</p><p style="margin: 5px 0;">Data: ${new Date().toLocaleString('pt-BR')}</p></div></div>`;
       
       // Email de confirmação para o usuário
-      const confirmationHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #2d8659; border-bottom: 2px solid #2d8659; padding-bottom: 10px;">
-            Recebemos sua mensagem! 💚
-          </h2>
-          
-          <p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
-            Olá <strong>${formData.name}</strong>,
-          </p>
-          
-          <p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
-            Agradecemos por entrar em contato com a Doxologos. Recebemos sua mensagem e em breve 
-            retornaremos com uma resposta.
-          </p>
-          
-          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #2d8659; margin-top: 0;">Resumo da sua mensagem:</h3>
-            <p style="margin: 10px 0; white-space: pre-wrap;">${formData.message}</p>
-          </div>
-          
-          <p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
-            Nossa equipe está comprometida em oferecer o melhor atendimento e retornaremos 
-            o mais breve possível.
-          </p>
-          
-          <div style="margin-top: 30px; padding: 20px; background-color: #2d8659; color: white; border-radius: 8px; text-align: center;">
-            <p style="margin: 0; font-size: 18px; font-weight: bold;">Doxologos</p>
-            <p style="margin: 5px 0; font-size: 14px;">Clínica de Atendimento Psicológico Online</p>
-            <p style="margin: 10px 0; font-size: 14px;">
-              📞 (31) 97198-2947 | 📧 contato@doxologos.com.br
-            </p>
-          </div>
-          
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; text-align: center;">
-            <p>© ${new Date().getFullYear()} Doxologos - Todos os direitos reservados</p>
-          </div>
-        </div>
-      `;
+      const confirmationHtml = `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;"><h2 style="color: #2d8659; border-bottom: 2px solid #2d8659; padding-bottom: 10px; margin-bottom: 20px;">Recebemos sua mensagem! 💚</h2><p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">Olá <strong>${formData.name}</strong>,</p><p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">Agradecemos por entrar em contato com a Doxologos. Recebemos sua mensagem e em breve retornaremos com uma resposta.</p><div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;"><h3 style="color: #2d8659; margin-top: 0; margin-bottom: 15px;">Resumo da sua mensagem:</h3><p style="margin: 10px 0; white-space: pre-wrap; color: #333;">${formData.message}</p></div><p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">Nossa equipe está comprometida em oferecer o melhor atendimento e retornaremos o mais breve possível.</p><div style="margin-top: 30px; padding: 20px; background-color: #2d8659; color: white; border-radius: 8px; text-align: center;"><p style="margin: 0 0 5px 0; font-size: 18px; font-weight: bold;">Doxologos</p><p style="margin: 5px 0; font-size: 14px;">Clínica de Atendimento Psicológico Online</p><p style="margin: 10px 0; font-size: 14px;">📞 (31) 97198-2947 | 📧 contato@doxologos.com.br</p></div><div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; text-align: center;"><p style="margin: 5px 0;">© ${new Date().getFullYear()} Doxologos - Todos os direitos reservados</p></div></div>`;
       
       // Enviar email para a clínica (notificação)
       await emailService.sendEmail({
