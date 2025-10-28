@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 import { XCircle, AlertCircle, RefreshCw, Home, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
+import analytics from '@/lib/analytics';
+import { logger } from '@/lib/logger';
 
 const CheckoutFailurePage = () => {
     const [searchParams] = useSearchParams();
@@ -46,6 +48,22 @@ const CheckoutFailurePage = () => {
                     
                     if (bookingData) {
                         setBooking(bookingData);
+                        
+                        // Track payment failure
+                        logger.error('Payment failed', {
+                            bookingId: bookingData.id,
+                            paymentId,
+                            collectionStatus,
+                            amount: bookingData.service?.price
+                        });
+                        
+                        analytics.trackEvent('payment_failed', {
+                            event_category: 'Checkout',
+                            event_label: collectionStatus || 'unknown',
+                            value: bookingData.service?.price || 0,
+                            custom_parameter_1: bookingData.id,
+                            custom_parameter_2: paymentId
+                        });
                     }
                 }
             } catch (error) {

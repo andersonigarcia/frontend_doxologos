@@ -6,6 +6,8 @@ import { CheckCircle, Calendar, Download, Home, User, ExternalLink, Mail, Clock 
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import analytics from '@/lib/analytics';
+import { logger } from '@/lib/logger';
 
 const CheckoutSuccessPage = () => {
     const [searchParams] = useSearchParams();
@@ -45,6 +47,21 @@ const CheckoutSuccessPage = () => {
                     
                     if (bookingData) {
                         setBooking(bookingData);
+                        
+                        // Track successful booking conversion
+                        logger.success('Booking completed successfully', {
+                            bookingId: bookingData.id,
+                            professionalId: bookingData.professional_id,
+                            serviceId: bookingData.service_id,
+                            amount: bookingData.service?.price
+                        });
+                        
+                        analytics.trackBookingCompleted(
+                            bookingData.id,
+                            bookingData.professional_id,
+                            bookingData.service_id,
+                            bookingData.service?.price || 0
+                        );
                     }
                 }
 
