@@ -187,7 +187,7 @@ const DepoimentoPage = () => {
                         Enviar Outro Depoimento
                     </Button>
                     <Button 
-                        onClick={() => window.location.href = '/'}
+                        onClick={() => navigate('/')}
                         className="bg-[#2d8659] hover:bg-[#236b47]"
                     >
                         Voltar ao Site

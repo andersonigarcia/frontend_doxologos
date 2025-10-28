@@ -869,7 +869,7 @@ const HomePage = () => {
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button 
-                  onClick={() => window.location.href = '/depoimento'}
+                  onClick={() => navigate('/depoimento')}
                   className="bg-[#2d8659] hover:bg-[#236b47]"
                 >
                   <MessageCircle className="w-4 h-4 mr-2" />

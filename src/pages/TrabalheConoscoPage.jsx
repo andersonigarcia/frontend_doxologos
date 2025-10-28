@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { Heart, ArrowLeft, Briefcase, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { SecureStorage } from '@/lib/secureStorage';
 
 const TrabalheConoscoPage = () => {
   const { toast } = useToast();
@@ -22,12 +23,15 @@ const TrabalheConoscoPage = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const applications = JSON.parse(localStorage.getItem('jobApplications') || '[]');
+    // Usar SecureStorage para proteção contra erros
+    const applications = SecureStorage.getArray('jobApplications', []);
+    
     applications.push({
       ...formData,
       date: new Date().toISOString()
     });
-    localStorage.setItem('jobApplications', JSON.stringify(applications));
+    
+    SecureStorage.set('jobApplications', applications);
 
     toast({
       title: "Candidatura enviada!",

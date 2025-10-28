@@ -67,7 +67,7 @@ class ErrorBoundary extends React.Component {
               </button>
               
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => { window.location.href = '/'; }}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors"
               >
                 Ir para início

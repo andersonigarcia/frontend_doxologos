@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { loginRateLimiter, RateLimiter } from '@/lib/rateLimiter';
 
 const AuthContext = createContext(null);
 
@@ -113,6 +114,21 @@ export function AuthProvider({ children }) {
   }, [toast]);
 
   const signIn = useCallback(async (email, password) => {
+    // Verificar rate limiting antes de tentar fazer login
+    const rateLimitCheck = loginRateLimiter.canAttempt(email);
+    
+    if (!rateLimitCheck.allowed) {
+      toast({
+        variant: "destructive",
+        title: "Muitas tentativas",
+        description: `Você excedeu o limite de tentativas de login. Aguarde ${RateLimiter.formatWaitTime(rateLimitCheck.waitTime)} antes de tentar novamente.`,
+      });
+      return { error: new Error('Rate limit exceeded') };
+    }
+
+    // Registrar tentativa
+    loginRateLimiter.recordAttempt(email);
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -130,7 +146,7 @@ export function AuthProvider({ children }) {
           errorCode.includes('invalid') || 
           errorCode.includes('credentials')) {
         errorTitle = "Credenciais inválidas";
-        errorMessage = "Email ou senha incorretos. Verifique seus dados e tente novamente.";
+        errorMessage = `Email ou senha incorretos. Você tem ${rateLimitCheck.remainingAttempts} tentativa${rateLimitCheck.remainingAttempts !== 1 ? 's' : ''} restante${rateLimitCheck.remainingAttempts !== 1 ? 's' : ''}.`;
       } else if (errorCode.includes('email not confirmed')) {
         errorTitle = "Email não confirmado";
         errorMessage = "Por favor, confirme seu email antes de fazer login.";
@@ -151,6 +167,9 @@ export function AuthProvider({ children }) {
         description: errorMessage,
       });
     } else {
+        // Login bem-sucedido - resetar rate limiter
+        loginRateLimiter.reset(email);
+        
         toast({ 
           title: "✅ Login realizado com sucesso!",
           description: "Bem-vindo(a) de volta ao Doxologos."
