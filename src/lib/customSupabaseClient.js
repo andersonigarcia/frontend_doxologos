@@ -20,12 +20,19 @@ if (import.meta.env.DEV) {
   });
 }
 
-// Cliente Supabase simples e robusto
+// Cliente Supabase com configurações de segurança aprimoradas
 const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false // Evitar conflitos com roteamento
+    detectSessionInUrl: false, // Evitar conflitos com roteamento
+    storageKey: 'doxologos-auth', // Nome personalizado para evitar conflitos
+    flowType: 'pkce', // Usar PKCE para maior segurança
+  },
+  global: {
+    headers: {
+      'x-client-info': 'doxologos-web-app'
+    }
   }
 });
 
