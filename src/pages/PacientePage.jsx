@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard } from 'lucide-react';
+import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -22,6 +22,13 @@ const PacientePage = () => {
 
     const [reviewingBooking, setReviewingBooking] = useState(null);
     const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
+    
+    // Estados de paginação
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(5);
+    
+    // Estado para controlar visibilidade dos detalhes do Zoom
+    const [expandedZoom, setExpandedZoom] = useState({});
     
     // Estados de ordenação
     const [sortField, setSortField] = useState('default'); // 'default', 'date', 'status'
@@ -90,6 +97,25 @@ const PacientePage = () => {
             setSortField(field);
             setSortOrder(field === 'date' ? 'desc' : 'asc');
         }
+    };
+
+    // Funções de paginação
+    const sortedBookings = getSortedBookings(bookings);
+    const totalPages = Math.ceil(sortedBookings.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedBookings = sortedBookings.slice(startIndex, endIndex);
+
+    const goToPage = (page) => {
+        setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    };
+
+    // Função para alternar visibilidade dos detalhes do Zoom
+    const toggleZoomDetails = (bookingId) => {
+        setExpandedZoom(prev => ({
+            ...prev,
+            [bookingId]: !prev[bookingId]
+        }));
     };
 
     const fetchData = useCallback(async () => {
@@ -232,34 +258,56 @@ const PacientePage = () => {
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
                     <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
                     <div className="bg-white rounded-xl shadow-lg p-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-bold flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Meus Agendamentos</h2>
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                            <h2 className="text-2xl font-bold flex items-center">
+                                <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                Meus Agendamentos ({bookings.length})
+                            </h2>
                             {bookings.length > 0 && (
-                                <div className="flex gap-2">
-                                    <Button 
-                                        onClick={() => handleSort('default')} 
-                                        variant="outline" 
-                                        size="sm"
-                                        className={sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
-                                    >
-                                        Padrão
-                                    </Button>
-                                    <Button 
-                                        onClick={() => handleSort('status')} 
-                                        variant="outline" 
-                                        size="sm"
-                                        className={sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
-                                    >
-                                        Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
-                                    </Button>
-                                    <Button 
-                                        onClick={() => handleSort('date')} 
-                                        variant="outline" 
-                                        size="sm"
-                                        className={sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
-                                    >
-                                        Data {sortField === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
-                                    </Button>
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            onClick={() => handleSort('default')} 
+                                            variant="outline" 
+                                            size="sm"
+                                            className={sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                        >
+                                            Padrão
+                                        </Button>
+                                        <Button 
+                                            onClick={() => handleSort('status')} 
+                                            variant="outline" 
+                                            size="sm"
+                                            className={sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                        >
+                                            Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                        </Button>
+                                        <Button 
+                                            onClick={() => handleSort('date')} 
+                                            variant="outline" 
+                                            size="sm"
+                                            className={sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                        >
+                                            Data {sortField === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                                        </Button>
+                                    </div>
+                                    
+                                    {/* Seletor de itens por página */}
+                                    <div className="flex items-center gap-2 border-l pl-2">
+                                        <label className="text-sm text-gray-600">Itens:</label>
+                                        <select
+                                            value={itemsPerPage}
+                                            onChange={(e) => {
+                                                setItemsPerPage(Number(e.target.value));
+                                                setCurrentPage(1);
+                                            }}
+                                            className="border rounded px-2 py-1 text-sm"
+                                        >
+                                            <option value="5">5</option>
+                                            <option value="10">10</option>
+                                            <option value="20">20</option>
+                                        </select>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -270,7 +318,7 @@ const PacientePage = () => {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {getSortedBookings(bookings).map((booking) => (
+                                {paginatedBookings.map((booking) => (
                                     <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
                                         <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
                                             <div>
@@ -293,36 +341,71 @@ const PacientePage = () => {
                                             <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {booking.booking_time}</p>
                                         </div>
 
-                                        {/* Exibir Link do Zoom para consultas confirmadas ou pagas */}
+                                        {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO MINIMIZADA */}
                                         {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
-                                            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg mb-4">
-                                                <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
-                                                    🎥 Link da Consulta Online
-                                                </h4>
-                                                <div className="space-y-3">
-                                                    <div>
+                                            <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg mb-4 overflow-hidden">
+                                                {/* Cabeçalho sempre visível */}
+                                                <div className="p-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="font-semibold text-blue-900 flex items-center">
+                                                            🎥 Consulta Online
+                                                        </h4>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => toggleZoomDetails(booking.id)}
+                                                            className="text-blue-700 hover:text-blue-900"
+                                                        >
+                                                            {expandedZoom[booking.id] ? (
+                                                                <>
+                                                                    <ChevronUp className="w-4 h-4 mr-1" />
+                                                                    Ocultar
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <ChevronDown className="w-4 h-4 mr-1" />
+                                                                    Ver detalhes
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                    
+                                                    {/* Botão principal sempre visível */}
+                                                    <div className="mt-3">
                                                         <a 
                                                             href={booking.meeting_link} 
                                                             target="_blank" 
                                                             rel="noopener noreferrer"
-                                                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                                                         >
                                                             🔗 Entrar na Sala Zoom
                                                         </a>
                                                     </div>
-                                                    {booking.meeting_password && (
-                                                        <div className="bg-white p-3 rounded border border-blue-200">
-                                                            <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
-                                                            <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
-                                                                {booking.meeting_password}
-                                                            </code>
-                                                        </div>
-                                                    )}
-                                                    <div className="text-xs text-blue-800 space-y-1">
-                                                        <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
-                                                        <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
-                                                    </div>
                                                 </div>
+
+                                                {/* Detalhes expandíveis */}
+                                                {expandedZoom[booking.id] && (
+                                                    <motion.div
+                                                        initial={{ height: 0, opacity: 0 }}
+                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                        exit={{ height: 0, opacity: 0 }}
+                                                        transition={{ duration: 0.3 }}
+                                                        className="px-4 pb-4 space-y-3"
+                                                    >
+                                                        {booking.meeting_password && (
+                                                            <div className="bg-white p-3 rounded border border-blue-200">
+                                                                <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
+                                                                <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
+                                                                    {booking.meeting_password}
+                                                                </code>
+                                                            </div>
+                                                        )}
+                                                        <div className="text-xs text-blue-800 space-y-1 bg-white p-3 rounded border border-blue-200">
+                                                            <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
+                                                            <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
+                                                        </div>
+                                                    </motion.div>
+                                                )}
                                             </div>
                                         )}
 
@@ -475,6 +558,91 @@ const PacientePage = () => {
                                         </div>
                                     </div>
                                 ))}
+
+                                {/* Paginação */}
+                                {totalPages > 1 && (
+                                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
+                                        <div className="text-sm text-gray-600">
+                                            Mostrando {startIndex + 1} a {Math.min(endIndex, bookings.length)} de {bookings.length} agendamentos
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => goToPage(1)}
+                                                disabled={currentPage === 1}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronsLeft className="h-4 w-4" />
+                                            </Button>
+                                            
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => goToPage(currentPage - 1)}
+                                                disabled={currentPage === 1}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronLeft className="h-4 w-4" />
+                                            </Button>
+
+                                            <div className="flex items-center gap-1">
+                                                {[...Array(totalPages)].map((_, index) => {
+                                                    const page = index + 1;
+                                                    // Mostrar apenas páginas próximas à atual
+                                                    if (
+                                                        page === 1 ||
+                                                        page === totalPages ||
+                                                        (page >= currentPage - 1 && page <= currentPage + 1)
+                                                    ) {
+                                                        return (
+                                                            <Button
+                                                                key={page}
+                                                                variant={currentPage === page ? "default" : "outline"}
+                                                                size="sm"
+                                                                onClick={() => goToPage(page)}
+                                                                className={`h-8 w-8 p-0 ${
+                                                                    currentPage === page 
+                                                                        ? 'bg-[#2d8659] hover:bg-[#236b47]' 
+                                                                        : ''
+                                                                }`}
+                                                            >
+                                                                {page}
+                                                            </Button>
+                                                        );
+                                                    } else if (
+                                                        page === currentPage - 2 ||
+                                                        page === currentPage + 2
+                                                    ) {
+                                                        return <span key={page} className="px-1">...</span>;
+                                                    }
+                                                    return null;
+                                                })}
+                                            </div>
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => goToPage(currentPage + 1)}
+                                                disabled={currentPage === totalPages}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronRight className="h-4 w-4" />
+                                            </Button>
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => goToPage(totalPages)}
+                                                disabled={currentPage === totalPages}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronsRight className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
