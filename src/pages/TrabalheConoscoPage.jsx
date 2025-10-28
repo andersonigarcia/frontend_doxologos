@@ -24,6 +24,68 @@ const TrabalheConoscoPage = () => {
   
   const [resumeFile, setResumeFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+
+  /**
+   * Formata telefone: (11) 98765-4321 ou (11) 3456-7890
+   */
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 10) {
+      // Telefone fixo: (11) 3456-7890
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    } else {
+      // Celular: (11) 98765-4321
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+  };
+
+  /**
+   * Formata CRP: 06/123456
+   */
+  const formatCRP = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 2) {
+      return numbers;
+    }
+    return numbers.replace(/(\d{2})(\d{0,6})/, '$1/$2');
+  };
+
+  /**
+   * Valida formato de email
+   */
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  /**
+   * Manipula mudanças nos campos do formulário com máscaras
+   */
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    let formattedValue = value;
+    
+    // Aplicar máscaras
+    if (name === 'phone') {
+      formattedValue = formatPhone(value);
+    } else if (name === 'crp') {
+      formattedValue = formatCRP(value);
+    } else if (name === 'email') {
+      // Validar email ao digitar
+      if (value && !validateEmail(value)) {
+        setEmailError('Email inválido');
+      } else {
+        setEmailError('');
+      }
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: formattedValue
+    }));
+  };
 
   /**
    * Manipula seleção de arquivo
@@ -84,6 +146,38 @@ const TrabalheConoscoPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validar email antes de enviar
+    if (!validateEmail(formData.email)) {
+      toast({
+        variant: 'destructive',
+        title: 'Email inválido',
+        description: 'Por favor, insira um endereço de email válido.',
+      });
+      return;
+    }
+
+    // Validar telefone (mínimo 10 dígitos)
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      toast({
+        variant: 'destructive',
+        title: 'Telefone inválido',
+        description: 'Por favor, insira um telefone válido com DDD.',
+      });
+      return;
+    }
+
+    // Validar CRP (formato: 06/123456)
+    const crpDigits = formData.crp.replace(/\D/g, '');
+    if (crpDigits.length < 8) {
+      toast({
+        variant: 'destructive',
+        title: 'CRP inválido',
+        description: 'Por favor, insira um CRP válido (ex: 06/123456).',
+      });
+      return;
+    }
     
     try {
       setUploading(true);
@@ -339,9 +433,10 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">Nome Completo *</label>
                     <input
                       type="text"
+                      name="name"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
@@ -350,11 +445,17 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">Email *</label>
                     <input
                       type="email"
+                      name="email"
                       required
                       value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
+                        emailError ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
+                    {emailError && (
+                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                    )}
                   </div>
                 </div>
 
@@ -363,9 +464,12 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">Telefone *</label>
                     <input
                       type="tel"
+                      name="phone"
                       required
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      onChange={handleInputChange}
+                      placeholder="(11) 98765-4321"
+                      maxLength="15"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
@@ -374,10 +478,12 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">CRP *</label>
                     <input
                       type="text"
+                      name="crp"
                       required
                       value={formData.crp}
-                      onChange={(e) => setFormData({...formData, crp: e.target.value})}
+                      onChange={handleInputChange}
                       placeholder="Ex: 06/123456"
+                      maxLength="9"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
@@ -386,9 +492,10 @@ const TrabalheConoscoPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Especialidade *</label>
                   <select
+                    name="specialty"
                     required
                     value={formData.specialty}
-                    onChange={(e) => setFormData({...formData, specialty: e.target.value})}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   >
                     <option value="">Selecione...</option>
@@ -403,9 +510,10 @@ const TrabalheConoscoPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Tempo de Experiência *</label>
                   <select
+                    name="experience"
                     required
                     value={formData.experience}
-                    onChange={(e) => setFormData({...formData, experience: e.target.value})}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   >
                     <option value="">Selecione...</option>
@@ -420,9 +528,10 @@ const TrabalheConoscoPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Mensagem / Carta de Apresentação</label>
                   <textarea
+                    name="message"
                     rows={6}
                     value={formData.message}
-                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    onChange={handleInputChange}
                     placeholder="Conte-nos um pouco sobre você, sua experiência e por que gostaria de fazer parte da equipe Doxologos..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   />
