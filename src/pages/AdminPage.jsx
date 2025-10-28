@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2 } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -90,6 +90,9 @@ const AdminPage = () => {
     // Estados de paginação
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+    
+    // Estado para controlar expansão dos dados do Zoom
+    const [expandedZoomCards, setExpandedZoomCards] = useState({});
     
     // Sistema de Loading Global
     const { isLoading, withLoading, isAnyLoading } = useLoadingState();
@@ -575,6 +578,14 @@ const AdminPage = () => {
             'cancelled_by_professional': 'Cancelado pelo Profissional'
         };
         return labels[status] || status;
+    };
+    
+    // Função para toggle da expansão dos dados do Zoom
+    const toggleZoomExpansion = (bookingId) => {
+        setExpandedZoomCards(prev => ({
+            ...prev,
+            [bookingId]: !prev[bookingId]
+        }));
     };
 
     const handleReviewApproval = async (reviewId, isApproved) => {
@@ -1590,49 +1601,70 @@ const AdminPage = () => {
                                                             
                                                             {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
                                                             {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
-                                                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                                                    <h4 className="font-semibold text-blue-900 mb-2 flex items-center">
-                                                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                        </svg>
-                                                                        Acesso ao Zoom
-                                                                    </h4>
-                                                                    <div className="space-y-2 text-sm">
-                                                                        <div>
-                                                                            <span className="text-gray-600 font-medium">Link da Reunião:</span>
-                                                                            <a 
-                                                                                href={b.meeting_link} 
-                                                                                target="_blank" 
-                                                                                rel="noopener noreferrer" 
-                                                                                className="block text-blue-600 hover:text-blue-800 underline break-all"
-                                                                            >
-                                                                                {b.meeting_link}
-                                                                            </a>
-                                                                        </div>
-                                                                        {b.meeting_password && (
-                                                                            <div>
-                                                                                <span className="text-gray-600 font-medium">Senha: </span>
-                                                                                <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
-                                                                                    {b.meeting_password}
-                                                                                </span>
-                                                                            </div>
+                                                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                                                                    {/* Header clicável */}
+                                                                    <button
+                                                                        onClick={() => toggleZoomExpansion(b.id)}
+                                                                        className="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors"
+                                                                    >
+                                                                        <h4 className="font-semibold text-blue-900 flex items-center">
+                                                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                            </svg>
+                                                                            Acesso ao Zoom
+                                                                        </h4>
+                                                                        {expandedZoomCards[b.id] ? (
+                                                                            <ChevronUp className="w-5 h-5 text-blue-700" />
+                                                                        ) : (
+                                                                            <ChevronDown className="w-5 h-5 text-blue-700" />
                                                                         )}
-                                                                        {b.meeting_start_url && (
+                                                                    </button>
+                                                                    
+                                                                    {/* Conteúdo colapsável com animação */}
+                                                                    <div 
+                                                                        className={`transition-all duration-300 ease-in-out ${
+                                                                            expandedZoomCards[b.id] 
+                                                                                ? 'max-h-96 opacity-100' 
+                                                                                : 'max-h-0 opacity-0'
+                                                                        } overflow-hidden`}
+                                                                    >
+                                                                        <div className="px-4 pb-4 space-y-2 text-sm border-t border-blue-200 pt-3">
                                                                             <div>
-                                                                                <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
+                                                                                <span className="text-gray-600 font-medium">Link da Reunião:</span>
                                                                                 <a 
-                                                                                    href={b.meeting_start_url} 
+                                                                                    href={b.meeting_link} 
                                                                                     target="_blank" 
                                                                                     rel="noopener noreferrer" 
-                                                                                    className="block text-green-600 hover:text-green-800 underline break-all"
+                                                                                    className="block text-blue-600 hover:text-blue-800 underline break-all"
                                                                                 >
-                                                                                    {b.meeting_start_url}
+                                                                                    {b.meeting_link}
                                                                                 </a>
-                                                                                <span className="text-xs text-gray-500 italic">
-                                                                                    ⚠️ Use este link para iniciar a reunião como anfitrião
-                                                                                </span>
                                                                             </div>
-                                                                        )}
+                                                                            {b.meeting_password && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600 font-medium">Senha: </span>
+                                                                                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
+                                                                                        {b.meeting_password}
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                            {b.meeting_start_url && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
+                                                                                    <a 
+                                                                                        href={b.meeting_start_url} 
+                                                                                        target="_blank" 
+                                                                                        rel="noopener noreferrer" 
+                                                                                        className="block text-green-600 hover:text-green-800 underline break-all"
+                                                                                    >
+                                                                                        {b.meeting_start_url}
+                                                                                    </a>
+                                                                                    <span className="text-xs text-gray-500 italic">
+                                                                                        ⚠️ Use este link para iniciar a reunião como anfitrião
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             )}
