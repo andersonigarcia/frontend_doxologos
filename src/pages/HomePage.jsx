@@ -405,6 +405,22 @@ const HomePage = () => {
     <Helmet>
       <title>Doxologos - Clínica de Atendimento Psicológico Online com Ética Cristã</title>
       <meta name="description" content="Atendimento psicológico, workshops e palestras online com foco na ética cristã e acolhimento integral." />
+      
+      {/* FAQ Schema for Rich Snippets */}
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": faqs.map(faq => ({
+            "@type": "Question",
+            "name": faq.question,
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": faq.answer
+            }
+          }))
+        })}
+      </script>
     </Helmet>
 
     <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
@@ -527,6 +543,7 @@ const HomePage = () => {
                         src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
                         alt={currentVideo.title}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                       />
                       <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-center p-6">
                         <div className="bg-red-500 rounded-full p-4 mb-4">
@@ -563,6 +580,7 @@ const HomePage = () => {
                     src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
                     alt={currentVideo.title}
                     className={`w-full h-full object-cover transition-opacity duration-300 ${isVideoLoading ? 'opacity-50' : 'opacity-100'}`}
+                    loading="lazy"
                   />
                   
                   {/* Overlay escuro */}
@@ -628,6 +646,7 @@ const HomePage = () => {
                     src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                     alt={video.title}
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-500 flex items-center justify-center">
                     {currentVideo.id === video.id ? (
