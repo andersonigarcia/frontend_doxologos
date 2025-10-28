@@ -85,10 +85,27 @@ export function AuthProvider({ children }) {
     });
 
     if (error) {
+      // Melhorar mensagens de erro de cadastro
+      let errorTitle = "Erro ao criar conta";
+      let errorMessage = "Não foi possível criar sua conta. Tente novamente.";
+
+      const errorCode = error.message?.toLowerCase() || '';
+      
+      if (errorCode.includes('already registered') || errorCode.includes('already exists')) {
+        errorTitle = "Email já cadastrado";
+        errorMessage = "Já existe uma conta com este email. Faça login ou use outro email.";
+      } else if (errorCode.includes('password')) {
+        errorTitle = "Senha inválida";
+        errorMessage = "A senha deve ter no mínimo 6 caracteres.";
+      } else if (errorCode.includes('email')) {
+        errorTitle = "Email inválido";
+        errorMessage = "Por favor, insira um endereço de email válido.";
+      }
+
       toast({
         variant: "destructive",
-        title: "Sign up Failed",
-        description: error.message || "Something went wrong",
+        title: errorTitle,
+        description: errorMessage,
       });
     }
 
@@ -102,13 +119,42 @@ export function AuthProvider({ children }) {
     });
 
     if (error) {
+      // Melhorar mensagens de erro para o usuário
+      let errorTitle = "Erro ao fazer login";
+      let errorMessage = "Não foi possível realizar o login. Tente novamente.";
+
+      // Identificar tipos específicos de erro
+      const errorCode = error.message?.toLowerCase() || '';
+      
+      if (errorCode.includes('invalid login credentials') || 
+          errorCode.includes('invalid') || 
+          errorCode.includes('credentials')) {
+        errorTitle = "Credenciais inválidas";
+        errorMessage = "Email ou senha incorretos. Verifique seus dados e tente novamente.";
+      } else if (errorCode.includes('email not confirmed')) {
+        errorTitle = "Email não confirmado";
+        errorMessage = "Por favor, confirme seu email antes de fazer login.";
+      } else if (errorCode.includes('user not found')) {
+        errorTitle = "Usuário não encontrado";
+        errorMessage = "Não existe uma conta com este email. Verifique o email digitado.";
+      } else if (errorCode.includes('too many requests')) {
+        errorTitle = "Muitas tentativas";
+        errorMessage = "Você fez muitas tentativas de login. Aguarde alguns minutos e tente novamente.";
+      } else if (errorCode.includes('network')) {
+        errorTitle = "Erro de conexão";
+        errorMessage = "Verifique sua conexão com a internet e tente novamente.";
+      }
+
       toast({
         variant: "destructive",
-        title: "Sign in Failed",
-        description: error.message || "Credenciais inválidas.",
+        title: errorTitle,
+        description: errorMessage,
       });
     } else {
-        toast({ title: "Login bem-sucedido!" });
+        toast({ 
+          title: "✅ Login realizado com sucesso!",
+          description: "Bem-vindo(a) de volta ao Doxologos."
+        });
     }
 
     return { error };
@@ -117,9 +163,16 @@ export function AuthProvider({ children }) {
   const signInWithMagicLink = useCallback(async (email) => {
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
-      toast({ variant: 'destructive', title: 'Erro ao enviar magic link', description: error.message });
+      toast({ 
+        variant: 'destructive', 
+        title: 'Erro ao enviar link de acesso', 
+        description: 'Não foi possível enviar o link. Verifique o email e tente novamente.' 
+      });
     } else {
-      toast({ title: 'Verifique seu e-mail', description: 'Enviamos um link para login.' });
+      toast({ 
+        title: '📧 Verifique seu email', 
+        description: 'Enviamos um link mágico para você fazer login sem senha.' 
+      });
     }
     return { error };
   }, [toast]);
@@ -130,8 +183,13 @@ export function AuthProvider({ children }) {
     if (error) {
       toast({
         variant: "destructive",
-        title: "Sign out Failed",
-        description: error.message || "Something went wrong",
+        title: "Erro ao sair",
+        description: "Não foi possível fazer logout. Tente novamente.",
+      });
+    } else {
+      toast({
+        title: "👋 Até logo!",
+        description: "Você foi desconectado com sucesso.",
       });
     }
 
