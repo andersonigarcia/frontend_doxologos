@@ -151,6 +151,7 @@ const AgendamentoPage = () => {
         const dayKey = dayMapping[dayOfWeek];
         let times = availability[selectedProfessional]?.[dayKey] || [];
 
+        // Aplicar bloqueios de data
         const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === selectedDate);
         if (professionalBlockedDates.length > 0) {
             professionalBlockedDates.forEach(block => {
@@ -160,6 +161,66 @@ const AgendamentoPage = () => {
                     times = times.filter(time => time < block.start_time || time >= block.end_time);
                 }
             });
+        }
+        
+        // Filtrar horários baseado na duração do serviço
+        if (selectedService) {
+            const service = services.find(s => s.id === selectedService);
+            if (service && service.duration_minutes) {
+                const serviceDurationMinutes = service.duration_minutes;
+                
+                // Função para converter horário "HH:MM" em minutos desde meia-noite
+                const timeToMinutes = (timeStr) => {
+                    const [hours, minutes] = timeStr.split(':').map(Number);
+                    return hours * 60 + minutes;
+                };
+                
+                // Função para adicionar minutos a um horário
+                const addMinutesToTime = (timeStr, minutes) => {
+                    const totalMinutes = timeToMinutes(timeStr) + minutes;
+                    const hours = Math.floor(totalMinutes / 60);
+                    const mins = totalMinutes % 60;
+                    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                };
+                
+                // Filtrar horários que têm espaço suficiente para o serviço
+                times = times.filter(time => {
+                    const startMinutes = timeToMinutes(time);
+                    const endMinutes = startMinutes + serviceDurationMinutes;
+                    
+                    // Verificar se há conflito com agendamentos existentes
+                    // Um conflito ocorre se qualquer horário reservado está no intervalo [start, end)
+                    const hasConflict = bookedSlots.some(bookedTime => {
+                        const bookedMinutes = timeToMinutes(bookedTime);
+                        // O horário reservado conflita se está dentro do período do novo serviço
+                        return bookedMinutes >= startMinutes && bookedMinutes < endMinutes;
+                    });
+                    
+                    if (hasConflict) return false;
+                    
+                    // Verificar se o término do serviço não ultrapassa horários disponíveis
+                    // que já estão ocupados
+                    const sortedTimes = [...times].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+                    const currentIndex = sortedTimes.indexOf(time);
+                    
+                    // Para cada slot de tempo entre o início e o fim do serviço,
+                    // verificar se está ocupado
+                    for (let i = currentIndex + 1; i < sortedTimes.length; i++) {
+                        const nextTime = sortedTimes[i];
+                        const nextMinutes = timeToMinutes(nextTime);
+                        
+                        // Se o próximo slot está depois do fim do serviço, não há problema
+                        if (nextMinutes >= endMinutes) break;
+                        
+                        // Se o próximo slot está ocupado e dentro do período do serviço, há conflito
+                        if (bookedSlots.includes(nextTime)) {
+                            return false;
+                        }
+                    }
+                    
+                    return true;
+                });
+            }
         }
         
         return times;
@@ -869,9 +930,30 @@ const AgendamentoPage = () => {
                         </div>
                         
                         <div className="flex-1 bg-white rounded-xl shadow-md border border-gray-200 p-4">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4" id="available-times-label">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2" id="available-times-label">
                             ⏰ Horários Disponíveis
                           </h3>
+                          
+                          {/* Indicador de duração do serviço */}
+                          {selectedService && services.find(s => s.id === selectedService) && (
+                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock className="w-4 h-4 text-blue-600" />
+                                <span className="text-gray-700">
+                                  Duração do serviço: 
+                                  <span className="font-semibold text-blue-600 ml-1">
+                                    {services.find(s => s.id === selectedService)?.duration_minutes >= 60 
+                                      ? `${Math.floor(services.find(s => s.id === selectedService).duration_minutes / 60)}h${services.find(s => s.id === selectedService).duration_minutes % 60 > 0 ? ` ${services.find(s => s.id === selectedService).duration_minutes % 60}min` : ''}` 
+                                      : `${services.find(s => s.id === selectedService)?.duration_minutes} minutos`
+                                    }
+                                  </span>
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-600 mt-1 ml-6">
+                                Os horários exibidos garantem tempo suficiente para o atendimento completo.
+                              </p>
+                            </div>
+                          )}
                           
                           {isLoadingTimes ? (
                             <div className="flex flex-col items-center justify-center py-12">
