@@ -34,6 +34,12 @@ const PacientePage = () => {
     const [sortField, setSortField] = useState('default'); // 'default', 'date', 'status'
     const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
     
+    // Estado para reagendamento
+    const [reschedulingBooking, setReschedulingBooking] = useState(null);
+    const [availableSlots, setAvailableSlots] = useState([]);
+    const [loadingSlots, setLoadingSlots] = useState(false);
+    const [selectedNewSlot, setSelectedNewSlot] = useState(null);
+    
     // Função para ordenar bookings
     const getSortedBookings = (bookingsToSort) => {
         const statusPriority = {
@@ -183,6 +189,185 @@ const PacientePage = () => {
         } else {
             toast({ title: "Agendamento cancelado com sucesso." });
             fetchData();
+        }
+    };
+
+    /**
+     * Verifica se o agendamento pode ser reagendado (mínimo 24h de antecedência)
+     */
+    const canReschedule = (booking) => {
+        if (booking.status === 'cancelled_by_patient' || booking.status === 'cancelled_by_professional') {
+            return false;
+        }
+        
+        const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+        const now = new Date();
+        const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
+        
+        // Deve ter mais de 24h de antecedência
+        return hoursDifference > 24;
+    };
+
+    /**
+     * Busca horários disponíveis para reagendamento
+     */
+    const fetchAvailableSlots = async (professionalId, serviceId) => {
+        setLoadingSlots(true);
+        try {
+            logger.info('Fetching available slots for reschedule', { professionalId, serviceId });
+            
+            // Buscar disponibilidade do profissional
+            const { data: professional, error: profError } = await supabase
+                .from('professionals')
+                .select('availability')
+                .eq('id', professionalId)
+                .single();
+            
+            if (profError) throw profError;
+            
+            // Buscar horários disponíveis nos próximos 30 dias
+            const today = new Date();
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + 30);
+            
+            const { data: existingBookings, error } = await supabase
+                .from('bookings')
+                .select('booking_date, booking_time')
+                .eq('professional_id', professionalId)
+                .in('status', ['confirmed', 'paid', 'pending_payment'])
+                .gte('booking_date', today.toISOString().split('T')[0])
+                .lte('booking_date', endDate.toISOString().split('T')[0]);
+            
+            if (error) throw error;
+            
+            // Parse da disponibilidade do profissional
+            const availability = professional?.availability || {};
+            const weekdayMap = {
+                0: 'sunday',
+                1: 'monday',
+                2: 'tuesday',
+                3: 'wednesday',
+                4: 'thursday',
+                5: 'friday',
+                6: 'saturday'
+            };
+            
+            // Gerar slots disponíveis baseado na agenda do profissional
+            const slots = [];
+            const bookedSlots = new Set(
+                existingBookings.map(b => `${b.booking_date}T${b.booking_time}`)
+            );
+            
+            for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay();
+                const dayName = weekdayMap[dayOfWeek];
+                
+                // Verificar se o profissional trabalha neste dia
+                const dayAvailability = availability[dayName];
+                if (!dayAvailability || !dayAvailability.available) continue;
+                
+                const dateStr = d.toISOString().split('T')[0];
+                
+                // Usar horários da disponibilidade do profissional
+                const startHour = parseInt(dayAvailability.start?.split(':')[0] || '8');
+                const endHour = parseInt(dayAvailability.end?.split(':')[0] || '18');
+                
+                // Gerar slots dentro do horário de trabalho
+                for (let hour = startHour; hour < endHour; hour++) {
+                    const timeStr = `${hour.toString().padStart(2, '0')}:00:00`;
+                    const slotKey = `${dateStr}T${timeStr}`;
+                    
+                    // Verificar se não está ocupado
+                    if (!bookedSlots.has(slotKey)) {
+                        // Verificar se o slot está a mais de 24h do momento atual
+                        const slotDateTime = new Date(`${dateStr}T${timeStr}`);
+                        const hoursFromNow = (slotDateTime - new Date()) / (1000 * 60 * 60);
+                        
+                        if (hoursFromNow > 24) {
+                            slots.push({
+                                date: dateStr,
+                                time: timeStr,
+                                display: `${new Date(dateStr).toLocaleDateString('pt-BR', { 
+                                    weekday: 'short', 
+                                    day: '2-digit', 
+                                    month: 'short' 
+                                })} às ${hour}:00`
+                            });
+                        }
+                    }
+                }
+            }
+            
+            setAvailableSlots(slots);
+            logger.success('Available slots loaded', { count: slots.length });
+        } catch (error) {
+            logger.error('Error fetching available slots', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao buscar horários',
+                description: 'Não foi possível carregar os horários disponíveis.'
+            });
+        } finally {
+            setLoadingSlots(false);
+        }
+    };
+
+    /**
+     * Inicia o processo de reagendamento
+     */
+    const startReschedule = async (booking) => {
+        setReschedulingBooking(booking);
+        setSelectedNewSlot(null);
+        await fetchAvailableSlots(booking.professional_id, booking.service_id);
+    };
+
+    /**
+     * Confirma o reagendamento
+     */
+    const confirmReschedule = async () => {
+        if (!selectedNewSlot || !reschedulingBooking) return;
+        
+        try {
+            logger.info('Confirming reschedule', {
+                bookingId: reschedulingBooking.id,
+                newDate: selectedNewSlot.date,
+                newTime: selectedNewSlot.time
+            });
+            
+            const { error } = await supabase
+                .from('bookings')
+                .update({
+                    booking_date: selectedNewSlot.date,
+                    booking_time: selectedNewSlot.time,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', reschedulingBooking.id);
+            
+            if (error) throw error;
+            
+            logger.success('Booking rescheduled successfully', {
+                bookingId: reschedulingBooking.id
+            });
+            
+            toast({
+                title: '✅ Reagendamento confirmado!',
+                description: `Seu horário foi alterado para ${new Date(selectedNewSlot.date).toLocaleDateString('pt-BR')} às ${selectedNewSlot.time.slice(0, 5)}.`
+            });
+            
+            // Resetar estados
+            setReschedulingBooking(null);
+            setSelectedNewSlot(null);
+            setAvailableSlots([]);
+            
+            // Recarregar dados
+            fetchData();
+        } catch (error) {
+            logger.error('Error rescheduling booking', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao reagendar',
+                description: 'Não foi possível reagendar o horário. Tente novamente.'
+            });
         }
     };
 
@@ -562,7 +747,85 @@ const PacientePage = () => {
                                                     <XCircle className="w-4 h-4 mr-1" /> Cancelar
                                                 </Button>
                                             )}
-                                             <Button size="sm" variant="outline" onClick={() => toast({ title: 'Em breve!', description: 'A função de reagendamento será implementada em breve.' })}>Reagendar</Button>
+                                            {canReschedule(booking) && (
+                                                <Dialog open={reschedulingBooking?.id === booking.id} onOpenChange={(open) => !open && setReschedulingBooking(null)}>
+                                                    <DialogTrigger asChild>
+                                                        <Button size="sm" variant="outline" onClick={() => startReschedule(booking)}>
+                                                            <Calendar className="w-4 h-4 mr-1" /> Reagendar
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                                        <DialogHeader>
+                                                            <DialogTitle>Reagendar Consulta</DialogTitle>
+                                                        </DialogHeader>
+                                                        <div className="space-y-4">
+                                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                                <h4 className="font-semibold mb-2">Agendamento Atual:</h4>
+                                                                <p className="text-sm text-gray-600">
+                                                                    <strong>Data:</strong> {new Date(booking.booking_date).toLocaleDateString('pt-BR')} às {booking.booking_time.slice(0, 5)}
+                                                                </p>
+                                                                <p className="text-sm text-gray-600">
+                                                                    <strong>Profissional:</strong> {booking.professional?.name}
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
+                                                                <p className="text-sm text-blue-800">
+                                                                    <strong>ℹ️ Importante:</strong> Apenas horários com mais de 24h de antecedência estão disponíveis.
+                                                                </p>
+                                                            </div>
+                                                            
+                                                            <div>
+                                                                <h4 className="font-semibold mb-3">Selecione o novo horário:</h4>
+                                                                {loadingSlots ? (
+                                                                    <div className="text-center py-8">
+                                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2d8659] mx-auto"></div>
+                                                                        <p className="text-sm text-gray-600 mt-2">Carregando horários disponíveis...</p>
+                                                                    </div>
+                                                                ) : availableSlots.length === 0 ? (
+                                                                    <div className="text-center text-gray-600 py-8">
+                                                                        <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                                                                        <p className="font-medium">Nenhum horário disponível</p>
+                                                                        <p className="text-sm mt-2">Não há horários disponíveis nos próximos 30 dias com a agenda deste profissional.</p>
+                                                                        <p className="text-sm mt-2">Entre em contato conosco para mais opções.</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+                                                                        {availableSlots.map((slot, index) => (
+                                                                            <button
+                                                                                key={index}
+                                                                                onClick={() => setSelectedNewSlot(slot)}
+                                                                                className={`p-3 text-left rounded-lg border-2 transition-all ${
+                                                                                    selectedNewSlot?.date === slot.date && selectedNewSlot?.time === slot.time
+                                                                                        ? 'border-[#2d8659] bg-green-50'
+                                                                                        : 'border-gray-200 hover:border-[#2d8659] hover:bg-gray-50'
+                                                                                }`}
+                                                                            >
+                                                                                <div className="flex items-center">
+                                                                                    <Calendar className="w-4 h-4 mr-2 text-[#2d8659]" />
+                                                                                    <span className="text-sm font-medium">{slot.display}</span>
+                                                                                </div>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <DialogFooter>
+                                                            <DialogClose asChild>
+                                                                <Button variant="outline">Cancelar</Button>
+                                                            </DialogClose>
+                                                            <Button 
+                                                                onClick={confirmReschedule} 
+                                                                disabled={!selectedNewSlot}
+                                                                className="bg-[#2d8659] hover:bg-[#236b47]"
+                                                            >
+                                                                Confirmar Reagendamento
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            )}
                                         </div>
                                     </div>
                                 ))}
