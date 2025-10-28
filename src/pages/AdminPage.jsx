@@ -1162,7 +1162,15 @@ const AdminPage = () => {
                         <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Acesso Restrito</h2>
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div><label className="block text-sm font-medium mb-2 text-gray-600">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} className="w-full input"/></div>
-                            <div><label className="block text-sm font-medium mb-2 text-gray-600">Senha</label><input type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full input"/></div>
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium text-gray-600">Senha</label>
+                                    <Link to="/recuperar-senha" className="text-sm text-[#2d8659] hover:underline">
+                                        Esqueci minha senha
+                                    </Link>
+                                </div>
+                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full input"/>
+                            </div>
                             <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Entrar</Button>
                         </form>
                     </motion.div>

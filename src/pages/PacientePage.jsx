@@ -225,7 +225,15 @@ const PacientePage = () => {
                         <p className="text-center text-gray-600 mb-6">Acesse para ver seus agendamentos.</p>
                         <form onSubmit={handleLogin} className="space-y-4">
                             <div><label className="block text-sm font-medium mb-2">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"/></div>
-                            <div><label className="block text-sm font-medium mb-2">Senha</label><input type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"/></div>
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium">Senha</label>
+                                    <Link to="/recuperar-senha" className="text-sm text-[#2d8659] hover:underline">
+                                        Esqueci minha senha
+                                    </Link>
+                                </div>
+                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"/>
+                            </div>
                             <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Entrar</Button>
                         </form>
                     </motion.div>

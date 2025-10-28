@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
-import { loginRateLimiter, RateLimiter } from '@/lib/rateLimiter';
+import { loginRateLimiter, passwordResetRateLimiter, RateLimiter } from '@/lib/rateLimiter';
 
 const AuthContext = createContext(null);
 
@@ -215,6 +215,92 @@ export function AuthProvider({ children }) {
     return { error };
   }, [toast]);
 
+  const resetPassword = useCallback(async (email) => {
+    // Verificar rate limiting
+    const rateLimitCheck = passwordResetRateLimiter.canAttempt(email);
+    
+    if (!rateLimitCheck.allowed) {
+      toast({
+        variant: "destructive",
+        title: "Muitas tentativas",
+        description: `Você excedeu o limite de solicitações de recuperação de senha. Aguarde ${RateLimiter.formatWaitTime(rateLimitCheck.waitTime)} antes de tentar novamente.`,
+      });
+      return { error: new Error('Rate limit exceeded') };
+    }
+
+    // Registrar tentativa
+    passwordResetRateLimiter.recordAttempt(email);
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+
+    if (error) {
+      let errorTitle = "Erro ao enviar email";
+      let errorMessage = "Não foi possível enviar o email de recuperação. Tente novamente.";
+
+      const errorCode = error.message?.toLowerCase() || '';
+      
+      if (errorCode.includes('not found') || errorCode.includes('user not found')) {
+        errorTitle = "Email não encontrado";
+        errorMessage = "Não existe uma conta com este email. Verifique o email digitado.";
+      } else if (errorCode.includes('rate limit')) {
+        errorTitle = "Muitas tentativas";
+        errorMessage = "Você fez muitas solicitações. Aguarde alguns minutos e tente novamente.";
+      } else if (errorCode.includes('network')) {
+        errorTitle = "Erro de conexão";
+        errorMessage = "Verifique sua conexão com a internet e tente novamente.";
+      }
+
+      toast({
+        variant: "destructive",
+        title: errorTitle,
+        description: errorMessage,
+      });
+    } else {
+      toast({
+        title: "📧 Email enviado!",
+        description: "Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.",
+      });
+    }
+
+    return { error };
+  }, [toast]);
+
+  const updatePassword = useCallback(async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ 
+      password: newPassword 
+    });
+
+    if (error) {
+      let errorTitle = "Erro ao atualizar senha";
+      let errorMessage = "Não foi possível atualizar sua senha. Tente novamente.";
+
+      const errorCode = error.message?.toLowerCase() || '';
+      
+      if (errorCode.includes('password')) {
+        errorTitle = "Senha inválida";
+        errorMessage = "A senha deve ter no mínimo 6 caracteres.";
+      } else if (errorCode.includes('same password')) {
+        errorTitle = "Senha já utilizada";
+        errorMessage = "A nova senha não pode ser igual à senha anterior.";
+      }
+
+      toast({
+        variant: "destructive",
+        title: errorTitle,
+        description: errorMessage,
+      });
+    } else {
+      toast({
+        title: "✅ Senha atualizada!",
+        description: "Sua senha foi alterada com sucesso.",
+      });
+    }
+
+    return { error };
+  }, [toast]);
+
   const value = useMemo(() => ({
     user,
     session,
@@ -224,7 +310,9 @@ export function AuthProvider({ children }) {
     signIn,
     signOut,
     signInWithMagicLink,
-  }), [user, session, userRole, loading, signUp, signIn, signOut, signInWithMagicLink]);
+    resetPassword,
+    updatePassword,
+  }), [user, session, userRole, loading, signUp, signIn, signOut, signInWithMagicLink, resetPassword, updatePassword]);
 
   // Sempre renderiza children - componentes individuais decidem se mostram loading
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
