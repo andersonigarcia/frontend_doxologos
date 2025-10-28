@@ -17,13 +17,32 @@ export const useErrorBoundary = () => {
 // Network error monitoring
 export const useNetworkErrorTracking = () => {
   useEffect(() => {
+    // URLs que devem ser ignoradas pelo tracking
+    const ignoredUrls = [
+      'google-analytics.com',
+      'googletagmanager.com',
+      'doubleclick.net',
+      'analytics.google.com',
+      'stats.g.doubleclick.net',
+      '/gtag/',
+      '/collect',
+      '/r/collect'
+    ];
+
+    const shouldIgnoreUrl = (url) => {
+      if (!url) return true;
+      const urlString = url.toString();
+      return ignoredUrls.some(ignored => urlString.includes(ignored));
+    };
+
     // Monitor fetch errors
     const originalFetch = window.fetch;
     window.fetch = async function(...args) {
       try {
         const response = await originalFetch.apply(this, args);
         
-        if (!response.ok) {
+        // Ignorar erros de URLs específicas
+        if (!response.ok && !shouldIgnoreUrl(args[0])) {
           analytics.trackEvent('network_error', {
             event_category: 'Network',
             event_label: 'HTTP Error',
@@ -35,11 +54,14 @@ export const useNetworkErrorTracking = () => {
         
         return response;
       } catch (error) {
-        analytics.trackError(error, {
-          networkError: true,
-          url: args[0],
-          method: args[1]?.method || 'GET'
-        });
+        // Ignorar erros de URLs específicas
+        if (!shouldIgnoreUrl(args[0])) {
+          analytics.trackError(error, {
+            networkError: true,
+            url: args[0],
+            method: args[1]?.method || 'GET'
+          });
+        }
         throw error;
       }
     };
@@ -48,12 +70,15 @@ export const useNetworkErrorTracking = () => {
     const originalXHROpen = XMLHttpRequest.prototype.open;
     XMLHttpRequest.prototype.open = function(method, url, ...rest) {
       this.addEventListener('error', () => {
-        analytics.trackEvent('xhr_error', {
-          event_category: 'Network',
-          event_label: 'XHR Error',
-          custom_parameter_1: url,
-          custom_parameter_2: method
-        });
+        // Ignorar erros de URLs específicas
+        if (!shouldIgnoreUrl(url)) {
+          analytics.trackEvent('xhr_error', {
+            event_category: 'Network',
+            event_label: 'XHR Error',
+            custom_parameter_1: url,
+            custom_parameter_2: method
+          });
+        }
       });
       
       return originalXHROpen.call(this, method, url, ...rest);
@@ -73,21 +98,41 @@ export const useConsoleErrorTracking = () => {
     const originalConsoleError = console.error;
     const originalConsoleWarn = console.warn;
 
+    // Strings que devem ser ignoradas
+    const ignoredPatterns = [
+      'google-analytics',
+      'googletagmanager',
+      'gtag',
+      'Failed to load resource',
+      'net::ERR_BLOCKED_BY_CLIENT' // Ad blockers
+    ];
+
+    const shouldIgnoreMessage = (message) => {
+      const messageStr = message.toString().toLowerCase();
+      return ignoredPatterns.some(pattern => messageStr.includes(pattern.toLowerCase()));
+    };
+
     console.error = function(...args) {
-      analytics.trackEvent('console_error', {
-        event_category: 'JavaScript',
-        event_label: 'Console Error',
-        custom_parameter_1: args.join(' ')
-      });
+      // Ignorar mensagens específicas
+      if (!shouldIgnoreMessage(args.join(' '))) {
+        analytics.trackEvent('console_error', {
+          event_category: 'JavaScript',
+          event_label: 'Console Error',
+          custom_parameter_1: args.join(' ')
+        });
+      }
       return originalConsoleError.apply(this, args);
     };
 
     console.warn = function(...args) {
-      analytics.trackEvent('console_warning', {
-        event_category: 'JavaScript', 
-        event_label: 'Console Warning',
-        custom_parameter_1: args.join(' ')
-      });
+      // Ignorar mensagens específicas
+      if (!shouldIgnoreMessage(args.join(' '))) {
+        analytics.trackEvent('console_warning', {
+          event_category: 'JavaScript', 
+          event_label: 'Console Warning',
+          custom_parameter_1: args.join(' ')
+        });
+      }
       return originalConsoleWarn.apply(this, args);
     };
 
