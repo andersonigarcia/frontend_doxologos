@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { safeRedirect } from '@/lib/securityUtils';
 
 export default function PagamentoSimuladoPage() {
     const [searchParams] = useSearchParams();
@@ -19,7 +20,9 @@ export default function PagamentoSimuladoPage() {
             const redirectUrl = new URL(window.location.origin + '/area-do-paciente');
             redirectUrl.searchParams.append('booking_id', bookingId);
             redirectUrl.searchParams.append('payment_status', paymentStatus);
-            window.location.href = redirectUrl.toString();
+            
+            // Usar redirecionamento seguro
+            safeRedirect(redirectUrl.toString(), '/area-do-paciente');
         }, 2000);
     };
 

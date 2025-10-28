@@ -3,6 +3,8 @@
  * Gerencia autenticação OAuth e criação de salas de reunião
  */
 
+import { secureLog } from './secureLogger';
+
 class ZoomService {
   constructor() {
     this.clientId = import.meta.env.VITE_ZOOM_CLIENT_ID;
@@ -13,7 +15,7 @@ class ZoomService {
     this.accessToken = null;
     this.tokenExpiry = null;
 
-    console.log('🎥 ZoomService inicializado', {
+    secureLog.info('ZoomService inicializado', {
       hasClientId: !!this.clientId,
       hasClientSecret: !!this.clientSecret,
       hasAccountId: !!this.accountId
@@ -26,25 +28,25 @@ class ZoomService {
   async getAccessToken() {
     // Verificar se já temos um token válido
     if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-      console.log('✅ Usando token em cache');
+      secureLog.info('Usando token em cache');
       return this.accessToken;
     }
 
     if (!this.clientId || !this.clientSecret || !this.accountId) {
-      const errorMsg = `❌ Credenciais do Zoom incompletas: ClientID=${!!this.clientId}, ClientSecret=${!!this.clientSecret}, AccountID=${!!this.accountId}`;
-      console.error(errorMsg);
+      const errorMsg = `Credenciais do Zoom incompletas: ClientID=${!!this.clientId}, ClientSecret=${!!this.clientSecret}, AccountID=${!!this.accountId}`;
+      secureLog.error(errorMsg);
       throw new Error('Credenciais do Zoom não configuradas. Verifique VITE_ZOOM_CLIENT_ID, VITE_ZOOM_CLIENT_SECRET e VITE_ZOOM_ACCOUNT_ID');
     }
 
     try {
-      console.log('🔑 Obtendo novo token de acesso do Zoom...');
-      console.log('🔑 Account ID:', this.accountId);
+      secureLog.info('Obtendo novo token de acesso do Zoom...');
+      secureLog.sensitive('Account ID:', this.accountId);
 
       // Criar Basic Auth header
       const credentials = btoa(`${this.clientId}:${this.clientSecret}`);
       const tokenUrl = `${this.tokenUrl}?grant_type=account_credentials&account_id=${this.accountId}`;
       
-      console.log('🔑 Fazendo request para:', tokenUrl);
+      secureLog.debug('Fazendo request para:', tokenUrl);
       
       const response = await fetch(tokenUrl, {
         method: 'POST',
@@ -54,11 +56,11 @@ class ZoomService {
         }
       });
 
-      console.log('🔑 Response status:', response.status);
+      secureLog.debug('Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erro ao obter token:', response.status, errorText);
+        secureLog.error('Erro ao obter token:', response.status, errorText);
         throw new Error(`Falha na autenticação Zoom: ${response.status} - ${errorText}`);
       }
 
@@ -67,11 +69,11 @@ class ZoomService {
       // Token expira em 1 hora, vamos renovar 5 minutos antes
       this.tokenExpiry = Date.now() + ((data.expires_in - 300) * 1000);
       
-      console.log('✅ Token obtido com sucesso (expira em', data.expires_in, 'segundos)');
+      secureLog.success('Token obtido com sucesso (expira em', data.expires_in, 'segundos)');
       return this.accessToken;
     } catch (error) {
-      console.error('❌ Erro ao obter token do Zoom:', error);
-      console.error('❌ Stack:', error.stack);
+      secureLog.error('Erro ao obter token do Zoom:', error);
+      secureLog.debug('Stack:', error.stack);
       throw error;
     }
   }
@@ -94,7 +96,7 @@ class ZoomService {
         agenda = ''
       } = meetingData;
 
-      console.log('🎥 Criando reunião no Zoom:', { topic, startTime, duration });
+      secureLog.info('Criando reunião no Zoom:', { topic, startTime, duration });
 
       const meetingConfig = {
         topic: topic || 'Consulta Doxologos',
@@ -140,13 +142,13 @@ class ZoomService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erro ao criar reunião:', response.status, errorText);
+        secureLog.error('Erro ao criar reunião:', response.status, errorText);
         throw new Error(`Falha ao criar reunião Zoom: ${response.status}`);
       }
 
       const meeting = await response.json();
       
-      console.log('✅ Reunião criada com sucesso:', {
+      secureLog.success('Reunião criada com sucesso:', {
         id: meeting.id,
         join_url: meeting.join_url
       });
@@ -160,7 +162,7 @@ class ZoomService {
         host_email: meeting.host_email
       };
     } catch (error) {
-      console.error('❌ Erro ao criar reunião no Zoom:', error);
+      secureLog.error('Erro ao criar reunião no Zoom:', error);
       throw error;
     }
   }
@@ -172,7 +174,7 @@ class ZoomService {
    */
   async createBookingMeeting(booking) {
     try {
-      console.log('🎥 [createBookingMeeting] Iniciando criação de sala via Edge Function...', {
+      secureLog.info('[createBookingMeeting] Iniciando criação de sala via Edge Function...', {
         patient_name: booking.patient_name,
         date: booking.booking_date,
         time: booking.booking_time
@@ -183,13 +185,13 @@ class ZoomService {
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
       if (!supabaseUrl || !supabaseKey) {
-        console.error('❌ Supabase não configurado');
+        secureLog.error('Supabase não configurado');
         return null;
       }
 
       const edgeFunctionUrl = `${supabaseUrl}/functions/v1/create-zoom-meeting`;
       
-      console.log('🎥 [createBookingMeeting] Chamando Edge Function:', edgeFunctionUrl);
+      secureLog.debug('[createBookingMeeting] Chamando Edge Function:', edgeFunctionUrl);
 
       const response = await fetch(edgeFunctionUrl, {
         method: 'POST',
@@ -208,18 +210,18 @@ class ZoomService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Erro HTTP da Edge Function:', response.status, errorText);
+        secureLog.error('Erro HTTP da Edge Function:', response.status, errorText);
         return null;
       }
 
       const result = await response.json();
       
       if (!result.success) {
-        console.error('❌ Edge Function retornou erro:', result.error);
+        secureLog.error('Edge Function retornou erro:', result.error);
         return null;
       }
 
-      console.log('🎥 [createBookingMeeting] Reunião criada com sucesso!', {
+      secureLog.success('[createBookingMeeting] Reunião criada com sucesso!', {
         meeting_link: result.data.meeting_link,
         has_password: !!result.data.meeting_password
       });
@@ -231,8 +233,8 @@ class ZoomService {
         start_url: result.data.start_url
       };
     } catch (error) {
-      console.error('❌ [createBookingMeeting] Erro ao criar reunião:', error);
-      console.error('❌ [createBookingMeeting] Stack trace:', error.stack);
+      secureLog.error('[createBookingMeeting] Erro ao criar reunião:', error);
+      secureLog.debug('[createBookingMeeting] Stack trace:', error.stack);
       // Retornar null para não bloquear o fluxo
       return null;
     }
@@ -246,7 +248,7 @@ class ZoomService {
     try {
       const token = await this.getAccessToken();
       
-      console.log('🗑️ Deletando reunião:', meetingId);
+      secureLog.info('Deletando reunião:', meetingId);
 
       const response = await fetch(`${this.apiBaseUrl}/meetings/${meetingId}`, {
         method: 'DELETE',
@@ -257,15 +259,15 @@ class ZoomService {
 
       if (!response.ok && response.status !== 204) {
         const errorText = await response.text();
-        console.error('⚠️ Erro ao deletar reunião:', response.status, errorText);
+        secureLog.warn('Erro ao deletar reunião:', response.status, errorText);
         // Não lançar erro, apenas logar
         return false;
       }
 
-      console.log('✅ Reunião deletada com sucesso');
+      secureLog.success('Reunião deletada com sucesso');
       return true;
     } catch (error) {
-      console.error('❌ Erro ao deletar reunião:', error);
+      secureLog.error('Erro ao deletar reunião:', error);
       return false;
     }
   }
@@ -279,7 +281,7 @@ class ZoomService {
     try {
       const token = await this.getAccessToken();
       
-      console.log('📝 Atualizando reunião:', meetingId);
+      secureLog.info('Atualizando reunião:', meetingId);
 
       const response = await fetch(`${this.apiBaseUrl}/meetings/${meetingId}`, {
         method: 'PATCH',
@@ -292,14 +294,14 @@ class ZoomService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('⚠️ Erro ao atualizar reunião:', response.status, errorText);
+        secureLog.warn('Erro ao atualizar reunião:', response.status, errorText);
         throw new Error(`Falha ao atualizar reunião: ${response.status}`);
       }
 
-      console.log('✅ Reunião atualizada com sucesso');
+      secureLog.success('Reunião atualizada com sucesso');
       return true;
     } catch (error) {
-      console.error('❌ Erro ao atualizar reunião:', error);
+      secureLog.error('Erro ao atualizar reunião:', error);
       throw error;
     }
   }

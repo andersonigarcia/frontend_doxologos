@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import MercadoPagoService from '@/lib/mercadoPagoService';
 import { QRCodeSVG } from 'qrcode.react';
+import { safeRedirect } from '@/lib/securityUtils';
 
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
@@ -157,7 +158,9 @@ const CheckoutPage = () => {
 
                 if (result.success) {
                     setPreference(result);
-                    window.location.href = result.init_point;
+                    
+                    // Redirecionamento seguro - valida URL antes de redirecionar
+                    safeRedirect(result.init_point, '/');
                 } else {
                     throw new Error(result.error || 'Erro ao processar pagamento');
                 }

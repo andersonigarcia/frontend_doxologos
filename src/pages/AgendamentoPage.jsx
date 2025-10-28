@@ -12,6 +12,7 @@ import { BookingEmailManager } from '@/lib/bookingEmailManager';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { zoomService } from '@/lib/zoomService';
+import { secureLog } from '@/lib/secureLogger';
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
@@ -479,9 +480,9 @@ const AgendamentoPage = () => {
                 });
 
                 if (zoomMeetingData) {
-                    console.log('✅ Sala do Zoom criada com sucesso!');
-                    console.log('🔗 Link:', zoomMeetingData.meeting_link);
-                    console.log('🔑 Senha:', zoomMeetingData.meeting_password);
+                    secureLog.success('Sala do Zoom criada com sucesso!');
+                    secureLog.info('Link:', zoomMeetingData.meeting_link);
+                    secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
                     // Adicionar dados do Zoom ao booking
                     bookingData.meeting_link = zoomMeetingData.meeting_link;
                     bookingData.meeting_password = zoomMeetingData.meeting_password;
