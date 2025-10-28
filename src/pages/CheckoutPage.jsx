@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CreditCard, Smartphone, Barcode, Calendar, Lock, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { CreditCard, Smartphone, Barcode, Calendar, Lock, CheckCircle, XCircle, Clock, ArrowLeft, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -278,8 +278,26 @@ const CheckoutPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-8 px-4">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
+            {/* Header com navegação */}
+            <header className="bg-white shadow-sm sticky top-0 z-50">
+                <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
+                    <Link to="/" className="flex items-center space-x-2">
+                        <Heart className="w-8 h-8 text-[#2d8659]" />
+                        <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                    </Link>
+                    <Button 
+                        variant="outline" 
+                        className="border-[#2d8659] text-[#2d8659]"
+                        onClick={() => navigate(-1)}
+                    >
+                        <ArrowLeft className="w-4 h-4 mr-2" /> 
+                        Voltar
+                    </Button>
+                </nav>
+            </header>
+
+            <div className="max-w-4xl mx-auto py-8 px-4">
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold mb-2">Finalizar Pagamento</h1>
