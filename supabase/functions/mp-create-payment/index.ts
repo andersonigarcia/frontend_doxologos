@@ -145,7 +145,8 @@ serve(async (req) => {
     }
 
     // Salvar pagamento no banco de dados
-    const { error: insertErr } = await supabaseAdmin
+    console.log('💾 Salvando pagamento no banco de dados...');
+    const { data: insertedPayment, error: insertErr } = await supabaseAdmin
       .from('payments')
       .insert({
         booking_id: booking_id,
@@ -157,12 +158,19 @@ serve(async (req) => {
         payer_email: payerData.email,
         payer_name: payerData.name,
         external_reference: booking_id,
-        raw_data: paymentResult
-      });
+        qr_code: qrCodeData.qr_code,
+        qr_code_base64: qrCodeData.qr_code_base64,
+        ticket_url: qrCodeData.ticket_url,
+        raw_payload: paymentResult
+      })
+      .select()
+      .single();
 
     if (insertErr) {
       console.error('❌ Error inserting payment:', insertErr);
       // Não retornar erro aqui, pois o pagamento foi criado com sucesso no MP
+    } else {
+      console.log('✅ Payment saved to database:', insertedPayment?.id);
     }
 
     // Atualizar booking com ID do pagamento
