@@ -9,11 +9,14 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useFormTracking, useVideoTracking, useEngagementTracking } from '@/hooks/useAnalytics';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
+import emailService from '@/lib/emailService';
 
 const HomePage = () => {
   const { toast } = useToast();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [emailError, setEmailError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeEvents, setActiveEvents] = useState([]);
   const [professionals, setProfessionals] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
@@ -296,27 +299,165 @@ const HomePage = () => {
     }
   }, [activeEvents.length]);
 
+  // Função para formatar telefone com máscara (00) 00000-0000
+  const formatPhoneNumber = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    
+    if (numbers.length === 0) return '';
+    if (numbers.length <= 2) return `(${numbers}`;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length <= 11) {
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+    }
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  // Função para validar email
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Handler para mudança de telefone com máscara
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setFormData({ ...formData, phone: formatted });
+  };
+
+  // Handler para mudança de email com validação
+  const handleEmailChange = (e) => {
+    const email = e.target.value;
+    setFormData({ ...formData, email });
+    
+    if (email && !validateEmail(email)) {
+      setEmailError('Por favor, insira um email válido');
+    } else {
+      setEmailError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validação final antes de enviar
+    if (emailError) {
+      toast({
+        variant: 'destructive',
+        title: 'Email inválido',
+        description: 'Por favor, corrija o email antes de enviar.'
+      });
+      return;
+    }
+    
+    setIsSubmitting(true);
     
     try {
       trackFormSubmit(formData);
       
+      // Preparar o HTML do email
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2d8659; border-bottom: 2px solid #2d8659; padding-bottom: 10px;">
+            Novo Contato - Site Doxologos
+          </h2>
+          
+          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 10px 0;"><strong>Nome:</strong> ${formData.name}</p>
+            <p style="margin: 10px 0;"><strong>Email:</strong> ${formData.email}</p>
+            <p style="margin: 10px 0;"><strong>Telefone:</strong> ${formData.phone}</p>
+          </div>
+          
+          <div style="margin: 20px 0;">
+            <h3 style="color: #2d8659;">Mensagem:</h3>
+            <p style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; white-space: pre-wrap;">
+              ${formData.message}
+            </p>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
+            <p>Este email foi enviado automaticamente através do formulário de contato do site Doxologos.</p>
+            <p>Data: ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+      `;
+      
+      // Email de confirmação para o usuário
+      const confirmationHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #2d8659; border-bottom: 2px solid #2d8659; padding-bottom: 10px;">
+            Recebemos sua mensagem! 💚
+          </h2>
+          
+          <p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
+            Olá <strong>${formData.name}</strong>,
+          </p>
+          
+          <p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
+            Agradecemos por entrar em contato com a Doxologos. Recebemos sua mensagem e em breve 
+            retornaremos com uma resposta.
+          </p>
+          
+          <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #2d8659; margin-top: 0;">Resumo da sua mensagem:</h3>
+            <p style="margin: 10px 0; white-space: pre-wrap;">${formData.message}</p>
+          </div>
+          
+          <p style="font-size: 16px; line-height: 1.6; margin: 20px 0;">
+            Nossa equipe está comprometida em oferecer o melhor atendimento e retornaremos 
+            o mais breve possível.
+          </p>
+          
+          <div style="margin-top: 30px; padding: 20px; background-color: #2d8659; color: white; border-radius: 8px; text-align: center;">
+            <p style="margin: 0; font-size: 18px; font-weight: bold;">Doxologos</p>
+            <p style="margin: 5px 0; font-size: 14px;">Clínica de Atendimento Psicológico Online</p>
+            <p style="margin: 10px 0; font-size: 14px;">
+              📞 (31) 97198-2947 | 📧 contato@doxologos.com.br
+            </p>
+          </div>
+          
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px; text-align: center;">
+            <p>© ${new Date().getFullYear()} Doxologos - Todos os direitos reservados</p>
+          </div>
+        </div>
+      `;
+      
+      // Enviar email para a clínica (notificação)
+      await emailService.sendEmail({
+        to: 'contato@doxologos.com.br',
+        subject: `Novo Contato: ${formData.name}`,
+        html: emailHtml,
+        replyTo: formData.email,
+        type: 'contact_form'
+      });
+      
+      // Enviar email de confirmação para o usuário
+      await emailService.sendEmail({
+        to: formData.email,
+        subject: 'Recebemos sua mensagem - Doxologos',
+        html: confirmationHtml,
+        type: 'contact_confirmation'
+      });
+      
       toast({
-        title: "🚧 Funcionalidade em desenvolvimento",
-        description: "O envio de formulário será implementado em breve!",
+        title: "✅ Mensagem enviada com sucesso!",
+        description: "Em breve entraremos em contato com você.",
       });
       
       setFormData({ name: '', email: '', phone: '', message: '' });
+      setEmailError('');
     } catch (error) {
       trackFormError(error);
       trackComponentError(error, 'form_submit');
       
+      console.error('Erro ao enviar formulário:', error);
+      
       toast({
         variant: 'destructive',
-        title: 'Erro no formulário',
-        description: 'Ocorreu um erro ao processar seu formulário. Tente novamente.'
+        title: 'Erro ao enviar mensagem',
+        description: 'Não foi possível enviar sua mensagem. Por favor, tente novamente ou entre em contato pelo telefone.'
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -860,10 +1001,37 @@ const HomePage = () => {
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div><label className="block text-sm font-medium mb-2">Nome Completo</label><input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" /></div>
-              <div><label className="block text-sm font-medium mb-2">Email</label><input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" /></div>
-              <div><label className="block text-sm font-medium mb-2">Telefone</label><input type="tel" required value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" /></div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Email</label>
+                <input 
+                  type="email" 
+                  required 
+                  value={formData.email} 
+                  onChange={handleEmailChange} 
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : 'border-gray-300'}`} 
+                />
+                {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Telefone</label>
+                <input 
+                  type="tel" 
+                  required 
+                  value={formData.phone} 
+                  onChange={handlePhoneChange} 
+                  placeholder="(00) 00000-0000"
+                  maxLength={15}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" 
+                />
+              </div>
               <div><label className="block text-sm font-medium mb-2">Mensagem</label><textarea required rows={4} value={formData.message} onChange={e => setFormData({ ...formData, message: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" /></div>
-              <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Enviar Mensagem</Button>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || emailError || !formData.name || !formData.email || !formData.phone || !formData.message}
+                className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Enviando...' : 'Enviar Mensagem'}
+              </Button>
             </form>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-8">
