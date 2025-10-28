@@ -65,10 +65,20 @@ Para facilitar os testes, você pode usar estes usuários pré-configurados:
 
 ## 🆘 Solução de Problemas
 
-### Erro: "Invalid login credentials"
-- Verifique se o email está correto
-- Confirme a senha (case-sensitive)
-- Certifique-se de que o usuário foi criado
+### Erro: "Credenciais inválidas" ou "Email ou senha incorretos"
+- Verifique se o email está correto (sem espaços extras)
+- Confirme a senha (diferencia maiúsculas de minúsculas)
+- Certifique-se de que o usuário foi criado no sistema
+- Após 5 tentativas falhas, aguarde alguns minutos antes de tentar novamente
+
+### Erro: "Email já cadastrado"
+- Este email já possui uma conta no sistema
+- Use a funcionalidade "Esqueci minha senha" para recuperar o acesso
+- Ou faça login normalmente se já possui a senha
+
+### Erro: "Email não confirmado"
+- Verifique sua caixa de entrada (e spam) para o email de confirmação
+- Solicite um novo email de confirmação se necessário
 
 ### Usuário não tem permissões
 - Verifique se o `role` foi definido corretamente no `user_metadata`
