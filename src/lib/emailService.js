@@ -20,14 +20,17 @@ class EmailService {
     });
   }
 
-  async sendEmail({ to, subject, html, replyTo = null, cc = null, type = 'notification' }) {
+  async sendEmail({ to, subject, html, replyTo = null, cc = null, attachments = null, type = 'notification' }) {
     if (!this.enabled) {
       console.log('⚠️ Emails desabilitados');
       return { success: true, messageId: 'disabled', disabled: true };
     }
     
     try {
-      console.log('📧 Enviando email via Supabase Edge Function:', { to, cc, subject, type });
+      console.log('📧 Enviando email via Supabase Edge Function:', { 
+        to, cc, subject, type,
+        hasAttachments: !!attachments && attachments.length > 0
+      });
       
       const emailPayload = {
         from: { email: this.fromEmail, name: this.fromName },
@@ -38,6 +41,11 @@ class EmailService {
       // Adiciona CC se fornecido
       if (cc) {
         emailPayload.cc = cc;
+      }
+      
+      // Adiciona anexos se fornecidos
+      if (attachments && attachments.length > 0) {
+        emailPayload.attachments = attachments;
       }
       
       const response = await fetch(this.apiUrl, {

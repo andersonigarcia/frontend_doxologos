@@ -3,10 +3,12 @@ import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Briefcase, Upload } from 'lucide-react';
+import { Heart, ArrowLeft, Briefcase, Upload, File, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { SecureStorage } from '@/lib/secureStorage';
+import emailService from '@/lib/emailService';
+import { logger } from '@/lib/logger';
 
 const TrabalheConoscoPage = () => {
   const { toast } = useToast();
@@ -19,34 +21,166 @@ const TrabalheConoscoPage = () => {
     experience: '',
     message: ''
   });
+  
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleSubmit = (e) => {
+  /**
+   * Manipula seleção de arquivo
+   */
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    
+    if (!file) return;
+    
+    // Validar tipo de arquivo (PDF)
+    if (file.type !== 'application/pdf') {
+      toast({
+        variant: 'destructive',
+        title: 'Formato inválido',
+        description: 'Por favor, selecione apenas arquivos PDF.',
+      });
+      return;
+    }
+    
+    // Validar tamanho (máx 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        variant: 'destructive',
+        title: 'Arquivo muito grande',
+        description: 'O arquivo deve ter no máximo 5MB.',
+      });
+      return;
+    }
+    
+    setResumeFile(file);
+    logger.info('Resume file selected', { 
+      name: file.name, 
+      size: file.size,
+      type: file.type 
+    });
+  };
+
+  /**
+   * Remove arquivo selecionado
+   */
+  const handleRemoveFile = () => {
+    setResumeFile(null);
+    logger.debug('Resume file removed');
+  };
+
+  /**
+   * Converte arquivo para Base64 para envio por email
+   */
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]); // Remove "data:application/pdf;base64,"
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Usar SecureStorage para proteção contra erros
-    const applications = SecureStorage.getArray('jobApplications', []);
-    
-    applications.push({
-      ...formData,
-      date: new Date().toISOString()
-    });
-    
-    SecureStorage.set('jobApplications', applications);
+    try {
+      setUploading(true);
+      
+      logger.info('Job application form submitted', { 
+        name: formData.name,
+        email: formData.email 
+      });
+      
+      // Converter arquivo para Base64
+      let resumeBase64 = null;
+      if (resumeFile) {
+        resumeBase64 = await convertFileToBase64(resumeFile);
+        logger.debug('Resume converted to Base64', { 
+          fileName: resumeFile.name 
+        });
+      }
+      
+      // Enviar email com currículo anexado
+      const emailData = {
+        to: 'doxologos@doxologos.com.br', // Email do RH
+        subject: `Nova Candidatura: ${formData.name}`,
+        html: `
+          <h2>Nova Candidatura Recebida</h2>
+          <p><strong>Nome:</strong> ${formData.name}</p>
+          <p><strong>Email:</strong> ${formData.email}</p>
+          <p><strong>Telefone:</strong> ${formData.phone}</p>
+          <p><strong>CRP:</strong> ${formData.crp}</p>
+          <p><strong>Especialidade:</strong> ${formData.specialty}</p>
+          <p><strong>Experiência:</strong> ${formData.experience}</p>
+          <p><strong>Mensagem:</strong></p>
+          <p>${formData.message || 'Não informada'}</p>
+          <hr>
+          <p><em>Currículo em anexo (se enviado)</em></p>
+        `,
+        attachments: resumeFile ? [{
+          filename: resumeFile.name,
+          content: resumeBase64,
+          encoding: 'base64',
+          contentType: 'application/pdf'
+        }] : []
+      };
+      
+      // Enviar email
+      const result = await emailService.sendEmail(emailData);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao enviar email');
+      }
+      
+      logger.success('Job application email sent', { 
+        to: emailData.to,
+        hasAttachment: !!resumeFile
+      });
+      
+      // Salvar candidatura localmente (backup)
+      const application = {
+        ...formData,
+        resumeFileName: resumeFile?.name,
+        date: new Date().toISOString()
+      };
+      
+      const applications = SecureStorage.getArray('jobApplications', []);
+      applications.push(application);
+      SecureStorage.set('jobApplications', applications);
+      
+      logger.success('Job application saved locally', { 
+        applicationId: applications.length 
+      });
 
-    toast({
-      title: "Candidatura enviada!",
-      description: "Entraremos em contato em breve. Obrigado pelo interesse!",
-    });
+      toast({
+        title: "✅ Candidatura enviada!",
+        description: "Recebemos sua candidatura e currículo. Entraremos em contato em breve!",
+      });
 
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      specialty: '',
-      crp: '',
-      experience: '',
-      message: ''
-    });
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        specialty: '',
+        crp: '',
+        experience: '',
+        message: ''
+      });
+      setResumeFile(null);
+      
+    } catch (error) {
+      logger.error('Error submitting job application', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar candidatura',
+        description: 'Ocorreu um erro ao enviar o email. Por favor, tente novamente.',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -294,30 +428,75 @@ const TrabalheConoscoPage = () => {
                   />
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium mb-2">Currículo (PDF)</label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full border-dashed"
-                    onClick={() => toast({
-                      title: "🚧 Funcionalidade em desenvolvimento",
-                      description: "O upload de arquivos estará disponível em breve! Por enquanto, envie seu currículo por email.",
-                    })}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Anexar Currículo
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Ou envie para: curriculos@doxologos.com.br
+                <div className="bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-300">
+                  <label className="block text-sm font-medium mb-3">
+                    Currículo (PDF) *
+                  </label>
+                  
+                  {!resumeFile ? (
+                    <div>
+                      <input
+                        type="file"
+                        id="resume-upload"
+                        accept="application/pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="resume-upload"
+                        className="flex flex-col items-center justify-center p-8 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          Clique para selecionar ou arraste o arquivo
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Apenas PDF, máximo 5MB
+                        </p>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <File className="w-8 h-8 text-[#2d8659]" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {resumeFile.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(resumeFile.size / 1024).toFixed(0)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        aria-label="Remover arquivo"
+                      >
+                        <X className="w-5 h-5 text-gray-500" />
+                      </button>
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-gray-500 mt-3">
+                    💡 Dica: Inclua suas experiências, formações e certificações relevantes.
                   </p>
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6"
+                  disabled={uploading || !resumeFile}
+                  className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Enviar Candidatura
+                  {uploading ? (
+                    <>
+                      <Upload className="w-5 h-5 mr-2 animate-pulse" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Enviar Candidatura'
+                  )}
                 </Button>
               </form>
             </motion.div>
