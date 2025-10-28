@@ -10,6 +10,115 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export class MercadoPagoService {
     /**
+     * Cria um pagamento PIX direto no Mercado Pago
+     * Retorna QR Code para pagamento inline (sem redirecionamento)
+     * @param {Object} paymentData - Dados do pagamento
+     * @param {string} paymentData.booking_id - ID do agendamento
+     * @param {number} paymentData.amount - Valor a ser pago
+     * @param {string} paymentData.description - Descrição do pagamento
+     * @param {Object} paymentData.payer - Dados do pagador
+     * @returns {Promise<Object>} - Dados do pagamento PIX criado com QR Code
+     */
+    static async createPixPayment(paymentData) {
+        try {
+            console.log('🔵 [MP] Criando pagamento PIX direto...', paymentData);
+
+            const { booking_id, amount, description, payer } = paymentData;
+
+            if (!booking_id || !amount) {
+                throw new Error('booking_id e amount são obrigatórios');
+            }
+
+            // Chamar Edge Function para criar pagamento PIX
+            const payload = {
+                booking_id,
+                amount,
+                description: description || `Consulta Online - Agendamento ${booking_id}`,
+                payer: payer || {},
+                payment_method_id: 'pix'
+            };
+
+            console.log('📤 [MP Service] Criando pagamento PIX:', payload);
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-payment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ [MP] Erro ao criar pagamento PIX:', errorText);
+                throw new Error(`Erro ao criar pagamento PIX: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ [MP] Pagamento PIX criado com sucesso:', result);
+
+            return {
+                success: true,
+                payment_id: result.payment_id,
+                status: result.status,
+                qr_code: result.qr_code,
+                qr_code_base64: result.qr_code_base64,
+                ticket_url: result.ticket_url
+            };
+
+        } catch (error) {
+            console.error('❌ [MP] Erro no createPixPayment:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
+     * Verifica o status de um pagamento
+     * @param {string} paymentId - ID do pagamento no Mercado Pago
+     * @returns {Promise<Object>} - Status atual do pagamento
+     */
+    static async checkPaymentStatus(paymentId) {
+        try {
+            console.log('🔍 [MP] Verificando status do pagamento:', paymentId);
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-check-payment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify({ payment_id: paymentId })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ [MP] Erro ao verificar status:', errorText);
+                throw new Error(`Erro ao verificar status: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ [MP] Status do pagamento:', result);
+
+            return {
+                success: true,
+                status: result.status,
+                status_detail: result.status_detail
+            };
+
+        } catch (error) {
+            console.error('❌ [MP] Erro no checkPaymentStatus:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    /**
      * Cria uma preferência de pagamento no Mercado Pago
      * @param {Object} paymentData - Dados do pagamento
      * @param {string} paymentData.booking_id - ID do agendamento
