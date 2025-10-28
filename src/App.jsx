@@ -24,6 +24,8 @@ import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import CheckoutFailurePage from '@/pages/CheckoutFailurePage';
 import CheckoutPendingPage from '@/pages/CheckoutPendingPage';
 import PaymentsPage from '@/pages/PaymentsPage';
+import RecuperarSenhaPage from '@/pages/RecuperarSenhaPage';
+import RedefinirSenhaPage from '@/pages/RedefinirSenhaPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -63,6 +65,16 @@ function AppContent() {
         <Route path="/area-do-paciente" element={
           <PageErrorBoundary pageName="Área do Paciente">
             <PacientePage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/recuperar-senha" element={
+          <PageErrorBoundary pageName="Recuperar Senha">
+            <RecuperarSenhaPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/redefinir-senha" element={
+          <PageErrorBoundary pageName="Redefinir Senha">
+            <RedefinirSenhaPage />
           </PageErrorBoundary>
         } />
         <Route path="/quem-somos" element={
