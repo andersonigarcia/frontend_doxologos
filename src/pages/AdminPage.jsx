@@ -1011,12 +1011,28 @@ const AdminPage = () => {
         
         let result;
         if (isEditingEvent) {
-            // Para edição, usar todos os campos incluindo o id
-            const { id, ...updateData } = eventFormData;
+            // Para edição, remover campos que não são colunas da tabela
+            const { 
+                id, 
+                inscricoes_eventos, 
+                professional, 
+                created_at, 
+                updated_at, 
+                ...updateData 
+            } = eventFormData;
+            
             result = await supabase.from('eventos').update(updateData).eq('id', id);
         } else {
-            // Para inserção, remover o id para deixar o banco gerar automaticamente
-            const { id, ...eventDataWithoutId } = eventFormData;
+            // Para inserção, remover campos desnecessários
+            const { 
+                id, 
+                inscricoes_eventos, 
+                professional, 
+                created_at, 
+                updated_at, 
+                ...eventDataWithoutId 
+            } = eventFormData;
+            
             result = await supabase.from('eventos').insert([eventDataWithoutId]);
         }
         
