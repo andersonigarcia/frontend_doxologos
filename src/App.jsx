@@ -6,6 +6,7 @@ import { Toaster } from '@/components/ui/toaster';
 import ErrorBoundary, { PageErrorBoundary } from '@/components/ErrorBoundary';
 import { usePageTracking } from '@/hooks/useAnalytics';
 import { useComprehensiveErrorTracking } from '@/hooks/useErrorTracking';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import HomePage from '@/pages/HomePage';
 import AgendamentoPage from '@/pages/AgendamentoPage';
 import AdminPage from '@/pages/AdminPage';
@@ -32,6 +33,14 @@ function AppContent() {
   // Track page views and errors
   usePageTracking();
   useComprehensiveErrorTracking('App');
+  
+  // Controle de sessão e inatividade
+  useSessionTimeout({
+    idleTimeout: 10 * 60 * 1000,      // 10 minutos de inatividade
+    sessionTimeout: 1 * 60 * 60 * 1000, // 1 hora de sessão total
+    warningTime: 2 * 60 * 1000,         // Avisar 2 minutos antes
+    enabled: true
+  });
 
   return (
     <div className="min-h-screen">
