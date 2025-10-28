@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
     CreditCard, DollarSign, TrendingUp, AlertCircle, CheckCircle, 
-    XCircle, Clock, Filter, Download, RefreshCw, Eye, ArrowLeft
+    XCircle, Clock, Filter, Download, RefreshCw, Eye, ArrowLeft,
+    ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,6 +20,8 @@ const PaymentsPage = () => {
     const [payments, setPayments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedPayment, setSelectedPayment] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [filters, setFilters] = useState({
         status: '',
         payment_method: '',
@@ -67,6 +70,21 @@ const PaymentsPage = () => {
             fetchPayments();
         }
     }, [user, userRole, fetchPayments]);
+
+    // Resetar para primeira página quando filtros mudarem
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filters]);
+
+    // Calcular paginação
+    const totalPages = Math.ceil(payments.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedPayments = payments.slice(startIndex, endIndex);
+
+    const goToPage = (page) => {
+        setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+    };
 
     const calculateStats = (paymentsData) => {
         const stats = {
@@ -303,7 +321,27 @@ const PaymentsPage = () => {
 
                     {/* Lista de Pagamentos */}
                     <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">Pagamentos ({payments.length})</h3>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">
+                                Pagamentos ({payments.length})
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <label className="text-sm text-gray-600">Itens por página:</label>
+                                <select
+                                    value={itemsPerPage}
+                                    onChange={(e) => {
+                                        setItemsPerPage(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="border rounded px-2 py-1 text-sm"
+                                >
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                        </div>
 
                         {loading ? (
                             <div className="text-center py-12">
@@ -316,8 +354,9 @@ const PaymentsPage = () => {
                                 <p className="text-gray-500">Nenhum pagamento encontrado</p>
                             </div>
                         ) : (
-                            <div className="space-y-4">
-                                {payments.map((payment) => (
+                            <>
+                                <div className="space-y-4">
+                                    {paginatedPayments.map((payment) => (
                                     <motion.div
                                         key={payment.id}
                                         initial={{ opacity: 0, y: 20 }}
@@ -453,6 +492,92 @@ const PaymentsPage = () => {
                                     </motion.div>
                                 ))}
                             </div>
+
+                            {/* Paginação */}
+                            {totalPages > 1 && (
+                                <div className="mt-6 flex items-center justify-between border-t pt-4">
+                                    <div className="text-sm text-gray-600">
+                                        Mostrando {startIndex + 1} a {Math.min(endIndex, payments.length)} de {payments.length} pagamentos
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => goToPage(1)}
+                                            disabled={currentPage === 1}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <ChevronsLeft className="h-4 w-4" />
+                                        </Button>
+                                        
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => goToPage(currentPage - 1)}
+                                            disabled={currentPage === 1}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+
+                                        <div className="flex items-center gap-1">
+                                            {[...Array(totalPages)].map((_, index) => {
+                                                const page = index + 1;
+                                                // Mostrar apenas páginas próximas à atual
+                                                if (
+                                                    page === 1 ||
+                                                    page === totalPages ||
+                                                    (page >= currentPage - 1 && page <= currentPage + 1)
+                                                ) {
+                                                    return (
+                                                        <Button
+                                                            key={page}
+                                                            variant={currentPage === page ? "default" : "outline"}
+                                                            size="sm"
+                                                            onClick={() => goToPage(page)}
+                                                            className={`h-8 w-8 p-0 ${
+                                                                currentPage === page 
+                                                                    ? 'bg-[#2d8659] hover:bg-[#236b47]' 
+                                                                    : ''
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </Button>
+                                                    );
+                                                } else if (
+                                                    page === currentPage - 2 ||
+                                                    page === currentPage + 2
+                                                ) {
+                                                    return <span key={page} className="px-1">...</span>;
+                                                }
+                                                return null;
+                                            })}
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => goToPage(currentPage + 1)}
+                                            disabled={currentPage === totalPages}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => goToPage(totalPages)}
+                                            disabled={currentPage === totalPages}
+                                            className="h-8 w-8 p-0"
+                                        >
+                                            <ChevronsRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                         )}
                     </Card>
                 </div>
