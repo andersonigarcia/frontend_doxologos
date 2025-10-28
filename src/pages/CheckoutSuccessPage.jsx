@@ -1,53 +1,67 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { CheckCircle, Calendar, Download, Home, User } from 'lucide-react';
+import { CheckCircle, Calendar, Download, Home, User, ExternalLink, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const CheckoutSuccessPage = () => {
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+    const navigate = useNavigate();
     const { user } = useAuth();
     const [booking, setBooking] = useState(null);
     const [payment, setPayment] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const paymentId = searchParams.get('payment_id');
-    const externalReference = searchParams.get('external_reference'); // booking_id
+    // Pegar dados do state (quando vem do CheckoutPage)
+    const stateBookingId = location.state?.bookingId;
+    const statePaymentId = location.state?.paymentId;
+
+    const paymentId = statePaymentId || searchParams.get('payment_id');
+    const externalReference = stateBookingId || searchParams.get('external_reference'); // booking_id
 
     useEffect(() => {
         const fetchPaymentAndBooking = async () => {
             try {
+                // Buscar agendamento primeiro
+                const bookingId = externalReference || payment?.booking_id;
+                if (bookingId) {
+                    const { data: bookingData, error: bookingError } = await supabase
+                        .from('bookings')
+                        .select(`
+                            *,
+                            professional:professionals(name, specialty),
+                            service:services(name, price, duration_minutes)
+                        `)
+                        .eq('id', bookingId)
+                        .single();
+                    
+                    if (bookingError) {
+                        console.error('Erro ao buscar booking:', bookingError);
+                    }
+                    
+                    if (bookingData) {
+                        setBooking(bookingData);
+                    }
+                }
+
                 // Buscar pagamento
                 if (paymentId) {
-                    const { data: paymentData } = await supabase
+                    const { data: paymentData, error: paymentError } = await supabase
                         .from('payments')
                         .select('*')
                         .eq('mp_payment_id', paymentId)
                         .single();
                     
+                    if (paymentError) {
+                        console.error('Erro ao buscar pagamento:', paymentError);
+                    }
+                    
                     if (paymentData) {
                         setPayment(paymentData);
-                    }
-                }
-
-                // Buscar agendamento
-                const bookingId = externalReference || payment?.booking_id;
-                if (bookingId) {
-                    const { data: bookingData } = await supabase
-                        .from('bookings')
-                        .select(`
-                            *,
-                            professional:professionals(name, image_url),
-                            service:services(name, price)
-                        `)
-                        .eq('id', bookingId)
-                        .single();
-                    
-                    if (bookingData) {
-                        setBooking(bookingData);
                     }
                 }
             } catch (error) {
@@ -129,114 +143,127 @@ const CheckoutSuccessPage = () => {
 
                         {/* Booking Details */}
                         {booking && (
-                            <div className="bg-blue-50 rounded-lg p-6 mb-6">
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border border-blue-200">
                                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                     <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                                    Sua Consulta
+                                    Detalhes da Sua Consulta
                                 </h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center">
-                                        {booking.professional?.image_url && (
-                                            <img
-                                                src={booking.professional.image_url}
-                                                alt={booking.professional.name}
-                                                className="w-12 h-12 rounded-full object-cover mr-3"
-                                            />
-                                        )}
-                                        <div>
-                                            <p className="font-semibold">{booking.professional?.name}</p>
-                                            <p className="text-sm text-gray-600">{booking.service?.name}</p>
-                                        </div>
-                                    </div>
-                                    <div className="border-t pt-3 space-y-2 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Data:</span>
-                                            <span className="font-semibold">
-                                                {new Date(booking.booking_date).toLocaleDateString('pt-BR', {
-                                                    weekday: 'long',
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Horário:</span>
-                                            <span className="font-semibold">{booking.booking_time}</span>
-                                        </div>
-                                        {booking.zoom_meeting_url && (
-                                            <div className="mt-3 p-3 bg-blue-100 rounded">
-                                                <p className="text-xs text-blue-800 mb-2">Link da videochamada:</p>
-                                                <a
-                                                    href={booking.zoom_meeting_url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-sm text-blue-600 hover:underline break-all"
-                                                >
-                                                    {booking.zoom_meeting_url}
-                                                </a>
+                                <div className="space-y-4">
+                                    <div className="bg-white rounded-lg p-4">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div>
+                                                <p className="font-semibold text-lg text-gray-900">{booking.professional?.name}</p>
+                                                <p className="text-sm text-gray-600">{booking.professional?.specialty || booking.service?.name}</p>
                                             </div>
-                                        )}
+                                            <div className="text-right">
+                                                <p className="text-2xl font-bold text-green-600">
+                                                    R$ {(booking.service?.price || payment?.amount || 0).toFixed(2)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="border-t pt-3 space-y-2">
+                                            <div className="flex items-center text-gray-700">
+                                                <Calendar className="w-4 h-4 mr-2 text-blue-600" />
+                                                <span className="font-medium">
+                                                    {new Date(booking.booking_date).toLocaleDateString('pt-BR', {
+                                                        weekday: 'long',
+                                                        year: 'numeric',
+                                                        month: 'long',
+                                                        day: 'numeric'
+                                                    })}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center text-gray-700">
+                                                <Clock className="w-4 h-4 mr-2 text-blue-600" />
+                                                <span className="font-medium">{booking.booking_time}</span>
+                                                {booking.service?.duration_minutes && (
+                                                    <span className="ml-2 text-sm text-gray-500">
+                                                        ({booking.service.duration_minutes} minutos)
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    {/* Zoom Link - Destaque especial */}
+                                    {booking.zoom_link && (
+                                        <motion.div
+                                            initial={{ scale: 0.95, opacity: 0 }}
+                                            animate={{ scale: 1, opacity: 1 }}
+                                            transition={{ delay: 0.3 }}
+                                            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg p-4 shadow-lg"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <p className="font-semibold mb-1 flex items-center">
+                                                        <ExternalLink className="w-4 h-4 mr-2" />
+                                                        Link da Videochamada
+                                                    </p>
+                                                    <p className="text-sm text-green-50 mb-3">
+                                                        Acesse este link no dia e horário da consulta
+                                                    </p>
+                                                    <a
+                                                        href={booking.zoom_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition-colors"
+                                                    >
+                                                        Acessar Sala
+                                                        <ExternalLink className="w-4 h-4 ml-2" />
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
                         {/* Next Steps */}
-                        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-                            <h4 className="font-semibold text-yellow-900 mb-2">Próximos Passos</h4>
-                            <ul className="text-sm text-yellow-800 space-y-1">
-                                <li>• Você receberá um e-mail de confirmação com todos os detalhes</li>
-                                <li>• Um lembrete será enviado 24 horas antes da consulta</li>
-                                <li>• O link da videochamada estará disponível na sua área do paciente</li>
-                                <li>• Em caso de dúvidas, entre em contato conosco</li>
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-lg p-5 mb-6">
+                            <h4 className="font-semibold text-amber-900 mb-3 flex items-center">
+                                <Mail className="w-5 h-5 mr-2" />
+                                Próximos Passos
+                            </h4>
+                            <ul className="text-sm text-amber-900 space-y-2">
+                                <li className="flex items-start">
+                                    <span className="text-amber-600 mr-2">✓</span>
+                                    <span>Você receberá um <strong>e-mail de confirmação</strong> com todos os detalhes</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <span className="text-amber-600 mr-2">✓</span>
+                                    <span>Um <strong>lembrete será enviado</strong> 24 horas antes da consulta</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <span className="text-amber-600 mr-2">✓</span>
+                                    <span>O <strong>link da videochamada</strong> está disponível na sua Área do Paciente</span>
+                                </li>
+                                <li className="flex items-start">
+                                    <span className="text-amber-600 mr-2">✓</span>
+                                    <span>Em caso de dúvidas, <strong>entre em contato</strong> conosco pelo WhatsApp</span>
+                                </li>
                             </ul>
                         </div>
 
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3">
-                            <Link to={user ? "/paciente" : "/"} className="flex-1">
-                                <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">
-                                    {user ? (
-                                        <>
-                                            <User className="w-4 h-4 mr-2" />
-                                            Área do Paciente
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Home className="w-4 h-4 mr-2" />
-                                            Voltar ao Início
-                                        </>
-                                    )}
-                                </Button>
-                            </Link>
-                            {booking && (
+                            <Button
+                                onClick={() => navigate('/area-do-paciente')}
+                                className="flex-1 bg-gradient-to-r from-[#2d8659] to-[#1e6b44] hover:from-[#236b47] hover:to-[#175334] text-white shadow-lg h-12"
+                            >
+                                <User className="w-5 h-5 mr-2" />
+                                Ir para Área do Paciente
+                            </Button>
+                            <Link to="/" className="flex-1">
                                 <Button
                                     variant="outline"
-                                    className="flex-1"
-                                    onClick={() => {
-                                        const bookingDetails = `
-Confirmação de Agendamento - Doxologos
-
-Profissional: ${booking.professional?.name}
-Serviço: ${booking.service?.name}
-Data: ${new Date(booking.booking_date).toLocaleDateString('pt-BR')}
-Horário: ${booking.booking_time}
-Valor: R$ ${booking.service?.price || payment?.transaction_amount}
-
-${booking.zoom_meeting_url ? `Link da videochamada:\n${booking.zoom_meeting_url}` : ''}
-
-ID do Pagamento: ${payment?.mp_payment_id || 'N/A'}
-                                        `.trim();
-
-                                        navigator.clipboard.writeText(bookingDetails);
-                                        alert('Detalhes copiados para a área de transferência!');
-                                    }}
+                                    className="w-full border-2 border-gray-300 hover:bg-gray-50 h-12"
                                 >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Copiar Detalhes
+                                    <Home className="w-5 h-5 mr-2" />
+                                    Voltar ao Início
                                 </Button>
-                            )}
+                            </Link>
                         </div>
                     </motion.div>
                 </div>
