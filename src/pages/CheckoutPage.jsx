@@ -21,6 +21,8 @@ const CheckoutPage = () => {
     const [selectedMethod, setSelectedMethod] = useState('pix');
     const [preference, setPreference] = useState(null);
     const [paymentStatus, setPaymentStatus] = useState(null);
+    const [pixPayment, setPixPayment] = useState(null); // Armazena dados do pagamento PIX
+    const [pollingInterval, setPollingInterval] = useState(null); // ID do interval para polling
 
     const paymentMethods = [
         {
@@ -114,24 +116,6 @@ const CheckoutPage = () => {
                 throw new Error('Valor inválido para pagamento');
             }
 
-            // Configurar métodos de pagamento baseado na seleção
-            const payment_methods = {
-                excluded_payment_methods: [],
-                excluded_payment_types: [],
-                installments: selectedMethod === 'credit_card' ? 12 : 1
-            };
-
-            // Para PIX, não enviar restrições (PIX é sempre disponível)
-            // Para outros métodos, especificar apenas o que queremos INCLUIR
-            if (selectedMethod !== 'pix') {
-                // Não enviar payment_methods - deixar todos disponíveis
-                // O usuário escolhe no checkout do Mercado Pago
-            }
-
-            console.log('🔍 [CHECKOUT] payment_methods antes de enviar:', payment_methods);
-            console.log('🔍 [CHECKOUT] Tipo de excluded_payment_types:', typeof payment_methods.excluded_payment_types);
-            console.log('🔍 [CHECKOUT] É array?', Array.isArray(payment_methods.excluded_payment_types));
-
             const requestPayload = {
                 booking_id: bookingId,
                 amount: amount,
@@ -146,23 +130,37 @@ const CheckoutPage = () => {
                 }
             };
 
-            // Não enviar payment_methods para evitar erro da API
-            // if (selectedMethod === 'credit_card') {
-            //     requestPayload.payment_methods = { installments: 12 };
-            // }
+            // Se for PIX, usar pagamento direto (sem redirecionamento)
+            if (selectedMethod === 'pix') {
+                console.log('🔵 Criando pagamento PIX direto...');
+                const result = await MercadoPagoService.createPixPayment(requestPayload);
 
-            const result = await MercadoPagoService.createPreference(requestPayload);
-
-            if (result.success) {
-                setPreference(result);
-                
-                // Se for PIX, ficar na página para mostrar QR Code
-                // Caso contrário, redirecionar para o Mercado Pago
-                if (selectedMethod !== 'pix') {
-                    window.location.href = result.init_point;
+                if (result.success) {
+                    console.log('✅ Pagamento PIX criado:', result);
+                    setPixPayment(result);
+                    
+                    // Iniciar polling do status do pagamento
+                    startPaymentPolling(result.payment_id);
+                    
+                    toast({
+                        title: 'QR Code gerado!',
+                        description: 'Escaneie o código para efetuar o pagamento.'
+                    });
+                } else {
+                    throw new Error(result.error || 'Erro ao criar pagamento PIX');
                 }
             } else {
-                throw new Error(result.error || 'Erro ao processar pagamento');
+                // Para outros métodos, usar preferência (redirecionamento)
+                console.log('💳 Criando preferência para', selectedMethod);
+
+                const result = await MercadoPagoService.createPreference(requestPayload);
+
+                if (result.success) {
+                    setPreference(result);
+                    window.location.href = result.init_point;
+                } else {
+                    throw new Error(result.error || 'Erro ao processar pagamento');
+                }
             }
 
         } catch (error) {
@@ -176,6 +174,93 @@ const CheckoutPage = () => {
             setProcessing(false);
         }
     };
+
+    // Inicia polling para verificar status do pagamento
+    const startPaymentPolling = (paymentId) => {
+        console.log('🔄 Iniciando polling do pagamento:', paymentId);
+        
+        // Limpar interval anterior se existir
+        if (pollingInterval) {
+            clearInterval(pollingInterval);
+        }
+
+        // Verificar status a cada 3 segundos
+        const intervalId = setInterval(async () => {
+            try {
+                const statusResult = await MercadoPagoService.checkPaymentStatus(paymentId);
+                
+                if (statusResult.success) {
+                    console.log('📊 Status atual:', statusResult.status);
+                    
+                    if (statusResult.status === 'approved') {
+                        console.log('✅ Pagamento aprovado!');
+                        clearInterval(intervalId);
+                        setPollingInterval(null);
+                        
+                        // Atualizar status no Supabase
+                        await updateBookingPaymentStatus('confirmed');
+                        
+                        toast({
+                            title: 'Pagamento confirmado!',
+                            description: 'Seu agendamento foi confirmado com sucesso.',
+                            variant: 'default'
+                        });
+                        
+                        // Redirecionar para página de sucesso
+                        setTimeout(() => {
+                            navigate('/booking-success', { 
+                                state: { bookingId: booking.id } 
+                            });
+                        }, 2000);
+                        
+                    } else if (statusResult.status === 'rejected' || statusResult.status === 'cancelled') {
+                        console.log('❌ Pagamento rejeitado/cancelado');
+                        clearInterval(intervalId);
+                        setPollingInterval(null);
+                        
+                        toast({
+                            variant: 'destructive',
+                            title: 'Pagamento não aprovado',
+                            description: 'O pagamento não foi concluído. Tente novamente.'
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao verificar status:', error);
+            }
+        }, 3000); // 3 segundos
+
+        setPollingInterval(intervalId);
+    };
+
+    // Atualiza status do pagamento no booking
+    const updateBookingPaymentStatus = async (status) => {
+        try {
+            const { error } = await supabase
+                .from('bookings')
+                .update({ 
+                    payment_status: status,
+                    status: 'confirmed',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', booking.id);
+
+            if (error) throw error;
+            
+            console.log('✅ Status do booking atualizado:', status);
+        } catch (error) {
+            console.error('Erro ao atualizar status do booking:', error);
+        }
+    };
+
+    // Limpar interval ao desmontar componente
+    useEffect(() => {
+        return () => {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        };
+    }, [pollingInterval]);
 
     if (loading) {
         return (
@@ -251,65 +336,62 @@ const CheckoutPage = () => {
                         </Card>
 
                         {/* QR Code do PIX */}
-                        {preference && selectedMethod === 'pix' && (
+                        {pixPayment && selectedMethod === 'pix' && (
                             <Card className="p-6">
                                 <h3 className="text-lg font-bold mb-4 text-center">
                                     Pague com PIX
                                 </h3>
                                 
-                                {preference.qr_code ? (
-                                    <div className="flex flex-col items-center">
-                                        <div className="bg-white p-4 rounded-lg border-2 mb-4">
-                                            <QRCodeSVG 
-                                                value={preference.qr_code}
-                                                size={256}
-                                                level="M"
+                                <div className="flex flex-col items-center">
+                                    <div className="bg-white p-4 rounded-lg border-2 mb-4">
+                                        <QRCodeSVG 
+                                            value={pixPayment.qr_code}
+                                            size={256}
+                                            level="M"
+                                        />
+                                    </div>
+                                    <p className="text-sm text-gray-600 text-center mb-4">
+                                        Escaneie o QR Code com o app do seu banco
+                                    </p>
+                                    
+                                    <div className="w-full bg-gray-50 p-4 rounded-lg">
+                                        <p className="text-xs text-gray-600 mb-2">Ou copie o código PIX:</p>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={pixPayment.qr_code}
+                                                readOnly
+                                                className="flex-1 input text-xs font-mono"
                                             />
+                                            <Button
+                                                size="sm"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(pixPayment.qr_code);
+                                                    toast({ title: 'Código copiado!' });
+                                                }}
+                                            >
+                                                Copiar
+                                            </Button>
                                         </div>
-                                        <p className="text-sm text-gray-600 text-center mb-4">
-                                            Escaneie o QR Code com o app do seu banco
-                                        </p>
-                                        
-                                        <div className="w-full bg-gray-50 p-4 rounded-lg">
-                                            <p className="text-xs text-gray-600 mb-2">Ou copie o código PIX:</p>
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={preference.qr_code}
-                                                    readOnly
-                                                    className="flex-1 input text-xs"
-                                                />
-                                                <Button
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(preference.qr_code);
-                                                        toast({ title: 'Código copiado!' });
-                                                    }}
-                                                >
-                                                    Copiar
-                                                </Button>
-                                            </div>
-                                        </div>
+                                    </div>
 
-                                        <div className="mt-6 text-center">
-                                            <div className="flex items-center justify-center gap-2 text-yellow-600 mb-2">
-                                                <Clock className="w-5 h-5" />
-                                                <p className="font-semibold">Aguardando pagamento...</p>
-                                            </div>
-                                            <p className="text-sm text-gray-600">
-                                                Você será notificado assim que o pagamento for confirmado
-                                            </p>
+                                    <div className="mt-6 text-center">
+                                        <div className="flex items-center justify-center gap-2 text-yellow-600 mb-2">
+                                            <Clock className="w-5 h-5 animate-pulse" />
+                                            <p className="font-semibold">Aguardando pagamento...</p>
                                         </div>
+                                        <p className="text-sm text-gray-600">
+                                            Verificando pagamento automaticamente...
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            O status será atualizado em alguns segundos após o pagamento
+                                        </p>
                                     </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <p className="text-gray-600">Gerando QR Code...</p>
-                                    </div>
-                                )}
+                                </div>
                             </Card>
                         )}
 
-                        {!preference && (
+                        {!pixPayment && !preference && (
                             <Button
                                 onClick={handlePayment}
                                 disabled={processing}
