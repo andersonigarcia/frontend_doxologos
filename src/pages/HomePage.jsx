@@ -732,6 +732,20 @@ const HomePage = () => {
                                     <Users className="w-4 h-4 mr-2" /> 
                                     Ministrado por: <span className="font-semibold ml-1">{event.professional?.name || 'Equipe Doxologos'}</span>
                                 </div>
+                                {event.valor > 0 ? (
+                                    <div className="mb-4">
+                                        <div className="inline-block bg-[#2d8659] text-white px-4 py-2 rounded-lg">
+                                            <span className="text-sm font-medium">Investimento: </span>
+                                            <span className="text-lg font-bold">R$ {parseFloat(event.valor).toFixed(2).replace('.', ',')}</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-4">
+                                        <span className="inline-block bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-semibold">
+                                            🎉 Gratuito
+                                        </span>
+                                    </div>
+                                )}
                                 <Link to={`/evento/${event.link_slug}`}>
                                     <Button className="bg-[#2d8659] hover:bg-[#236b47] w-full md:w-auto transition-all duration-300 hover:scale-105">
                                         Inscreva-se Agora

@@ -52,6 +52,7 @@ const AdminPage = () => {
         professional_id: '', 
         limite_participantes: '', 
         data_limite_inscricao: '', 
+        valor: 0,
         link_slug: '',
         data_inicio_exibicao: '',
         data_fim_exibicao: '',
@@ -1125,7 +1126,8 @@ const AdminPage = () => {
             data_fim: '', 
             professional_id: '', 
             limite_participantes: '', 
-            data_limite_inscricao: '', 
+            data_limite_inscricao: '',
+            valor: 0,
             link_slug: '',
             data_inicio_exibicao: '',
             data_fim_exibicao: '',
@@ -2998,6 +3000,24 @@ const AdminPage = () => {
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite de Vagas</label>
                                                 <input type="number" name="limite_participantes" value={eventFormData.limite_participantes || ''} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Ex: 20" className="w-full input" min="1" max="500" required/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1">Valor do Evento (R$)</label>
+                                                <input 
+                                                    type="number" 
+                                                    name="valor" 
+                                                    value={eventFormData.valor || 0} 
+                                                    onChange={e => setEventFormData({...eventFormData, valor: parseFloat(e.target.value) || 0})} 
+                                                    placeholder="0.00" 
+                                                    className="w-full input" 
+                                                    min="0" 
+                                                    step="0.01"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {eventFormData.valor > 0 
+                                                        ? `Evento pago - R$ ${parseFloat(eventFormData.valor).toFixed(2)}` 
+                                                        : 'Evento gratuito'}
+                                                </p>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite para Inscrição</label>
