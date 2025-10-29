@@ -1002,7 +1002,7 @@ const HomePage = () => {
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <div className="flex items-center space-x-2 mb-4"><Heart className="w-8 h-8 text-[#4ade80]" /><span className="text-2xl font-bold">Doxologos</span></div>
+            <div className="flex items-center space-x-2 mb-4"><Heart className="w-8 h-8 text-primary-light" /><span className="text-2xl font-bold">Doxologos</span></div>
             <p className="text-gray-400">Cuidado integral para sua saúde mental com ética cristã.</p>
           </div>
           <div>
@@ -1017,7 +1017,7 @@ const HomePage = () => {
           <div>
             <h3 className="font-bold text-lg mb-4">Institucional</h3>
             <div className="space-y-2">
-              <Link to="/doacao" className="block text-[#4ade80] hover:text-white transition-colors font-medium">💚 Faça uma Doação</Link>
+              <Link to="/doacao" className="block text-primary-light hover:text-white transition-colors font-medium">💚 Faça uma Doação</Link>
               <Link to="/depoimento" className="block text-yellow-400 hover:text-white transition-colors font-medium">⭐ Deixe seu Depoimento</Link>
               <Link to="/trabalhe-conosco" className="block text-gray-400 hover:text-white transition-colors">Trabalhe Conosco</Link>
               <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Acesso Restrito</Link>

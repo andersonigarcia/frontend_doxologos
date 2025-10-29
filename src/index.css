@@ -5,25 +5,47 @@
 
 @layer base {
   :root {
+    /* Backgrounds e foregrounds base */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 142 76% 36%;
+    
+    /* Paleta Verde Monocromático Otimizada */
+    --primary: 155 50% 35%;           /* #2d8659 - Verde principal (calma, equilíbrio) */
+    --primary-hover: 155 50% 28%;     /* #236b47 - Verde hover (mais escuro) */
+    --primary-light: 155 45% 53%;     /* #5ab380 - Verde suave (destaques sutis) */
+    --primary-ultra-light: 155 45% 95%; /* #e8f5ee - Background verde claro */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
+    
+    /* Accent roxo para CTAs especiais e premium */
+    --accent: 258 90% 66%;            /* #8b5cf6 - Roxo suave (sofisticação) */
+    --accent-foreground: 0 0% 100%;
+    
+    /* Cores de estado para feedback consistente */
+    --success: 158 64% 52%;           /* #10b981 - Verde sucesso */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;            /* #f59e0b - Âmbar alertas */
+    --warning-foreground: 0 0% 100%;
+    --error: 0 84% 60%;               /* #ef4444 - Vermelho erros */
+    --error-foreground: 0 0% 100%;
+    
+    /* Secundário e muted (cinzas) */
+    --secondary: 155 45% 96%;         /* Verde ultra claro para backgrounds */
     --secondary-foreground: 222.2 47.4% 11.2%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    
+    /* Destructive (usando error) */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders e inputs */
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 142 76% 36%;
+    --ring: 155 50% 35%;
     --radius: 0.5rem;
   }
 }
@@ -45,14 +67,67 @@
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #2d8659 0%, #4ade80 100%);
+  background: linear-gradient(135deg, #2d8659 0%, #5ab380 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .hero-gradient {
-  background: linear-gradient(135deg, rgba(45, 134, 89, 0.1) 0%, rgba(74, 222, 128, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(45, 134, 89, 0.1) 0%, rgba(90, 179, 128, 0.05) 100%);
+}
+
+/* Classes utilitárias para nova paleta */
+.bg-primary-light {
+  background-color: #5ab380;
+}
+
+.bg-primary-ultra-light {
+  background-color: #e8f5ee;
+}
+
+.text-primary-light {
+  color: #5ab380;
+}
+
+.bg-accent {
+  background-color: #8b5cf6;
+}
+
+.text-accent {
+  color: #8b5cf6;
+}
+
+.bg-success {
+  background-color: #10b981;
+}
+
+.text-success {
+  color: #10b981;
+}
+
+.bg-warning {
+  background-color: #f59e0b;
+}
+
+.text-warning {
+  color: #f59e0b;
+}
+
+.bg-error {
+  background-color: #ef4444;
+}
+
+.text-error {
+  color: #ef4444;
+}
+
+.border-primary-light {
+  border-color: #5ab380;
+}
+
+.hover\:bg-accent:hover {
+  background-color: #7c3aed;
 }
 
 .carousel-container::-webkit-scrollbar {
