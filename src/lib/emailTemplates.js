@@ -1,7 +1,9 @@
 ﻿export class EmailTemplates {
   constructor() {
     this.brandColor = "#2d8659";
-    this.baseUrl = import.meta.env.VITE_APP_URL || "https://doxologos.com.br";
+    // Usar variável de ambiente ou URL atual como fallback
+    this.baseUrl = import.meta.env.VITE_APP_URL || 
+                   (typeof window !== 'undefined' ? window.location.origin : 'https://doxologos.com.br');
     this.supportEmail = "doxologos@doxologos.com.br";
   }
   
