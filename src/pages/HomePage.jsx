@@ -527,14 +527,14 @@ const HomePage = () => {
                       />
                       
                       {/* Botão alternativo caso o iframe não carregue */}
-                      <div className="absolute bottom-4 left-4">
+                      {/* <div className="absolute bottom-4 left-4">
                         <button
                           onClick={handleIframeError}
                           className="bg-gray-600/80 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
                         >
                           Problemas? Clique aqui
                         </button>
-                      </div>
+                      </div> */}
                     </>
                   ) : (
                     // Fallback quando iframe não carrega
@@ -633,14 +633,14 @@ const HomePage = () => {
                       ? 'border-[#2d8659] shadow-2xl scale-105 bg-gradient-to-br from-green-50 to-green-100' 
                       : 'border-transparent hover:border-green-200 hover:shadow-xl'
                   }`}
-                  onClick={() => handleVideoSelect(video)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleVideoSelect(video)}
+                  onClick={() => playVideoInline(video.videoId)}
+                  onKeyDown={(e) => e.key === 'Enter' && playVideoInline(video.videoId)}
                   whileHover={{ y: -8, transition: { duration: 0.3 } }}
                   whileTap={{ scale: 0.95 }}
                   title={video.title}
                   role="listitem"
                   tabIndex={0}
-                  aria-label={`Selecionar vídeo: ${video.title}`}
+                  aria-label={`Assistir vídeo: ${video.title}`}
                 >
                   <img 
                     src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}
@@ -648,25 +648,7 @@ const HomePage = () => {
                     alt={video.title}
                     loading="lazy"
                   />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-500 flex items-center justify-center">
-                    {currentVideo.id === video.id ? (
-                      <motion.div 
-                        className="bg-[#2d8659] text-white rounded-full p-3 shadow-lg"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        <motion.div
-                          animate={{ scale: [1, 1.2, 1] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          ▶
-                        </motion.div>
-                      </motion.div>
-                    ) : (
-                      <PlayCircle className="w-8 h-8 text-white/90 transition-transform group-hover:scale-110" />
-                    )}
-                  </div>
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-all duration-500"></div>
                   
                   {/* Botões no hover */}
                   <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
