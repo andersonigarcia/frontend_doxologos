@@ -82,6 +82,24 @@ const EventoDetalhePage = () => {
     }, [user, event]);
     
     const handleRegistration = async () => {
+        // Validar campos obrigatórios
+        if (!patientData.name.trim()) {
+            toast({ variant: "destructive", title: "Nome obrigatório", description: "Por favor, informe seu nome completo." });
+            return;
+        }
+        
+        if (!patientData.email.trim()) {
+            toast({ variant: "destructive", title: "Email obrigatório", description: "Por favor, informe seu email." });
+            return;
+        }
+        
+        // Validar formato do email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(patientData.email)) {
+            toast({ variant: "destructive", title: "Email inválido", description: "Por favor, informe um email válido." });
+            return;
+        }
+
         if (!user) {
             toast({ variant: "destructive", title: "Faça login para se inscrever." });
             setStep(2); // Vai para a etapa de login/cadastro
@@ -89,13 +107,21 @@ const EventoDetalhePage = () => {
         }
 
         const { data, error } = await supabase.from('inscricoes_eventos').insert([
-            { evento_id: event.id, user_id: user.id, patient_name: patientData.name, patient_email: patientData.email, status_pagamento: 'pendente' }
+            { 
+                evento_id: event.id, 
+                user_id: user.id, 
+                patient_name: patientData.name.trim(), 
+                patient_email: patientData.email.trim(),
+                patient_phone: patientData.phone.trim(),
+                status_pagamento: 'pendente' 
+            }
         ]);
 
         if (error) {
             toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
         } else {
             setStep(3); // Vai para a confirmação
+            toast({ title: "Inscrição realizada!", description: "Você receberá um email com as instruções de pagamento." });
         }
     };
 
@@ -138,8 +164,47 @@ const EventoDetalhePage = () => {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <h2 className="text-2xl font-bold mb-6">Confirme seus dados para inscrição</h2>
                 <div className="space-y-4">
-                    <div><label className="block text-sm font-medium mb-1">Nome</label><div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg"><User className="w-5 h-5 text-gray-500"/><p>{patientData.name}</p></div></div>
-                    <div><label className="block text-sm font-medium mb-1">Email</label><div className="flex items-center gap-2 p-3 bg-gray-100 rounded-lg"><Mail className="w-5 h-5 text-gray-500"/><p>{patientData.email}</p></div></div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Nome Completo *</label>
+                        <div className="flex items-center gap-2 p-3 border rounded-lg focus-within:border-[#2d8659] transition-colors">
+                            <User className="w-5 h-5 text-gray-500"/>
+                            <input
+                                type="text"
+                                placeholder="Digite seu nome completo"
+                                value={patientData.name}
+                                onChange={(e) => setPatientData({...patientData, name: e.target.value})}
+                                className="flex-1 outline-none bg-transparent"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Email *</label>
+                        <div className="flex items-center gap-2 p-3 border rounded-lg focus-within:border-[#2d8659] transition-colors">
+                            <Mail className="w-5 h-5 text-gray-500"/>
+                            <input
+                                type="email"
+                                placeholder="seu@email.com"
+                                value={patientData.email}
+                                onChange={(e) => setPatientData({...patientData, email: e.target.value})}
+                                className="flex-1 outline-none bg-transparent"
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Telefone (opcional)</label>
+                        <div className="flex items-center gap-2 p-3 border rounded-lg focus-within:border-[#2d8659] transition-colors">
+                            <Smartphone className="w-5 h-5 text-gray-500"/>
+                            <input
+                                type="tel"
+                                placeholder="(00) 00000-0000"
+                                value={patientData.phone}
+                                onChange={(e) => setPatientData({...patientData, phone: e.target.value})}
+                                className="flex-1 outline-none bg-transparent"
+                            />
+                        </div>
+                    </div>
                 </div>
                 <div className="mt-8">
                     {isUserRegistered ? (
