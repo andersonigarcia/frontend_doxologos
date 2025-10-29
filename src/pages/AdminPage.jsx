@@ -59,6 +59,22 @@ const AdminPage = () => {
     });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
 
+    // Função para gerar slug único a partir do título
+    const generateUniqueSlug = (title) => {
+        const baseSlug = title
+            .toLowerCase()
+            .normalize('NFD') // Normalizar acentos
+            .replace(/[\u0300-\u036f]/g, '') // Remover diacríticos
+            .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiais
+            .trim()
+            .replace(/\s+/g, '-') // Substituir espaços por hífen
+            .replace(/-+/g, '-'); // Remover hífens duplicados
+        
+        // Adicionar timestamp para garantir unicidade
+        const timestamp = Date.now().toString().slice(-6);
+        return `${baseSlug}-${timestamp}`;
+    };
+
     const [editingBooking, setEditingBooking] = useState(null);
     const [bookingEditData, setBookingEditData] = useState({ 
         booking_date: '', 
@@ -1009,6 +1025,47 @@ const AdminPage = () => {
             return;
         }
         
+        // Validar e gerar link_slug se necessário
+        let finalLinkSlug = eventFormData.link_slug?.trim();
+        
+        // Se link_slug estiver vazio, gerar automaticamente do título
+        if (!finalLinkSlug) {
+            finalLinkSlug = generateUniqueSlug(eventFormData.titulo);
+            toast({ 
+                title: "Slug gerado automaticamente", 
+                description: `Link do evento: ${finalLinkSlug}` 
+            });
+        } else {
+            // Validar formato do slug
+            const slugRegex = /^[a-z0-9-]+$/;
+            if (!slugRegex.test(finalLinkSlug)) {
+                toast({ 
+                    variant: "destructive", 
+                    title: "Slug inválido", 
+                    description: "Use apenas letras minúsculas, números e hífens" 
+                });
+                return;
+            }
+            
+            // Verificar se slug já existe (apenas para novos eventos ou se mudou)
+            if (!isEditingEvent || finalLinkSlug !== eventFormData.link_slug) {
+                const { data: existingEvent } = await supabase
+                    .from('eventos')
+                    .select('id')
+                    .eq('link_slug', finalLinkSlug)
+                    .single();
+                
+                if (existingEvent && (!isEditingEvent || existingEvent.id !== eventFormData.id)) {
+                    toast({ 
+                        variant: "destructive", 
+                        title: "Slug duplicado", 
+                        description: "Este link já está sendo usado. Gerando um único..." 
+                    });
+                    finalLinkSlug = generateUniqueSlug(eventFormData.titulo);
+                }
+            }
+        }
+        
         let result;
         if (isEditingEvent) {
             // Para edição, remover campos que não são colunas da tabela
@@ -1017,11 +1074,15 @@ const AdminPage = () => {
                 inscricoes_eventos, 
                 professional, 
                 created_at, 
-                updated_at, 
+                updated_at,
+                link_slug,
                 ...updateData 
             } = eventFormData;
             
-            result = await supabase.from('eventos').update(updateData).eq('id', id);
+            result = await supabase.from('eventos').update({
+                ...updateData,
+                link_slug: finalLinkSlug
+            }).eq('id', id);
         } else {
             // Para inserção, remover campos desnecessários
             const { 
@@ -1029,11 +1090,15 @@ const AdminPage = () => {
                 inscricoes_eventos, 
                 professional, 
                 created_at, 
-                updated_at, 
+                updated_at,
+                link_slug,
                 ...eventDataWithoutId 
             } = eventFormData;
             
-            result = await supabase.from('eventos').insert([eventDataWithoutId]);
+            result = await supabase.from('eventos').insert([{
+                ...eventDataWithoutId,
+                link_slug: finalLinkSlug
+            }]);
         }
         
         if (result.error) {
@@ -2991,7 +3056,37 @@ const AdminPage = () => {
                                             </p>
                                         </div>
 
-                                        <input name="link_slug" value={eventFormData.link_slug || ''} onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value})} placeholder="Link do evento (URL amigável)" className="w-full input" required/>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Link do Evento (Slug)</label>
+                                            <div className="flex gap-2">
+                                                <input 
+                                                    name="link_slug" 
+                                                    value={eventFormData.link_slug || ''} 
+                                                    onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value.toLowerCase()})} 
+                                                    placeholder="workshop-meditacao-123456" 
+                                                    className="flex-1 input"
+                                                    pattern="[a-z0-9-]+"
+                                                    title="Use apenas letras minúsculas, números e hífens"
+                                                />
+                                                <Button 
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => {
+                                                        const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
+                                                        setEventFormData({...eventFormData, link_slug: slug});
+                                                        toast({ title: "Slug gerado!", description: slug });
+                                                    }}
+                                                    disabled={!eventFormData.titulo}
+                                                >
+                                                    Gerar
+                                                </Button>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                {eventFormData.link_slug 
+                                                    ? `URL: /evento/${eventFormData.link_slug}` 
+                                                    : 'Deixe vazio para gerar automaticamente'}
+                                            </p>
+                                        </div>
                                         <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
                                     </form>
                                 </div>

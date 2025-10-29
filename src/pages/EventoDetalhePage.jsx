@@ -23,6 +23,7 @@ const EventoDetalhePage = () => {
     const [step, setStep] = useState(1);
     const [patientData, setPatientData] = useState({ name: '', email: '', phone: '', password: '', acceptTerms: false });
     const [emailError, setEmailError] = useState('');
+    const [emailStatus, setEmailStatus] = useState(null); // 'new' | 'existing' | null
     const [isProcessing, setIsProcessing] = useState(false);
 
     // Função para aplicar máscara no telefone
@@ -43,11 +44,50 @@ const EventoDetalhePage = () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             setEmailError('Email inválido');
+            setEmailStatus(null);
             return false;
         }
         setEmailError('');
         return true;
     };
+
+    // Função para verificar se email já existe
+    const checkEmailExists = async (email) => {
+        if (!validateEmail(email)) {
+            setEmailStatus(null);
+            return;
+        }
+        
+        try {
+            // Usar admin API para verificar se email existe
+            // Como não temos acesso direto ao auth.users, tentamos fazer signIn
+            // Se retornar erro "Invalid login credentials", o email pode existir
+            // Se retornar "User not found", é email novo
+            
+            // Alternativa: verificar na tabela inscricoes_eventos
+            const { data } = await supabase
+                .from('inscricoes_eventos')
+                .select('user_id')
+                .eq('patient_email', email.trim())
+                .limit(1)
+                .single();
+            
+            setEmailStatus(data ? 'existing' : 'new');
+        } catch (error) {
+            // Se não encontrou, assume que é email novo
+            setEmailStatus('new');
+        }
+    };
+
+    // Debounce para verificação de email
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (patientData.email && !emailError) {
+                checkEmailExists(patientData.email);
+            }
+        }, 800);
+        return () => clearTimeout(timer);
+    }, [patientData.email, emailError]);
 
     // Função para realizar cadastro
     useEffect(() => {
@@ -146,22 +186,38 @@ const EventoDetalhePage = () => {
         }
 
         try {
-            // Verificar se o usuário já existe
-            const { data: existingUser } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('email', patientData.email.trim())
-                .single();
+            // Tentar fazer login primeiro para verificar se usuário existe
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                email: patientData.email.trim(),
+                password: patientData.password
+            });
 
             let userId;
 
-            if (existingUser) {
-                // Usuário já existe, usar o ID existente
-                userId = existingUser.id;
+            if (signInData?.user && !signInError) {
+                // Usuário já existe e senha está correta - LOGIN BEM-SUCEDIDO
+                userId = signInData.user.id;
                 toast({ 
-                    title: "Email já cadastrado", 
-                    description: "Detectamos que você já tem uma conta. Continuando com a inscrição..."
+                    title: "Login realizado!", 
+                    description: "Continuando com sua inscrição no evento..."
                 });
+            } else if (signInError && signInError.message.includes('Invalid login credentials')) {
+                // Email existe mas senha está errada
+                toast({ 
+                    variant: "destructive",
+                    title: "Credenciais inválidas", 
+                    description: "Este email já possui cadastro. A senha informada está incorreta.",
+                    action: (
+                        <a 
+                            href={`/recuperar-senha?email=${encodeURIComponent(patientData.email)}`}
+                            className="text-sm underline"
+                        >
+                            Esqueceu sua senha?
+                        </a>
+                    )
+                });
+                setIsProcessing(false);
+                return;
             } else {
                 // Criar nova conta automaticamente
                 const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -198,8 +254,8 @@ const EventoDetalhePage = () => {
                 }
 
                 toast({ 
-                    title: "Conta criada com sucesso!", 
-                    description: "Você receberá um email de confirmação."
+                    title: "🎉 Bem-vindo!", 
+                    description: "Criamos sua conta e você já está inscrito! Enviamos um email com os detalhes do evento e instruções de pagamento."
                 });
             }
 
@@ -300,6 +356,33 @@ const EventoDetalhePage = () => {
                         {emailError && (
                             <p className="text-red-500 text-xs mt-1">{emailError}</p>
                         )}
+                        {emailStatus === 'existing' && !emailError && (
+                            <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg mt-2">
+                                <p className="text-sm text-blue-800 font-medium mb-1">
+                                    ✓ Detectamos que você já tem conta
+                                </p>
+                                <p className="text-xs text-blue-600">
+                                    Digite sua senha para continuar. 
+                                    <a 
+                                        href={`/recuperar-senha?email=${encodeURIComponent(patientData.email)}`}
+                                        target="_blank"
+                                        className="ml-1 underline hover:text-blue-800"
+                                    >
+                                        Esqueceu sua senha?
+                                    </a>
+                                </p>
+                            </div>
+                        )}
+                        {emailStatus === 'new' && !emailError && (
+                            <div className="bg-green-50 border border-green-200 p-3 rounded-lg mt-2">
+                                <p className="text-sm text-green-800 font-medium mb-1">
+                                    ✓ Email disponível
+                                </p>
+                                <p className="text-xs text-green-600">
+                                    Criaremos sua conta automaticamente. Escolha uma senha para acessar futuramente.
+                                </p>
+                            </div>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Telefone (opcional)</label>
@@ -316,14 +399,22 @@ const EventoDetalhePage = () => {
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">Senha *</label>
+                        <label className="block text-sm font-medium mb-1">
+                            Senha * 
+                            {emailStatus === 'existing' && (
+                                <span className="text-blue-600 text-xs ml-2">(Use sua senha cadastrada)</span>
+                            )}
+                            {emailStatus === 'new' && (
+                                <span className="text-green-600 text-xs ml-2">(Crie uma senha segura)</span>
+                            )}
+                        </label>
                         <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${
                             patientData.password && patientData.password.length < 6 ? 'border-red-500' : 'focus-within:border-[#2d8659]'
                         }`}>
                             <Lock className={`w-5 h-5 ${patientData.password && patientData.password.length < 6 ? 'text-red-500' : 'text-gray-500'}`}/>
                             <input
                                 type="password"
-                                placeholder="Mínimo 6 caracteres"
+                                placeholder={emailStatus === 'existing' ? 'Digite sua senha' : 'Mínimo 6 caracteres'}
                                 value={patientData.password}
                                 onChange={(e) => setPatientData({...patientData, password: e.target.value})}
                                 className="flex-1 outline-none bg-transparent"
