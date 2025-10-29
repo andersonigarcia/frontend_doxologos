@@ -16,7 +16,13 @@ const CheckoutPage = () => {
     const { toast } = useToast();
     
     const bookingId = searchParams.get('booking_id');
+    const type = searchParams.get('type'); // 'booking' ou 'evento'
+    const inscricaoId = searchParams.get('inscricao_id');
+    const valorParam = searchParams.get('valor');
+    const tituloParam = searchParams.get('titulo');
+    
     const [booking, setBooking] = useState(null);
+    const [inscricao, setInscricao] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [selectedMethod, setSelectedMethod] = useState('pix');
@@ -57,17 +63,19 @@ const CheckoutPage = () => {
     ];
 
     useEffect(() => {
-        if (bookingId) {
+        if (type === 'evento' && inscricaoId) {
+            fetchInscricao();
+        } else if (bookingId) {
             fetchBooking();
         } else {
             toast({
                 variant: 'destructive',
                 title: 'Erro',
-                description: 'ID do agendamento não informado'
+                description: 'Informações de pagamento não encontradas'
             });
             navigate('/');
         }
-    }, [bookingId]);
+    }, [bookingId, inscricaoId, type]);
 
     const fetchBooking = async () => {
         try {
@@ -107,28 +115,90 @@ const CheckoutPage = () => {
         }
     };
 
+    const fetchInscricao = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('inscricoes_eventos')
+                .select(`
+                    *,
+                    evento:eventos(titulo, descricao, valor, data_inicio)
+                `)
+                .eq('id', inscricaoId)
+                .single();
+
+            if (error) throw error;
+
+            if (!data) {
+                throw new Error('Inscrição não encontrada');
+            }
+
+            // Verificar se já foi pago
+            if (data.status_pagamento === 'confirmado' || data.status_pagamento === 'pago') {
+                toast({
+                    title: 'Pagamento já realizado',
+                    description: 'Este evento já foi pago'
+                });
+                navigate(`/`);
+                return;
+            }
+
+            setInscricao(data);
+        } catch (error) {
+            console.error('Erro ao buscar inscrição:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não foi possível carregar a inscrição'
+            });
+            navigate('/');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handlePayment = async () => {
         setProcessing(true);
 
         try {
-            const amount = booking.valor_consulta || booking.service?.price || 0;
+            let amount, description, payerInfo, referenceId;
+
+            if (type === 'evento') {
+                // Dados do evento
+                amount = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
+                description = `Evento - ${inscricao?.evento?.titulo || tituloParam || 'Evento Doxologos'}`;
+                payerInfo = {
+                    name: inscricao.patient_name,
+                    email: inscricao.patient_email,
+                    phone: {
+                        area_code: inscricao.patient_phone?.substring(0, 2) || '11',
+                        number: inscricao.patient_phone?.substring(2) || '999999999'
+                    }
+                };
+                referenceId = inscricaoId;
+            } else {
+                // Dados do booking (original)
+                amount = booking.valor_consulta || booking.service?.price || 0;
+                description = `Consulta - ${booking.service?.name || 'Atendimento Psicológico'}`;
+                payerInfo = {
+                    name: booking.patient_name,
+                    email: booking.patient_email,
+                    phone: {
+                        area_code: booking.patient_phone?.substring(0, 2) || '11',
+                        number: booking.patient_phone?.substring(2) || '999999999'
+                    }
+                };
+                referenceId = bookingId;
+            }
 
             if (!amount || amount <= 0) {
                 throw new Error('Valor inválido para pagamento');
             }
 
             const requestPayload = {
-                booking_id: bookingId,
+                [type === 'evento' ? 'inscricao_id' : 'booking_id']: referenceId,
                 amount: amount,
-                description: `Consulta - ${booking.service?.name || 'Atendimento Psicológico'}`,
-                payer: {
-                    name: booking.patient_name,
-                    email: booking.patient_email,
-                    phone: {
-                        area_code: booking.patient_phone?.substring(0, 2) || '',
-                        number: booking.patient_phone?.substring(2) || ''
-                    }
-                }
+                description: description,
+                payer: payerInfo
             };
 
             // Se for PIX, usar pagamento direto (sem redirecionamento)
@@ -232,10 +302,10 @@ const CheckoutPage = () => {
         setPollingInterval(intervalId);
     };
 
-    // Atualiza status do pagamento no booking
+    // Atualiza status do pagamento no booking ou inscrição
     const updateBookingPaymentStatus = async (paymentId) => {
         try {
-            console.log('💾 Atualizando status do pagamento e booking...', paymentId);
+            console.log('💾 Atualizando status do pagamento...', paymentId);
             
             // 1. Atualizar status do pagamento na tabela payments
             const { error: paymentError } = await supabase
@@ -252,18 +322,34 @@ const CheckoutPage = () => {
                 console.log('✅ Status do pagamento atualizado para approved');
             }
             
-            // 2. Atualizar status do booking para 'confirmed'
-            const { error: bookingError } = await supabase
-                .from('bookings')
-                .update({ 
-                    status: 'confirmed'
-                })
-                .eq('id', booking.id);
+            if (type === 'evento') {
+                // 2. Atualizar status da inscrição no evento
+                const { error: inscricaoError } = await supabase
+                    .from('inscricoes_eventos')
+                    .update({ 
+                        status_pagamento: 'confirmado'
+                    })
+                    .eq('id', inscricaoId);
 
-            if (bookingError) {
-                console.error('❌ Erro ao atualizar booking:', bookingError);
+                if (inscricaoError) {
+                    console.error('❌ Erro ao atualizar inscrição:', inscricaoError);
+                } else {
+                    console.log('✅ Status da inscrição atualizado para confirmado');
+                }
             } else {
-                console.log('✅ Status do booking atualizado para confirmed');
+                // 2. Atualizar status do booking para 'confirmed'
+                const { error: bookingError } = await supabase
+                    .from('bookings')
+                    .update({ 
+                        status: 'confirmed'
+                    })
+                    .eq('id', bookingId);
+
+                if (bookingError) {
+                    console.error('❌ Erro ao atualizar booking:', bookingError);
+                } else {
+                    console.log('✅ Status do booking atualizado para confirmed');
+                }
             }
         } catch (error) {
             console.error('Erro ao atualizar status:', error);
@@ -290,7 +376,7 @@ const CheckoutPage = () => {
         );
     }
 
-    if (!booking) {
+    if (!booking && !inscricao) {
         return null;
     }
 
@@ -453,41 +539,82 @@ const CheckoutPage = () => {
                             <h3 className="text-lg font-bold mb-4">Resumo do Pedido</h3>
 
                             <div className="space-y-4">
-                                <div>
-                                    <p className="text-sm text-gray-600">Serviço</p>
-                                    <p className="font-semibold">{booking.service?.name}</p>
-                                </div>
+                                {type === 'evento' ? (
+                                    <>
+                                        <div>
+                                            <p className="text-sm text-gray-600">Evento</p>
+                                            <p className="font-semibold">{inscricao?.evento?.titulo || tituloParam}</p>
+                                        </div>
 
-                                <div>
-                                    <p className="text-sm text-gray-600">Profissional</p>
-                                    <p className="font-semibold">{booking.professional?.name}</p>
-                                </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600">Participante</p>
+                                            <p className="font-semibold">{inscricao?.patient_name}</p>
+                                        </div>
 
-                                <div>
-                                    <p className="text-sm text-gray-600">Data e Horário</p>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="w-4 h-4 text-gray-400" />
-                                        <p className="font-semibold">
-                                            {new Date(booking.booking_date).toLocaleDateString('pt-BR')}
-                                        </p>
-                                    </div>
-                                    <p className="text-sm">{booking.booking_time}</p>
-                                </div>
+                                        <div>
+                                            <p className="text-sm text-gray-600">Data do Evento</p>
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="w-4 h-4 text-gray-400" />
+                                                <p className="font-semibold">
+                                                    {inscricao?.evento?.data_inicio && new Date(inscricao.evento.data_inicio).toLocaleDateString('pt-BR')}
+                                                </p>
+                                            </div>
+                                        </div>
 
-                                <div className="border-t pt-4">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <p className="text-gray-600">Subtotal</p>
-                                        <p className="font-semibold">
-                                            {MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
-                                        </p>
-                                    </div>
-                                    <div className="flex justify-between items-center text-lg font-bold">
-                                        <p>Total</p>
-                                        <p className="text-[#2d8659]">
-                                            {MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
-                                        </p>
-                                    </div>
-                                </div>
+                                        <div className="border-t pt-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-gray-600">Valor da Inscrição</p>
+                                                <p className="font-semibold">
+                                                    {MercadoPagoService.formatCurrency(inscricao?.evento?.valor || parseFloat(valorParam))}
+                                                </p>
+                                            </div>
+                                            <div className="flex justify-between items-center text-lg font-bold">
+                                                <p>Total</p>
+                                                <p className="text-[#2d8659]">
+                                                    {MercadoPagoService.formatCurrency(inscricao?.evento?.valor || parseFloat(valorParam))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <p className="text-sm text-gray-600">Serviço</p>
+                                            <p className="font-semibold">{booking?.service?.name}</p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-gray-600">Profissional</p>
+                                            <p className="font-semibold">{booking?.professional?.name}</p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-gray-600">Data e Horário</p>
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="w-4 h-4 text-gray-400" />
+                                                <p className="font-semibold">
+                                                    {booking && new Date(booking.booking_date).toLocaleDateString('pt-BR')}
+                                                </p>
+                                            </div>
+                                            <p className="text-sm">{booking?.booking_time}</p>
+                                        </div>
+
+                                        <div className="border-t pt-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-gray-600">Subtotal</p>
+                                                <p className="font-semibold">
+                                                    {booking && MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
+                                                </p>
+                                            </div>
+                                            <div className="flex justify-between items-center text-lg font-bold">
+                                                <p>Total</p>
+                                                <p className="text-[#2d8659]">
+                                                    {booking && MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
 
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                                     <div className="flex items-start gap-2">

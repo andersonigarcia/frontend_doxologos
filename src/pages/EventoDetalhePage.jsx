@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -8,9 +8,11 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, AlertTriangle, Heart, Lock } from 'lucide-react';
+import emailService from '@/lib/emailService';
 
 const EventoDetalhePage = () => {
     const { slug } = useParams();
+    const navigate = useNavigate();
     const { user, signIn } = useAuth();
     const { toast } = useToast();
 
@@ -260,15 +262,15 @@ const EventoDetalhePage = () => {
             }
 
             // Registrar inscrição no evento
-            const { data, error } = await supabase.from('inscricoes_eventos').insert([
+            const { data: inscricaoData, error } = await supabase.from('inscricoes_eventos').insert([
                 { 
                     evento_id: event.id, 
                     user_id: userId, 
                     patient_name: patientData.name.trim(), 
                     patient_email: patientData.email.trim(),
-                    status_pagamento: 'pendente' 
+                    status_pagamento: event.valor > 0 ? 'pendente' : 'confirmado'
                 }
-            ]);
+            ]).select();
 
             if (error) {
                 toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
@@ -276,12 +278,75 @@ const EventoDetalhePage = () => {
                 return;
             }
 
-            // Sucesso - ir para confirmação
-            setStep(3);
-            toast({ 
-                title: "Inscrição realizada!", 
-                description: "Você receberá um email com os detalhes do evento e instruções de pagamento."
-            });
+            // Enviar email de confirmação da inscrição
+            try {
+                const emailHtml = `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #2d8659;">Inscrição Realizada com Sucesso! 🎉</h2>
+                        <p>Olá <strong>${patientData.name}</strong>,</p>
+                        <p>Sua inscrição no evento foi registrada com sucesso:</p>
+                        
+                        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <h3 style="color: #2d8659; margin-top: 0;">${event.titulo}</h3>
+                            <p><strong>📅 Data:</strong> ${new Date(event.data_inicio).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                            <p><strong>⏰ Horário:</strong> ${new Date(event.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                            ${event.valor > 0 
+                                ? `<p><strong>💰 Valor:</strong> R$ ${parseFloat(event.valor).toFixed(2).replace('.', ',')}</p>
+                                   <p><strong>💳 Status:</strong> <span style="color: #ff9800;">Pagamento Pendente</span></p>`
+                                : `<p><strong>💚 Evento Gratuito</strong></p>
+                                   <p><strong>✅ Status:</strong> <span style="color: #2d8659;">Confirmado</span></p>`
+                            }
+                        </div>
+                        
+                        ${event.valor > 0 
+                            ? `<p>⚠️ <strong>Importante:</strong> Complete o pagamento para confirmar sua vaga no evento.</p>
+                               <p>Você será redirecionado para a tela de pagamento. Após a confirmação, enviaremos um novo email com todos os detalhes.</p>`
+                            : `<p>✅ Sua vaga está confirmada! Em breve enviaremos mais informações sobre o evento.</p>`
+                        }
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+                        <p style="color: #666; font-size: 12px;">
+                            <strong>Doxologos</strong><br>
+                            Atendimento Psicológico Cristão<br>
+                            www.doxologos.com.br
+                        </p>
+                    </div>
+                `;
+
+                await emailService.sendEmail({
+                    to: patientData.email.trim(),
+                    subject: event.valor > 0 
+                        ? `Inscrição Registrada - ${event.titulo} (Pagamento Pendente)` 
+                        : `Inscrição Confirmada - ${event.titulo}`,
+                    html: emailHtml,
+                    type: 'eventRegistration'
+                });
+
+                console.log('✅ Email de confirmação enviado');
+            } catch (emailError) {
+                console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
+                // Não bloqueia o fluxo se email falhar
+            }
+
+            // Verificar se evento é pago e redirecionar para pagamento
+            if (event.valor > 0) {
+                toast({ 
+                    title: "Inscrição registrada!", 
+                    description: "Redirecionando para pagamento..."
+                });
+                
+                // Redirecionar para página de pagamento após 1.5s
+                setTimeout(() => {
+                    navigate(`/checkout?type=evento&inscricao_id=${inscricaoData[0].id}&valor=${event.valor}&titulo=${encodeURIComponent(event.titulo)}`);
+                }, 1500);
+            } else {
+                // Evento gratuito - ir para confirmação
+                setStep(3);
+                toast({ 
+                    title: "✅ Inscrição confirmada!", 
+                    description: "Você receberá um email com os detalhes do evento."
+                });
+            }
 
         } catch (error) {
             console.error('Erro no processo de inscrição:', error);
@@ -486,6 +551,28 @@ const EventoDetalhePage = () => {
                                         <div className="flex items-center"><Clock className="w-5 h-5 mr-2 text-[#2d8659]" /> {new Date(event.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(event.data_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
                                         <div className="flex items-center"><Users className="w-5 h-5 mr-2 text-[#2d8659]" /> {vagasRestantes > 0 ? `${vagasRestantes} vagas restantes` : 'Vagas esgotadas'}</div>
                                     </div>
+                                    {event.valor > 0 && (
+                                        <div className="bg-gradient-to-r from-[#2d8659]/10 to-[#2d8659]/5 border-l-4 border-[#2d8659] p-4 rounded-lg mb-6">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-sm text-gray-600 font-medium">Investimento</p>
+                                                    <p className="text-3xl font-bold text-[#2d8659]">
+                                                        R$ {parseFloat(event.valor).toFixed(2).replace('.', ',')}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-500">Pagamento via PIX</p>
+                                                    <p className="text-xs text-gray-500">Confirmação imediata</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {event.valor === 0 && (
+                                        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg mb-6">
+                                            <p className="text-green-700 font-semibold text-lg">🎉 Evento Gratuito!</p>
+                                            <p className="text-green-600 text-sm">Inscreva-se e garanta sua vaga</p>
+                                        </div>
+                                    )}
                                     <div className="prose max-w-none text-gray-700">
                                         <p>{event.descricao}</p>
                                     </div>
