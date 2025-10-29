@@ -7,7 +7,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, AlertTriangle, Heart } from 'lucide-react';
+import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, AlertTriangle, Heart, Lock } from 'lucide-react';
 
 const EventoDetalhePage = () => {
     const { slug } = useParams();
@@ -21,9 +21,35 @@ const EventoDetalhePage = () => {
     const [isUserRegistered, setIsUserRegistered] = useState(false);
     
     const [step, setStep] = useState(1);
-    const [loginData, setLoginData] = useState({ email: '', password: '' });
-    const [patientData, setPatientData] = useState({ name: '', email: '', phone: '' });
+    const [patientData, setPatientData] = useState({ name: '', email: '', phone: '', password: '', acceptTerms: false });
+    const [emailError, setEmailError] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
+    // Função para aplicar máscara no telefone
+    const formatPhone = (value) => {
+        const cleaned = value.replace(/\D/g, '');
+        if (cleaned.length <= 10) {
+            return cleaned.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        }
+        return cleaned.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+    };
+
+    // Função para validar email em tempo real
+    const validateEmail = (email) => {
+        if (!email) {
+            setEmailError('');
+            return false;
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            setEmailError('Email inválido');
+            return false;
+        }
+        setEmailError('');
+        return true;
+    };
+
+    // Função para realizar cadastro
     useEffect(() => {
         const fetchEvent = async () => {
             setLoading(true);
@@ -64,7 +90,9 @@ const EventoDetalhePage = () => {
 
     useEffect(() => {
         if (user && event) {
-            setPatientData({ name: user.user_metadata?.name || '', email: user.email, phone: '' });
+            // Não preencher automaticamente - deixar campos vazios para o cliente digitar
+            // setPatientData({ name: user.user_metadata?.name || '', email: user.email, phone: '' });
+            
             const checkRegistration = async () => {
                 const { data, error } = await supabase
                     .from('inscricoes_eventos')
@@ -82,14 +110,18 @@ const EventoDetalhePage = () => {
     }, [user, event]);
     
     const handleRegistration = async () => {
+        setIsProcessing(true);
+        
         // Validar campos obrigatórios
         if (!patientData.name.trim()) {
             toast({ variant: "destructive", title: "Nome obrigatório", description: "Por favor, informe seu nome completo." });
+            setIsProcessing(false);
             return;
         }
         
         if (!patientData.email.trim()) {
             toast({ variant: "destructive", title: "Email obrigatório", description: "Por favor, informe seu email." });
+            setIsProcessing(false);
             return;
         }
         
@@ -97,31 +129,113 @@ const EventoDetalhePage = () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(patientData.email)) {
             toast({ variant: "destructive", title: "Email inválido", description: "Por favor, informe um email válido." });
+            setIsProcessing(false);
             return;
         }
 
-        if (!user) {
-            toast({ variant: "destructive", title: "Faça login para se inscrever." });
-            setStep(2); // Vai para a etapa de login/cadastro
+        if (!patientData.password || patientData.password.length < 6) {
+            toast({ variant: "destructive", title: "Senha obrigatória", description: "A senha deve ter no mínimo 6 caracteres." });
+            setIsProcessing(false);
             return;
         }
 
-        const { data, error } = await supabase.from('inscricoes_eventos').insert([
-            { 
-                evento_id: event.id, 
-                user_id: user.id, 
-                patient_name: patientData.name.trim(), 
-                patient_email: patientData.email.trim(),
-                patient_phone: patientData.phone.trim(),
-                status_pagamento: 'pendente' 
+        if (!patientData.acceptTerms) {
+            toast({ variant: "destructive", title: "Aceite os termos", description: "Você precisa aceitar os termos para continuar." });
+            setIsProcessing(false);
+            return;
+        }
+
+        try {
+            // Verificar se o usuário já existe
+            const { data: existingUser } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', patientData.email.trim())
+                .single();
+
+            let userId;
+
+            if (existingUser) {
+                // Usuário já existe, usar o ID existente
+                userId = existingUser.id;
+                toast({ 
+                    title: "Email já cadastrado", 
+                    description: "Detectamos que você já tem uma conta. Continuando com a inscrição..."
+                });
+            } else {
+                // Criar nova conta automaticamente
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: patientData.email.trim(),
+                    password: patientData.password,
+                    options: {
+                        data: {
+                            name: patientData.name.trim(),
+                            phone: patientData.phone.trim()
+                        }
+                    }
+                });
+
+                if (authError) {
+                    toast({ 
+                        variant: "destructive", 
+                        title: "Erro ao criar conta", 
+                        description: authError.message 
+                    });
+                    setIsProcessing(false);
+                    return;
+                }
+
+                userId = authData.user.id;
+
+                // Fazer login automático
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email: patientData.email.trim(),
+                    password: patientData.password
+                });
+
+                if (signInError) {
+                    console.error('Erro ao fazer login automático:', signInError);
+                }
+
+                toast({ 
+                    title: "Conta criada com sucesso!", 
+                    description: "Você receberá um email de confirmação."
+                });
             }
-        ]);
 
-        if (error) {
-            toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
-        } else {
-            setStep(3); // Vai para a confirmação
-            toast({ title: "Inscrição realizada!", description: "Você receberá um email com as instruções de pagamento." });
+            // Registrar inscrição no evento
+            const { data, error } = await supabase.from('inscricoes_eventos').insert([
+                { 
+                    evento_id: event.id, 
+                    user_id: userId, 
+                    patient_name: patientData.name.trim(), 
+                    patient_email: patientData.email.trim(),
+                    status_pagamento: 'pendente' 
+                }
+            ]);
+
+            if (error) {
+                toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
+                setIsProcessing(false);
+                return;
+            }
+
+            // Sucesso - ir para confirmação
+            setStep(3);
+            toast({ 
+                title: "Inscrição realizada!", 
+                description: "Você receberá um email com os detalhes do evento e instruções de pagamento."
+            });
+
+        } catch (error) {
+            console.error('Erro no processo de inscrição:', error);
+            toast({ 
+                variant: "destructive", 
+                title: "Erro ao processar inscrição", 
+                description: error.message 
+            });
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -144,22 +258,8 @@ const EventoDetalhePage = () => {
                 </motion.div>
             );
         }
-
-        if (step === 2 && !user) { // Formulário de Login
-            return(
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                    <h2 className="text-2xl font-bold mb-4">Faça login para continuar</h2>
-                    <form onSubmit={async (e) => { e.preventDefault(); await signIn(loginData.email, loginData.password); }} className="space-y-4">
-                        <input type="email" placeholder="Seu email" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} className="w-full input" required />
-                        <input type="password" placeholder="Sua senha" value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} className="w-full input" required />
-                        <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Entrar</Button>
-                        <p className="text-sm text-center">Não tem conta? <Button variant="link" onClick={() => toast({title: 'Função de cadastro em breve!'})}>Cadastre-se</Button></p>
-                    </form>
-                </motion.div>
-            );
-        }
         
-        // Formulário de Inscrição (principal)
+        // Formulário de Inscrição Express (único formulário)
         return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                 <h2 className="text-2xl font-bold mb-6">Confirme seus dados para inscrição</h2>
@@ -180,17 +280,26 @@ const EventoDetalhePage = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Email *</label>
-                        <div className="flex items-center gap-2 p-3 border rounded-lg focus-within:border-[#2d8659] transition-colors">
-                            <Mail className="w-5 h-5 text-gray-500"/>
+                        <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${
+                            emailError ? 'border-red-500' : 'focus-within:border-[#2d8659]'
+                        }`}>
+                            <Mail className={`w-5 h-5 ${emailError ? 'text-red-500' : 'text-gray-500'}`}/>
                             <input
                                 type="email"
                                 placeholder="seu@email.com"
                                 value={patientData.email}
-                                onChange={(e) => setPatientData({...patientData, email: e.target.value})}
+                                onChange={(e) => {
+                                    setPatientData({...patientData, email: e.target.value});
+                                    validateEmail(e.target.value);
+                                }}
+                                onBlur={(e) => validateEmail(e.target.value)}
                                 className="flex-1 outline-none bg-transparent"
                                 required
                             />
                         </div>
+                        {emailError && (
+                            <p className="text-red-500 text-xs mt-1">{emailError}</p>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Telefone (opcional)</label>
@@ -200,10 +309,46 @@ const EventoDetalhePage = () => {
                                 type="tel"
                                 placeholder="(00) 00000-0000"
                                 value={patientData.phone}
-                                onChange={(e) => setPatientData({...patientData, phone: e.target.value})}
+                                onChange={(e) => setPatientData({...patientData, phone: formatPhone(e.target.value)})}
                                 className="flex-1 outline-none bg-transparent"
+                                maxLength={15}
                             />
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Senha *</label>
+                        <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${
+                            patientData.password && patientData.password.length < 6 ? 'border-red-500' : 'focus-within:border-[#2d8659]'
+                        }`}>
+                            <Lock className={`w-5 h-5 ${patientData.password && patientData.password.length < 6 ? 'text-red-500' : 'text-gray-500'}`}/>
+                            <input
+                                type="password"
+                                placeholder="Mínimo 6 caracteres"
+                                value={patientData.password}
+                                onChange={(e) => setPatientData({...patientData, password: e.target.value})}
+                                className="flex-1 outline-none bg-transparent"
+                                required
+                            />
+                        </div>
+                        {patientData.password && patientData.password.length < 6 && (
+                            <p className="text-red-500 text-xs mt-1">A senha deve ter no mínimo 6 caracteres</p>
+                        )}
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <input
+                            type="checkbox"
+                            id="acceptTerms"
+                            checked={patientData.acceptTerms}
+                            onChange={(e) => setPatientData({...patientData, acceptTerms: e.target.checked})}
+                            className="mt-1"
+                        />
+                        <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                            Li e aceito os{' '}
+                            <a href="/termos-e-condicoes" target="_blank" className="text-[#2d8659] hover:underline font-medium">
+                                termos e condições
+                            </a>
+                            {' '}*
+                        </label>
                     </div>
                 </div>
                 <div className="mt-8">
@@ -212,7 +357,13 @@ const EventoDetalhePage = () => {
                     ) : isSoldOut || isPastDeadline ? (
                         <div className="text-center p-4 bg-red-100 text-red-800 rounded-lg flex items-center justify-center gap-2"><AlertTriangle className="w-5 h-5"/> Inscrições encerradas.</div>
                     ) : (
-                        <Button onClick={handleRegistration} className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6">Confirmar Inscrição e Ir para Pagamento</Button>
+                        <Button 
+                            onClick={handleRegistration} 
+                            disabled={isProcessing}
+                            className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6"
+                        >
+                            {isProcessing ? 'Processando...' : 'Confirmar Inscrição e Pagar'}
+                        </Button>
                     )}
                 </div>
             </motion.div>

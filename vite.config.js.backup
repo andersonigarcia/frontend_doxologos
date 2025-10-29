@@ -170,11 +170,6 @@ if (window.navigation && window.self !== window.top) {
 const addTransformIndexHtml = {
 	name: 'add-transform-index-html',
 	transformIndexHtml(html) {
-		// Apenas em desenvolvimento adicionar os handlers
-		if (!isDev) {
-			return html; // Em produção, deixar o Vite processar normalmente
-		}
-
 		const tags = [
 			{
 				tag: 'script',
@@ -207,6 +202,19 @@ const addTransformIndexHtml = {
 				injectTo: 'head',
 			},
 		];
+
+		if (!isDev && process.env.TEMPLATE_BANNER_SCRIPT_URL && process.env.TEMPLATE_REDIRECT_URL) {
+			tags.push(
+				{
+					tag: 'script',
+					attrs: {
+						src: process.env.TEMPLATE_BANNER_SCRIPT_URL,
+						'template-redirect-url': process.env.TEMPLATE_REDIRECT_URL,
+					},
+					injectTo: 'head',
+				}
+			);
+		}
 
 		return {
 			html,
@@ -288,7 +296,12 @@ export default defineConfig({
 	},
 	build: {
 		rollupOptions: {
-			// Remover external do Babel em produção pois os plugins de dev não são carregados
+			external: [
+				'@babel/parser',
+				'@babel/traverse',
+				'@babel/generator',
+				'@babel/types'
+			]
 		}
 	}
 });
