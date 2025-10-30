@@ -240,8 +240,24 @@ export function AuthProvider({ children }) {
       let errorMessage = "Não foi possível enviar o email de recuperação. Tente novamente.";
 
       const errorCode = error.message?.toLowerCase() || '';
+      const errorStatus = error.status || 0;
       
-      if (errorCode.includes('not found') || errorCode.includes('user not found')) {
+      // Tratar erro 429 (Too Many Requests) do Supabase
+      if (errorStatus === 429 || errorCode.includes('over_email_send_rate_limit')) {
+        // Extrair tempo de espera da mensagem do erro
+        const match = error.message?.match(/after (\d+) seconds/);
+        const waitSeconds = match ? parseInt(match[1]) : 3600; // Default 1 hora
+        const waitMinutes = Math.ceil(waitSeconds / 60);
+        const waitHours = Math.floor(waitMinutes / 60);
+        
+        errorTitle = "⏰ Limite de segurança atingido";
+        
+        if (waitHours > 0) {
+          errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitHours} hora${waitHours > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado ou entre em contato com o suporte.`;
+        } else {
+          errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitMinutes} minuto${waitMinutes > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado.`;
+        }
+      } else if (errorCode.includes('not found') || errorCode.includes('user not found')) {
         errorTitle = "Email não encontrado";
         errorMessage = "Não existe uma conta com este email. Verifique o email digitado.";
       } else if (errorCode.includes('rate limit')) {

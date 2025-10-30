@@ -416,6 +416,295 @@
     `;
     return this.baseTemplate(content, "Obrigado - Doxologos");
   }
+
+  // ============================================
+  // EMAILS DE EVENTOS
+  // ============================================
+
+  // EMAIL: Inscrição Confirmada - Evento Gratuito (com link Zoom)
+  eventoGratuitoConfirmado(inscricao, evento) {
+    const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const content = `
+      <h2 style="color: #1f2937; margin: 0 0 20px 0;">✅ Inscrição Confirmada!</h2>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+        Olá, <strong>${inscricao.nome}</strong>!
+      </p>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
+        Sua inscrição no evento <strong>"${evento.titulo}"</strong> foi confirmada com sucesso! 🎉
+      </p>
+      
+      <div style="background: #dcfce7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
+        <h3 style="margin: 0 0 15px 0; color: #15803d; font-size: 18px;">📅 Detalhes do Evento</h3>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${horaFormatada}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>💻 Modalidade:</strong> Online via Zoom</p>
+        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #166534; line-height: 1.6;">${evento.descricao}</p>` : ''}
+      </div>
+      
+      <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">
+        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🎥 Acesso à Sala Online</h3>
+        <p style="margin: 0 0 20px 0; color: #1e40af;">
+          Clique no botão abaixo para acessar o evento:
+        </p>
+        <p style="text-align: center; margin: 20px 0;">
+          <a href="${evento.meeting_link}" class="btn" style="font-size: 16px; padding: 16px 40px; background: #3b82f6;">
+            🔗 Entrar no Evento Online
+          </a>
+        </p>
+        
+        ${evento.meeting_password ? `
+        <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af; font-size: 14px;">🔑 Senha da Sala:</p>
+          <p style="margin: 0; font-family: monospace; font-size: 24px; font-weight: bold; color: #1e40af; letter-spacing: 2px;">
+            ${evento.meeting_password}
+          </p>
+        </div>
+        ` : ''}
+        
+        <p style="margin: 15px 0 0 0; font-size: 13px; color: #64748b; text-align: center;">
+          💡 <strong>Dica:</strong> Salve este email para ter acesso fácil ao link no dia do evento!
+        </p>
+      </div>
+      
+      <div style="background: #fef3c7; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
+        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">📱 Primeira vez no Zoom?</h3>
+        <ol style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.8; font-size: 14px;">
+          <li>Clique no botão "Entrar no Evento Online" acima</li>
+          <li>Se for a primeira vez, o Zoom pedirá para <strong>baixar o aplicativo</strong> - é gratuito e seguro</li>
+          <li>Se não baixar automaticamente, acesse: <a href="https://zoom.us/download" style="color: #92400e; text-decoration: underline;">zoom.us/download</a></li>
+          <li>Após instalar, clique novamente no link do evento</li>
+          <li>Digite a senha se solicitado</li>
+          <li>Aguarde na sala de espera - o organizador irá admiti-lo(a)</li>
+        </ol>
+      </div>
+      
+      <div style="background: #dcfce7; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
+        <h3 style="margin: 0 0 12px 0; color: #15803d; font-size: 16px;">✅ Recomendações para o Evento</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #166534; line-height: 1.8; font-size: 14px;">
+          <li>Entre <strong>10 minutos antes</strong> do horário agendado</li>
+          <li>Teste seu <strong>áudio e vídeo</strong> antes do evento</li>
+          <li>Esteja em um <strong>local tranquilo</strong> com boa conexão de internet</li>
+          <li>Tenha <strong>papel e caneta</strong> para anotações</li>
+          <li>Prepare suas <strong>perguntas</strong> com antecedência</li>
+        </ul>
+      </div>
+      
+      <p style="margin: 30px 0 10px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
+        Nos vemos no evento! Se tiver dúvidas, responda este email.
+      </p>
+      
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #6b7280;">
+        Atenciosamente,<br>
+        <strong>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `Confirmado - ${evento.titulo}`);
+  }
+
+  // EMAIL: Evento Pago - Aguardando Pagamento
+  eventoPagoAguardandoPagamento(inscricao, evento, pixData) {
+    const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const content = `
+      <h2 style="color: #1f2937; margin: 0 0 20px 0;">⏳ Quase Lá! Finalize seu Pagamento</h2>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+        Olá, <strong>${inscricao.nome}</strong>!
+      </p>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
+        Recebemos sua inscrição no evento <strong>"${evento.titulo}"</strong>. 
+        Para confirmar sua participação, realize o pagamento via PIX.
+      </p>
+      
+      <div style="background: #fef3c7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
+        <h3 style="margin: 0 0 15px 0; color: #92400e; font-size: 18px;">📅 Detalhes do Evento</h3>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${horaFormatada}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>💰 Valor:</strong> R$ ${parseFloat(evento.valor).toFixed(2).replace('.', ',')}</p>
+        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #78350f; line-height: 1.6;">${evento.descricao}</p>` : ''}
+      </div>
+      
+      <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
+        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">💳 Pagamento via PIX</h3>
+        <p style="margin: 0 0 20px 0; color: #1e40af; font-size: 14px;">
+          Escaneie o QR Code abaixo com o app do seu banco:
+        </p>
+        
+        ${pixData.qr_code_base64 ? `
+        <div style="background: white; padding: 20px; border-radius: 8px; display: inline-block; margin: 10px 0;">
+          <img src="data:image/png;base64,${pixData.qr_code_base64}" alt="QR Code PIX" style="width: 250px; height: 250px; display: block;">
+        </div>
+        ` : ''}
+        
+        <p style="margin: 20px 0 10px 0; font-size: 13px; color: #64748b;">
+          Ou copie o código PIX abaixo:
+        </p>
+        
+        <div style="background: #f1f5f9; padding: 15px; border-radius: 6px; margin: 10px 0; word-break: break-all; font-family: monospace; font-size: 12px; color: #1e293b;">
+          ${pixData.qr_code}
+        </div>
+        
+        <p style="margin: 20px 0 0 0; font-size: 13px; color: #64748b;">
+          💡 O pagamento é processado <strong>instantaneamente</strong>!
+        </p>
+      </div>
+      
+      <div style="background: #dcfce7; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
+        <h3 style="margin: 0 0 12px 0; color: #15803d; font-size: 16px;">✅ Após o Pagamento</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #166534; line-height: 1.8; font-size: 14px;">
+          <li>Você receberá um <strong>email de confirmação</strong> com o link da sala Zoom</li>
+          <li>Sua inscrição será confirmada automaticamente</li>
+          <li>Guarde o email com o link Zoom para acessar o evento no dia</li>
+        </ul>
+      </div>
+      
+      ${evento.vagas_disponiveis > 0 ? `
+      <div style="background: #fee2e2; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #ef4444; text-align: center;">
+        <p style="margin: 0; color: #991b1b; font-weight: bold; font-size: 15px;">
+          ⚠️ Atenção: Evento com vagas limitadas!
+        </p>
+        <p style="margin: 10px 0 0 0; color: #991b1b; font-size: 14px;">
+          Realize o pagamento o quanto antes para garantir sua vaga.
+        </p>
+      </div>
+      ` : ''}
+      
+      <p style="margin: 30px 0 10px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
+        Dúvidas? Responda este email ou entre em contato conosco.
+      </p>
+      
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #6b7280;">
+        Atenciosamente,<br>
+        <strong>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `Pagamento Pendente - ${evento.titulo}`);
+  }
+
+  // EMAIL: Evento Pago - Pagamento Confirmado (com link Zoom)
+  eventoPagoConfirmado(inscricao, evento) {
+    const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    
+    const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const content = `
+      <h2 style="color: #1f2937; margin: 0 0 20px 0;">✅ Pagamento Confirmado!</h2>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+        Olá, <strong>${inscricao.nome}</strong>!
+      </p>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
+        Seu pagamento foi confirmado e sua inscrição no evento <strong>"${evento.titulo}"</strong> está garantida! 🎉
+      </p>
+      
+      <div style="background: #dcfce7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a; text-align: center;">
+        <h3 style="margin: 0 0 10px 0; color: #15803d; font-size: 20px;">🎊 Seja Bem-Vindo(a)!</h3>
+        <p style="margin: 0; color: #166534; font-size: 15px;">
+          Sua vaga está confirmada e estamos ansiosos para te ver no evento!
+        </p>
+      </div>
+      
+      <div style="background: #fef3c7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
+        <h3 style="margin: 0 0 15px 0; color: #92400e; font-size: 18px;">📅 Detalhes do Evento</h3>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${evento.hora_evento}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>💻 Modalidade:</strong> Online via Zoom</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>✅ Status:</strong> <span style="color: #15803d; font-weight: bold;">CONFIRMADO</span></p>
+        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #78350f; line-height: 1.6;">${evento.descricao}</p>` : ''}
+      </div>
+      
+      <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">
+        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🎥 Acesso à Sala Online</h3>
+        <p style="margin: 0 0 20px 0; color: #1e40af;">
+          Clique no botão abaixo para acessar o evento:
+        </p>
+        <p style="text-align: center; margin: 20px 0;">
+          <a href="${evento.meeting_link}" class="btn" style="font-size: 16px; padding: 16px 40px; background: #3b82f6;">
+            🔗 Entrar no Evento Online
+          </a>
+        </p>
+        
+        ${evento.meeting_password ? `
+        <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0; text-align: center;">
+          <p style="margin: 0 0 10px 0; font-weight: bold; color: #1e40af; font-size: 14px;">🔑 Senha da Sala:</p>
+          <p style="margin: 0; font-family: monospace; font-size: 24px; font-weight: bold; color: #1e40af; letter-spacing: 2px;">
+            ${evento.meeting_password}
+          </p>
+        </div>
+        ` : ''}
+        
+        <p style="margin: 15px 0 0 0; font-size: 13px; color: #64748b; text-align: center;">
+          💡 <strong>Importante:</strong> Salve este email! Você precisará do link no dia do evento.
+        </p>
+      </div>
+      
+      <div style="background: #f1f5f9; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #64748b;">
+        <h3 style="margin: 0 0 12px 0; color: #1e293b; font-size: 16px;">📱 Primeira vez no Zoom?</h3>
+        <ol style="margin: 0; padding-left: 20px; color: #475569; line-height: 1.8; font-size: 14px;">
+          <li>Clique no botão "Entrar no Evento Online" acima</li>
+          <li>O Zoom pedirá para <strong>baixar o aplicativo</strong> (é gratuito e seguro)</li>
+          <li>Se não baixar automaticamente: <a href="https://zoom.us/download" style="color: #3b82f6; text-decoration: underline;">zoom.us/download</a></li>
+          <li>Após instalar, clique novamente no link</li>
+          <li>Digite a senha quando solicitado</li>
+          <li>Aguarde na sala de espera</li>
+        </ol>
+      </div>
+      
+      <div style="background: #dcfce7; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
+        <h3 style="margin: 0 0 12px 0; color: #15803d; font-size: 16px;">✅ Checklist para o Evento</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #166534; line-height: 1.8; font-size: 14px;">
+          <li>Entre <strong>10 minutos antes</strong> do horário</li>
+          <li>Teste <strong>áudio e vídeo</strong></li>
+          <li>Local <strong>tranquilo</strong> e boa internet</li>
+          <li>Tenha <strong>papel e caneta</strong></li>
+          <li>Prepare suas <strong>perguntas</strong></li>
+        </ul>
+      </div>
+      
+      <p style="margin: 30px 0 10px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
+        Estamos ansiosos para te ver no evento! Qualquer dúvida, responda este email.
+      </p>
+      
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #6b7280;">
+        Atenciosamente,<br>
+        <strong>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `✅ Confirmado - ${evento.titulo}`);
+  }
 }
 
 export default new EmailTemplates();

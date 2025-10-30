@@ -112,6 +112,13 @@ export default function RecuperarSenhaPage() {
                       </ol>
                     </div>
 
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-left">
+                      <p className="text-xs text-amber-800">
+                        <strong>⚠️ Importante:</strong> Por segurança, você só pode solicitar recuperação de senha a cada 1 hora. 
+                        Se não recebeu o email, verifique sua caixa de spam.
+                      </p>
+                    </div>
+
                     <p className="text-xs text-gray-500">
                       Não recebeu o email? Verifique sua caixa de spam ou aguarde alguns minutos.
                     </p>
@@ -148,6 +155,13 @@ export default function RecuperarSenhaPage() {
                       </div>
                       <p className="text-xs text-gray-500">
                         Digite o email cadastrado na sua conta
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-xs text-blue-800">
+                        <strong>🔒 Proteção de segurança:</strong> Por motivos de segurança, você só pode solicitar 
+                        recuperação de senha a cada 1 hora por email.
                       </p>
                     </div>
 

@@ -1096,9 +1096,48 @@ const AdminPage = () => {
                 ...eventDataWithoutId 
             } = eventFormData;
             
+            // NOVO: Criar sala Zoom automaticamente para o evento
+            console.log('🎥 Criando sala Zoom para o evento...');
+            let zoomData = null;
+            
+            try {
+                const { default: zoomService } = await import('../lib/zoomService');
+                
+                zoomData = await zoomService.createMeeting({
+                    topic: `Evento: ${eventFormData.titulo}`,
+                    startTime: eventFormData.data_inicio, // ISO 8601 format
+                    duration: Math.ceil((new Date(eventFormData.data_fim) - new Date(eventFormData.data_inicio)) / 60000), // minutos
+                    timezone: 'America/Sao_Paulo',
+                    agenda: eventFormData.descricao || '',
+                    settings: {
+                        join_before_host: false,
+                        waiting_room: true, // CRÍTICO: sala de espera ativa
+                        approval_type: 0, // Requer aprovação manual do host
+                        mute_upon_entry: true,
+                        auto_recording: 'none'
+                    }
+                });
+                
+                if (zoomData) {
+                    console.log('✅ Sala Zoom criada com sucesso!');
+                } else {
+                    console.warn('⚠️ Não foi possível criar sala Zoom (configuração pode estar faltando)');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao criar sala Zoom:', error);
+                // Não bloquear criação do evento se Zoom falhar
+            }
+            
             result = await supabase.from('eventos').insert([{
                 ...eventDataWithoutId,
-                link_slug: finalLinkSlug
+                link_slug: finalLinkSlug,
+                // Adicionar dados do Zoom se criado com sucesso
+                ...(zoomData && {
+                    meeting_link: zoomData.join_url,
+                    meeting_password: zoomData.password,
+                    meeting_id: zoomData.id?.toString(),
+                    meeting_start_url: zoomData.start_url
+                })
             }]);
         }
         
@@ -1110,7 +1149,10 @@ const AdminPage = () => {
                 description: result.error.message 
             });
         } else {
-            toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!` });
+            const zoomMessage = result.data?.[0]?.meeting_link 
+                ? ' (Sala Zoom criada ✅)' 
+                : '';
+            toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!${zoomMessage}` });
             resetEventForm();
             fetchAllData();
         }
@@ -1128,6 +1170,7 @@ const AdminPage = () => {
             limite_participantes: '', 
             data_limite_inscricao: '',
             valor: 0,
+            vagas_disponiveis: 0, // NOVO: limite de vagas (0 = ilimitado)
             link_slug: '',
             data_inicio_exibicao: '',
             data_fim_exibicao: '',
@@ -3000,6 +3043,24 @@ const AdminPage = () => {
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite de Vagas</label>
                                                 <input type="number" name="limite_participantes" value={eventFormData.limite_participantes || ''} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Ex: 20" className="w-full input" min="1" max="500" required/>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1">🎫 Vagas Disponíveis na Sala Zoom</label>
+                                                <input 
+                                                    type="number" 
+                                                    name="vagas_disponiveis" 
+                                                    value={eventFormData.vagas_disponiveis || 0} 
+                                                    onChange={e => setEventFormData({...eventFormData, vagas_disponiveis: parseInt(e.target.value) || 0})} 
+                                                    placeholder="0 = ilimitado" 
+                                                    className="w-full input" 
+                                                    min="0" 
+                                                    max="1000"
+                                                />
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    {eventFormData.vagas_disponiveis > 0 
+                                                        ? `Limite: ${eventFormData.vagas_disponiveis} participantes` 
+                                                        : 'Vagas ilimitadas'}
+                                                </p>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Valor do Evento (R$)</label>

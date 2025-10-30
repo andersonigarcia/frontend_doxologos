@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, AlertTriangle, Heart, Lock } from 'lucide-react';
 import emailService from '@/lib/emailService';
+import emailTemplates from '@/lib/emailTemplates'; // NOVO: Templates para eventos
 
 const EventoDetalhePage = () => {
     const { slug } = useParams();
@@ -261,14 +262,48 @@ const EventoDetalhePage = () => {
                 });
             }
 
-            // Registrar inscrição no evento
+            // ========================================
+            // VALIDAÇÃO DE VAGAS DISPONÍVEIS
+            // ========================================
+            if (event.vagas_disponiveis && event.vagas_disponiveis > 0) {
+                const { count: vagasOcupadas, error: countError } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('evento_id', event.id)
+                    .eq('status', 'confirmed');
+
+                if (countError) {
+                    console.error('Erro ao contar vagas:', countError);
+                }
+
+                if (vagasOcupadas >= event.vagas_disponiveis) {
+                    toast({ 
+                        variant: "destructive", 
+                        title: "Evento esgotado! 😢", 
+                        description: "Todas as vagas foram preenchidas. Entre em contato para lista de espera."
+                    });
+                    setIsProcessing(false);
+                    return;
+                }
+
+                console.log(`✅ Vagas disponíveis: ${event.vagas_disponiveis - vagasOcupadas} de ${event.vagas_disponiveis}`);
+            }
+
+            // ========================================
+            // REGISTRAR INSCRIÇÃO NO EVENTO
+            // ========================================
+            const statusInicial = event.valor === 0 ? 'confirmed' : 'pending';
+            const paymentStatusInicial = event.valor === 0 ? null : 'pending';
+
             const { data: inscricaoData, error } = await supabase.from('inscricoes_eventos').insert([
                 { 
                     evento_id: event.id, 
                     user_id: userId, 
                     patient_name: patientData.name.trim(), 
                     patient_email: patientData.email.trim(),
-                    status_pagamento: event.valor > 0 ? 'pendente' : 'confirmado'
+                    status: statusInicial, // 'confirmed' (gratuito) ou 'pending' (pago)
+                    payment_status: paymentStatusInicial, // null (gratuito) ou 'pending' (pago)
+                    valor_pago: event.valor || 0
                 }
             ]).select();
 
@@ -278,73 +313,118 @@ const EventoDetalhePage = () => {
                 return;
             }
 
-            // Enviar email de confirmação da inscrição
-            try {
-                const emailHtml = `
-                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                        <h2 style="color: #2d8659;">Inscrição Realizada com Sucesso! 🎉</h2>
-                        <p>Olá <strong>${patientData.name}</strong>,</p>
-                        <p>Sua inscrição no evento foi registrada com sucesso:</p>
-                        
-                        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                            <h3 style="color: #2d8659; margin-top: 0;">${event.titulo}</h3>
-                            <p><strong>📅 Data:</strong> ${new Date(event.data_inicio).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                            <p><strong>⏰ Horário:</strong> ${new Date(event.data_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-                            ${event.valor > 0 
-                                ? `<p><strong>💰 Valor:</strong> R$ ${parseFloat(event.valor).toFixed(2).replace('.', ',')}</p>
-                                   <p><strong>💳 Status:</strong> <span style="color: #ff9800;">Pagamento Pendente</span></p>`
-                                : `<p><strong>💚 Evento Gratuito</strong></p>
-                                   <p><strong>✅ Status:</strong> <span style="color: #2d8659;">Confirmado</span></p>`
-                            }
-                        </div>
-                        
-                        ${event.valor > 0 
-                            ? `<p>⚠️ <strong>Importante:</strong> Complete o pagamento para confirmar sua vaga no evento.</p>
-                               <p>Você será redirecionado para a tela de pagamento. Após a confirmação, enviaremos um novo email com todos os detalhes.</p>`
-                            : `<p>✅ Sua vaga está confirmada! Em breve enviaremos mais informações sobre o evento.</p>`
+            const inscricao = inscricaoData[0];
+            console.log('✅ Inscrição registrada:', inscricao);
+
+            // ========================================
+            // ENVIAR EMAIL BASEADO NO TIPO DE EVENTO
+            // ========================================
+            
+            if (event.valor === 0) {
+                // ========================================
+                // EVENTO GRATUITO: Enviar link Zoom imediatamente
+                // ========================================
+                try {
+                    const emailHtml = emailTemplates.eventoGratuitoConfirmado(inscricao, event);
+                    
+                    await emailService.sendEmail({
+                        to: patientData.email.trim(),
+                        subject: `✅ Inscrição Confirmada - ${event.titulo}`,
+                        html: emailHtml,
+                        type: 'eventRegistration'
+                    });
+
+                    // Marcar email como enviado
+                    await supabase
+                        .from('inscricoes_eventos')
+                        .update({ 
+                            zoom_link_sent: true, 
+                            zoom_link_sent_at: new Date().toISOString() 
+                        })
+                        .eq('id', inscricao.id);
+
+                    console.log('✅ Email gratuito com link Zoom enviado');
+                } catch (emailError) {
+                    console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
+                }
+            } else {
+                // ========================================
+                // EVENTO PAGO: Gerar PIX e enviar QR Code
+                // ========================================
+                try {
+                    console.log('💳 Gerando pagamento PIX para evento...');
+                    
+                    // Chamar Edge Function para gerar PIX
+                    const { data: pixData, error: pixError } = await supabase.functions.invoke('mp-create-payment', {
+                        body: {
+                            transaction_amount: parseFloat(event.valor),
+                            description: `Inscrição - ${event.titulo}`,
+                            payment_method_id: 'pix',
+                            payer: {
+                                email: patientData.email.trim(),
+                                first_name: patientData.name.split(' ')[0],
+                                last_name: patientData.name.split(' ').slice(1).join(' ') || patientData.name.split(' ')[0]
+                            },
+                            external_reference: `EVENTO_${inscricao.id}`, // CRÍTICO: Prefixo EVENTO_
+                            notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mp-webhook`
                         }
-                        
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
-                        <p style="color: #666; font-size: 12px;">
-                            <strong>Doxologos</strong><br>
-                            Atendimento Psicológico Cristão<br>
-                            www.doxologos.com.br
-                        </p>
-                    </div>
-                `;
+                    });
 
-                await emailService.sendEmail({
-                    to: patientData.email.trim(),
-                    subject: event.valor > 0 
-                        ? `Inscrição Registrada - ${event.titulo} (Pagamento Pendente)` 
-                        : `Inscrição Confirmada - ${event.titulo}`,
-                    html: emailHtml,
-                    type: 'eventRegistration'
-                });
+                    if (pixError || !pixData) {
+                        throw new Error('Erro ao gerar pagamento PIX');
+                    }
 
-                console.log('✅ Email de confirmação enviado');
-            } catch (emailError) {
-                console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
-                // Não bloqueia o fluxo se email falhar
+                    console.log('✅ PIX gerado com sucesso:', pixData.id);
+
+                    // Atualizar inscrição com payment_id
+                    await supabase
+                        .from('inscricoes_eventos')
+                        .update({ payment_id: pixData.id })
+                        .eq('id', inscricao.id);
+
+                    // Enviar email com QR Code PIX
+                    const pixQrCode = pixData.point_of_interaction.transaction_data.qr_code_base64;
+                    const pixCode = pixData.point_of_interaction.transaction_data.qr_code;
+
+                    const emailHtml = emailTemplates.eventoPagoAguardandoPagamento(inscricao, event, {
+                        qr_code_base64: pixQrCode,
+                        qr_code: pixCode
+                    });
+
+                    await emailService.sendEmail({
+                        to: patientData.email.trim(),
+                        subject: `💳 Pagamento Pendente - ${event.titulo}`,
+                        html: emailHtml,
+                        type: 'eventPayment'
+                    });
+
+                    console.log('✅ Email com QR Code PIX enviado');
+                } catch (pixOrEmailError) {
+                    console.error('❌ Erro ao processar pagamento PIX:', pixOrEmailError);
+                    toast({
+                        variant: "destructive",
+                        title: "Erro ao gerar pagamento",
+                        description: "Sua inscrição foi registrada, mas houve erro no pagamento. Entre em contato."
+                    });
+                }
             }
 
-            // Verificar se evento é pago e redirecionar para pagamento
+            // ========================================
+            // FINALIZAÇÃO E FEEDBACK
+            // ========================================
             if (event.valor > 0) {
+                // Evento pago: mostrar confirmação de pagamento pendente
+                setStep(3);
                 toast({ 
-                    title: "Inscrição registrada!", 
-                    description: "Redirecionando para pagamento..."
+                    title: "📧 Inscrição registrada!", 
+                    description: "Enviamos um email com o QR Code PIX. Após o pagamento, você receberá o link da sala Zoom."
                 });
-                
-                // Redirecionar para página de pagamento após 1.5s
-                setTimeout(() => {
-                    navigate(`/checkout?type=evento&inscricao_id=${inscricaoData[0].id}&valor=${event.valor}&titulo=${encodeURIComponent(event.titulo)}`);
-                }, 1500);
             } else {
-                // Evento gratuito - ir para confirmação
+                // Evento gratuito: confirmar imediatamente
                 setStep(3);
                 toast({ 
                     title: "✅ Inscrição confirmada!", 
-                    description: "Você receberá um email com os detalhes do evento."
+                    description: "Enviamos um email com o link da sala Zoom e instruções de acesso."
                 });
             }
 
@@ -370,12 +450,59 @@ const EventoDetalhePage = () => {
 
     const renderContent = () => {
         if (step === 3) { // Confirmação
+            const isEventoPago = event.valor > 0;
+            
             return (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-6">
                     <Check className="w-16 h-16 mx-auto text-green-500 bg-green-100 rounded-full p-3 mb-4" />
-                    <h2 className="text-3xl font-bold mb-4">Inscrição Recebida!</h2>
-                    <p className="text-gray-600 mb-6">Sua inscrição está pendente de pagamento. Você receberá um e-mail com as instruções para confirmar sua vaga.</p>
-                    <Link to="/"><Button className="bg-[#2d8659] hover:bg-[#236b47]">Voltar para a Página Inicial</Button></Link>
+                    
+                    <div>
+                        <h2 className="text-3xl font-bold mb-4">
+                            {isEventoPago ? '📧 Inscrição Registrada!' : '✅ Inscrição Confirmada!'}
+                        </h2>
+                        
+                        {isEventoPago ? (
+                            <div className="space-y-3 text-gray-600">
+                                <p className="text-lg">Enviamos um <strong>email com o QR Code PIX</strong> para pagamento.</p>
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left">
+                                    <p className="text-sm font-semibold text-amber-800 mb-2">⏰ Próximos passos:</p>
+                                    <ol className="text-sm space-y-1 list-decimal list-inside text-amber-900">
+                                        <li>Abra o email e escaneie o QR Code</li>
+                                        <li>Realize o pagamento via PIX</li>
+                                        <li>Aguarde a confirmação automática (até 5 minutos)</li>
+                                        <li>Você receberá um novo email com o <strong>link da sala Zoom</strong></li>
+                                    </ol>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-4">
+                                    💡 Valor: <strong>R$ {parseFloat(event.valor).toFixed(2).replace('.', ',')}</strong>
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 text-gray-600">
+                                <p className="text-lg">Sua vaga está <strong className="text-green-600">confirmada</strong>! 🎉</p>
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left">
+                                    <p className="text-sm font-semibold text-green-800 mb-2">📧 Email enviado com:</p>
+                                    <ul className="text-sm space-y-1 list-disc list-inside text-green-900">
+                                        <li><strong>Link da sala Zoom</strong></li>
+                                        <li>Senha de acesso</li>
+                                        <li>Instruções para primeiro acesso</li>
+                                        <li>Checklist de preparação</li>
+                                    </ul>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-4">
+                                    💚 Evento gratuito - Nenhum pagamento necessário
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="pt-4">
+                        <Link to="/">
+                            <Button className="bg-[#2d8659] hover:bg-[#236b47]">
+                                Voltar para a Página Inicial
+                            </Button>
+                        </Link>
+                    </div>
                 </motion.div>
             );
         }
