@@ -27,6 +27,7 @@ import PaymentsPage from '@/pages/PaymentsPage';
 import RecuperarSenhaPage from '@/pages/RecuperarSenhaPage';
 import RedefinirSenhaPage from '@/pages/RedefinirSenhaPage';
 import MinhasInscricoesPage from '@/pages/MinhasInscricoesPage';
+import AdminUsuariosPage from '@/pages/AdminUsuariosPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -146,6 +147,11 @@ function AppContent() {
         <Route path="/admin/pagamentos" element={
           <PageErrorBoundary pageName="Gerenciamento de Pagamentos">
             <PaymentsPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/admin/usuarios" element={
+          <PageErrorBoundary pageName="Gestão de Usuários">
+            <AdminUsuariosPage />
           </PageErrorBoundary>
         } />
       </Routes>

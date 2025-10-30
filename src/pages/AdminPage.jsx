@@ -1317,6 +1317,39 @@ const AdminPage = () => {
                     <h1 className="text-4xl font-bold mb-2">Painel de Controle</h1>
                     <p className="text-gray-500 mb-8">Bem-vindo, {user.user_metadata?.full_name || user.email}. Seu perfil é: <span className="font-semibold text-[#2d8659]">{userRole}</span></p>
 
+                    {/* Quick Access Links - Apenas para Admin */}
+                    {userRole === 'admin' && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                            <Link to="/admin/usuarios" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-1">Gestão de Usuários</h3>
+                                        <p className="text-purple-100 text-sm">Gerenciar contas e permissões</p>
+                                    </div>
+                                    <Users className="w-10 h-10 opacity-80" />
+                                </div>
+                            </Link>
+                            <Link to="/admin/pagamentos" className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-1">Pagamentos</h3>
+                                        <p className="text-green-100 text-sm">Gerenciar transações</p>
+                                    </div>
+                                    <DollarSign className="w-10 h-10 opacity-80" />
+                                </div>
+                            </Link>
+                            <Link to="/admin/depoimentos" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-1">Depoimentos</h3>
+                                        <p className="text-blue-100 text-sm">Moderar avaliações</p>
+                                    </div>
+                                    <MessageCircle className="w-10 h-10 opacity-80" />
+                                </div>
+                            </Link>
+                        </div>
+                    )}
+
                     <Tabs defaultValue="bookings" className="w-full">
                         <TabsList className="flex flex-wrap h-auto justify-start p-1 bg-gray-100 rounded-lg">
                             {currentTabs.map(tab => (
