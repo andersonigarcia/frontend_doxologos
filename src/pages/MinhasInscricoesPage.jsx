@@ -215,26 +215,28 @@ export default function MinhasInscricoesPage() {
                 const evento = inscricao.eventos;
                 const isPast = isEventoPast(evento.data_fim);
                 
-                // Para eventos GRATUITOS (valor=0): mostra Zoom se disponível, independente do status
-                // Para eventos PAGOS (valor>0): mostra Zoom apenas se status='confirmed'
+                // Lógica ajustada:
+                // - Eventos GRATUITOS: sempre mostra Zoom (se disponível)
+                // - Eventos PAGOS: mostra Zoom apenas se status='confirmed'
                 const isEventoGratuito = evento.valor === 0;
+                const isEventoPago = evento.valor > 0;
                 const showZoomLink = evento.meeting_link && (
-                  inscricao.status === 'confirmed' || 
-                  (isEventoGratuito && inscricao.status === 'pending')
+                  isEventoGratuito || // Gratuito sempre mostra
+                  (isEventoPago && inscricao.status === 'confirmed') // Pago só se confirmado
                 );
+                const showPaymentButton = isEventoPago && inscricao.status === 'pending';
 
                 // Debug: Ver dados da inscrição
                 console.log('🔍 Inscrição:', {
                   id: inscricao.id,
                   status: inscricao.status,
-                  payment_status: inscricao.payment_status,
                   payment_id: inscricao.payment_id,
                   evento: evento.titulo,
                   valor: evento.valor,
-                  tipo: evento.valor > 0 ? 'PAGO' : 'GRATUITO',
+                  tipo: isEventoPago ? 'PAGO' : 'GRATUITO',
                   meeting_link: evento.meeting_link ? 'EXISTE' : 'NULL',
-                  isEventoGratuito,
-                  showZoomLink
+                  showZoomLink,
+                  showPaymentButton
                 });
 
                 return (
@@ -381,8 +383,8 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
-                      {/* Mensagem de aguardando pagamento - EVENTOS PAGOS */}
-                      {inscricao.status === 'pending' && evento.valor > 0 && (
+                      {/* Botão de pagamento - APENAS para eventos PAGOS com status PENDENTE */}
+                      {showPaymentButton && (
                         <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
                           <div className="flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -409,23 +411,6 @@ export default function MinhasInscricoesPage() {
                                   ⚠️ Link de pagamento não disponível. Verifique seu email ou contate o suporte.
                                 </p>
                               )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Mensagem de aguardando confirmação - EVENTOS GRATUITOS SEM ZOOM */}
-                      {inscricao.status === 'pending' && evento.valor === 0 && !evento.meeting_link && (
-                        <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
-                          <div className="flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="text-sm text-blue-900 font-semibold mb-1">
-                                ⏳ Aguardando Confirmação
-                              </p>
-                              <p className="text-sm text-blue-800">
-                                Sua inscrição está sendo processada. Você receberá o link da sala Zoom em breve por email.
-                              </p>
                             </div>
                           </div>
                         </div>
