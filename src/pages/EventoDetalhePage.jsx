@@ -96,14 +96,19 @@ const EventoDetalhePage = () => {
     useEffect(() => {
         const fetchEvent = async () => {
             setLoading(true);
+            console.log('🔍 Buscando evento com slug:', slug);
+            
             const { data, error } = await supabase
                 .from('eventos')
                 .select('*')
                 .eq('link_slug', slug)
                 .single();
 
+            console.log('📦 Resposta do Supabase:', { data, error });
+
             if (error || !data) {
-                setError('Evento não encontrado.');
+                console.error('❌ Erro ao buscar evento:', error);
+                setError(error?.message || 'Evento não encontrado.');
                 toast({ variant: 'destructive', title: 'Erro', description: 'Este evento não existe ou não está mais disponível.' });
             } else {
                 // Buscar profissional separadamente se existe professional_id
@@ -652,6 +657,59 @@ const EventoDetalhePage = () => {
             </motion.div>
         );
     };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#2d8659] mx-auto mb-4"></div>
+                    <p className="text-gray-600">Carregando evento...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error || !event) {
+        return (
+            <div className="min-h-screen bg-gray-50">
+                <header className="bg-white shadow-sm sticky top-0 z-20">
+                    <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        </Link>
+                        <Link to="/">
+                            <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                                <ArrowLeft className="w-4 h-4 mr-2" /> Voltar
+                            </Button>
+                        </Link>
+                    </nav>
+                </header>
+                <main className="py-12 md:py-20">
+                    <div className="container mx-auto px-4 max-w-2xl text-center">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-xl shadow-lg p-8"
+                        >
+                            <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                            <h1 className="text-3xl font-bold mb-4">Evento não encontrado</h1>
+                            <p className="text-gray-600 mb-6">
+                                {error || 'Este evento não existe ou não está mais disponível.'}
+                            </p>
+                            <Link to="/#eventos">
+                                <Button className="bg-[#2d8659] hover:bg-[#236b47]">
+                                    Ver Todos os Eventos
+                                </Button>
+                            </Link>
+                        </motion.div>
+                    </div>
+                </main>
+            </div>
+        );
+    }
 
     return (
         <>
