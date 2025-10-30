@@ -63,6 +63,159 @@ export default async function handler(req: Request) {
 
     const mpPayment = await fetchMpPayment(paymentId, MP_ACCESS_TOKEN);
 
+    const externalRef = mpPayment.external_reference || null;
+
+    // ========================================
+    // DETECTAR PAGAMENTO DE EVENTO (prefixo EVENTO_)
+    // ========================================
+    if (externalRef && externalRef.startsWith('EVENTO_')) {
+      const inscricaoId = externalRef.replace('EVENTO_', '');
+      console.log(`🎫 Processando pagamento de evento - Inscrição ID: ${inscricaoId}`);
+
+      if (mpPayment.status === 'approved' || mpPayment.status === 'paid') {
+        // Buscar inscrição
+        const inscQuery = `${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricaoId}&select=*,eventos(*)`;
+        const inscRes = await fetch(inscQuery, { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } });
+        const inscArr = await inscRes.json();
+        const inscricao = inscArr[0];
+
+        if (!inscricao) {
+          console.error(`❌ Inscrição ${inscricaoId} não encontrada`);
+          return new Response('inscricao not found', { status: 404 });
+        }
+
+        const evento = inscricao.eventos;
+
+        // Atualizar status da inscrição
+        await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricaoId}`, {
+          method: 'PATCH',
+          headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'confirmed',
+            payment_status: 'approved',
+            payment_date: new Date().toISOString()
+          })
+        });
+
+        console.log(`✅ Inscrição ${inscricaoId} confirmada - Enviando email com Zoom`);
+
+        // Enviar email com link Zoom
+        try {
+          const patientEmail = inscricao.patient_email;
+          const patientName = inscricao.patient_name;
+
+          if (patientEmail && SENDGRID_KEY && SENDGRID_FROM) {
+            const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric'
+            });
+            const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+
+            const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #2d8659 0%, #236b47 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+    .content { background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+    .event-box { background: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .zoom-box { background: #e8f5ee; border: 2px solid #2d8659; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    .btn { display: inline-block; background: #2d8659; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 0; }
+    .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+    .checklist { background: #f9f9f9; padding: 15px; border-left: 4px solid #2d8659; margin: 15px 0; }
+    .checklist li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>✅ Pagamento Confirmado!</h1>
+      <p>Sua vaga está garantida</p>
+    </div>
+    
+    <div class="content">
+      <p>Olá <strong>${patientName}</strong>,</p>
+      
+      <p>Recebemos a confirmação do seu pagamento! Sua inscrição no evento está <strong style="color: #2d8659;">CONFIRMADA</strong>. 🎉</p>
+      
+      <div class="event-box">
+        <h2 style="color: #2d8659; margin-top: 0;">${evento.titulo}</h2>
+        <p><strong>📅 Data:</strong> ${dataFormatada}</p>
+        <p><strong>⏰ Horário:</strong> ${horaFormatada}</p>
+        <p><strong>💰 Valor pago:</strong> R$ ${parseFloat(evento.valor).toFixed(2).replace('.', ',')}</p>
+        <p><strong>✅ Status:</strong> <span style="color: #2d8659;">Confirmado</span></p>
+      </div>
+      
+      <div class="zoom-box">
+        <h3 style="color: #2d8659; margin-top: 0;">🎥 Link da Sala Zoom</h3>
+        <p style="word-break: break-all;"><a href="${evento.meeting_link}" style="color: #2d8659; font-weight: bold;">${evento.meeting_link}</a></p>
+        ${evento.meeting_password ? `<p><strong>🔒 Senha:</strong> <code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px; font-size: 16px;">${evento.meeting_password}</code></p>` : ''}
+        <a href="${evento.meeting_link}" class="btn">Acessar Sala Zoom</a>
+      </div>
+      
+      <div class="checklist">
+        <h4 style="margin-top: 0;">📋 Checklist para o evento:</h4>
+        <ul>
+          <li>✅ Pagamento confirmado</li>
+          <li>📧 Adicione este evento ao seu calendário</li>
+          <li>🎥 Teste o Zoom antes do evento (link acima)</li>
+          <li>📱 Entre 5-10 minutos antes do horário</li>
+          <li>🎧 Use fone de ouvido para melhor qualidade</li>
+          <li>📝 Tenha papel e caneta para anotações</li>
+        </ul>
+      </div>
+      
+      <p style="color: #666; font-size: 14px;">
+        <strong>💡 Dica:</strong> Acesse o link alguns minutos antes para testar sua conexão e aguardar na sala de espera. 
+        O host irá admitir todos os participantes no horário do evento.
+      </p>
+      
+      <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+      
+      <p style="color: #666; font-size: 12px;">
+        Alguma dúvida? Responda este email ou entre em contato conosco.<br>
+        <strong>Doxologos - Atendimento Psicológico Cristão</strong><br>
+        www.doxologos.com.br
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+            const emailSent = await sendEmail(SENDGRID_KEY, SENDGRID_FROM, patientEmail, `✅ Pagamento Confirmado - ${evento.titulo}`, emailHtml);
+
+            if (emailSent) {
+              // Marcar email como enviado
+              await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricaoId}`, {
+                method: 'PATCH',
+                headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  zoom_link_sent: true,
+                  zoom_link_sent_at: new Date().toISOString()
+                })
+              });
+
+              console.log(`✅ Email com Zoom enviado para ${patientEmail}`);
+            }
+          }
+        } catch (emailError) {
+          console.error('❌ Erro ao enviar email:', emailError);
+        }
+      }
+
+      return new Response('evento payment processed', { status: 200 });
+    }
+
+    // ========================================
+    // FLUXO ORIGINAL: BOOKINGS (CONSULTAS)
+    // ========================================
     const preferenceId = mpPayment.preference_id || mpPayment.external_reference || null;
     let booking = null;
     if (preferenceId) {
