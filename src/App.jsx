@@ -26,6 +26,7 @@ import CheckoutPendingPage from '@/pages/CheckoutPendingPage';
 import PaymentsPage from '@/pages/PaymentsPage';
 import RecuperarSenhaPage from '@/pages/RecuperarSenhaPage';
 import RedefinirSenhaPage from '@/pages/RedefinirSenhaPage';
+import MinhasInscricoesPage from '@/pages/MinhasInscricoesPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -105,6 +106,11 @@ function AppContent() {
         <Route path="/evento/:slug" element={
           <PageErrorBoundary pageName="Evento Detalhe">
             <EventoDetalhePage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/minhas-inscricoes" element={
+          <PageErrorBoundary pageName="Minhas Inscrições">
+            <MinhasInscricoesPage />
           </PageErrorBoundary>
         } />
         <Route path="/criar-usuarios" element={

@@ -439,6 +439,11 @@ const PacientePage = () => {
                         </Link>
                         <div className="flex items-center space-x-4">
                             <span className="text-sm text-gray-600">Olá, {user.user_metadata?.full_name || user.email.split('@')[0]}</span>
+                            <Link to="/minhas-inscricoes">
+                                <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                                    <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
+                                </Button>
+                            </Link>
                             <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]">
                                 <LogOut className="w-4 h-4 mr-2" /> Sair
                             </Button>
