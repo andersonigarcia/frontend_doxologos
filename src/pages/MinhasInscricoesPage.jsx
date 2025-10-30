@@ -29,6 +29,7 @@ export default function MinhasInscricoesPage() {
         .from('inscricoes_eventos')
         .select(`
           *,
+          payment_id,
           eventos (
             id,
             titulo,
@@ -114,6 +115,13 @@ export default function MinhasInscricoesPage() {
 
   const isEventoPast = (dataFim) => {
     return new Date(dataFim) < new Date();
+  };
+
+  const getPaymentLink = (paymentId) => {
+    // Link do Mercado Pago para visualizar o pagamento
+    // O usuário pode ver o QR Code e fazer o pagamento
+    if (!paymentId) return null;
+    return `https://www.mercadopago.com.br/checkout/v1/payment/${paymentId}`;
   };
 
   if (loading) {
@@ -206,7 +214,28 @@ export default function MinhasInscricoesPage() {
               {inscricoes.map((inscricao, index) => {
                 const evento = inscricao.eventos;
                 const isPast = isEventoPast(evento.data_fim);
-                const showZoomLink = inscricao.status === 'confirmed' && evento.meeting_link;
+                
+                // Para eventos GRATUITOS (valor=0): mostra Zoom se disponível, independente do status
+                // Para eventos PAGOS (valor>0): mostra Zoom apenas se status='confirmed'
+                const isEventoGratuito = evento.valor === 0;
+                const showZoomLink = evento.meeting_link && (
+                  inscricao.status === 'confirmed' || 
+                  (isEventoGratuito && inscricao.status === 'pending')
+                );
+
+                // Debug: Ver dados da inscrição
+                console.log('🔍 Inscrição:', {
+                  id: inscricao.id,
+                  status: inscricao.status,
+                  payment_status: inscricao.payment_status,
+                  payment_id: inscricao.payment_id,
+                  evento: evento.titulo,
+                  valor: evento.valor,
+                  tipo: evento.valor > 0 ? 'PAGO' : 'GRATUITO',
+                  meeting_link: evento.meeting_link ? 'EXISTE' : 'NULL',
+                  isEventoGratuito,
+                  showZoomLink
+                });
 
                 return (
                   <motion.div
@@ -352,17 +381,50 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
-                      {/* Mensagem de aguardando pagamento */}
-                      {inscricao.status === 'pending' && inscricao.payment_status === 'pending' && (
-                        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      {/* Mensagem de aguardando pagamento - EVENTOS PAGOS */}
+                      {inscricao.status === 'pending' && evento.valor > 0 && (
+                        <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
                           <div className="flex items-start gap-3">
                             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-amber-900 font-medium mb-1">
-                                Pagamento Pendente
+                            <div className="flex-1">
+                              <p className="text-sm text-amber-900 font-semibold mb-1">
+                                ⏳ Pagamento Pendente
                               </p>
-                              <p className="text-sm text-amber-800">
+                              <p className="text-sm text-amber-800 mb-3">
                                 Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Zoom após a confirmação do pagamento.
+                              </p>
+                              
+                              {inscricao.payment_id ? (
+                                <a 
+                                  href={getPaymentLink(inscricao.payment_id)} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  Pagar Agora via PIX
+                                </a>
+                              ) : (
+                                <p className="text-sm text-amber-700 italic">
+                                  ⚠️ Link de pagamento não disponível. Verifique seu email ou contate o suporte.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mensagem de aguardando confirmação - EVENTOS GRATUITOS SEM ZOOM */}
+                      {inscricao.status === 'pending' && evento.valor === 0 && !evento.meeting_link && (
+                        <div className="mb-4 p-4 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-sm text-blue-900 font-semibold mb-1">
+                                ⏳ Aguardando Confirmação
+                              </p>
+                              <p className="text-sm text-blue-800">
+                                Sua inscrição está sendo processada. Você receberá o link da sala Zoom em breve por email.
                               </p>
                             </div>
                           </div>
