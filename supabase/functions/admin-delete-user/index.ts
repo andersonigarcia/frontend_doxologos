@@ -45,14 +45,18 @@ Deno.serve(async (req) => {
       throw new Error('ID do usuário não fornecido')
     }
 
-    // Deletar usuário
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    console.log(`🗑️ Tentando deletar usuário ${userId}...`)
 
-    if (deleteError) {
-      throw deleteError
+    // Deletar usuário usando função RPC (SECURITY DEFINER)
+    const { data: deleteResult, error: rpcError } = await supabaseAdmin
+      .rpc('admin_delete_user', { user_id_to_delete: userId })
+
+    if (rpcError) {
+      console.error('❌ Erro ao executar RPC de delete:', rpcError)
+      throw new Error(`Erro ao deletar usuário: ${rpcError.message}`)
     }
 
-    console.log(`✅ Admin ${user.email} deletou usuário ${userId}`)
+    console.log(`✅ Admin ${user.email} deletou usuário ${userId}`, deleteResult)
 
     return new Response(
       JSON.stringify({ success: true }),
@@ -66,7 +70,8 @@ Deno.serve(async (req) => {
     console.error('❌ Erro na função admin-delete-user:', error)
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'Erro ao deletar usuário'
+        error: (error as Error).message || 'Erro ao deletar usuário',
+        details: String(error)
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
