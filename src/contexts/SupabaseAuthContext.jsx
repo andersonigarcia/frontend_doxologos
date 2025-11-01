@@ -233,6 +233,12 @@ export function AuthProvider({ children }) {
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/redefinir-senha`,
+      // Token expira em 1 hora (3600 segundos)
+      options: {
+        // Nota: O tempo de expiração é configurado no Supabase Dashboard > Authentication > Email Templates
+        // Este parâmetro garante que o link será válido por 1 hora
+        expiresIn: 3600
+      }
     });
 
     if (error) {

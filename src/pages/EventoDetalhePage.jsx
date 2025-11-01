@@ -194,47 +194,60 @@ const EventoDetalhePage = () => {
         }
 
         try {
-            // Tentar fazer login primeiro para verificar se usuário existe
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                email: patientData.email.trim(),
-                password: patientData.password
-            });
-
             let userId;
+            
+            // Primeiro, verificar se o email já existe no banco
+            const { data: existingInscricao } = await supabase
+                .from('inscricoes_eventos')
+                .select('user_id')
+                .eq('patient_email', patientData.email.trim())
+                .limit(1)
+                .single();
+            
+            const emailExists = !!existingInscricao;
+            
+            if (emailExists) {
+                // Email já existe - tentar fazer login
+                const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                    email: patientData.email.trim(),
+                    password: patientData.password
+                });
 
-            if (signInData?.user && !signInError) {
-                // Usuário já existe e senha está correta - LOGIN BEM-SUCEDIDO
-                userId = signInData.user.id;
-                toast({ 
-                    title: "Login realizado!", 
-                    description: "Continuando com sua inscrição no evento..."
-                });
-            } else if (signInError && signInError.message.includes('Invalid login credentials')) {
-                // Email existe mas senha está errada
-                toast({ 
-                    variant: "destructive",
-                    title: "Credenciais inválidas", 
-                    description: "Este email já possui cadastro. A senha informada está incorreta.",
-                    action: (
-                        <a 
-                            href={`/recuperar-senha?email=${encodeURIComponent(patientData.email)}`}
-                            className="text-sm underline"
-                        >
-                            Esqueceu sua senha?
-                        </a>
-                    )
-                });
-                setIsProcessing(false);
-                return;
+                if (signInData?.user && !signInError) {
+                    // Login bem-sucedido
+                    userId = signInData.user.id;
+                    toast({ 
+                        title: "Login realizado!", 
+                        description: "Continuando com sua inscrição no evento..."
+                    });
+                } else {
+                    // Senha incorreta
+                    toast({ 
+                        variant: "destructive",
+                        title: "Credenciais inválidas", 
+                        description: "Este email já possui cadastro. A senha informada está incorreta.",
+                        action: (
+                            <a 
+                                href={`/recuperar-senha?email=${encodeURIComponent(patientData.email)}`}
+                                className="text-sm underline"
+                            >
+                                Esqueceu sua senha?
+                            </a>
+                        )
+                    });
+                    setIsProcessing(false);
+                    return;
+                }
             } else {
-                // Criar nova conta automaticamente
+                // Email novo - criar conta
                 const { data: authData, error: authError } = await supabase.auth.signUp({
                     email: patientData.email.trim(),
                     password: patientData.password,
                     options: {
                         data: {
                             name: patientData.name.trim(),
-                            phone: patientData.phone.trim()
+                            phone: patientData.phone.trim(),
+                            role: 'patient'
                         }
                     }
                 });
@@ -252,18 +265,18 @@ const EventoDetalhePage = () => {
                 userId = authData.user.id;
 
                 // Fazer login automático
-                const { error: signInError } = await supabase.auth.signInWithPassword({
+                const { error: autoSignInError } = await supabase.auth.signInWithPassword({
                     email: patientData.email.trim(),
                     password: patientData.password
                 });
 
-                if (signInError) {
-                    console.error('Erro ao fazer login automático:', signInError);
+                if (autoSignInError) {
+                    console.error('Erro ao fazer login automático:', autoSignInError);
                 }
 
                 toast({ 
                     title: "🎉 Bem-vindo!", 
-                    description: "Criamos sua conta e você já está inscrito! Enviamos um email com os detalhes do evento e instruções de pagamento."
+                    description: "Criamos sua conta e você já está inscrito! Enviamos um email com os detalhes do evento."
                 });
             }
 

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/customSupabaseClient';
 
 export default function RedefinirSenhaPage() {
   const { updatePassword, user } = useAuth();
@@ -20,6 +21,7 @@ export default function RedefinirSenhaPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [validatingToken, setValidatingToken] = useState(true);
 
   // Validações
   const passwordLength = newPassword.length >= 6;
@@ -27,19 +29,42 @@ export default function RedefinirSenhaPage() {
   const isValid = passwordLength && passwordsMatch;
 
   useEffect(() => {
-    // Se não houver usuário após alguns segundos, redirecionar
-    const timer = setTimeout(() => {
-      if (!user) {
-        toast({
-          variant: 'destructive',
-          title: 'Sessão inválida',
-          description: 'O link de recuperação expirou ou é inválido. Solicite um novo link.',
-        });
-        navigate('/recuperar-senha');
+    // Verificar se há um token de recuperação na URL
+    const checkRecoveryToken = async () => {
+      const hash = window.location.hash;
+      
+      // Se houver um hash com access_token, o Supabase já processou automaticamente
+      if (hash && hash.includes('access_token')) {
+        console.log('✅ Token de recuperação detectado na URL');
+        // Aguardar o contexto de autenticação processar
+        setTimeout(() => {
+          setValidatingToken(false);
+        }, 2000);
+        return;
       }
-    }, 3000);
+      
+      // Se não há hash mas há usuário, está OK
+      if (user) {
+        console.log('✅ Usuário autenticado:', user.email);
+        setValidatingToken(false);
+        return;
+      }
+      
+      // Se não há token nem usuário após 5 minutos (300000ms), mostrar erro mas NÃO redirecionar
+      setTimeout(() => {
+        if (!user && !window.location.hash.includes('access_token')) {
+          console.error('❌ Token não encontrado ou expirado');
+          toast({
+            variant: 'destructive',
+            title: 'Link inválido ou expirado',
+            description: 'O link de recuperação pode ter expirado. Solicite um novo link.',
+          });
+        }
+        setValidatingToken(false);
+      }, 300000);
+    };
 
-    return () => clearTimeout(timer);
+    checkRecoveryToken();
   }, [user, navigate, toast]);
 
   const handleSubmit = async (e) => {
@@ -69,6 +94,38 @@ export default function RedefinirSenhaPage() {
 
     setLoading(false);
   };
+
+  // Estado de validação do token
+  if (validatingToken) {
+    return (
+      <>
+        <Helmet>
+          <title>Validando Link - Doxologos</title>
+        </Helmet>
+
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <Card>
+              <CardContent className="pt-6 text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+                
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Validando link de recuperação...
+                  </h2>
+                  <p className="text-gray-600">
+                    Aguarde um momento
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   if (success) {
     return (
