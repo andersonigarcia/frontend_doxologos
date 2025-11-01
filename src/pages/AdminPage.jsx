@@ -1293,12 +1293,12 @@ const AdminPage = () => {
         admin: [
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
             { value: 'reviews', label: 'Avaliações', icon: Star },
-            { value: 'payments', label: 'Pagamentos', icon: DollarSign },
+            // { value: 'payments', label: 'Pagamentos', icon: DollarSign },
             { value: 'professionals', label: 'Profissionais', icon: Users },
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
             { value: 'services', label: 'Serviços', icon: Briefcase },
             { value: 'events', label: 'Eventos', icon: Calendar },
-            { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
+            // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
         ],
         professional: [
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
