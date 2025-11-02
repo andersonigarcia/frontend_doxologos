@@ -86,19 +86,37 @@ const AgendamentoPage = () => {
             .from('professionals')
             .select('*');
         
-        if (profsError) {
-            console.error('Erro ao buscar profissionais:', profsError);
-            toast({ variant: 'destructive', title: 'Erro ao buscar profissionais', description: profsError.message });
+    if (profsError) {
+      console.error('Erro ao buscar profissionais:', profsError);
+      toast({
+        variant: 'destructive',
+        title: 'Não conseguimos carregar os profissionais',
+        description: 'Atualize a página ou tente novamente em alguns minutos. Se continuar, fale conosco pelo WhatsApp.'
+      });
         } else {
             setProfessionals(profsData || []);
         }
 
         const { data: servicesData, error: servicesError } = await supabase.from('services').select('*');
-        if (servicesError) toast({ variant: 'destructive', title: 'Erro ao buscar serviços' });
+    if (servicesError) {
+      console.error('Erro ao buscar serviços:', servicesError);
+      toast({
+        variant: 'destructive',
+        title: 'Não conseguimos carregar os serviços',
+        description: 'Tente novamente em instantes. Caso o erro persista, entre em contato com nossa equipe.'
+      });
+    }
         else setServices(servicesData || []);
 
         const { data: availData, error: availError } = await supabase.from('availability').select('*');
-        if (availError) toast({ variant: 'destructive', title: 'Erro ao buscar horários' });
+    if (availError) {
+      console.error('Erro ao buscar horários disponíveis:', availError);
+      toast({
+        variant: 'destructive',
+        title: 'Agenda indisponível no momento',
+        description: 'Estamos ajustando os horários. Volte em alguns minutos ou escolha outro profissional.'
+      });
+    }
         else {
           const availabilityMap = {};
           (availData || []).forEach(avail => {
@@ -110,8 +128,15 @@ const AgendamentoPage = () => {
           setAvailability(availabilityMap);
         }
 
-        const { data: blockedData, error: blockedError } = await supabase.from('blocked_dates').select('*');
-        if (blockedError) toast({ variant: 'destructive', title: 'Erro ao buscar datas bloqueadas' });
+    const { data: blockedData, error: blockedError } = await supabase.from('blocked_dates').select('*');
+    if (blockedError) {
+      console.error('Erro ao buscar datas bloqueadas:', blockedError);
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível validar as datas',
+        description: 'Recarregue a página para atualizar a agenda. Persistindo, fale conosco.'
+      });
+    }
         else setBlockedDates(blockedData || []);
 
     }, [toast]);
@@ -132,8 +157,13 @@ const AgendamentoPage = () => {
             .eq('booking_date', selectedDate)
             .in('status', ['confirmed', 'pending_payment']);
         
-        if (error) {
-            toast({ variant: 'destructive', title: 'Erro ao buscar horários ocupados' });
+    if (error) {
+      console.error('Erro ao buscar horários ocupados:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Não foi possível atualizar os horários',
+        description: 'Verifique sua conexão ou tente outro horário. Nosso time pode ajudar pelo WhatsApp.'
+      });
             setBookedSlots([]);
         } else {
             setBookedSlots(data.map(b => b.booking_time));
@@ -375,18 +405,18 @@ const AgendamentoPage = () => {
                                     }
                                 });
 
-                                if (otpError) {
-                                    console.error('Erro ao enviar magic link:', otpError);
-                                    toast({ 
-                                        variant: 'destructive', 
-                                        title: 'Erro ao processar agendamento', 
-                                        description: otpError.message || 'Não foi possível enviar o link de acesso. Tente novamente.' 
-                                    });
+                if (otpError) {
+                  console.error('Erro ao enviar magic link:', otpError);
+                  toast({ 
+                    variant: 'destructive', 
+                    title: 'Não conseguimos enviar o link de acesso', 
+                    description: 'Confirme se o email está correto e tente novamente em alguns minutos. Se nada chegar, fale conosco pelo WhatsApp.' 
+                  });
                                 } else {
                                     toast({ 
                                         variant: 'default',
-                                        title: 'Email de acesso enviado', 
-                                        description: 'Clique no link do email para fazer login e completar seu agendamento.' 
+                    title: 'Email de acesso enviado', 
+                    description: 'Procure pelo remetente contato@doxologos.com.br e clique no link para retomar seu agendamento.' 
                                     });
                                 }
                                 
@@ -397,19 +427,19 @@ const AgendamentoPage = () => {
                         }
                         
                         // Se chegou aqui, user_id foi encontrado - continuar com agendamento
-                        toast({ 
-                            title: 'Bem-vindo de volta!', 
-                            description: 'Processando seu agendamento...' 
-                        });
+            toast({ 
+              title: 'Bem-vindo de volta!', 
+              description: 'Localizamos seu cadastro e vamos continuar de onde você parou.' 
+            });
                         
                     } else {
                         console.error('Erro ao criar usuário:', signUpError);
                         console.log('❌ [handleBooking] RETURN: Erro ao criar cadastro');
-                        toast({ 
-                            variant: 'destructive', 
-                            title: 'Erro ao criar cadastro', 
-                            description: signUpError.message 
-                        });
+            toast({ 
+              variant: 'destructive', 
+              title: 'Não foi possível criar seu acesso', 
+              description: 'Use outro email ou tente novamente em alguns minutos. Persistindo, fale com nossa equipe para concluir o agendamento.' 
+            });
                         setIsSubmitting(false);
                         return;
                     }
@@ -418,10 +448,10 @@ const AgendamentoPage = () => {
                     userId = signUpData.user?.id;
                     
                     // Enviar email de confirmação (magic link)
-                    toast({ 
-                        title: 'Cadastro criado!', 
-                        description: 'Verifique seu email para confirmar e acessar sua área.' 
-                    });
+          toast({ 
+            title: 'Cadastro criado!', 
+            description: 'Enviamos um email de confirmação. Confirme sua conta para acompanhar o agendamento.' 
+          });
                 }
             }
 
@@ -490,11 +520,11 @@ const AgendamentoPage = () => {
                     bookingData.meeting_start_url = zoomMeetingData.start_url;
                 } else {
                     console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
-                    toast({ 
-                        title: 'Aviso', 
-                        description: 'Não foi possível criar a sala do Zoom automaticamente. O link será enviado posteriormente.',
-                        variant: 'default'
-                    });
+          toast({ 
+            title: 'Vamos finalizar o link da sala', 
+            description: 'Não conseguimos gerar a sala do Zoom agora. Nossa equipe enviará o link completo por email assim que estiver pronto.',
+            variant: 'default'
+          });
                 }
             } catch (zoomError) {
                 console.error('❌ Erro ao criar sala do Zoom:', zoomError);
@@ -505,11 +535,11 @@ const AgendamentoPage = () => {
                 });
                 
                 // Mostrar aviso ao usuário mas não bloquear o fluxo
-                toast({ 
-                    title: 'Aviso sobre Zoom', 
-                    description: 'Não foi possível criar a sala do Zoom automaticamente. O link será enviado posteriormente.',
-                    variant: 'default'
-                });
+        toast({ 
+          title: 'Link do encontro em validação', 
+          description: 'Ainda não geramos a sala do Zoom. Você receberá o link confirmado por email em breve.',
+          variant: 'default'
+        });
             }
 
             // 5. Criar o agendamento
@@ -533,11 +563,11 @@ const AgendamentoPage = () => {
 
             if (bookingError) {
                 console.error('Erro ao criar agendamento:', bookingError);
-                toast({ 
-                    variant: 'destructive', 
-                    title: 'Erro ao criar agendamento', 
-                    description: bookingError.message || 'Verifique os dados e tente novamente.' 
-                });
+        toast({ 
+          variant: 'destructive', 
+          title: 'Não conseguimos concluir o agendamento', 
+          description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.' 
+        });
                 setIsSubmitting(false);
                 return;
             }
@@ -579,11 +609,11 @@ const AgendamentoPage = () => {
             
         } catch (error) {
             console.error('Erro geral no processo de agendamento:', error);
-            toast({ 
-                variant: 'destructive', 
-                title: 'Erro no agendamento', 
-                description: 'Ocorreu um erro inesperado. Tente novamente.' 
-            });
+      toast({ 
+        variant: 'destructive', 
+        title: 'Erro inesperado no agendamento', 
+        description: 'Nossa equipe foi notificada. Atualize a página e tente novamente ou entre em contato para concluir o atendimento.' 
+      });
             setIsSubmitting(false);
         }
     };
