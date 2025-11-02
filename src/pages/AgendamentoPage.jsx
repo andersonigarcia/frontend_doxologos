@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -37,6 +37,22 @@ const AgendamentoPage = () => {
     const [emailError, setEmailError] = useState('');
 
   const whatsappSupportNumber = '5531971982947';
+  const servicePriceRange = useMemo(() => {
+    if (!services || services.length === 0) return null;
+    const parsedPrices = services
+      .map(service => Number(service.price))
+      .filter(price => !Number.isNaN(price) && price > 0);
+    if (parsedPrices.length === 0) return null;
+    const min = Math.min(...parsedPrices);
+    const max = Math.max(...parsedPrices);
+    return { min, max };
+  }, [services]);
+
+  const selectedServiceDetails = useMemo(() => {
+    if (!selectedService) return null;
+    return services.find((service) => service.id === selectedService) || null;
+  }, [selectedService, services]);
+
   const whatsappSupportMessage = 'Olá! Estou no agendamento e tenho uma dúvida.';
   const whatsappSupportLink = `https://wa.me/${whatsappSupportNumber}?text=${encodeURIComponent(whatsappSupportMessage)}`;
 
@@ -643,6 +659,25 @@ const AgendamentoPage = () => {
                   <h2 className="text-3xl font-bold mb-3 flex items-center justify-center" id="step-1-title"><CreditCard className="w-8 h-8 mr-3 text-[#2d8659]" aria-hidden="true" />Escolha o Serviço</h2>
                   <p className="text-gray-600 text-lg">Selecione o tipo de atendimento que você precisa</p>
                 </div>
+                {servicePriceRange && (
+                  <div className="mb-8 p-5 bg-gradient-to-r from-[#2d8659]/10 via-white to-blue-50 border border-[#2d8659]/20 rounded-xl">
+                    <p className="text-sm font-semibold text-[#2d8659] uppercase tracking-wide mb-1">Investimento transparente</p>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                      <p className="text-gray-700 text-base md:text-lg">
+                        Consultas a partir de
+                        <span className="font-bold text-[#2d8659] ml-2">
+                          R$ {servicePriceRange.min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {servicePriceRange.max !== servicePriceRange.min && (
+                          <span className="text-gray-600"> e até R$ {servicePriceRange.max.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-600 md:text-right">
+                        Você só informa seus dados após confirmar o profissional e horário ideal.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="grid gap-4 md:grid-cols-2">
                   {services.map((service) => {
                     const professionalCount = professionals.filter(prof => 
@@ -842,17 +877,33 @@ const AgendamentoPage = () => {
                       </div>
                       <div>
                         <p className="text-sm font-medium text-gray-700">Serviço:</p>
-                        <p className="font-bold text-blue-600">{services.find(s => s.id === selectedService)?.name}</p>
+                        <p className="font-bold text-blue-600">{selectedServiceDetails?.name}</p>
                         <p className="text-sm text-gray-600">
-                          {services.find(s => s.id === selectedService)?.duration_minutes >= 60 
-                            ? `${Math.floor(services.find(s => s.id === selectedService).duration_minutes / 60)}h${services.find(s => s.id === selectedService).duration_minutes % 60 > 0 ? ` ${services.find(s => s.id === selectedService).duration_minutes % 60}min` : ''}` 
-                            : `${services.find(s => s.id === selectedService)?.duration_minutes}min`
-                          } • R$ {parseFloat(services.find(s => s.id === selectedService)?.price || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                          {selectedServiceDetails?.duration_minutes >= 60 
+                            ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${selectedServiceDetails.duration_minutes % 60 > 0 ? ` ${selectedServiceDetails.duration_minutes % 60}min` : ''}` 
+                            : `${selectedServiceDetails?.duration_minutes}min`
+                          } • R$ {parseFloat(selectedServiceDetails?.price || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
+
+                {selectedServiceDetails && (
+                  <div className="mb-8">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5 rounded-xl border border-[#2d8659]/20 bg-[#2d8659]/5">
+                      <div>
+                        <p className="text-sm text-[#2d8659] font-semibold uppercase tracking-wide">Investimento da sessão</p>
+                        <p className="text-3xl font-bold text-[#236b47] mt-1">
+                          R$ {parseFloat(selectedServiceDetails.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <p className="text-sm text-gray-700 md:text-right">
+                        O valor é confirmado agora e você só finaliza o pagamento na próxima etapa.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Layout em Grid: Calendário e Horários lado a lado */}
                 <div className="grid lg:grid-cols-2 gap-6 mb-6">
