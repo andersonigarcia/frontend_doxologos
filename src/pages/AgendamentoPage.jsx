@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -22,6 +22,7 @@ const AgendamentoPage = () => {
     const [step, setStep] = useState(1);
     const [professionals, setProfessionals] = useState([]);
     const [services, setServices] = useState([]);
+  const [testimonials, setTestimonials] = useState([]);
     const [availability, setAvailability] = useState({});
     const [blockedDates, setBlockedDates] = useState([]);
     const [bookedSlots, setBookedSlots] = useState([]);
@@ -160,6 +161,24 @@ const AgendamentoPage = () => {
     }
         else setBlockedDates(blockedData || []);
 
+    const { data: reviewsData, error: reviewsError } = await supabase
+      .from('reviews')
+      .select(`
+        *,
+        professionals(name),
+        bookings(patient_name, patient_email)
+      `)
+      .eq('is_approved', true)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    if (reviewsError) {
+      console.error('Erro ao buscar depoimentos para prova social:', reviewsError);
+      setTestimonials([]);
+    } else {
+      setTestimonials(reviewsData || []);
+    }
+
     }, [toast]);
 
     useEffect(() => {
@@ -204,6 +223,41 @@ const AgendamentoPage = () => {
     if (typeof window !== 'undefined') {
       window.open(whatsappSupportLink, '_blank', 'noopener,noreferrer');
     }
+  };
+
+  const topTestimonials = useMemo(() => testimonials.slice(0, 3), [testimonials]);
+
+  const formatPatientName = (name) => {
+    if (!name) return 'Paciente atendido';
+    const parts = name.trim().split(' ').filter(Boolean);
+    if (parts.length === 0) return 'Paciente atendido';
+    if (parts.length === 1) return parts[0];
+    return `${parts[0]} ${parts[parts.length - 1][0]}.`;
+  };
+
+  const getRatingValue = (testimonial) => {
+    const ratingNumber = Number(testimonial?.rating);
+    if (!Number.isFinite(ratingNumber) || ratingNumber <= 0) return 5;
+    return Math.min(5, Math.max(1, Math.round(ratingNumber)));
+  };
+
+  const getTestimonialComment = (testimonial) => {
+    return (testimonial?.comment || testimonial?.feedback || 'Atendimento acolhedor, profissional e com resultados reais.');
+  };
+
+  const getProfessionalName = (testimonial) => {
+    const professionalData = testimonial?.professionals;
+    if (!professionalData) return null;
+    if (Array.isArray(professionalData)) {
+      return professionalData[0]?.name || null;
+    }
+    if (typeof professionalData === 'object') {
+      return professionalData.name || null;
+    }
+    if (typeof professionalData === 'string') {
+      return professionalData;
+    }
+    return null;
   };
 
     const getAvailableTimesForDate = () => {
@@ -904,6 +958,40 @@ const AgendamentoPage = () => {
                     </div>
                   </div>
                 )}
+
+                {topTestimonials.length > 0 && (
+                  <div className="mb-10">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-2">
+                        <Quote className="w-5 h-5 text-[#2d8659]" />
+                        <p className="text-lg font-semibold text-gray-900">Pacientes que já passaram por aqui</p>
+                      </div>
+                      <p className="text-sm text-gray-600 md:text-right">"Escolhi o horário perfeito e fui super bem atendido" — é isso que ouvimos com frequência.</p>
+                    </div>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {topTestimonials.map((testimonial) => {
+                        const rating = getRatingValue(testimonial);
+                        const comment = getTestimonialComment(testimonial);
+                        const displayName = formatPatientName(testimonial.bookings?.patient_name || testimonial.patient_name);
+                        const professionalName = getProfessionalName(testimonial);
+                        return (
+                          <div key={testimonial.id} className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm">
+                            <div className="flex items-center gap-1 mb-3">
+                              {Array.from({ length: rating }).map((_, index) => (
+                                <Star key={index} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                              ))}
+                            </div>
+                            <p className="text-sm text-gray-700 italic mb-3">“{comment}”</p>
+                            <p className="text-xs text-gray-500 font-semibold uppercase">{displayName}</p>
+                            {professionalName && (
+                              <p className="text-xs text-gray-400 mt-1">Atendido por {professionalName}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Layout em Grid: Calendário e Horários lado a lado */}
                 <div className="grid lg:grid-cols-2 gap-6 mb-6">
@@ -1261,6 +1349,33 @@ const AgendamentoPage = () => {
                     </div>
                   </div>
                 </div>
+
+                {topTestimonials.length > 0 && (
+                  <div className="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Quote className="w-5 h-5 text-[#2d8659]" />
+                      <p className="text-base font-semibold text-gray-900">Mais de {topTestimonials.length * 25}+ pacientes satisfeitos</p>
+                    </div>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      {topTestimonials.map((testimonial) => {
+                        const rating = getRatingValue(testimonial);
+                        const comment = getTestimonialComment(testimonial);
+                        const displayName = formatPatientName(testimonial.bookings?.patient_name || testimonial.patient_name);
+                        return (
+                          <div key={`${testimonial.id}-summary`} className="p-4 rounded-lg bg-gray-50 border border-gray-100">
+                            <div className="flex items-center gap-1 mb-2">
+                              {Array.from({ length: rating }).map((_, index) => (
+                                <Star key={index} className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                              ))}
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">“{comment.length > 120 ? `${comment.slice(0, 120)}...` : comment}”</p>
+                            <p className="text-xs text-[#2d8659] font-semibold mt-3">{displayName}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
                   <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
                   <motion.div
