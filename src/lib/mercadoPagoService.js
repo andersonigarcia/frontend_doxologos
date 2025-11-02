@@ -154,6 +154,13 @@ export class MercadoPagoService {
             console.log('📤 [MP Service] Payload ANTES de JSON.stringify:', payload);
             console.log('📤 [MP Service] payment_methods.excluded_payment_types tipo:', typeof payload.payment_methods.excluded_payment_types);
             console.log('📤 [MP Service] payment_methods.excluded_payment_types é array?:', Array.isArray(payload.payment_methods.excluded_payment_types));
+            
+            const stringifiedPayload = JSON.stringify(payload);
+            console.log('📤 [MP Service] Payload APÓS JSON.stringify:', stringifiedPayload);
+            
+            // Verificar se o parse mantém o array
+            const parsedBack = JSON.parse(stringifiedPayload);
+            console.log('📤 [MP Service] Após parse - excluded_payment_types é array?:', Array.isArray(parsedBack.payment_methods.excluded_payment_types));
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
                 method: 'POST',
@@ -161,7 +168,7 @@ export class MercadoPagoService {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 },
-                body: JSON.stringify(payload)
+                body: stringifiedPayload
             });
 
             if (!response.ok) {
@@ -395,6 +402,49 @@ export class MercadoPagoService {
             'charged_back': 'bg-red-100 text-red-800 border-red-200'
         };
         return colors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+
+    /**
+     * Processa pagamento com cartão (tokenizado)
+     * @param {Object} paymentData - Dados do pagamento com token
+     * @returns {Promise<Object>} - Resultado do pagamento
+     */
+    static async processCardPayment(paymentData) {
+        try {
+            console.log('💳 [MP] Processando pagamento com cartão...', paymentData);
+
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-process-card-payment`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify(paymentData)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ [MP] Erro ao processar pagamento:', errorText);
+                throw new Error(`Erro ao processar pagamento: ${errorText}`);
+            }
+
+            const result = await response.json();
+            console.log('✅ [MP] Pagamento processado:', result);
+
+            return {
+                success: true,
+                payment_id: result.payment_id,
+                status: result.status,
+                ...result
+            };
+
+        } catch (error) {
+            console.error('❌ [MP] Erro no processCardPayment:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
     }
 
     /**

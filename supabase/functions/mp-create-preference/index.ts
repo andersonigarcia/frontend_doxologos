@@ -21,12 +21,12 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP] Body recebido:', JSON.stringify(body));
     
-    const { booking_id, amount, description, payer, payment_methods } = body;
+    const { booking_id, inscricao_id, amount, description, payer, payment_methods } = body;
     console.log('[MP] payment_methods extraído:', payment_methods);
     
-    if (!booking_id) {
+    if (!booking_id && !inscricao_id) {
       return new Response(
-        JSON.stringify({ error: 'booking_id required' }),
+        JSON.stringify({ error: 'booking_id or inscricao_id required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -43,44 +43,81 @@ Deno.serve(async (req) => {
       );
     }
 
-    // fetch booking and service price
-    const bookingRes = await fetch(`${SUPABASE_URL}/rest/v1/bookings?select=*,services:service_id(*)&id=eq.${booking_id}`, {
-      headers: { 'apikey': SERVICE_ROLE, 'Authorization': `Bearer ${SERVICE_ROLE}` }
-    });
-    
-    if (!bookingRes.ok) {
-      return new Response(
-        JSON.stringify({ error: 'booking lookup failed' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    let finalAmount = amount || 0;
+    let payerData = payer || {};
+    let referenceId = booking_id || inscricao_id;
+    let referenceType = booking_id ? 'booking' : 'evento';
 
-    const bookings = await bookingRes.json();
-    const booking = bookings[0];
-    
-    if (!booking) {
-      return new Response(
-        JSON.stringify({ error: 'booking not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Se for booking, buscar dados do booking
+    if (booking_id) {
+      const bookingRes = await fetch(`${SUPABASE_URL}/rest/v1/bookings?select=*,services:service_id(*)&id=eq.${booking_id}`, {
+        headers: { 'apikey': SERVICE_ROLE, 'Authorization': `Bearer ${SERVICE_ROLE}` }
+      });
+      
+      if (!bookingRes.ok) {
+        return new Response(
+          JSON.stringify({ error: 'booking lookup failed' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
 
-    // Use amount from request or fallback to service price
-    const finalAmount = amount || booking.services?.price || 0;
-    const payerData = payer || {
-      name: booking.patient_name,
-      email: booking.patient_email
-    };
+      const bookings = await bookingRes.json();
+      const booking = bookings[0];
+      
+      if (!booking) {
+        return new Response(
+          JSON.stringify({ error: 'booking not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      finalAmount = amount || booking.services?.price || 0;
+      payerData = payer || {
+        name: booking.patient_name,
+        email: booking.patient_email
+      };
+    } 
+    // Se for inscrição de evento, buscar dados da inscrição
+    else if (inscricao_id) {
+      const inscricaoRes = await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?select=*,evento:eventos(*)&id=eq.${inscricao_id}`, {
+        headers: { 'apikey': SERVICE_ROLE, 'Authorization': `Bearer ${SERVICE_ROLE}` }
+      });
+      
+      if (!inscricaoRes.ok) {
+        return new Response(
+          JSON.stringify({ error: 'inscricao lookup failed' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const inscricoes = await inscricaoRes.json();
+      const inscricao = inscricoes[0];
+      
+      if (!inscricao) {
+        return new Response(
+          JSON.stringify({ error: 'inscricao not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      finalAmount = amount || inscricao.evento?.valor || 0;
+      payerData = payer || {
+        name: inscricao.patient_name,
+        email: inscricao.patient_email
+      };
+    }
 
     // Simplificado: sempre garantir que payment_methods tem a estrutura correta
-    let finalPaymentMethods = {
-      excluded_payment_methods: [],
-      excluded_payment_types: [],
+    let finalPaymentMethods: any = {
+      excluded_payment_methods: [] as string[],
+      excluded_payment_types: [] as string[],
       installments: 1
     };
 
     if (payment_methods) {
-      console.log('[MP] Received payment_methods:', payment_methods);
+      console.log('[MP] Received payment_methods:', JSON.stringify(payment_methods));
+      console.log('[MP] Type of excluded_payment_types:', typeof payment_methods.excluded_payment_types);
+      console.log('[MP] Is array?:', Array.isArray(payment_methods.excluded_payment_types));
       
       // Se veio installments, usar
       if (payment_methods.installments) {
@@ -107,17 +144,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log('[MP] Final payment_methods to MP:', finalPaymentMethods);
+    console.log('[MP] Final payment_methods to MP:', JSON.stringify(finalPaymentMethods));
+    console.log('[MP] Final excluded_payment_types is array?:', Array.isArray(finalPaymentMethods.excluded_payment_types));
 
+    // Criar objeto de preferência base
     const preference: any = {
       items: [{
-        title: description || `Consulta - ${booking.services?.name || 'Atendimento'}`,
-        description: `Agendamento ${booking_id}`,
+        title: description || (referenceType === 'booking' ? 'Consulta Online' : 'Inscrição em Evento'),
+        description: referenceType === 'booking' ? `Agendamento ${booking_id}` : `Evento ${inscricao_id}`,
         quantity: 1,
         unit_price: Number(finalAmount),
         currency_id: 'BRL'
       }],
-      external_reference: booking_id,
+      external_reference: referenceId,
       payer: {
         name: payerData.name,
         email: payerData.email,
@@ -125,12 +164,22 @@ Deno.serve(async (req) => {
         identification: payerData.identification || {},
         address: payerData.address || {}
       },
-      // Não enviar payment_methods para evitar erro da API do Mercado Pago
-      // payment_methods: finalPaymentMethods,
+      // Forçar checkout como guest (sem login)
+      purpose: 'wallet_purchase',
+      binary_mode: false,
+      // Configurações adicionais para evitar login
+      additional_info: JSON.stringify({
+        items: [{
+          id: referenceId,
+          title: description || 'Consulta',
+          quantity: 1,
+          unit_price: Number(finalAmount)
+        }]
+      }),
       back_urls: {
-        success: `${FRONTEND_URL}/checkout/success?external_reference=${booking_id}`,
-        failure: `${FRONTEND_URL}/checkout/failure?external_reference=${booking_id}`,
-        pending: `${FRONTEND_URL}/checkout/pending?external_reference=${booking_id}`
+        success: `${FRONTEND_URL}/checkout/success?external_reference=${referenceId}&type=${referenceType}`,
+        failure: `${FRONTEND_URL}/checkout/failure?external_reference=${referenceId}&type=${referenceType}`,
+        pending: `${FRONTEND_URL}/checkout/pending?external_reference=${referenceId}&type=${referenceType}`
       },
       auto_return: 'approved',
       notification_url: `${SUPABASE_URL}/functions/v1/mp-webhook`,
@@ -140,7 +189,9 @@ Deno.serve(async (req) => {
       expiration_date_to: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     };
 
-    console.log('Creating MP preference:', JSON.stringify(preference, null, 2));
+    // NÃO enviar payment_methods devido a bug de serialização do Deno
+    // As configurações purpose e binary_mode já ajudam a evitar saldo em conta
+    console.log('[MP] Preferência criada (sem payment_methods):', JSON.stringify(preference, null, 2));
 
     const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
       method: 'POST',
@@ -160,19 +211,51 @@ Deno.serve(async (req) => {
     const mpJson = await mpRes.json();
     console.log('MP preference created:', mpJson.id);
 
-    // update booking marketplace_preference_id
-    await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
-      method: 'PATCH',
-      headers: {
-        'apikey': SERVICE_ROLE,
-        'Authorization': `Bearer ${SERVICE_ROLE}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      },
-      body: JSON.stringify({ marketplace_preference_id: mpJson.id })
-    });
+    // Update booking or inscricao com marketplace_preference_id
+    if (booking_id) {
+      await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SERVICE_ROLE,
+          'Authorization': `Bearer ${SERVICE_ROLE}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ marketplace_preference_id: mpJson.id })
+      });
+    } else if (inscricao_id) {
+      await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricao_id}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SERVICE_ROLE,
+          'Authorization': `Bearer ${SERVICE_ROLE}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        },
+        body: JSON.stringify({ marketplace_preference_id: mpJson.id })
+      });
+    }
 
     // Create payment record
+    const paymentRecord: any = {
+      mp_preference_id: mpJson.id,
+      status: 'pending',
+      transaction_amount: finalAmount,
+      currency_id: 'BRL',
+      payer_email: payerData.email,
+      payment_url: mpJson.init_point,
+      qr_code: mpJson.qr_code,
+      qr_code_base64: mpJson.qr_code_base64,
+      raw_payload: mpJson
+    };
+
+    // Adicionar booking_id ou inscricao_id dependendo do tipo
+    if (booking_id) {
+      paymentRecord.booking_id = booking_id;
+    } else if (inscricao_id) {
+      paymentRecord.inscricao_id = inscricao_id;
+    }
+
     await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
       method: 'POST',
       headers: {
@@ -181,18 +264,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
         'Prefer': 'return=representation'
       },
-      body: JSON.stringify({
-        booking_id: booking_id,
-        mp_preference_id: mpJson.id,
-        status: 'pending',
-        transaction_amount: finalAmount,
-        currency_id: 'BRL',
-        payer_email: payerData.email,
-        payment_url: mpJson.init_point,
-        qr_code: mpJson.qr_code,
-        qr_code_base64: mpJson.qr_code_base64,
-        raw_payload: mpJson
-      })
+      body: JSON.stringify(paymentRecord)
     });
 
     return new Response(

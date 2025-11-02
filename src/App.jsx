@@ -20,6 +20,7 @@ import DepoimentoPage from '@/pages/DepoimentoPage';
 import DepoimentosAdminPage from '@/pages/DepoimentosAdminPage';
 import PagamentoSimuladoPage from '@/pages/PagamentoSimuladoPage';
 import CheckoutPage from '@/pages/CheckoutPage';
+import CheckoutDirectPage from '@/pages/CheckoutDirectPage';
 import CheckoutSuccessPage from '@/pages/CheckoutSuccessPage';
 import CheckoutFailurePage from '@/pages/CheckoutFailurePage';
 import CheckoutPendingPage from '@/pages/CheckoutPendingPage';
@@ -127,6 +128,11 @@ function AppContent() {
         <Route path="/checkout" element={
           <PageErrorBoundary pageName="Checkout">
             <CheckoutPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/checkout-direct" element={
+          <PageErrorBoundary pageName="Checkout Direct">
+            <CheckoutDirectPage />
           </PageErrorBoundary>
         } />
         <Route path="/checkout/success" element={
