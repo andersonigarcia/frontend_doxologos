@@ -224,7 +224,33 @@ const CheckoutPage = () => {
                 // Para outros métodos, usar preferência (redirecionamento)
                 console.log('💳 Criando preferência para', selectedMethod);
 
-                const result = await MercadoPagoService.createPreference(requestPayload);
+                // Configurar payment_methods baseado no método selecionado
+                let paymentMethodConfig = {
+                    excluded_payment_methods: [],
+                    excluded_payment_types: [],
+                    installments: 12
+                };
+
+                // Configurar exclusões baseado no método selecionado
+                if (selectedMethod === 'credit_card') {
+                    // Apenas cartão de crédito
+                    paymentMethodConfig.excluded_payment_types = ['debit_card', 'ticket', 'bank_transfer', 'atm'];
+                } else if (selectedMethod === 'debit_card') {
+                    // Apenas cartão de débito
+                    paymentMethodConfig.excluded_payment_types = ['credit_card', 'ticket', 'bank_transfer', 'atm'];
+                } else if (selectedMethod === 'bank_transfer') {
+                    // Apenas boleto
+                    paymentMethodConfig.excluded_payment_types = ['credit_card', 'debit_card', 'atm'];
+                }
+
+                // Adicionar configuração de payment_methods ao payload
+                const preferencePayload = {
+                    ...requestPayload,
+                    payment_methods: paymentMethodConfig,
+                    selected_payment_method: selectedMethod // Adicionar método selecionado para referência
+                };
+
+                const result = await MercadoPagoService.createPreference(preferencePayload);
 
                 if (result.success) {
                     setPreference(result);
@@ -439,6 +465,24 @@ const CheckoutPage = () => {
                                 ))}
                             </div>
 
+                            {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') && !preference && (
+                                <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <h4 className="font-semibold text-green-900 mb-2 flex items-center">
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Nova Opção: Formulário de Cartão Direto
+                                    </h4>
+                                    <ul className="text-sm text-green-800 space-y-1 mb-3">
+                                        <li>✅ Pague sem sair do site</li>
+                                        <li>✅ Formulário integrado e seguro</li>
+                                        <li>✅ Tokenização via Mercado Pago SDK</li>
+                                        <li>✅ Melhor experiência do usuário</li>
+                                    </ul>
+                                    <p className="text-xs text-green-700 italic">
+                                        Ou escolha a opção tradicional via redirect do Mercado Pago
+                                    </p>
+                                </div>
+                            )}
+
                             {selectedMethod === 'pix' && !preference && (
                                 <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
                                     <p className="text-sm text-blue-900">
@@ -513,23 +557,75 @@ const CheckoutPage = () => {
                         )}
 
                         {!pixPayment && !preference && (
-                            <Button
-                                onClick={handlePayment}
-                                disabled={processing}
-                                size="lg"
-                                className="w-full bg-[#2d8659] hover:bg-[#236b47]"
-                            >
-                                {processing ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                        Processando...
-                                    </>
-                                ) : (
-                                    <>
-                                        Continuar para Pagamento
-                                    </>
+                            <>
+                                {/* Botão especial para cartão direto */}
+                                {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') && (
+                                    <div className="space-y-3">
+                                        <Button
+                                            onClick={() => {
+                                                // Redirecionar para página de cartão direto com os dados
+                                                const params = new URLSearchParams({
+                                                    ...(bookingId && { booking_id: bookingId }),
+                                                    ...(inscricaoId && { inscricao_id: inscricaoId }),
+                                                    ...(type && { type }),
+                                                    ...(valorParam && { valor: valorParam }),
+                                                    ...(tituloParam && { titulo: tituloParam }),
+                                                });
+                                                navigate(`/checkout-direct?${params.toString()}`);
+                                            }}
+                                            size="lg"
+                                            className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                                        >
+                                            <CreditCard className="w-5 h-5 mr-2" />
+                                            Pagar com Cartão (Formulário Direto)
+                                        </Button>
+                                        
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 mb-2">ou</p>
+                                        </div>
+                                        
+                                        <Button
+                                            onClick={handlePayment}
+                                            disabled={processing}
+                                            size="lg"
+                                            variant="outline"
+                                            className="w-full"
+                                        >
+                                            {processing ? (
+                                                <>
+                                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#2d8659] mr-2"></div>
+                                                    Redirecionando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Pagar via Mercado Pago (Redirect)
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
                                 )}
-                            </Button>
+                                
+                                {/* Botão padrão para outros métodos */}
+                                {selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card' && (
+                                    <Button
+                                        onClick={handlePayment}
+                                        disabled={processing}
+                                        size="lg"
+                                        className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                                    >
+                                        {processing ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                                Processando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Continuar para Pagamento
+                                            </>
+                                        )}
+                                    </Button>
+                                )}
+                            </>
                         )}
                     </div>
 

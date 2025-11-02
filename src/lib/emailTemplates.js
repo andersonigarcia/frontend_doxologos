@@ -1,9 +1,15 @@
 ﻿export class EmailTemplates {
   constructor() {
     this.brandColor = "#2d8659";
-    // Usar variável de ambiente ou URL atual como fallback
+    // Usar variável de ambiente ou URL de produção
+    // Prioridade: 1) VITE_APP_URL, 2) window.location.origin (se não for localhost), 3) URL de produção
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
+    
     this.baseUrl = import.meta.env.VITE_APP_URL || 
-                   (typeof window !== 'undefined' ? window.location.origin : 'https://doxologos.com.br');
+                   (!isLocalhost && currentOrigin) || 
+                   'https://appsite.doxologos.com.br';
+    
     this.supportEmail = "doxologos@doxologos.com.br";
   }
   
