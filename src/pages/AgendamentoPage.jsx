@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -13,6 +13,7 @@ import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { zoomService } from '@/lib/zoomService';
 import { secureLog } from '@/lib/secureLogger';
+import analytics from '@/lib/analytics';
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
@@ -34,6 +35,10 @@ const AgendamentoPage = () => {
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [emailError, setEmailError] = useState('');
+
+  const whatsappSupportNumber = '5531971982947';
+  const whatsappSupportMessage = 'Olá! Estou no agendamento e tenho uma dúvida.';
+  const whatsappSupportLink = `https://wa.me/${whatsappSupportNumber}?text=${encodeURIComponent(whatsappSupportMessage)}`;
 
     // Função para formatar telefone com máscara (00) 00000-0000
     const formatPhoneNumber = (value) => {
@@ -173,6 +178,17 @@ const AgendamentoPage = () => {
     useEffect(() => {
         fetchBookedSlots();
     }, [fetchBookedSlots]);
+
+  const handleSupportWhatsappClick = () => {
+    analytics.trackEvent('whatsapp_click', {
+      event_category: 'booking',
+      event_label: 'cta_duvidas_agendamento',
+      step
+    });
+    if (typeof window !== 'undefined') {
+      window.open(whatsappSupportLink, '_blank', 'noopener,noreferrer');
+    }
+  };
 
     const getAvailableTimesForDate = () => {
         if (!selectedDate || !selectedProfessional || !availability[selectedProfessional]) return [];
@@ -1194,7 +1210,7 @@ const AgendamentoPage = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-4 mt-6">
+                <div className="flex flex-col sm:flex-row gap-4 mt-6">
                   <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
                   <motion.div
                     whileHover={!isSubmitting && patientData.name && patientData.email && patientData.phone && !emailError ? { scale: 1.02, y: -1 } : {}}
@@ -1229,6 +1245,15 @@ const AgendamentoPage = () => {
                       )}
                     </Button>
                   </motion.div>
+                  <Button
+                    type="button"
+                    onClick={handleSupportWhatsappClick}
+                    variant="outline"
+                    className="sm:w-auto flex items-center gap-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Tirar dúvidas no WhatsApp
+                  </Button>
                 </div>
               </motion.div>
             );
