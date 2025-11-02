@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote, ShieldCheck, Lock, RefreshCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -226,6 +226,24 @@ const AgendamentoPage = () => {
   };
 
   const topTestimonials = useMemo(() => testimonials.slice(0, 3), [testimonials]);
+
+  const paymentSecurityHighlights = useMemo(() => ([
+    {
+      icon: ShieldCheck,
+      title: 'Pagamento processado pelo Mercado Pago',
+      description: 'Utilizamos a mesma plataforma certificada por milhões de brasileiros para garantir transações seguras e rastreáveis.'
+    },
+    {
+      icon: Lock,
+      title: 'Dados protegidos conforme LGPD',
+      description: 'Suas informações ficam armazenadas com criptografia e controles auditados para atender às exigências da Lei Geral de Proteção de Dados.'
+    },
+    {
+      icon: RefreshCcw,
+      title: 'Flexibilidade para reagendar com 24h de antecedência',
+      description: 'Se precisar ajustar a consulta, basta acessar a Área do Paciente até 24 horas antes e escolher um novo horário disponível.'
+    }
+  ]), []);
 
   const formatPatientName = (name) => {
     if (!name) return 'Paciente atendido';
@@ -1345,6 +1363,28 @@ const AgendamentoPage = () => {
                           Após o pagamento, você receberá por email e WhatsApp o link da sala de consulta. 
                           A sessão começará pontualmente no horário agendado.
                         </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#2d8659]">Pagamento 100% seguro</p>
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {paymentSecurityHighlights.map((highlight) => {
+                          const Icon = highlight.icon;
+                          return (
+                            <div key={highlight.title} className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-full bg-[#2d8659]/10 flex items-center justify-center text-[#2d8659]">
+                                <Icon className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-semibold text-gray-900">{highlight.title}</h4>
+                                <p className="text-sm text-gray-600 leading-relaxed">{highlight.description}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
