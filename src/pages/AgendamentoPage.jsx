@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote, ShieldCheck, Lock, RefreshCcw } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote, ShieldCheck, Lock, RefreshCcw, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -15,10 +15,13 @@ import { zoomService } from '@/lib/zoomService';
 import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 
+const MIN_PASSWORD_LENGTH = 8;
+const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '' };
+
 const AgendamentoPage = () => {
     const { toast } = useToast();
     const navigate = useNavigate();
-    const { user: authUser } = useAuth();
+  const { user: authUser, resetPassword } = useAuth();
     const [step, setStep] = useState(1);
     const [professionals, setProfessionals] = useState([]);
     const [services, setServices] = useState([]);
@@ -31,7 +34,11 @@ const AgendamentoPage = () => {
     const [selectedService, setSelectedService] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
-    const [patientData, setPatientData] = useState({ name: '', email: '', phone: '' });
+  const [patientData, setPatientData] = useState(INITIAL_PATIENT_DATA);
+  const [isExistingPatient, setIsExistingPatient] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -81,15 +88,15 @@ const AgendamentoPage = () => {
     };
 
     // Handler para mudança de telefone com máscara
-    const handlePhoneChange = (e) => {
-        const formatted = formatPhoneNumber(e.target.value);
-        setPatientData({...patientData, phone: formatted});
-    };
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPatientData((prev) => ({ ...prev, phone: formatted }));
+  };
 
     // Handler para mudança de email com validação
     const handleEmailChange = (e) => {
         const email = e.target.value;
-        setPatientData({...patientData, email});
+    setPatientData((prev) => ({ ...prev, email }));
         
         if (email && !validateEmail(email)) {
             setEmailError('Por favor, insira um email válido');
@@ -97,6 +104,45 @@ const AgendamentoPage = () => {
             setEmailError('');
         }
     };
+
+  const handlePasswordChange = (value) => {
+    setPatientData((prev) => ({ ...prev, password: value }));
+    if (passwordError) {
+      setPasswordError('');
+    }
+  };
+
+  const handleConfirmPasswordChange = (value) => {
+    setPatientData((prev) => ({ ...prev, confirmPassword: value }));
+    if (passwordError) {
+      setPasswordError('');
+    }
+  };
+
+  const toggleExistingPatient = () => {
+    setIsExistingPatient((prev) => !prev);
+    setPasswordError('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setPatientData((prev) => ({
+      ...prev,
+      password: '',
+      confirmPassword: ''
+    }));
+  };
+
+  const handlePasswordResetRequest = async () => {
+    if (!patientData.email || emailError) {
+      toast({
+        variant: 'destructive',
+        title: 'Informe um email válido',
+        description: 'Use um email válido para receber o link de redefinição de senha.'
+      });
+      return;
+    }
+
+    await resetPassword(patientData.email);
+  };
 
     // Analytics and Error Tracking Hooks
     const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
@@ -244,6 +290,59 @@ const AgendamentoPage = () => {
       description: 'Se precisar ajustar a consulta, basta acessar a Área do Paciente até 24 horas antes e escolher um novo horário disponível.'
     }
   ]), []);
+
+  const canSubmitBooking = useMemo(() => {
+    if (!patientData.name || !patientData.email || !patientData.phone || emailError) {
+      return false;
+    }
+
+    if (authUser) {
+      return true;
+    }
+
+    if (isExistingPatient) {
+      return Boolean(patientData.password && patientData.password.length >= MIN_PASSWORD_LENGTH);
+    }
+
+    return (
+      Boolean(patientData.password) &&
+      Boolean(patientData.confirmPassword) &&
+      patientData.password.length >= MIN_PASSWORD_LENGTH &&
+      patientData.password === patientData.confirmPassword
+    );
+  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, emailError, authUser, isExistingPatient]);
+
+  const submitButtonTitle = useMemo(() => {
+    if (!patientData.name || !patientData.email || !patientData.phone) {
+      return 'Preencha todos os campos obrigatórios';
+    }
+
+    if (emailError) {
+      return 'Digite um email válido';
+    }
+
+    if (authUser) {
+      return '';
+    }
+
+    if (!patientData.password) {
+      return 'Informe uma senha para acessar a área do paciente';
+    }
+
+    if (patientData.password.length < MIN_PASSWORD_LENGTH) {
+      return `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`;
+    }
+
+    if (!isExistingPatient && !patientData.confirmPassword) {
+      return 'Confirme sua senha';
+    }
+
+    if (!isExistingPatient && patientData.password !== patientData.confirmPassword) {
+      return 'As senhas precisam ser iguais';
+    }
+
+    return '';
+  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, emailError, authUser, isExistingPatient]);
 
   const formatPatientName = (name) => {
     if (!name) return 'Paciente atendido';
@@ -427,300 +526,315 @@ const AgendamentoPage = () => {
         }
     }, [selectedDate, selectedProfessional]);
 
-    const handleBooking = async () => {
-        console.log('🚀 [handleBooking] INÍCIO - Iniciando processo de agendamento');
-        console.log('🚀 [handleBooking] Dados do formulário:', {
-            selectedDate,
-            selectedTime,
-            selectedService,
-            selectedProfessional,
-            patientData,
-            authUser: !!authUser
-        });
+  const handleBooking = async () => {
+    console.log('🚀 [handleBooking] INÍCIO - Iniciando processo de agendamento');
+    console.log('🚀 [handleBooking] Dados do formulário:', {
+      selectedDate,
+      selectedTime,
+      selectedService,
+      selectedProfessional,
+      patientData: {
+        ...patientData,
+        password: patientData.password ? '***' : '',
+        confirmPassword: patientData.confirmPassword ? '***' : ''
+      },
+      authUser: !!authUser,
+      isExistingPatient
+    });
         
-        setIsSubmitting(true);
+    setIsSubmitting(true);
+    setPasswordError('');
         
-        try {
-            // 1. Usar o usuário do contexto (já autenticado ou null)
-            let userId;
-
-            console.log('👤 [handleBooking] Verificando autenticação...');
-            
-            if (authUser) {
-                // Usuário já autenticado
-                userId = authUser.id;
-                console.log('✅ [handleBooking] Usuário autenticado:', userId);
-            } else {
-                console.log('⚠️ [handleBooking] Usuário NÃO autenticado - criando/buscando pelo email...');
-                // 2. Usuário não autenticado - buscar ou criar pelo email
-                
-                // Primeiro, tentar criar o usuário com signUp
-                const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-                
-                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                    email: patientData.email,
-                    password: tempPassword,
-                    options: {
-                        data: {
-                            full_name: patientData.name,
-                            phone: patientData.phone,
-                            role: 'user'
-                        },
-                        emailRedirectTo: `${window.location.origin}/area-do-paciente`
-                    }
-                });
-
-                if (signUpError) {
-                    // Se o erro for "User already registered", buscar user_id existente
-                    if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
-                        
-                        // IMPORTANTE: Buscar user_id usando função RPC do Supabase
-                        // Se a função RPC não existir, usa workaround (bookings anteriores)
-                        
-                        // Tentar usar função RPC primeiro
-                        const { data: rpcUserId, error: rpcError } = await supabase
-                            .rpc('get_user_id_by_email', { user_email: patientData.email });
-
-                        if (!rpcError && rpcUserId) {
-                            userId = rpcUserId;
-                            console.log('✅ user_id encontrado via RPC:', userId);
-                        } else {
-                            console.log('⚠️ RPC falhou, usando workaround...');
-                            // Workaround: Buscar user_id de agendamentos anteriores deste email
-                            const { data: existingBooking } = await supabase
-                                .from('bookings')
-                                .select('user_id')
-                                .eq('patient_email', patientData.email)
-                                .not('user_id', 'is', null)
-                                .limit(1)
-                                .single();
-
-                            if (existingBooking && existingBooking.user_id) {
-                                userId = existingBooking.user_id;
-                                console.log('✅ user_id encontrado via workaround:', userId);
-                            } else {
-                                // Se não encontrou user_id, ENVIAR magic link e pedir para fazer login
-                                console.log('❌ user_id não encontrado, enviando magic link...');
-                                
-                                const { error: otpError } = await supabase.auth.signInWithOtp({ 
-                                    email: patientData.email,
-                                    options: {
-                                        emailRedirectTo: `${window.location.origin}/area-do-paciente`
-                                    }
-                                });
-
-                if (otpError) {
-                  console.error('Erro ao enviar magic link:', otpError);
-                  toast({ 
-                    variant: 'destructive', 
-                    title: 'Não conseguimos enviar o link de acesso', 
-                    description: 'Confirme se o email está correto e tente novamente em alguns minutos. Se nada chegar, fale conosco pelo WhatsApp.' 
-                  });
-                                } else {
-                                    toast({ 
-                                        variant: 'default',
-                    title: 'Email de acesso enviado', 
-                    description: 'Procure pelo remetente contato@doxologos.com.br e clique no link para retomar seu agendamento.' 
-                                    });
-                                }
-                                
-                                console.log('❌ [handleBooking] RETURN: user_id não encontrado, magic link enviado');
-                                setIsSubmitting(false);
-                                return;
-                            }
-                        }
-                        
-                        // Se chegou aqui, user_id foi encontrado - continuar com agendamento
-            toast({ 
-              title: 'Bem-vindo de volta!', 
-              description: 'Localizamos seu cadastro e vamos continuar de onde você parou.' 
-            });
-                        
-                    } else {
-                        console.error('Erro ao criar usuário:', signUpError);
-                        console.log('❌ [handleBooking] RETURN: Erro ao criar cadastro');
-            toast({ 
-              variant: 'destructive', 
-              title: 'Não foi possível criar seu acesso', 
-              description: 'Use outro email ou tente novamente em alguns minutos. Persistindo, fale com nossa equipe para concluir o agendamento.' 
-            });
-                        setIsSubmitting(false);
-                        return;
-                    }
-                } else {
-                    // Usuário criado com sucesso
-                    userId = signUpData.user?.id;
-                    
-                    // Enviar email de confirmação (magic link)
-          toast({ 
-            title: 'Cadastro criado!', 
-            description: 'Enviamos um email de confirmação. Confirme sua conta para acompanhar o agendamento.' 
+    try {
+      if (!authUser) {
+        if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+          setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+          toast({
+            variant: 'destructive',
+            title: 'Senha muito curta',
+            description: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a área do paciente.`
           });
-                }
-            }
+          return;
+        }
 
-            console.log('💰 [handleBooking] Buscando detalhes do serviço...');
+        if (!isExistingPatient && patientData.password !== patientData.confirmPassword) {
+          setPasswordError('As senhas precisam ser iguais.');
+          toast({
+            variant: 'destructive',
+            title: 'Senhas não conferem',
+            description: 'Digite a mesma senha nos dois campos para continuar.'
+          });
+          return;
+        }
+      }
+
+      let userId;
+
+      console.log('👤 [handleBooking] Verificando autenticação...');
             
-            // 3. Get service details to capture current price
-            const serviceDetails = services.find(s => s.id === selectedService);
-            const valorConsulta = parseFloat(serviceDetails?.price || 0);
-            
-            console.log('💰 [handleBooking] Serviço encontrado:', { 
-                serviceName: serviceDetails?.name, 
-                price: valorConsulta 
+      if (authUser) {
+        userId = authUser.id;
+        console.log('✅ [handleBooking] Usuário autenticado:', userId);
+      } else if (isExistingPatient) {
+        console.log('👤 [handleBooking] Paciente existente - tentando login com senha informada...');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: patientData.email,
+          password: patientData.password
+        });
+
+        if (signInError) {
+          console.error('Erro ao autenticar paciente existente:', signInError);
+          setPasswordError('Não foi possível validar sua senha. Você pode recuperar o acesso com o link abaixo.');
+          toast({
+            variant: 'destructive',
+            title: 'Senha incorreta',
+            description: 'Confirme sua senha ou utilize a opção de recuperação para continuar.'
+          });
+          return;
+        }
+
+        userId = signInData.user?.id;
+        setIsExistingPatient(true);
+        toast({
+          title: 'Login confirmado!',
+          description: 'Reconhecemos seu cadastro e vamos prosseguir com o agendamento.'
+        });
+      } else {
+        console.log('👤 [handleBooking] Usuário não autenticado - criando conta com senha informada...');
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: patientData.email,
+          password: patientData.password,
+          options: {
+            data: {
+              full_name: patientData.name,
+              phone: patientData.phone,
+              role: 'user'
+            },
+            emailRedirectTo: `${window.location.origin}/area-do-paciente`
+          }
+        });
+
+        if (signUpError) {
+          if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
+            console.log('⚠️ [handleBooking] Email já cadastrado - tentando login automático...');
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+              email: patientData.email,
+              password: patientData.password
             });
 
-            console.log('📝 [handleBooking] Preparando dados do agendamento...');
-            
-            // 4. Preparar dados do agendamento
-            const bookingData = { 
-                professional_id: selectedProfessional, 
-                service_id: selectedService, 
-                booking_date: selectedDate, 
-                booking_time: selectedTime, 
-                status: 'pending_payment', 
-                patient_name: patientData.name, 
-                patient_email: patientData.email, 
-                patient_phone: patientData.phone,
-                valor_consulta: valorConsulta
-            };
-            
-            // Adicionar user_id se disponível
-            if (userId) {
-                bookingData.user_id = userId;
+            if (signInError) {
+              console.error('Erro ao autenticar paciente já cadastrado:', signInError);
+              setIsExistingPatient(true);
+              setPasswordError('Este email já possui cadastro. Faça login informando sua senha ou recupere o acesso.');
+              toast({
+                variant: 'destructive',
+                title: 'Email já cadastrado',
+                description: 'Se não lembrar a senha, clique em "Esqueci minha senha" para receber um novo acesso.'
+              });
+              return;
             }
+
+            userId = signInData.user?.id;
+            toast({
+              title: 'Bem-vindo de volta!',
+              description: 'Localizamos seu cadastro e fizemos login para continuar.'
+            });
+          } else {
+            console.error('Erro ao criar usuário:', signUpError);
+            toast({
+              variant: 'destructive',
+              title: 'Não foi possível criar seu acesso',
+              description: 'Use outro email ou tente novamente em alguns minutos.'
+            });
+            return;
+          }
+        } else {
+          userId = signUpData.user?.id || signUpData.session?.user?.id;
+          toast({
+            title: 'Cadastro criado!',
+            description: 'Enviamos um email para confirmar seu acesso à Área do Paciente.'
+          });
+        }
+      }
+
+      if (!userId) {
+        console.log('⚠️ [handleBooking] userId não disponível imediatamente - tentando recuperar via RPC...');
+        try {
+          const { data: rpcUserId } = await supabase.rpc('get_user_id_by_email', { user_email: patientData.email });
+          if (rpcUserId) {
+            userId = rpcUserId;
+            console.log('✅ user_id recuperado via RPC:', userId);
+          }
+        } catch (rpcError) {
+          console.warn('Não foi possível recuperar user_id via RPC:', rpcError);
+        }
+      }
+
+      console.log('💰 [handleBooking] Buscando detalhes do serviço...');
             
-            console.log('✅ [handleBooking] bookingData preparado:', bookingData);
-            console.log('🎯 [handleBooking] Iniciando criação do Zoom...');
+      // 3. Get service details to capture current price
+      const serviceDetails = services.find(s => s.id === selectedService);
+      const professionalDetails = professionals.find(p => p.id === selectedProfessional);
+      const valorConsulta = parseFloat(serviceDetails?.price || 0);
+            
+      console.log('💰 [handleBooking] Serviço encontrado:', { 
+        serviceName: serviceDetails?.name, 
+        price: valorConsulta 
+      });
 
-            // 4.5. Criar sala do Zoom ANTES de inserir o agendamento
-            let zoomMeetingData = null;
-            try {
-                console.log('🎥 Criando sala do Zoom...');
-                console.log('🎥 Dados do agendamento:', {
-                    booking_date: selectedDate,
-                    booking_time: selectedTime,
-                    patient_name: patientData.name,
-                    service_name: selectedService?.name,
-                    professional_name: selectedProfessional?.name
-                });
+      console.log('📝 [handleBooking] Preparando dados do agendamento...');
+            
+      // 4. Preparar dados do agendamento
+      const bookingData = { 
+        professional_id: selectedProfessional, 
+        service_id: selectedService, 
+        booking_date: selectedDate, 
+        booking_time: selectedTime, 
+        status: 'pending_payment', 
+        patient_name: patientData.name, 
+        patient_email: patientData.email, 
+        patient_phone: patientData.phone,
+        valor_consulta: valorConsulta
+      };
+            
+      // Adicionar user_id se disponível
+      if (userId) {
+        bookingData.user_id = userId;
+      }
+            
+      console.log('✅ [handleBooking] bookingData preparado:', {
+        ...bookingData,
+        user_id: bookingData.user_id ? '***' : null
+      });
+      console.log('🎯 [handleBooking] Iniciando criação do Zoom...');
 
-                zoomMeetingData = await zoomService.createBookingMeeting({
-                    booking_date: selectedDate,
-                    booking_time: selectedTime,
-                    patient_name: patientData.name,
-                    service_name: selectedService?.name || 'Consulta',
-                    professional_name: selectedProfessional?.name || 'Profissional'
-                });
+      // 4.5. Criar sala do Zoom ANTES de inserir o agendamento
+      let zoomMeetingData = null;
+      try {
+        console.log('🎥 Criando sala do Zoom...', {
+          booking_date: selectedDate,
+          booking_time: selectedTime,
+          patient_name: patientData.name,
+          service_name: serviceDetails?.name,
+          professional_name: professionalDetails?.name
+        });
 
-                if (zoomMeetingData) {
-                    secureLog.success('Sala do Zoom criada com sucesso!');
-                    secureLog.info('Link:', zoomMeetingData.meeting_link);
-                    secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
-                    // Adicionar dados do Zoom ao booking
-                    bookingData.meeting_link = zoomMeetingData.meeting_link;
-                    bookingData.meeting_password = zoomMeetingData.meeting_password;
-                    bookingData.meeting_id = zoomMeetingData.meeting_id;
-                    bookingData.meeting_start_url = zoomMeetingData.start_url;
-                } else {
-                    console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
-          toast({ 
-            title: 'Vamos finalizar o link da sala', 
+        zoomMeetingData = await zoomService.createBookingMeeting({
+          booking_date: selectedDate,
+          booking_time: selectedTime,
+          patient_name: patientData.name,
+          service_name: serviceDetails?.name || 'Consulta',
+          professional_name: professionalDetails?.name || 'Profissional'
+        });
+
+        if (zoomMeetingData) {
+          secureLog.success('Sala do Zoom criada com sucesso!');
+          secureLog.info('Link:', zoomMeetingData.meeting_link);
+          secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
+          // Adicionar dados do Zoom ao booking
+          bookingData.meeting_link = zoomMeetingData.meeting_link;
+          bookingData.meeting_password = zoomMeetingData.meeting_password;
+          bookingData.meeting_id = zoomMeetingData.meeting_id;
+          bookingData.meeting_start_url = zoomMeetingData.start_url;
+        } else {
+          console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
+          toast({
+            title: 'Vamos finalizar o link da sala',
             description: 'Não conseguimos gerar a sala do Zoom agora. Nossa equipe enviará o link completo por email assim que estiver pronto.',
             variant: 'default'
           });
-                }
-            } catch (zoomError) {
-                console.error('❌ Erro ao criar sala do Zoom:', zoomError);
-                console.error('❌ Detalhes do erro:', {
-                    name: zoomError.name,
-                    message: zoomError.message,
-                    stack: zoomError.stack
-                });
+        }
+      } catch (zoomError) {
+        console.error('❌ Erro ao criar sala do Zoom:', zoomError);
+        console.error('❌ Detalhes do erro:', {
+          name: zoomError.name,
+          message: zoomError.message,
+          stack: zoomError.stack
+        });
                 
-                // Mostrar aviso ao usuário mas não bloquear o fluxo
-        toast({ 
-          title: 'Link do encontro em validação', 
+        // Mostrar aviso ao usuário mas não bloquear o fluxo
+        toast({
+          title: 'Link do encontro em validação',
           description: 'Ainda não geramos a sala do Zoom. Você receberá o link confirmado por email em breve.',
           variant: 'default'
         });
-            }
+      }
 
-            // 5. Criar o agendamento
-            console.log('💾 Dados do agendamento antes de inserir no banco:', {
-                ...bookingData,
-                has_meeting_link: !!bookingData.meeting_link,
-                has_meeting_password: !!bookingData.meeting_password,
-                has_meeting_id: !!bookingData.meeting_id,
-                has_meeting_start_url: !!bookingData.meeting_start_url
-            });
-
-            const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
-
-            console.log('💾 Resultado do insert:', {
-                success: !bookingError,
-                data: bookingInsertData,
-                error: bookingError,
-                meeting_link_saved: bookingInsertData?.meeting_link,
-                meeting_password_saved: bookingInsertData?.meeting_password
-            });
-
-            if (bookingError) {
-                console.error('Erro ao criar agendamento:', bookingError);
-        toast({ 
-          variant: 'destructive', 
-          title: 'Não conseguimos concluir o agendamento', 
-          description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.' 
-        });
-                setIsSubmitting(false);
-                return;
-            }
-
-            const bookingId = bookingInsertData?.id;
-
-            // 5.5. Enviar email de confirmação do agendamento
-            try {
-                console.log('📧 Preparando envio de email de confirmação...');
-                const emailManager = new BookingEmailManager();
-                
-                const bookingDetails = {
-                    id: bookingId,
-                    patient_name: patientData.name,
-                    patient_email: patientData.email,
-                    patient_phone: patientData.phone,
-                    service_name: selectedService?.name || 'Consulta',
-                    professional_name: selectedProfessional?.name || 'Profissional',
-                    appointment_date: selectedDate,
-                    appointment_time: selectedTime,
-                    status: 'pending',
-                    meeting_link: zoomMeetingData?.meeting_link,
-                    meeting_password: zoomMeetingData?.meeting_password
-                };
-
-                console.log('📧 Enviando email para:', patientData.email);
-                await emailManager.sendBookingConfirmation(bookingDetails);
-                console.log('✅ Email de confirmação enviado com sucesso!');
-            } catch (emailError) {
-                // Não bloquear o fluxo se o email falhar
-                console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
-            }
-
-            // 6. Redirecionar para checkout
-            console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
-            
-            // Redirecionar para página de checkout
-            navigate(`/checkout?booking_id=${bookingId}`);
-            
-        } catch (error) {
-            console.error('Erro geral no processo de agendamento:', error);
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro inesperado no agendamento', 
-        description: 'Nossa equipe foi notificada. Atualize a página e tente novamente ou entre em contato para concluir o atendimento.' 
+      // 5. Criar o agendamento
+      console.log('💾 Dados do agendamento antes de inserir no banco:', {
+        ...bookingData,
+        has_meeting_link: !!bookingData.meeting_link,
+        has_meeting_password: !!bookingData.meeting_password,
+        has_meeting_id: !!bookingData.meeting_id,
+        has_meeting_start_url: !!bookingData.meeting_start_url
       });
-            setIsSubmitting(false);
-        }
-    };
+
+      const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
+
+      console.log('💾 Resultado do insert:', {
+        success: !bookingError,
+        data: bookingInsertData,
+        error: bookingError,
+        meeting_link_saved: bookingInsertData?.meeting_link,
+        meeting_password_saved: bookingInsertData?.meeting_password
+      });
+
+      if (bookingError) {
+        console.error('Erro ao criar agendamento:', bookingError);
+    toast({ 
+      variant: 'destructive', 
+      title: 'Não conseguimos concluir o agendamento', 
+      description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.' 
+    });
+        return;
+      }
+
+      const bookingId = bookingInsertData?.id;
+
+      // 5.5. Enviar email de confirmação do agendamento
+      try {
+        console.log('📧 Preparando envio de email de confirmação...');
+        const emailManager = new BookingEmailManager();
+                
+        const bookingDetails = {
+          id: bookingId,
+          patient_name: patientData.name,
+          patient_email: patientData.email,
+          patient_phone: patientData.phone,
+          service_name: serviceDetails?.name || 'Consulta',
+          professional_name: professionalDetails?.name || 'Profissional',
+          appointment_date: selectedDate,
+          appointment_time: selectedTime,
+          status: 'pending',
+          meeting_link: zoomMeetingData?.meeting_link,
+          meeting_password: zoomMeetingData?.meeting_password
+        };
+
+        console.log('📧 Enviando email para:', patientData.email);
+        await emailManager.sendBookingConfirmation(bookingDetails);
+        console.log('✅ Email de confirmação enviado com sucesso!');
+      } catch (emailError) {
+        // Não bloquear o fluxo se o email falhar
+        console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
+      }
+
+      // 6. Redirecionar para checkout
+      console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
+            
+      // Redirecionar para página de checkout
+      navigate(`/checkout?booking_id=${bookingId}`);
+            
+    } catch (error) {
+      console.error('Erro geral no processo de agendamento:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro inesperado no agendamento',
+        description: 'Nossa equipe foi notificada. Atualize a página e tente novamente ou entre em contato para concluir o atendimento.'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
       
     const renderStepContent = () => {
         switch (step) {
@@ -1245,7 +1359,7 @@ const AgendamentoPage = () => {
                       type="text" 
                       required 
                       value={patientData.name} 
-                      onChange={(e) => setPatientData({...patientData, name: e.target.value})} 
+                      onChange={(e) => setPatientData((prev) => ({ ...prev, name: e.target.value }))} 
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                       placeholder="Seu nome completo" 
                     />
@@ -1279,6 +1393,99 @@ const AgendamentoPage = () => {
                     />
                   </div>
                 </div>
+                {!authUser ? (
+                  <div className="mt-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <KeyRound className="w-5 h-5 text-[#2d8659]" />
+                          {isExistingPatient ? 'Confirme seu acesso' : 'Crie sua senha de acesso'}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {isExistingPatient
+                            ? 'Informe sua senha atual para vincular este agendamento à sua conta.'
+                            : `Defina uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a Área do Paciente.`}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleExistingPatient}
+                        className="text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors self-start"
+                      >
+                        {isExistingPatient ? 'Sou um novo paciente' : 'Já sou paciente'}
+                      </button>
+                    </div>
+                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                      <div className="relative">
+                        <label className="block text-sm font-medium mb-2">{isExistingPatient ? 'Senha do paciente' : 'Crie uma senha'}</label>
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={patientData.password}
+                          onChange={(e) => handlePasswordChange(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
+                          placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
+                          autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                          aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                        >
+                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
+                      </div>
+                      {!isExistingPatient && (
+                        <div className="relative">
+                          <label className="block text-sm font-medium mb-2">Confirme a senha</label>
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            value={patientData.confirmPassword}
+                            onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
+                            placeholder="Repita a senha"
+                            autoComplete="new-password"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((prev) => !prev)}
+                            className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                            aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                          >
+                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm text-gray-500">
+                        {isExistingPatient
+                          ? 'Caso não lembre sua senha, solicite um link de redefinição abaixo.'
+                          : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
+                      </p>
+                      <div className="flex items-center gap-4">
+                        <button
+                          type="button"
+                          onClick={handlePasswordResetRequest}
+                          className="text-sm font-medium text-[#2d8659] hover:text-[#236b47] disabled:text-gray-400 disabled:hover:text-gray-400"
+                          disabled={!patientData.email || !!emailError}
+                        >
+                          Esqueci minha senha
+                        </button>
+                        <Link to="/recuperar-senha" className="text-sm text-[#2d8659] hover:text-[#236b47] font-medium">
+                          Recuperar agora
+                        </Link>
+                      </div>
+                    </div>
+                    {passwordError && (
+                      <p className="text-red-500 text-sm mt-3">{passwordError}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                    Você está acessando como <span className="font-semibold">{authUser.email}</span>. Usaremos seu cadastro atual para concluir o agendamento.
+                  </div>
+                )}
                 <div className="bg-gradient-to-br from-[#2d8659]/5 to-blue-50 p-8 rounded-xl border border-[#2d8659]/20 mt-8">
                   <h3 className="font-bold text-xl mb-6 flex items-center text-[#2d8659]">
                     <CheckCircle className="w-6 h-6 mr-2" />
@@ -1419,23 +1626,17 @@ const AgendamentoPage = () => {
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
                   <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
                   <motion.div
-                    whileHover={!isSubmitting && patientData.name && patientData.email && patientData.phone && !emailError ? { scale: 1.02, y: -1 } : {}}
-                    whileTap={!isSubmitting && patientData.name && patientData.email && patientData.phone && !emailError ? { scale: 0.98 } : {}}
+                    whileHover={!isSubmitting && canSubmitBooking ? { scale: 1.02, y: -1 } : {}}
+                    whileTap={!isSubmitting && canSubmitBooking ? { scale: 0.98 } : {}}
                     className="flex-1"
                   >
                     <Button 
                       onClick={handleBooking} 
-                      disabled={!patientData.name || !patientData.email || !patientData.phone || emailError || isSubmitting} 
+                      disabled={!canSubmitBooking || isSubmitting} 
                       className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${
                         isSubmitting ? 'cursor-not-allowed opacity-75' : ''
                       }`}
-                      title={
-                        !patientData.name || !patientData.email || !patientData.phone 
-                          ? 'Preencha todos os campos obrigatórios' 
-                          : emailError 
-                            ? 'Digite um email válido' 
-                            : ''
-                      }
+                      title={submitButtonTitle}
                     >
                       {isSubmitting ? (
                         <>
