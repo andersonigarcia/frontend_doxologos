@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { bookingEmailManager } from '@/lib/bookingEmailManager';
+import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 
@@ -172,7 +173,8 @@ const AdminPage = () => {
         const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
         
         if (profsRes.error) {
-            console.error('Erro ao buscar profissionais:', profsRes.error);
+            secureLog.error('Erro ao buscar profissionais:', profsRes.error?.message || profsRes.error);
+            secureLog.debug('Detalhes do erro ao buscar profissionais', profsRes.error);
         }
         
 
@@ -188,7 +190,8 @@ const AdminPage = () => {
                 setSelectedAvailProfessional(profIdToSelect);
             }
         } else if (!isAdmin && professionalId) {
-            console.warn('Nenhum registro de profissional encontrado para o usuário atual:', professionalId);
+            secureLog.warn('Nenhum registro de profissional encontrado para o usuário atual.');
+            secureLog.debug('Profissional sem registro associado', { professionalId });
         }
         // Mapear profissionais aos eventos e carregar contagem de inscrições
         const eventsWithProfessionals = await Promise.all((eventsRes.data || []).map(async (event) => {
@@ -297,7 +300,8 @@ const AdminPage = () => {
                         });
                     }
                 } catch (error) {
-                    console.error('Erro ao carregar disponibilidade mensal:', error);
+                    secureLog.error('Erro ao carregar disponibilidade mensal:', error?.message || error);
+                    secureLog.debug('Detalhes do erro ao carregar disponibilidade mensal', error);
                 }
             };
             
@@ -336,7 +340,8 @@ const AdminPage = () => {
         }
         
         if (result.error) {
-            console.error('Erro ao salvar serviço:', result.error);
+            secureLog.error('Erro ao salvar serviço:', result.error?.message || result.error);
+            secureLog.debug('Detalhes do erro ao salvar serviço', result.error);
             toast({ 
                 variant: "destructive", 
                 title: "Erro ao salvar serviço", 
@@ -387,7 +392,8 @@ const AdminPage = () => {
                     .eq('year', selectedYear);
 
                 if (deleteError) {
-                    console.error('Erro ao limpar disponibilidade existente:', deleteError);
+                    secureLog.error('Erro ao limpar disponibilidade existente:', deleteError?.message || deleteError);
+                    secureLog.debug('Detalhes do erro ao limpar disponibilidade existente', deleteError);
                     toast({ variant: "destructive", title: "Erro ao atualizar disponibilidade", description: deleteError.message });
                     return;
                 }
@@ -422,7 +428,8 @@ const AdminPage = () => {
                         .insert(availabilityToInsert);
 
                     if (insertError) {
-                        console.error('Erro ao inserir disponibilidade:', insertError);
+                        secureLog.error('Erro ao inserir disponibilidade:', insertError?.message || insertError);
+                        secureLog.debug('Detalhes do erro ao inserir disponibilidade', insertError);
                         toast({ variant: "destructive", title: "Erro ao salvar disponibilidade", description: insertError.message });
                         return;
                     }
@@ -432,7 +439,8 @@ const AdminPage = () => {
                 toast({ title: `Disponibilidade de ${monthNames[selectedMonth]}/${selectedYear} atualizada com sucesso!` });
                 await fetchAllData();
             } catch (error) {
-                console.error('Erro inesperado ao salvar disponibilidade:', error);
+                secureLog.error('Erro inesperado ao salvar disponibilidade:', error?.message || error);
+                secureLog.debug('Detalhes do erro inesperado ao salvar disponibilidade', error);
                 toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível salvar a disponibilidade." });
             }
         });
@@ -510,29 +518,30 @@ const AdminPage = () => {
                     // Se o status mudou para 'confirmed' ou 'paid'
                     if (statusChanged && (bookingEditData.status === 'confirmed' || bookingEditData.status === 'paid')) {
                         await bookingEmailManager.sendPaymentApproved(emailData);
-                        console.log('📧 Email de confirmação/pagamento enviado');
+                        secureLog.success('📧 Email de confirmação/pagamento enviado');
                     }
                     
                     // Se o status mudou para cancelado
                     if (statusChanged && bookingEditData.status.includes('cancelled')) {
                         const reason = oldStatus === 'pending_payment' ? 'Cancelado pela administração' : null;
                         await bookingEmailManager.sendCancellation(emailData, reason);
-                        console.log('📧 Email de cancelamento enviado');
+                        secureLog.success('📧 Email de cancelamento enviado');
                     }
                     
                     // Se o status mudou para completed
                     if (statusChanged && bookingEditData.status === 'completed') {
                         await bookingEmailManager.sendThankYou(emailData);
-                        console.log('📧 Email de agradecimento enviado');
+                        secureLog.success('📧 Email de agradecimento enviado');
                     }
                     
                     // Se a data/hora foi alterada (independente do status)
                     if (dateChanged && !bookingEditData.status.includes('cancelled')) {
                         await bookingEmailManager.sendRescheduled(emailData, oldDate, oldTime, 'Alterado pela administração');
-                        console.log('📧 Email de reagendamento enviado');
+                        secureLog.success('📧 Email de reagendamento enviado');
                     }
                 } catch (emailError) {
-                    console.error('❌ Erro ao enviar email:', emailError);
+                    secureLog.error('Erro ao enviar email de atualização de agendamento:', emailError?.message || emailError);
+                    secureLog.debug('Detalhes do erro ao enviar email de atualização de agendamento', emailError);
                     // Não bloqueia a atualização se o email falhar
                     toast({ 
                         variant: 'default', 
@@ -545,7 +554,8 @@ const AdminPage = () => {
                 setEditingBooking(null); 
                 await fetchAllData();
             } catch (error) {
-                console.error('Erro ao atualizar agendamento:', error);
+                secureLog.error('Erro ao atualizar agendamento:', error?.message || error);
+                secureLog.debug('Detalhes do erro ao atualizar agendamento', error);
                 toast({ 
                     variant: 'destructive', 
                     title: 'Erro ao atualizar', 
@@ -585,7 +595,8 @@ const AdminPage = () => {
                         await bookingEmailManager.sendCancellation(emailData, 'Cancelado pela administração');
                     }
                 } catch (emailError) {
-                    console.error('Erro ao enviar email:', emailError);
+                    secureLog.error('Erro ao enviar email na atualização rápida de status:', emailError?.message || emailError);
+                    secureLog.debug('Detalhes do erro ao enviar email na atualização rápida de status', emailError);
                 }
                 
                 toast({ 
@@ -595,7 +606,8 @@ const AdminPage = () => {
                 
                 await fetchAllData();
             } catch (error) {
-                console.error('Erro ao atualizar status:', error);
+                secureLog.error('Erro ao atualizar status:', error?.message || error);
+                secureLog.debug('Detalhes do erro ao atualizar status', error);
                 toast({ 
                     variant: 'destructive', 
                     title: 'Erro ao atualizar status', 
@@ -881,7 +893,8 @@ const AdminPage = () => {
                 onConfirm: async () => {
                     const { error } = await supabase.from('services').delete().eq('id', serviceId);
                     if (error) {
-                        console.error('Erro ao excluir serviço:', error);
+                        secureLog.error('Erro ao excluir serviço:', error?.message || error);
+                        secureLog.debug('Detalhes do erro ao excluir serviço', error);
                         toast({ variant: "destructive", title: "Erro ao excluir serviço", description: error.message });
                     } else {
                         toast({ title: "Serviço excluído com sucesso!" });
@@ -891,7 +904,8 @@ const AdminPage = () => {
                 }
             });
         } catch (error) {
-            console.error('Erro inesperado:', error);
+            secureLog.error('Erro inesperado ao preparar exclusão de serviço:', error?.message || error);
+            secureLog.debug('Detalhes do erro inesperado ao preparar exclusão de serviço', error);
             toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível verificar o serviço." });
         }
     };
@@ -972,7 +986,8 @@ const AdminPage = () => {
                 }
             });
         } catch (error) {
-            console.error('Erro ao verificar dependências:', error);
+            secureLog.error('Erro ao verificar dependências antes de excluir profissional:', error?.message || error);
+            secureLog.debug('Detalhes do erro ao verificar dependências do profissional', error);
             toast({ 
                 variant: "destructive", 
                 title: "Erro", 
@@ -1005,7 +1020,8 @@ const AdminPage = () => {
             const { error } = await supabase.from('professionals').delete().eq('id', profId);
 
             if (error) {
-                console.error('Erro ao excluir profissional:', error);
+                secureLog.error('Erro ao excluir profissional:', error?.message || error);
+                secureLog.debug('Detalhes do erro ao excluir profissional', error);
                 toast({ 
                     variant: "destructive", 
                     title: "Erro ao excluir profissional", 
@@ -1019,7 +1035,8 @@ const AdminPage = () => {
                 fetchAllData();
             }
         } catch (error) {
-            console.error('Erro inesperado:', error);
+            secureLog.error('Erro inesperado ao excluir profissional:', error?.message || error);
+            secureLog.debug('Detalhes do erro inesperado ao excluir profissional', error);
             toast({ 
                 variant: "destructive", 
                 title: "Erro inesperado", 
@@ -1157,7 +1174,8 @@ const AdminPage = () => {
                     .limit(1);
 
                 if (slugCheckError) {
-                    console.error('Erro ao validar slug:', slugCheckError);
+                    secureLog.error('Erro ao validar slug de evento:', slugCheckError?.message || slugCheckError);
+                    secureLog.debug('Detalhes do erro ao validar slug de evento', slugCheckError);
                     toast({
                         variant: 'destructive',
                         title: 'Erro ao validar slug',
@@ -1224,10 +1242,11 @@ const AdminPage = () => {
                 });
 
                 if (!zoomData) {
-                    console.warn('⚠️ Não foi possível criar a sala Zoom (configuração ausente ou erro).');
+                    secureLog.warn('Não foi possível criar a sala Zoom automaticamente.');
                 }
             } catch (error) {
-                console.error('❌ Erro ao criar sala Zoom:', error);
+                secureLog.error('Erro ao criar sala Zoom:', error?.message || error);
+                secureLog.debug('Detalhes do erro ao criar sala Zoom', error);
                 // Não bloquear criação do evento se Zoom falhar
             }
 
@@ -1246,7 +1265,8 @@ const AdminPage = () => {
         }
 
         if (result.error) {
-            console.error('Erro ao salvar evento:', result.error);
+            secureLog.error('Erro ao salvar evento:', result.error?.message || result.error);
+            secureLog.debug('Detalhes do erro ao salvar evento', result.error);
             toast({
                 variant: 'destructive',
                 title: 'Erro ao salvar evento',
@@ -1322,7 +1342,8 @@ const AdminPage = () => {
                     inscricoesData = data || [];
                 }
             } catch (error) {
-
+                secureLog.error('Erro ao carregar inscrições do evento:', error?.message || error);
+                secureLog.debug('Detalhes do erro ao carregar inscrições do evento', error);
                 inscricoesData = [];
             }
 
@@ -1347,19 +1368,22 @@ const AdminPage = () => {
                                 .eq('evento_id', eventId);
                             
                             if (inscricoesError) {
-                                console.error('Erro ao excluir inscrições:', inscricoesError);
+                                secureLog.error('Erro ao excluir inscrições do evento:', inscricoesError?.message || inscricoesError);
+                                secureLog.debug('Detalhes do erro ao excluir inscrições do evento', inscricoesError);
                                 toast({ variant: "destructive", title: "Erro ao excluir inscrições do evento" });
                                 setConfirmDialog({ ...confirmDialog, isOpen: false });
                                 return;
                             }
                         } catch (error) {
-
+                            secureLog.error('Erro inesperado ao excluir inscrições do evento:', error?.message || error);
+                            secureLog.debug('Detalhes do erro inesperado ao excluir inscrições do evento', error);
                         }
                     }
 
                     const { error } = await supabase.from('eventos').delete().eq('id', eventId);
                     if (error) {
-                        console.error('Erro ao excluir evento:', error);
+                        secureLog.error('Erro ao excluir evento:', error?.message || error);
+                        secureLog.debug('Detalhes do erro ao excluir evento', error);
                         toast({ variant: "destructive", title: "Erro ao excluir evento", description: error.message });
                     } else {
                         toast({ title: "Evento excluído com sucesso!" });
@@ -1369,7 +1393,8 @@ const AdminPage = () => {
                 }
             });
         } catch (error) {
-            console.error('Erro inesperado:', error);
+            secureLog.error('Erro inesperado ao preparar exclusão de evento:', error?.message || error);
+            secureLog.debug('Detalhes do erro inesperado ao preparar exclusão de evento', error);
             toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível verificar o evento." });
         }
     };
@@ -2505,7 +2530,8 @@ const AdminPage = () => {
                                                                             });
                                                                         
                                                                         if (error) {
-                                                                            console.error('Erro no upload:', error);
+                                                                            secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
+                                                                            secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
                                                                             toast({ 
                                                                                 variant: 'destructive', 
                                                                                 title: 'Erro no upload', 
@@ -2550,7 +2576,8 @@ const AdminPage = () => {
                                                                 img.src = URL.createObjectURL(file);
                                                                 
                                                             } catch (error) {
-                                                                console.error('Erro no upload:', error);
+                                                                secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
+                                                                secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
                                                                 toast({ 
                                                                     variant: 'destructive', 
                                                                     title: 'Erro no upload', 
