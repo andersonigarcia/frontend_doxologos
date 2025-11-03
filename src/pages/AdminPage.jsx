@@ -136,7 +136,7 @@ const AdminPage = () => {
         const promises = [
             isAdmin ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalId),
             supabase.from('services').select('*'),
-            isAdmin ? supabase.from('professionals').select('*') : supabase.from('professionals').select('*').eq('id', professionalId),
+            isAdmin ? supabase.from('professionals').select('*') : supabase.from('professionals').select('*').eq('user_id', professionalId),
             isAdmin ? supabase.from('availability').select('*') : supabase.from('availability').select('*').eq('professional_id', professionalId),
             isAdmin ? supabase.from('blocked_dates').select('*') : supabase.from('blocked_dates').select('*').eq('professional_id', professionalId),
         ];
@@ -163,17 +163,13 @@ const AdminPage = () => {
         setProfessionals(profsRes.data || []);
         if (profsRes.data && profsRes.data.length > 0) {
             // Para admin, usa o primeiro profissional da lista
-            // Para professional, usa sempre o próprio ID
-            let profIdToSelect;
-            if (isAdmin) {
-                profIdToSelect = profsRes.data[0].id;
-            } else {
-                // Para professional, usa sempre o próprio ID (já filtrado na query)
-                profIdToSelect = profsRes.data.length > 0 ? profsRes.data[0].id : professionalId;
-            }
+            // Para professional, usa sempre o registro encontrado para o usuário logado
+            const profIdToSelect = isAdmin ? profsRes.data[0].id : profsRes.data[0].id;
             if (profIdToSelect) {
                 setSelectedAvailProfessional(profIdToSelect);
             }
+        } else if (!isAdmin && professionalId) {
+            console.warn('Nenhum registro de profissional encontrado para o usuário atual:', professionalId);
         }
         // Mapear profissionais aos eventos e carregar contagem de inscrições
         const eventsWithProfessionals = await Promise.all((eventsRes.data || []).map(async (event) => {
@@ -352,7 +348,9 @@ const AdminPage = () => {
     };
 
     const handleSaveAvailability = async () => {
-        const professionalId = userRole === 'admin' ? selectedAvailProfessional : user.id;
+        const professionalId = userRole === 'admin'
+            ? selectedAvailProfessional
+            : selectedAvailProfessional || professionals[0]?.id;
         
         if (!professionalId) {
             toast({ variant: "destructive", title: "Erro", description: "Selecione um profissional." });
@@ -423,7 +421,9 @@ const AdminPage = () => {
 
     const handleAddBlockedDate = async () => {
         if (!newBlockedDate.date) { toast({ variant: 'destructive', title: 'Data é obrigatória' }); return; }
-        const professionalId = userRole === 'admin' ? selectedAvailProfessional : user.id;
+        const professionalId = userRole === 'admin'
+            ? selectedAvailProfessional
+            : selectedAvailProfessional || professionals[0]?.id;
         const dataToInsert = { professional_id: professionalId, blocked_date: newBlockedDate.date, reason: newBlockedDate.reason };
         if (newBlockedDate.start_time) dataToInsert.start_time = newBlockedDate.start_time;
         if (newBlockedDate.end_time) dataToInsert.end_time = newBlockedDate.end_time;
