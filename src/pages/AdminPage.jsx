@@ -56,9 +56,11 @@ const AdminPage = () => {
         link_slug: '',
         data_inicio_exibicao: '',
         data_fim_exibicao: '',
+        vagas_disponiveis: 0,
         ativo: true
     });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
+    const [eventFormErrors, setEventFormErrors] = useState({});
 
     // Função para gerar slug único a partir do título
     const generateUniqueSlug = (title) => {
@@ -74,6 +76,23 @@ const AdminPage = () => {
         // Adicionar timestamp para garantir unicidade
         const timestamp = Date.now().toString().slice(-6);
         return `${baseSlug}-${timestamp}`;
+    };
+
+    const parseDateTime = (value) => {
+        if (!value) return null;
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const normalizeDateTime = (value) => {
+        if (!value) return null;
+        return value.length === 16 ? `${value}:00` : value;
+    };
+
+    const clearEventError = (field) => {
+        if (eventFormErrors[field]) {
+            setEventFormErrors((prev) => ({ ...prev, [field]: undefined }));
+        }
     };
 
     const [editingBooking, setEditingBooking] = useState(null);
@@ -1011,154 +1030,239 @@ const AdminPage = () => {
 
     const handleEventSubmit = async (e) => {
         e.preventDefault();
-        
-        // Validações básicas
-        if (!eventFormData.titulo?.trim()) {
-            toast({ variant: "destructive", title: "Título é obrigatório" });
+
+        const errors = {};
+        const trimmedTitle = eventFormData.titulo?.trim() || '';
+        const trimmedDescription = eventFormData.descricao?.trim() || '';
+        const professionalId = eventFormData.professional_id;
+        const startDate = parseDateTime(eventFormData.data_inicio);
+        const endDate = parseDateTime(eventFormData.data_fim);
+        const signupDeadlineDate = parseDateTime(eventFormData.data_limite_inscricao);
+        const displayStartDate = parseDateTime(eventFormData.data_inicio_exibicao);
+        const displayEndDate = parseDateTime(eventFormData.data_fim_exibicao);
+
+        const limit = Number.parseInt(eventFormData.limite_participantes, 10);
+        const rawVagas = eventFormData.vagas_disponiveis;
+        const vagasDisponiveis = rawVagas === '' || rawVagas === null || rawVagas === undefined
+            ? 0
+            : Number.parseInt(rawVagas, 10);
+        const rawValor = eventFormData.valor;
+        const valor = rawValor === '' || rawValor === null || rawValor === undefined
+            ? 0
+            : Number.parseFloat(rawValor);
+
+        if (!trimmedTitle) {
+            errors.titulo = 'Informe um título para o evento.';
+        }
+
+        if (!professionalId) {
+            errors.professional_id = 'Selecione um profissional responsável.';
+        }
+
+        if (!startDate) {
+            errors.data_inicio = 'Informe a data e hora de início.';
+        }
+
+        if (!endDate) {
+            errors.data_fim = 'Informe a data e hora de término.';
+        }
+
+        if (startDate && endDate && endDate <= startDate) {
+            errors.data_fim = 'A data e hora de término devem ser posteriores ao início.';
+        }
+
+        if (!Number.isFinite(limit) || limit <= 0) {
+            errors.limite_participantes = 'Defina o limite de vagas (mínimo 1).';
+        }
+
+        if (!Number.isFinite(vagasDisponiveis) || vagasDisponiveis < 0) {
+            errors.vagas_disponiveis = 'Informe as vagas disponíveis na sala (zero para ilimitado).';
+        }
+
+        if (!Number.isFinite(valor) || valor < 0) {
+            errors.valor = 'Defina um valor válido (use 0 para evento gratuito).';
+        }
+
+        if (!signupDeadlineDate) {
+            errors.data_limite_inscricao = 'Informe a data limite para inscrições.';
+        } else if (startDate && signupDeadlineDate >= startDate) {
+            errors.data_limite_inscricao = 'O limite de inscrição precisa ocorrer antes do início do evento.';
+        }
+
+        if (displayStartDate && displayEndDate && displayEndDate < displayStartDate) {
+            errors.data_fim_exibicao = 'O fim da exibição deve ser posterior ao início.';
+        }
+
+        if (displayStartDate && startDate && displayStartDate > startDate) {
+            errors.data_inicio_exibicao = 'A exibição deve começar antes do evento iniciar.';
+        }
+
+        if (displayEndDate && startDate && displayEndDate < startDate) {
+            errors.data_fim_exibicao = 'Mantenha o evento visível pelo menos até o início.';
+        }
+
+        const existingEvent = isEditingEvent ? events.find(evt => evt.id === eventFormData.id) : null;
+        const existingRegistrations = existingEvent?.inscricoes_eventos?.[0]?.count || 0;
+
+        if (!errors.limite_participantes && isEditingEvent && Number.isFinite(limit) && existingRegistrations > 0 && limit < existingRegistrations) {
+            errors.limite_participantes = `Já existem ${existingRegistrations} inscrições. Ajuste o limite para pelo menos esse total.`;
+        }
+
+        if (!errors.vagas_disponiveis && isEditingEvent && Number.isFinite(vagasDisponiveis) && vagasDisponiveis > 0 && existingRegistrations > 0 && vagasDisponiveis < existingRegistrations) {
+            errors.vagas_disponiveis = `Já existem ${existingRegistrations} inscrições. Defina vagas suficientes na sala.`;
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setEventFormErrors(errors);
+            const firstErrorKey = Object.keys(errors)[0];
+            toast({
+                variant: 'destructive',
+                title: 'Revise os campos do evento',
+                description: errors[firstErrorKey]
+            });
             return;
         }
-        if (!eventFormData.professional_id) {
-            toast({ variant: "destructive", title: "Selecione um profissional" });
-            return;
-        }
-        if (!eventFormData.data_inicio || !eventFormData.data_fim) {
-            toast({ variant: "destructive", title: "Datas de início e fim são obrigatórias" });
-            return;
-        }
-        
-        // Validar e gerar link_slug se necessário
-        let finalLinkSlug = eventFormData.link_slug?.trim();
-        
-        // Se link_slug estiver vazio, gerar automaticamente do título
+
+        setEventFormErrors({});
+
+        let finalLinkSlug = (eventFormData.link_slug || '').trim().toLowerCase();
+        const originalSlug = (eventFormData.link_slug || '').trim().toLowerCase();
+
         if (!finalLinkSlug) {
-            finalLinkSlug = generateUniqueSlug(eventFormData.titulo);
-            toast({ 
-                title: "Slug gerado automaticamente", 
-                description: `Link do evento: ${finalLinkSlug}` 
+            finalLinkSlug = generateUniqueSlug(trimmedTitle);
+            setEventFormData(prev => ({ ...prev, link_slug: finalLinkSlug }));
+            toast({
+                title: 'Slug gerado automaticamente',
+                description: `Link do evento: ${finalLinkSlug}`
             });
         } else {
-            // Validar formato do slug
             const slugRegex = /^[a-z0-9-]+$/;
             if (!slugRegex.test(finalLinkSlug)) {
-                toast({ 
-                    variant: "destructive", 
-                    title: "Slug inválido", 
-                    description: "Use apenas letras minúsculas, números e hífens" 
+                const message = 'Use apenas letras minúsculas, números e hífens no slug.';
+                setEventFormErrors(prev => ({ ...prev, link_slug: message }));
+                toast({
+                    variant: 'destructive',
+                    title: 'Slug inválido',
+                    description: message
                 });
                 return;
             }
-            
-            // Verificar se slug já existe (apenas para novos eventos ou se mudou)
-            if (!isEditingEvent || finalLinkSlug !== eventFormData.link_slug) {
-                const { data: existingEvent } = await supabase
+
+            const shouldCheckSlug = !isEditingEvent || finalLinkSlug !== originalSlug;
+            if (shouldCheckSlug) {
+                const { data: slugMatches, error: slugCheckError } = await supabase
                     .from('eventos')
                     .select('id')
                     .eq('link_slug', finalLinkSlug)
-                    .single();
-                
-                if (existingEvent && (!isEditingEvent || existingEvent.id !== eventFormData.id)) {
-                    toast({ 
-                        variant: "destructive", 
-                        title: "Slug duplicado", 
-                        description: "Este link já está sendo usado. Gerando um único..." 
+                    .limit(1);
+
+                if (slugCheckError) {
+                    console.error('Erro ao validar slug:', slugCheckError);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Erro ao validar slug',
+                        description: slugCheckError.message || 'Não foi possível validar o link. Tente novamente.'
                     });
-                    finalLinkSlug = generateUniqueSlug(eventFormData.titulo);
+                    return;
+                }
+
+                if (slugMatches && slugMatches.length > 0 && (!isEditingEvent || slugMatches[0].id !== eventFormData.id)) {
+                    finalLinkSlug = generateUniqueSlug(trimmedTitle);
+                    setEventFormData(prev => ({ ...prev, link_slug: finalLinkSlug }));
+                    toast({
+                        title: 'Slug ajustado automaticamente',
+                        description: `Já existia um evento com este link. Usamos: ${finalLinkSlug}`
+                    });
                 }
             }
         }
-        
+
+        const sanitizedEventData = {
+            titulo: trimmedTitle,
+            descricao: trimmedDescription || null,
+            tipo_evento: eventFormData.tipo_evento || 'Workshop',
+            professional_id: professionalId,
+            data_inicio: normalizeDateTime(eventFormData.data_inicio),
+            data_fim: normalizeDateTime(eventFormData.data_fim),
+            data_limite_inscricao: normalizeDateTime(eventFormData.data_limite_inscricao),
+            limite_participantes: limit,
+            vagas_disponiveis: Number.isFinite(vagasDisponiveis) ? vagasDisponiveis : 0,
+            valor: Number.isFinite(valor) ? valor : 0,
+            data_inicio_exibicao: eventFormData.data_inicio_exibicao ? normalizeDateTime(eventFormData.data_inicio_exibicao) : null,
+            data_fim_exibicao: eventFormData.data_fim_exibicao ? normalizeDateTime(eventFormData.data_fim_exibicao) : null,
+            ativo: eventFormData.ativo === undefined ? true : !!eventFormData.ativo,
+            link_slug: finalLinkSlug
+        };
+
         let result;
         if (isEditingEvent) {
-            // Para edição, remover campos que não são colunas da tabela
-            const { 
-                id, 
-                inscricoes_eventos, 
-                professional, 
-                created_at, 
-                updated_at,
-                link_slug,
-                ...updateData 
-            } = eventFormData;
-            
-            result = await supabase.from('eventos').update({
-                ...updateData,
-                link_slug: finalLinkSlug
-            }).eq('id', id);
+            const { id } = eventFormData;
+            result = await supabase
+                .from('eventos')
+                .update(sanitizedEventData)
+                .eq('id', id)
+                .select();
         } else {
-            // Para inserção, remover campos desnecessários
-            const { 
-                id, 
-                inscricoes_eventos, 
-                professional, 
-                created_at, 
-                updated_at,
-                link_slug,
-                ...eventDataWithoutId 
-            } = eventFormData;
-            
-            // NOVO: Criar sala Zoom automaticamente para o evento
-            console.log('🎥 Criando sala Zoom para o evento...');
             let zoomData = null;
-            
             try {
                 const { default: zoomService } = await import('../lib/zoomService');
-                
+                const durationMinutes = startDate && endDate ? Math.max(1, Math.ceil((endDate - startDate) / 60000)) : 60;
+
                 zoomData = await zoomService.createMeeting({
-                    topic: `Evento: ${eventFormData.titulo}`,
-                    startTime: eventFormData.data_inicio, // ISO 8601 format
-                    duration: Math.ceil((new Date(eventFormData.data_fim) - new Date(eventFormData.data_inicio)) / 60000), // minutos
+                    topic: `Evento: ${trimmedTitle}`,
+                    startTime: sanitizedEventData.data_inicio,
+                    duration: durationMinutes,
                     timezone: 'America/Sao_Paulo',
-                    agenda: eventFormData.descricao || '',
+                    agenda: sanitizedEventData.descricao || '',
                     settings: {
                         join_before_host: false,
-                        waiting_room: true, // CRÍTICO: sala de espera ativa
-                        approval_type: 0, // Requer aprovação manual do host
+                        waiting_room: true,
+                        approval_type: 0,
                         mute_upon_entry: true,
                         auto_recording: 'none'
                     }
                 });
-                
-                if (zoomData) {
-                    console.log('✅ Sala Zoom criada com sucesso!');
-                } else {
-                    console.warn('⚠️ Não foi possível criar sala Zoom (configuração pode estar faltando)');
+
+                if (!zoomData) {
+                    console.warn('⚠️ Não foi possível criar a sala Zoom (configuração ausente ou erro).');
                 }
             } catch (error) {
                 console.error('❌ Erro ao criar sala Zoom:', error);
                 // Não bloquear criação do evento se Zoom falhar
             }
-            
-            result = await supabase.from('eventos').insert([{
-                ...eventDataWithoutId,
-                link_slug: finalLinkSlug,
-                // Adicionar dados do Zoom se criado com sucesso
-                ...(zoomData && {
-                    meeting_link: zoomData.join_url,
-                    meeting_password: zoomData.password,
-                    meeting_id: zoomData.id?.toString(),
-                    meeting_start_url: zoomData.start_url
-                })
-            }]);
+
+            result = await supabase
+                .from('eventos')
+                .insert([{
+                    ...sanitizedEventData,
+                    ...(zoomData ? {
+                        meeting_link: zoomData.join_url,
+                        meeting_password: zoomData.password,
+                        meeting_id: zoomData.id?.toString(),
+                        meeting_start_url: zoomData.start_url
+                    } : {})
+                }])
+                .select();
         }
-        
+
         if (result.error) {
             console.error('Erro ao salvar evento:', result.error);
-            toast({ 
-                variant: "destructive", 
-                title: "Erro ao salvar evento", 
-                description: result.error.message 
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao salvar evento',
+                description: result.error.message
             });
-        } else {
-            const zoomMessage = result.data?.[0]?.meeting_link 
-                ? ' (Sala Zoom criada ✅)' 
-                : '';
-            toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!${zoomMessage}` });
-            resetEventForm();
-            fetchAllData();
+            return;
         }
+
+        const zoomMessage = !isEditingEvent && result.data?.[0]?.meeting_link ? ' (Sala Zoom criada ✅)' : '';
+        toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!${zoomMessage}` });
+        resetEventForm();
+        fetchAllData();
     };
     const resetEventForm = () => { 
         setIsEditingEvent(false); 
+        setEventFormErrors({});
         setEventFormData({ 
             id: null, 
             titulo: '', 
@@ -1170,7 +1274,7 @@ const AdminPage = () => {
             limite_participantes: '', 
             data_limite_inscricao: '',
             valor: 0,
-            vagas_disponiveis: 0, // NOVO: limite de vagas (0 = ilimitado)
+            vagas_disponiveis: 0, // 0 = ilimitado
             link_slug: '',
             data_inicio_exibicao: '',
             data_fim_exibicao: '',
@@ -1178,18 +1282,26 @@ const AdminPage = () => {
         }); 
     };
     const handleEditEvent = (event) => { 
-        setIsEditingEvent(true); 
+        const formatDateForInput = (value) => {
+            if (!value) return '';
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 16);
+        };
+
+        setIsEditingEvent(true);
+        setEventFormErrors({});
         setEventFormData({ 
             ...event, 
-            data_inicio: new Date(event.data_inicio).toISOString().slice(0, 16), 
-            data_fim: new Date(event.data_fim).toISOString().slice(0, 16), 
-            data_limite_inscricao: new Date(event.data_limite_inscricao).toISOString().slice(0, 16),
-            // Tratar campos de exibição (podem ser null)
-            data_inicio_exibicao: event.data_inicio_exibicao ? new Date(event.data_inicio_exibicao).toISOString().slice(0, 16) : '',
-            data_fim_exibicao: event.data_fim_exibicao ? new Date(event.data_fim_exibicao).toISOString().slice(0, 16) : '',
-            // Garantir que professional_id nunca seja null
+            data_inicio: formatDateForInput(event.data_inicio), 
+            data_fim: formatDateForInput(event.data_fim), 
+            data_limite_inscricao: formatDateForInput(event.data_limite_inscricao),
+            data_inicio_exibicao: formatDateForInput(event.data_inicio_exibicao),
+            data_fim_exibicao: formatDateForInput(event.data_fim_exibicao),
             professional_id: event.professional_id || '',
-            // Garantir que ativo tenha valor padrão
+            limite_participantes: event.limite_participantes != null ? String(event.limite_participantes) : '',
+            vagas_disponiveis: event.vagas_disponiveis != null ? Number(event.vagas_disponiveis) : 0,
+            valor: event.valor != null ? Number(event.valor) : 0,
+            link_slug: event.link_slug || '',
             ativo: event.ativo !== undefined ? event.ativo : true
         }); 
     };
@@ -3057,25 +3169,102 @@ const AdminPage = () => {
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
                                     <form onSubmit={handleEventSubmit} className="space-y-4 text-sm">
-                                        <input name="titulo" value={eventFormData.titulo || ''} onChange={e => setEventFormData({...eventFormData, titulo: e.target.value})} placeholder="Título do Evento" className="w-full input" required />
+                                        <div>
+                                            <input 
+                                                name="titulo" 
+                                                value={eventFormData.titulo || ''} 
+                                                onChange={e => {
+                                                    setEventFormData({...eventFormData, titulo: e.target.value});
+                                                    clearEventError('titulo');
+                                                }} 
+                                                placeholder="Título do Evento" 
+                                                className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
+                                                required 
+                                            />
+                                            {eventFormErrors.titulo && (
+                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.titulo}</p>
+                                            )}
+                                        </div>
                                         <textarea name="descricao" value={eventFormData.descricao || ''} onChange={e => setEventFormData({...eventFormData, descricao: e.target.value})} placeholder="Descrição" className="w-full input" rows="3"></textarea>
                                         <select name="tipo_evento" value={eventFormData.tipo_evento || 'Workshop'} onChange={e => setEventFormData({...eventFormData, tipo_evento: e.target.value})} className="w-full input"><option>Workshop</option><option>Palestra</option></select>
-                                        <select name="professional_id" value={eventFormData.professional_id || ''} onChange={e => setEventFormData({...eventFormData, professional_id: e.target.value})} className="w-full input" required>
-                                            <option value="">Selecione o Profissional</option>
-                                            {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                        </select>
+                                        <div>
+                                            <select 
+                                                name="professional_id" 
+                                                value={eventFormData.professional_id || ''} 
+                                                onChange={e => {
+                                                    setEventFormData({...eventFormData, professional_id: e.target.value});
+                                                    clearEventError('professional_id');
+                                                }} 
+                                                className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
+                                                required
+                                            >
+                                                <option value="">Selecione o Profissional</option>
+                                                {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                            {eventFormErrors.professional_id && (
+                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
+                                            )}
+                                        </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Data/Hora Início</label>
-                                                <input type="datetime-local" name="data_inicio" value={eventFormData.data_inicio || ''} onChange={e => setEventFormData({...eventFormData, data_inicio: e.target.value})} className="w-full input" required/>
+                                                <input 
+                                                    type="datetime-local" 
+                                                    name="data_inicio" 
+                                                    value={eventFormData.data_inicio || ''} 
+                                                    onChange={e => {
+                                                        setEventFormData({...eventFormData, data_inicio: e.target.value});
+                                                        clearEventError('data_inicio');
+                                                        clearEventError('data_fim');
+                                                    }} 
+                                                    className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                    required
+                                                />
+                                                {eventFormErrors.data_inicio && (
+                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Data/Hora Fim</label>
-                                                <input type="datetime-local" name="data_fim" value={eventFormData.data_fim || ''} onChange={e => setEventFormData({...eventFormData, data_fim: e.target.value})} className="w-full input" required/>
+                                                <input 
+                                                    type="datetime-local" 
+                                                    name="data_fim" 
+                                                    value={eventFormData.data_fim || ''} 
+                                                    onChange={e => {
+                                                        setEventFormData({...eventFormData, data_fim: e.target.value});
+                                                        clearEventError('data_fim');
+                                                    }} 
+                                                    className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
+                                                    required
+                                                />
+                                                {eventFormErrors.data_fim && (
+                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite de Vagas</label>
-                                                <input type="number" name="limite_participantes" value={eventFormData.limite_participantes || ''} onChange={e => setEventFormData({...eventFormData, limite_participantes: e.target.value})} placeholder="Ex: 20" className="w-full input" min="1" max="500" required/>
+                                                <input 
+                                                    type="number" 
+                                                    name="limite_participantes" 
+                                                    value={eventFormData.limite_participantes || ''} 
+                                                    onChange={e => {
+                                                        setEventFormData({...eventFormData, limite_participantes: e.target.value});
+                                                        clearEventError('limite_participantes');
+                                                    }} 
+                                                    placeholder="Ex: 20" 
+                                                    className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
+                                                    min="1" 
+                                                    max="500" 
+                                                    required
+                                                />
+                                                {eventFormErrors.limite_participantes && (
+                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">🎫 Vagas Disponíveis na Sala Zoom</label>
@@ -3083,12 +3272,20 @@ const AdminPage = () => {
                                                     type="number" 
                                                     name="vagas_disponiveis" 
                                                     value={eventFormData.vagas_disponiveis || 0} 
-                                                    onChange={e => setEventFormData({...eventFormData, vagas_disponiveis: parseInt(e.target.value) || 0})} 
+                                                    onChange={e => {
+                                                        const parsedValue = parseInt(e.target.value, 10);
+                                                        setEventFormData({...eventFormData, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue});
+                                                        clearEventError('vagas_disponiveis');
+                                                    }} 
                                                     placeholder="0 = ilimitado" 
-                                                    className="w-full input" 
+                                                    className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
                                                     min="0" 
                                                     max="1000"
                                                 />
+                                                {eventFormErrors.vagas_disponiveis && (
+                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
+                                                )}
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     {eventFormData.vagas_disponiveis > 0 
                                                         ? `Limite: ${eventFormData.vagas_disponiveis} participantes` 
@@ -3101,12 +3298,20 @@ const AdminPage = () => {
                                                     type="number" 
                                                     name="valor" 
                                                     value={eventFormData.valor || 0} 
-                                                    onChange={e => setEventFormData({...eventFormData, valor: parseFloat(e.target.value) || 0})} 
+                                                    onChange={e => {
+                                                        const parsedValue = parseFloat(e.target.value);
+                                                        setEventFormData({...eventFormData, valor: Number.isNaN(parsedValue) ? 0 : parsedValue});
+                                                        clearEventError('valor');
+                                                    }} 
                                                     placeholder="0.00" 
-                                                    className="w-full input" 
+                                                    className={`w-full input ${eventFormErrors.valor ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.valor ? 'true' : 'false'}
                                                     min="0" 
                                                     step="0.01"
                                                 />
+                                                {eventFormErrors.valor && (
+                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
+                                                )}
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     {eventFormData.valor > 0 
                                                         ? `Evento pago - R$ ${parseFloat(eventFormData.valor).toFixed(2)}` 
@@ -3115,7 +3320,21 @@ const AdminPage = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1">Limite para Inscrição</label>
-                                                <input type="datetime-local" name="data_limite_inscricao" value={eventFormData.data_limite_inscricao || ''} onChange={e => setEventFormData({...eventFormData, data_limite_inscricao: e.target.value})} className="w-full input" required/>
+                                                <input 
+                                                    type="datetime-local" 
+                                                    name="data_limite_inscricao" 
+                                                    value={eventFormData.data_limite_inscricao || ''} 
+                                                    onChange={e => {
+                                                        setEventFormData({...eventFormData, data_limite_inscricao: e.target.value});
+                                                        clearEventError('data_limite_inscricao');
+                                                    }} 
+                                                    className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
+                                                    required
+                                                />
+                                                {eventFormErrors.data_limite_inscricao && (
+                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -3129,11 +3348,19 @@ const AdminPage = () => {
                                                         type="datetime-local" 
                                                         name="data_inicio_exibicao" 
                                                         value={eventFormData.data_inicio_exibicao || ''} 
-                                                        onChange={e => setEventFormData({...eventFormData, data_inicio_exibicao: e.target.value})} 
-                                                        className="w-full input"
+                                                        onChange={e => {
+                                                            setEventFormData({...eventFormData, data_inicio_exibicao: e.target.value});
+                                                            clearEventError('data_inicio_exibicao');
+                                                            clearEventError('data_fim_exibicao');
+                                                        }} 
+                                                        className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                        aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
                                                         title="Data e hora que o evento começará a aparecer na página principal"
                                                     />
                                                     <p className="text-xs text-gray-500 mt-1">Quando começar a mostrar o evento</p>
+                                                    {eventFormErrors.data_inicio_exibicao && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
+                                                    )}
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-medium mb-1 text-gray-600">Fim da Exibição</label>
@@ -3141,11 +3368,18 @@ const AdminPage = () => {
                                                         type="datetime-local" 
                                                         name="data_fim_exibicao" 
                                                         value={eventFormData.data_fim_exibicao || ''} 
-                                                        onChange={e => setEventFormData({...eventFormData, data_fim_exibicao: e.target.value})} 
-                                                        className="w-full input"
+                                                        onChange={e => {
+                                                            setEventFormData({...eventFormData, data_fim_exibicao: e.target.value});
+                                                            clearEventError('data_fim_exibicao');
+                                                        }} 
+                                                        className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                        aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
                                                         title="Data e hora que o evento deixará de aparecer na página principal"
                                                     />
                                                     <p className="text-xs text-gray-500 mt-1">Quando parar de mostrar o evento</p>
+                                                    {eventFormErrors.data_fim_exibicao && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -3176,9 +3410,14 @@ const AdminPage = () => {
                                                 <input 
                                                     name="link_slug" 
                                                     value={eventFormData.link_slug || ''} 
-                                                    onChange={e => setEventFormData({...eventFormData, link_slug: e.target.value.toLowerCase()})} 
+                                                    onChange={e => {
+                                                        const value = e.target.value.toLowerCase();
+                                                        setEventFormData({...eventFormData, link_slug: value});
+                                                        clearEventError('link_slug');
+                                                    }} 
                                                     placeholder="workshop-meditacao-123456" 
-                                                    className="flex-1 input"
+                                                    className={`flex-1 input ${eventFormErrors.link_slug ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                    aria-invalid={eventFormErrors.link_slug ? 'true' : 'false'}
                                                     pattern="[a-z0-9-]+"
                                                     title="Use apenas letras minúsculas, números e hífens"
                                                 />
@@ -3188,6 +3427,7 @@ const AdminPage = () => {
                                                     onClick={() => {
                                                         const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
                                                         setEventFormData({...eventFormData, link_slug: slug});
+                                                        clearEventError('link_slug');
                                                         toast({ title: "Slug gerado!", description: slug });
                                                     }}
                                                     disabled={!eventFormData.titulo}
@@ -3200,6 +3440,9 @@ const AdminPage = () => {
                                                     ? `URL: /evento/${eventFormData.link_slug}` 
                                                     : 'Deixe vazio para gerar automaticamente'}
                                             </p>
+                                            {eventFormErrors.link_slug && (
+                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.link_slug}</p>
+                                            )}
                                         </div>
                                         <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
                                     </form>
