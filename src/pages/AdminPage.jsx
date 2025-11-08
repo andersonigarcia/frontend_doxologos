@@ -150,25 +150,62 @@ const AdminPage = () => {
         setLoading(true);
         const isAdmin = userRole === 'admin';
         const professionalId = user?.id;
-    
+
+        // Se for profissional, buscar o professional_id associado
+        let professionalsRecordId = null;
+        if (!isAdmin && professionalId) {
+            const { data: profData } = await supabase
+                .from('professionals')
+                .select('id')
+                .eq('user_id', professionalId)
+                .maybeSingle();
+            professionalsRecordId = profData?.id;
+        }
+        
+        const reviewSelect = `
+            *,
+            bookings:bookings!inner(
+                id,
+                professional_id,
+                patient_name,
+                patient_email,
+                booking_date,
+                booking_time,
+                professional:professionals(id, name)
+            )
+        `;
+
+        const eventsPromise = isAdmin
+            ? supabase.from('eventos').select('*').order('data_inicio', { ascending: false })
+            : Promise.resolve({ data: [], error: null });
+
+        let reviewsPromise;
+        if (isAdmin) {
+            reviewsPromise = supabase
+                .from('reviews')
+                .select(reviewSelect)
+                .order('created_at', { ascending: false });
+        } else if (professionalsRecordId) {
+            reviewsPromise = supabase
+                .from('reviews')
+                .select(reviewSelect)
+                .eq('bookings.professional_id', professionalsRecordId)
+                .eq('is_approved', true)
+                .order('created_at', { ascending: false });
+        } else {
+            reviewsPromise = Promise.resolve({ data: [], error: null });
+        }
 
         
         const promises = [
-            isAdmin ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalId),
+            isAdmin ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalsRecordId),
             supabase.from('services').select('*'),
             isAdmin ? supabase.from('professionals').select('*') : supabase.from('professionals').select('*').eq('user_id', professionalId),
-            isAdmin ? supabase.from('availability').select('*') : supabase.from('availability').select('*').eq('professional_id', professionalId),
-            isAdmin ? supabase.from('blocked_dates').select('*') : supabase.from('blocked_dates').select('*').eq('professional_id', professionalId),
+            isAdmin ? supabase.from('availability').select('*') : supabase.from('availability').select('*').eq('professional_id', professionalsRecordId),
+            isAdmin ? supabase.from('blocked_dates').select('*') : supabase.from('blocked_dates').select('*').eq('professional_id', professionalsRecordId),
+            eventsPromise,
+            reviewsPromise
         ];
-
-        if (isAdmin) {
-            // Buscar eventos sem JOIN por enquanto - faremos a associação depois
-            promises.push(supabase.from('eventos').select('*').order('data_inicio', { ascending: false }));
-            promises.push(supabase.from('reviews').select('*'));
-        } else {
-            promises.push(Promise.resolve({ data: [], error: null })); // events
-            promises.push(supabase.from('reviews').select('*').eq('professional_id', professionalId)); // reviews
-        }
 
         const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
         
@@ -176,16 +213,73 @@ const AdminPage = () => {
             secureLog.error('Erro ao buscar profissionais:', profsRes.error?.message || profsRes.error);
             secureLog.debug('Detalhes do erro ao buscar profissionais', profsRes.error);
         }
-        
 
-        
+        if (reviewsRes.error) {
+            secureLog.error('Erro ao buscar avaliações:', reviewsRes.error?.message || reviewsRes.error);
+            secureLog.debug('Detalhes do erro ao buscar avaliações', reviewsRes.error);
+        }
+
+        const rawProfessionals = profsRes.data || [];
+        let enrichedProfessionals = rawProfessionals;
+
+        if (rawProfessionals.length > 0) {
+            if (isAdmin) {
+                try {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData?.session?.access_token;
+
+                    if (accessToken) {
+                        const response = await fetch(
+                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-list-users`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${accessToken}`,
+                                    'Content-Type': 'application/json'
+                                }
+                            }
+                        );
+
+                        if (response.ok) {
+                            const { users: authUsers } = await response.json();
+                            const emailById = new Map(authUsers.map(authUser => [authUser.id, authUser.email]));
+
+                            enrichedProfessionals = rawProfessionals.map(professional => {
+                                const lookupId = professional.user_id || professional.id;
+                                const resolvedEmail = professional.email || emailById.get(lookupId) || null;
+
+                                return resolvedEmail
+                                    ? { ...professional, email: resolvedEmail }
+                                    : professional;
+                            });
+                        } else {
+                            secureLog.warn('Não foi possível carregar emails via função admin-list-users.', { status: response.status });
+                        }
+                    } else {
+                        secureLog.warn('Token de sessão ausente ao tentar enriquecer emails dos profissionais.');
+                    }
+                } catch (error) {
+                    secureLog.error('Erro ao enriquecer emails dos profissionais:', error?.message || error);
+                    secureLog.debug('Detalhes do erro ao enriquecer emails dos profissionais', error);
+                }
+            } else if (user?.email) {
+                enrichedProfessionals = rawProfessionals.map(professional => {
+                    const matchesCurrentUser = professional.user_id === user.id || professional.id === user.id;
+                    if (!professional.email && matchesCurrentUser) {
+                        return { ...professional, email: user.email };
+                    }
+                    return professional;
+                });
+            }
+        }
+
         setBookings(bookingsRes.data || []);
         setServices(servicesRes.data || []);
-        setProfessionals(profsRes.data || []);
-        if (profsRes.data && profsRes.data.length > 0) {
+        setProfessionals(enrichedProfessionals);
+        if (enrichedProfessionals.length > 0) {
             // Para admin, usa o primeiro profissional da lista
             // Para professional, usa sempre o registro encontrado para o usuário logado
-            const profIdToSelect = isAdmin ? profsRes.data[0].id : profsRes.data[0].id;
+            const profIdToSelect = isAdmin ? enrichedProfessionals[0].id : enrichedProfessionals[0].id;
             if (profIdToSelect) {
                 setSelectedAvailProfessional(profIdToSelect);
             }
@@ -195,7 +289,7 @@ const AdminPage = () => {
         }
         // Mapear profissionais aos eventos e carregar contagem de inscrições
         const eventsWithProfessionals = await Promise.all((eventsRes.data || []).map(async (event) => {
-            const professional = (profsRes.data || []).find(p => p.id === event.professional_id);
+            const professional = enrichedProfessionals.find(p => p.id === event.professional_id);
             
             // Tentar buscar contagem real de inscrições
             let inscricoesCount = 0;
@@ -219,17 +313,41 @@ const AdminPage = () => {
             };
         }));
         
-        const reviewsWithProfessionals = (reviewsRes.data || []).map(review => {
-            const professional = (profsRes.data || []).find(p => p.id === review.professional_id);
-            return {
-                ...review,
-                professional: professional ? { name: professional.name } : null
-            };
-        });
-        
         setEvents(eventsWithProfessionals);
         setBlockedDates(blockedDatesRes.data || []);
-        setReviews(reviewsWithProfessionals);
+
+        const reviewsWithProfessionals = (reviewsRes.data || []).map(review => {
+            const bookingRelation = Array.isArray(review.bookings) ? review.bookings[0] : review.bookings;
+            const professionalFromBooking = bookingRelation?.professional;
+            const fallbackProfessional = enrichedProfessionals.find(p => p.id === (bookingRelation?.professional_id ?? review.professional_id));
+            const resolvedProfessional = professionalFromBooking
+                ? { id: professionalFromBooking.id, name: professionalFromBooking.name }
+                : fallbackProfessional
+                ? { id: fallbackProfessional.id, name: fallbackProfessional.name }
+                : review.professional || null;
+
+            const resolvedPatientName = review.patient_name
+                || bookingRelation?.patient_name
+                || review.patient_email
+                || bookingRelation?.patient_email
+                || null;
+
+            const resolvedPatientEmail = review.patient_email || bookingRelation?.patient_email || null;
+
+            return {
+                ...review,
+                bookings: bookingRelation,
+                patient_name: resolvedPatientName,
+                patient_email: resolvedPatientEmail,
+                professional: resolvedProfessional
+            };
+        });
+
+        const filteredReviews = isAdmin
+            ? reviewsWithProfessionals
+            : reviewsWithProfessionals.filter(review => review.is_approved);
+
+        setReviews(filteredReviews);
 
         const availabilityMap = {};
         (availRes.data || []).forEach(avail => {
