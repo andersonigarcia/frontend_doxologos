@@ -197,22 +197,47 @@ export function AuthProvider({ children }) {
   }, [toast]);
 
   const signOut = useCallback(async () => {
-    const { error } = await supabase.auth.signOut();
+    try {
+      // Tentar fazer logout no servidor
+      const { error } = await supabase.auth.signOut();
 
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Erro ao sair",
-        description: "Não foi possível fazer logout. Tente novamente.",
-      });
-    } else {
+      // Limpar estado local mesmo se houver erro (session_not_found é aceitável)
+      handleSession(null);
+
+      if (error) {
+        // Se é erro de sessão não encontrada, ainda consideramos sucesso localmente
+        if (error.message?.includes('session_not_found') || error.message?.includes('Session')) {
+          console.log('✅ Sessão já estava inválida, mas logout local realizado');
+          toast({
+            title: "👋 Até logo!",
+            description: "Você foi desconectado com sucesso.",
+          });
+        } else {
+          console.error('❌ Erro ao fazer logout:', error);
+          toast({
+            variant: "destructive",
+            title: "Erro ao sair",
+            description: "Houve um problema ao desconectar. Tente novamente.",
+          });
+        }
+      } else {
+        toast({
+          title: "👋 Até logo!",
+          description: "Você foi desconectado com sucesso.",
+        });
+      }
+
+      return { error };
+    } catch (err) {
+      console.error('❌ Erro ao fazer logout:', err);
+      // Em caso de erro, ainda limpar o estado local
+      handleSession(null);
       toast({
         title: "👋 Até logo!",
-        description: "Você foi desconectado com sucesso.",
+        description: "Você foi desconectado.",
       });
+      return { error: err };
     }
-
-    return { error };
   }, [toast]);
 
   const resetPassword = useCallback(async (email) => {
