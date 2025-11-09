@@ -459,7 +459,8 @@ export class MercadoPagoService {
             'debit_card': 'Cartão de Débito',
             'bank_transfer': 'Boleto Bancário',
             'ticket': 'Boleto',
-            'account_money': 'Dinheiro em Conta'
+            'account_money': 'Dinheiro em Conta',
+            'financial_credit': 'Crédito Reaproveitado'
         };
         return labels[method] || method;
     }
