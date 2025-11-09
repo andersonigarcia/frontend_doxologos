@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +15,13 @@ import { bookingEmailManager } from '@/lib/bookingEmailManager';
 import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
+
+const ROLE_DISPLAY = {
+    admin: { label: 'Administrador', classes: 'bg-purple-100 text-purple-800 border-purple-200', Icon: ShieldCheck },
+    professional: { label: 'Profissional', classes: 'bg-blue-100 text-blue-800 border-blue-200', Icon: Stethoscope },
+    patient: { label: 'Paciente', classes: 'bg-gray-100 text-gray-800 border-gray-200', Icon: UserCircle },
+    user: { label: 'Usuário', classes: 'bg-gray-100 text-gray-800 border-gray-200', Icon: UserCircle }
+};
 
 const AdminPage = () => {
     const { toast } = useToast();
@@ -123,6 +130,7 @@ const AdminPage = () => {
     // Estados de ordenação
     const [bookingSortField, setBookingSortField] = useState('default'); // 'default', 'date', 'status', 'professional'
     const [bookingSortOrder, setBookingSortOrder] = useState('asc'); // 'asc' ou 'desc'
+    const [activeTab, setActiveTab] = useState('bookings');
     
     // Estados de paginação
     const [currentPage, setCurrentPage] = useState(1);
@@ -161,10 +169,16 @@ const AdminPage = () => {
                 .maybeSingle();
             professionalsRecordId = profData?.id;
         }
+        if (!isAdmin && !professionalsRecordId && professionalId) {
+            professionalsRecordId = professionalId;
+            secureLog.debug('Usando fallback de professionalId para consultas vinculadas ao profissional atual.', { professionalId });
+        }
+
+        const professionalFilterId = isAdmin ? null : professionalsRecordId;
         
         const reviewSelect = `
             *,
-            bookings:bookings!inner(
+            bookings:bookings!left(
                 id,
                 professional_id,
                 patient_name,
@@ -185,24 +199,50 @@ const AdminPage = () => {
                 .from('reviews')
                 .select(reviewSelect)
                 .order('created_at', { ascending: false });
-        } else if (professionalsRecordId) {
+        } else if (professionalFilterId) {
             reviewsPromise = supabase
                 .from('reviews')
                 .select(reviewSelect)
-                .eq('bookings.professional_id', professionalsRecordId)
+                .eq('professional_id', professionalFilterId)
                 .eq('is_approved', true)
                 .order('created_at', { ascending: false });
         } else {
             reviewsPromise = Promise.resolve({ data: [], error: null });
         }
 
-        
+        const bookingsPromise = isAdmin
+            ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)')
+            : professionalFilterId
+                ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalFilterId)
+                : Promise.resolve({ data: [], error: null });
+
+        const servicesPromise = supabase.from('services').select('*');
+
+        const professionalsPromise = isAdmin
+            ? supabase.from('professionals').select('*')
+            : supabase
+                .from('professionals')
+                .select('*')
+                .or(`user_id.eq.${professionalId},id.eq.${professionalId}`);
+
+        const availabilityPromise = isAdmin
+            ? supabase.from('availability').select('*')
+            : professionalFilterId
+                ? supabase.from('availability').select('*').eq('professional_id', professionalFilterId)
+                : Promise.resolve({ data: [], error: null });
+
+        const blockedDatesPromise = isAdmin
+            ? supabase.from('blocked_dates').select('*')
+            : professionalFilterId
+                ? supabase.from('blocked_dates').select('*').eq('professional_id', professionalFilterId)
+                : Promise.resolve({ data: [], error: null });
+
         const promises = [
-            isAdmin ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)') : supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalsRecordId),
-            supabase.from('services').select('*'),
-            isAdmin ? supabase.from('professionals').select('*') : supabase.from('professionals').select('*').eq('user_id', professionalId),
-            isAdmin ? supabase.from('availability').select('*') : supabase.from('availability').select('*').eq('professional_id', professionalsRecordId),
-            isAdmin ? supabase.from('blocked_dates').select('*') : supabase.from('blocked_dates').select('*').eq('professional_id', professionalsRecordId),
+            bookingsPromise,
+            servicesPromise,
+            professionalsPromise,
+            availabilityPromise,
+            blockedDatesPromise,
             eventsPromise,
             reviewsPromise
         ];
@@ -374,7 +414,7 @@ const AdminPage = () => {
     }, [professionals, userRole, isEditingProfessional]);
 
     useEffect(() => {
-        const profId = userRole === 'admin' ? selectedAvailProfessional : user?.id;
+        const profId = userRole === 'admin' ? selectedAvailProfessional : professionals[0]?.id;
         
         if (profId) {
             // Carregar disponibilidade específica do mês/ano selecionados
@@ -1562,15 +1602,69 @@ const AdminPage = () => {
         ]
     };
     const currentTabs = tabsConfig[userRole] || [];
+    const hasEventsTab = currentTabs.some(tab => tab.value === 'events');
+
+    useEffect(() => {
+        if (!currentTabs.find(tab => tab.value === activeTab)) {
+            setActiveTab(currentTabs[0]?.value || 'bookings');
+        }
+    }, [currentTabs, activeTab]);
+
+    const rawRole = userRole || user?.user_metadata?.role || user?.app_metadata?.role || 'user';
+    const normalizedRole = typeof rawRole === 'string' ? rawRole.toLowerCase() : 'user';
+    const roleConfig = ROLE_DISPLAY[normalizedRole] || ROLE_DISPLAY.user;
+    const RoleIcon = roleConfig.Icon;
+    const displayName = user?.user_metadata?.full_name || user?.user_metadata?.fullName || user?.email?.split('@')[0] || 'Usuário';
 
     return (
         <>
             <Helmet><title>Painel de Controle - Doxologos</title></Helmet>
-            <header className="bg-white shadow-sm"><nav className="container mx-auto px-4 py-4 flex items-center justify-between"><Link to="/" className="flex items-center space-x-2"><Heart className="w-8 h-8 text-[#2d8659]" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link><Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]"><LogOut className="w-4 h-4 mr-2" /> Sair</Button></nav></header>
-            <div className="min-h-screen bg-gray-50 py-12">
+            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-40">
+                <nav className="container mx-auto px-4 py-4">
+                    <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-3">
+                            <Link to="/" className="flex items-center space-x-2">
+                                <Heart className="w-8 h-8 text-[#2d8659]" />
+                                <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                            </Link>
+                            <div className="flex flex-wrap items-center justify-end gap-3">
+                                <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
+                                    <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
+                                </Link>
+                                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border font-semibold text-sm ${roleConfig.classes}`}>
+                                    <RoleIcon className="w-4 h-4" />
+                                    {roleConfig.label} - {displayName}
+                                </span>
+                                {hasEventsTab && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="border-[#2d8659] text-[#2d8659]"
+                                        onClick={() => {
+                                            setActiveTab('events');
+                                            window.requestAnimationFrame(() => {
+                                                const tabsElement = document.getElementById('admin-tabs');
+                                                if (tabsElement) {
+                                                    tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
+                                    </Button>
+                                )}
+                                <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                                    <LogOut className="w-4 h-4 mr-2" /> Sair
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </nav>
+            </header>
+            <div className="min-h-screen bg-gray-50 py-12 pt-32">
                 <div className="container mx-auto px-4">
                     <h1 className="text-4xl font-bold mb-2">Painel de Controle</h1>
-                    <p className="text-gray-500 mb-8">Bem-vindo, {user.user_metadata?.full_name || user.email}. Seu perfil é: <span className="font-semibold text-[#2d8659]">{userRole}</span></p>
+                    <p className="text-gray-500 mb-8">Bem-vindo, {displayName}. Utilize os atalhos acima para navegar rapidamente.</p>
 
                     {/* Quick Access Links - Apenas para Admin */}
                     {userRole === 'admin' && (
@@ -1605,7 +1699,7 @@ const AdminPage = () => {
                         </div>
                     )}
 
-                    <Tabs defaultValue="bookings" className="w-full">
+                    <Tabs id="admin-tabs" value={activeTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className="flex flex-wrap h-auto justify-start p-1 bg-gray-100 rounded-lg">
                             {currentTabs.map(tab => (
                                 <TabsTrigger key={tab.value} value={tab.value} className="flex-1 min-w-[120px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
