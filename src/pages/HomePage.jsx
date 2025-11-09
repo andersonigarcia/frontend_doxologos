@@ -579,21 +579,28 @@ const HomePage = () => {
                   <img 
                     src={`https://img.youtube.com/vi/${currentVideo.videoId}/maxresdefault.jpg`}
                     alt={currentVideo.title}
-                    className={`w-full h-full object-cover transition-opacity duration-300 ${isVideoLoading ? 'opacity-50' : 'opacity-100'}`}
+                    className={`w-full h-full object-cover transition-opacity duration-300 pointer-events-none ${isVideoLoading ? 'opacity-50' : 'opacity-100'}`}
                     loading="lazy"
                   />
                   
                   {/* Overlay escuro */}
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors" />
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors pointer-events-none" />
                   
                   {/* Botão de Play Central */}
                   <button
-                    onClick={() => playVideoInline(currentVideo.videoId)}
-                    className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!isVideoLoading) {
+                        playVideoInline(currentVideo.videoId);
+                      }
+                    }}
+                    className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform z-20 cursor-pointer"
                     title={`Assistir: ${currentVideo.title}`}
                     disabled={isVideoLoading}
+                    type="button"
                   >
-                    <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl">
+                    <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl transition-all duration-200">
                       <Play className="w-12 h-12 text-white ml-1" fill="currentColor" />
                     </div>
                   </button>
@@ -603,12 +610,12 @@ const HomePage = () => {
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="text-2xl font-bold">{currentVideo.title}</h3>
                       <div className="flex space-x-2">
-                        <button
+                        {/* <button
                           onClick={() => playVideoInline(currentVideo.videoId)}
                           className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition-colors"
                         >
                           Assistir Aqui
-                        </button>
+                        </button> */}
                         <button
                           onClick={() => openVideoInNewTab(currentVideo.videoId)}
                           className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors"
