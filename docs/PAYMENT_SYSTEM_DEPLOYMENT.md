@@ -12,18 +12,23 @@ Este guia detalha o processo completo de implantação do sistema de pagamentos 
 
 ### Banco de Dados
 - ✅ `database/migrations/create_payments_table.sql` - Tabela de pagamentos
+- ✅ `database/migrations/add_manual_refunds_module.sql` - Estrutura completa para reembolsos manuais
 
 ### Backend (Edge Functions)
 - ✅ `functions/mp-create-preference/index.js` - Criação de preferências MP (atualizado)
 - ✅ `functions/mp-refund/index.js` - Processamento de reembolsos (novo)
 - ⚠️ `functions/mp-webhook/index.js` - Webhook de notificações (verificar)
+- ✅ `supabase/functions/manual-refund/index.ts` - Reembolso manual via backoffice com upload de comprovante
+- ✅ `supabase/functions/manual-refund-notify/index.ts` - Worker de notificações por e-mail de reembolso manual
+- ✅ `supabase/functions/manual-refund-overview/index.ts` - Consulta segura de reembolsos manuais e status das notificações
+- ✅ `supabase/functions/manual-refund-proof/index.ts` - Geração de link temporário para download do comprovante
 
 ### Frontend - Serviços
 - ✅ `src/lib/mercadoPagoService.js` - Service layer para API MP
 
 ### Frontend - Páginas
 - ✅ `src/pages/CheckoutPage.jsx` - Página de checkout do usuário
-- ✅ `src/pages/PaymentsPage.jsx` - Dashboard admin de pagamentos
+- ✅ `src/pages/PaymentsPage.jsx` - Dashboard admin de pagamentos + fluxo de reembolso manual com comprovante
 - ✅ `src/pages/CheckoutSuccessPage.jsx` - Callback de sucesso
 - ✅ `src/pages/CheckoutFailurePage.jsx` - Callback de falha
 - ✅ `src/pages/CheckoutPendingPage.jsx` - Callback de pendente (PIX/Boleto)
@@ -139,6 +144,10 @@ functions/
 supabase functions deploy mp-create-preference
 supabase functions deploy mp-refund
 supabase functions deploy mp-webhook
+supabase functions deploy manual-refund
+supabase functions deploy manual-refund-overview
+supabase functions deploy manual-refund-proof
+supabase functions deploy manual-refund-notify
 
 # Ou deploy de todas
 supabase functions deploy
@@ -233,6 +242,17 @@ Titular: OTHE (Other reason)
 - [ ] Verificar email de confirmação
 - [ ] Admin consegue ver pagamento no dashboard
 - [ ] Admin consegue processar reembolso
+
+#### 6.3 Registrar Reembolso Manual (Backoffice)
+
+1. Acesse `/admin/pagamentos` autenticado com um perfil autorizado (`admin`, `finance_admin`, `finance_supervisor` ou `finance_team`).
+2. Localize o pagamento desejado e clique em **Reembolso Manual**.
+3. Preencha o motivo, ajuste o valor (opcional) e anexe o comprovante da devolução (PDF ou imagem, até 20 MB).
+4. (Opcional) Personalize o email de notificação e inclua destinatários em cópia.
+5. Confirme o envio: o comprovante é armazenado, o pagamento é marcado como reembolsado e uma notificação é enfileirada para disparo via worker `manual-refund-notify`.
+6. Na modal de detalhes do pagamento, utilize a seção **Reembolsos Manuais** para auditar o histórico e emitir um link temporário para download do comprovante.
+
+> ℹ️ **Importante:** só utilize o fluxo manual após executar o estorno diretamente no meio de pagamento/conta bancária. O registro no backoffice serve para auditoria, atualização do status em `payments` e disparo de comunicação ao paciente.
 
 ---
 
