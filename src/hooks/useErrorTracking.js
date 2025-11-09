@@ -4,8 +4,9 @@ import analytics from '../lib/analytics';
 // Error boundary tracking hook
 export const useErrorBoundary = () => {
   const trackError = useCallback((error, errorInfo) => {
-    analytics.trackError(error, {
-      errorBoundary: true,
+    analytics.trackEvent('error_boundary', {
+      event_category: 'Error',
+      event_label: error?.message || 'Unknown Error',
       componentStack: errorInfo?.componentStack,
       errorInfo: JSON.stringify(errorInfo)
     });
@@ -56,8 +57,9 @@ export const useNetworkErrorTracking = () => {
       } catch (error) {
         // Ignorar erros de URLs específicas
         if (!shouldIgnoreUrl(args[0])) {
-          analytics.trackError(error, {
-            networkError: true,
+          analytics.trackEvent('network_request_error', {
+            event_category: 'Network',
+            event_label: error?.message || 'Network Error',
             url: args[0],
             method: args[1]?.method || 'GET'
           });
@@ -147,8 +149,10 @@ export const useConsoleErrorTracking = () => {
 export const usePromiseErrorTracking = () => {
   useEffect(() => {
     const handleUnhandledRejection = (event) => {
-      analytics.trackError(event.reason, {
-        unhandledPromise: true,
+      analytics.trackEvent('unhandled_promise_rejection', {
+        event_category: 'Error',
+        event_label: event?.reason?.message || 'Unhandled Promise Rejection',
+        reason: event?.reason,
         promise: event.promise
       });
     };
@@ -164,7 +168,9 @@ export const usePromiseErrorTracking = () => {
 // Component error tracking hook
 export const useComponentErrorTracking = (componentName) => {
   const trackComponentError = useCallback((error, action = 'render') => {
-    analytics.trackError(error, {
+    analytics.trackEvent('component_error', {
+      event_category: 'Error',
+      event_label: error?.message || 'Component Error',
       component: componentName,
       action: action,
       timestamp: Date.now()
@@ -197,8 +203,10 @@ export const useFormErrorTracking = (formName) => {
   }, [formName]);
 
   const trackSubmissionError = useCallback((error) => {
-    analytics.trackError(error, {
-      formSubmission: true,
+    analytics.trackEvent('form_submission_error', {
+      event_category: 'Form',
+      event_label: formName,
+      error_message: error?.message || 'Form Submission Error',
       formName: formName,
       timestamp: Date.now()
     });

@@ -481,6 +481,32 @@ const AdminPage = () => {
         }
     }, [selectedAvailProfessional, user, userRole, selectedMonth, selectedYear, blockedDates]);
 
+    // Definir tabsConfig ANTES de usá-lo em useEffect
+    const tabsConfig = {
+        admin: [
+            { value: 'bookings', label: 'Agendamentos', icon: Calendar },
+            { value: 'reviews', label: 'Avaliações', icon: Star },
+            // { value: 'payments', label: 'Pagamentos', icon: DollarSign },
+            { value: 'professionals', label: 'Profissionais', icon: Users },
+            { value: 'availability', label: 'Disponibilidade', icon: Clock },
+            { value: 'services', label: 'Serviços', icon: Briefcase },
+            { value: 'events', label: 'Eventos', icon: Calendar },
+            // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
+        ],
+        professional: [
+            { value: 'bookings', label: 'Agendamentos', icon: Calendar },
+            { value: 'reviews', label: 'Avaliações', icon: Star },
+            { value: 'availability', label: 'Disponibilidade', icon: Clock },
+        ]
+    };
+
+    useEffect(() => {
+        const currentTabs = tabsConfig[userRole] || [];
+        if (!currentTabs.find(tab => tab.value === activeTab)) {
+            setActiveTab(currentTabs[0]?.value || 'bookings');
+        }
+    }, [userRole, activeTab, tabsConfig]);
+
     const handleLogin = async (e) => { e.preventDefault(); await signIn(loginData.email, loginData.password); };
     const handleLogout = async () => { await signOut(); setLoginData({ email: '', password: '' }); };
 
@@ -1562,7 +1588,7 @@ const AdminPage = () => {
         return (
             <>
                 <Helmet><title>Área Administrativa - Doxologos</title></Helmet>
-                <header className="bg-white shadow-sm"><nav className="container mx-auto px-4 py-4 flex items-center justify-between"><Link to="/" className="flex items-center space-x-2"><Heart className="w-8 h-8 text-[#2d8659]" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link><Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link></nav></header>
+                <header className="bg-white shadow-sm"><nav className="container mx-auto px-4 py-4 flex items-center justify-between"><Link to="/" className="flex items-center space-x-2"><img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link><Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link></nav></header>
                 <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
                         <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Acesso Restrito</h2>
@@ -1585,31 +1611,9 @@ const AdminPage = () => {
         );
     }
     
-    const tabsConfig = {
-        admin: [
-            { value: 'bookings', label: 'Agendamentos', icon: Calendar },
-            { value: 'reviews', label: 'Avaliações', icon: Star },
-            // { value: 'payments', label: 'Pagamentos', icon: DollarSign },
-            { value: 'professionals', label: 'Profissionais', icon: Users },
-            { value: 'availability', label: 'Disponibilidade', icon: Clock },
-            { value: 'services', label: 'Serviços', icon: Briefcase },
-            { value: 'events', label: 'Eventos', icon: Calendar },
-            // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
-        ],
-        professional: [
-            { value: 'bookings', label: 'Agendamentos', icon: Calendar },
-            { value: 'reviews', label: 'Avaliações', icon: Star },
-            { value: 'availability', label: 'Disponibilidade', icon: Clock },
-        ]
-    };
+    
     const currentTabs = tabsConfig[userRole] || [];
     const hasEventsTab = currentTabs.some(tab => tab.value === 'events');
-
-    useEffect(() => {
-        if (!currentTabs.find(tab => tab.value === activeTab)) {
-            setActiveTab(currentTabs[0]?.value || 'bookings');
-        }
-    }, [currentTabs, activeTab]);
 
     const rawRole = userRole || user?.user_metadata?.role || user?.app_metadata?.role || 'user';
     const normalizedRole = typeof rawRole === 'string' ? rawRole.toLowerCase() : 'user';
