@@ -342,6 +342,32 @@ const CheckoutPage = () => {
         setProcessing(true);
 
         try {
+            if (type === 'evento') {
+                const { data, error: functionError } = await supabase.functions.invoke('event-generate-payment', {
+                    body: {
+                        inscricao_id: inscricaoId,
+                    },
+                });
+
+                if (functionError) {
+                    throw new Error(functionError.message || 'Falha ao criar checkout do evento');
+                }
+
+                const checkoutUrl = data?.init_point || data?.sandbox_init_point;
+
+                if (!checkoutUrl) {
+                    throw new Error('Não foi possível obter o link de checkout. Tente novamente em instantes.');
+                }
+
+                toast({
+                    title: 'Redirecionando para pagamento',
+                    description: 'Abrimos o checkout seguro do Mercado Pago em uma nova aba.',
+                });
+
+                safeRedirect(checkoutUrl, '/minhas-inscricoes');
+                return;
+            }
+
             if (creditCoversTotal && bookingId) {
                 await processCreditCheckout();
                 return;

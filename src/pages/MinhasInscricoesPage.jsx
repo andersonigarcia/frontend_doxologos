@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Calendar, Clock, MapPin, ExternalLink, Heart, ArrowLeft, Video, Lock, C
 
 export default function MinhasInscricoesPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [inscricoes, setInscricoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,6 +31,7 @@ export default function MinhasInscricoesPage() {
         .select(`
           *,
           payment_id,
+          payment_preference_id,
           eventos (
             id,
             titulo,
@@ -117,11 +119,15 @@ export default function MinhasInscricoesPage() {
     return new Date(dataFim) < new Date();
   };
 
-  const getPaymentLink = (paymentId) => {
-    // Link do Mercado Pago para visualizar o pagamento
-    // O usuário pode ver o QR Code e fazer o pagamento
-    if (!paymentId) return null;
-    return `https://www.mercadopago.com.br/checkout/v1/payment/${paymentId}`;
+  const handleOpenCheckout = (inscricao) => {
+    const queryParams = new URLSearchParams({
+      type: 'evento',
+      inscricao_id: inscricao.id,
+      valor: inscricao.eventos?.valor ? String(inscricao.eventos.valor) : '',
+      titulo: inscricao.eventos?.titulo || '',
+    });
+
+    navigate(`/checkout?${queryParams.toString()}`);
   };
 
   if (loading) {
@@ -396,21 +402,14 @@ export default function MinhasInscricoesPage() {
                                 Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Zoom após a confirmação do pagamento.
                               </p>
                               
-                              {inscricao.payment_id ? (
-                                <a 
-                                  href={getPaymentLink(inscricao.payment_id)} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                  Pagar Agora via PIX
-                                </a>
-                              ) : (
-                                <p className="text-sm text-amber-700 italic">
-                                  ⚠️ Link de pagamento não disponível. Verifique seu email ou contate o suporte.
-                                </p>
-                              )}
+                              <Button
+                                onClick={() => handleOpenCheckout(inscricao)}
+                                className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                                Finalizar Pagamento
+                              </Button>
+
                             </div>
                           </div>
                         </div>
