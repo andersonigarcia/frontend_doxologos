@@ -60,25 +60,32 @@ const EventoDetalhePage = () => {
             setEmailStatus(null);
             return;
         }
-        
+
+    const trimmedEmail = email.trim();
+    const normalizedEmail = trimmedEmail.toLowerCase();
+
         try {
-            // Usar admin API para verificar se email existe
-            // Como não temos acesso direto ao auth.users, tentamos fazer signIn
-            // Se retornar erro "Invalid login credentials", o email pode existir
-            // Se retornar "User not found", é email novo
-            
-            // Alternativa: verificar na tabela inscricoes_eventos
-            const { data } = await supabase
-                .from('inscricoes_eventos')
-                .select('user_id')
-                .eq('patient_email', email.trim())
-                .limit(1)
-                .single();
-            
-            setEmailStatus(data ? 'existing' : 'new');
+            const { data: userId, error } = await supabase.rpc('get_user_id_by_email', {
+                user_email: normalizedEmail,
+            });
+
+            if (error) {
+                console.warn('Não foi possível verificar email via RPC, usando fallback:', error);
+                const { data: inscricao } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('user_id')
+                    .eq('patient_email', trimmedEmail)
+                    .limit(1)
+                    .maybeSingle();
+
+                setEmailStatus(inscricao ? 'existing' : 'new');
+                return;
+            }
+
+            setEmailStatus(userId ? 'existing' : 'new');
         } catch (error) {
-            // Se não encontrou, assume que é email novo
-            setEmailStatus('new');
+            console.error('Erro ao verificar email existente:', error);
+            setEmailStatus(null);
         }
     };
 
@@ -159,6 +166,9 @@ const EventoDetalhePage = () => {
     
     const handleRegistration = async () => {
         setIsProcessing(true);
+
+        const trimmedEmail = patientData.email.trim();
+        const normalizedEmail = trimmedEmail.toLowerCase();
         
         // Validar campos obrigatórios
         if (!patientData.name.trim()) {
@@ -167,7 +177,7 @@ const EventoDetalhePage = () => {
             return;
         }
         
-        if (!patientData.email.trim()) {
+        if (!trimmedEmail) {
             toast({ variant: "destructive", title: "Email obrigatório", description: "Por favor, informe seu email." });
             setIsProcessing(false);
             return;
@@ -175,7 +185,7 @@ const EventoDetalhePage = () => {
         
         // Validar formato do email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(patientData.email)) {
+        if (!emailRegex.test(trimmedEmail)) {
             toast({ variant: "destructive", title: "Email inválido", description: "Por favor, informe um email válido." });
             setIsProcessing(false);
             return;
@@ -195,27 +205,52 @@ const EventoDetalhePage = () => {
 
         try {
             let userId;
-            
-            // Primeiro, verificar se o email já existe no banco
-            const { data: existingInscricao } = await supabase
-                .from('inscricoes_eventos')
-                .select('user_id')
-                .eq('patient_email', patientData.email.trim())
-                .limit(1)
-                .single();
-            
-            const emailExists = !!existingInscricao;
+            let existingUserId = null;
+
+            try {
+                const { data: rpcUserId, error: rpcError } = await supabase.rpc('get_user_id_by_email', {
+                    user_email: normalizedEmail,
+                });
+
+                if (rpcError) {
+                    console.warn('Não foi possível consultar usuário via RPC:', rpcError);
+                } else {
+                    existingUserId = rpcUserId ?? null;
+                }
+            } catch (lookupError) {
+                console.error('Erro inesperado ao consultar usuário via RPC:', lookupError);
+            }
+
+            if (!existingUserId) {
+                const { data: existingInscricao, error: inscricaoLookupError } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('user_id')
+                    .eq('patient_email', trimmedEmail)
+                    .limit(1)
+                    .maybeSingle();
+
+                if (inscricaoLookupError) {
+                    console.warn('Falha ao verificar inscrições existentes:', inscricaoLookupError);
+                }
+
+                existingUserId = existingInscricao?.user_id ?? null;
+            }
+
+            const emailExists = !!existingUserId;
             
             if (emailExists) {
                 // Email já existe - tentar fazer login
                 const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-                    email: patientData.email.trim(),
+                    email: trimmedEmail,
                     password: patientData.password
                 });
 
                 if (signInData?.user && !signInError) {
                     // Login bem-sucedido
                     userId = signInData.user.id;
+                    if (!userId && existingUserId) {
+                        userId = existingUserId;
+                    }
                     toast({ 
                         title: "Login realizado!", 
                         description: "Continuando com sua inscrição no evento..."
@@ -241,7 +276,7 @@ const EventoDetalhePage = () => {
             } else {
                 // Email novo - criar conta
                 const { data: authData, error: authError } = await supabase.auth.signUp({
-                    email: patientData.email.trim(),
+                    email: trimmedEmail,
                     password: patientData.password,
                     options: {
                         data: {
@@ -266,7 +301,7 @@ const EventoDetalhePage = () => {
 
                 // Fazer login automático
                 const { error: autoSignInError } = await supabase.auth.signInWithPassword({
-                    email: patientData.email.trim(),
+                    email: trimmedEmail,
                     password: patientData.password
                 });
 
@@ -318,7 +353,7 @@ const EventoDetalhePage = () => {
                     evento_id: event.id, 
                     user_id: userId, 
                     patient_name: patientData.name.trim(), 
-                    patient_email: patientData.email.trim(),
+                    patient_email: trimmedEmail,
                     status: statusInicial, // 'confirmed' (gratuito) ou 'pending' (pago)
                     payment_status: paymentStatusInicial, // null (gratuito) ou 'pending' (pago)
                     valor_pago: event.valor || 0
@@ -346,7 +381,7 @@ const EventoDetalhePage = () => {
                     const emailHtml = emailTemplates.eventoGratuitoConfirmado(inscricao, event);
                     
                     await emailService.sendEmail({
-                        to: patientData.email.trim(),
+                        to: trimmedEmail,
                         subject: `✅ Inscrição Confirmada - ${event.titulo}`,
                         html: emailHtml,
                         type: 'eventRegistration'
@@ -379,7 +414,7 @@ const EventoDetalhePage = () => {
                             description: `Inscrição - ${event.titulo}`,
                             payment_method_id: 'pix',
                             payer: {
-                                email: patientData.email.trim(),
+                                email: trimmedEmail,
                                 first_name: patientData.name.split(' ')[0],
                                 last_name: patientData.name.split(' ').slice(1).join(' ') || patientData.name.split(' ')[0]
                             },
@@ -410,7 +445,7 @@ const EventoDetalhePage = () => {
                     });
 
                     await emailService.sendEmail({
-                        to: patientData.email.trim(),
+                        to: trimmedEmail,
                         subject: `💳 Pagamento Pendente - ${event.titulo}`,
                         html: emailHtml,
                         type: 'eventPayment'
