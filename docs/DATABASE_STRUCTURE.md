@@ -90,7 +90,8 @@ CREATE TABLE bookings (
     booking_date DATE NOT NULL,
     booking_time TIME NOT NULL,
     status TEXT DEFAULT 'pending',
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
 
@@ -120,6 +121,31 @@ CREATE TABLE availability (
     UNIQUE(professional_id, day_of_week, month, year) -- 🔄 ATUALIZADA
 );
 ```
+
+#### 6. **financial_credits** 🆕
+```sql
+CREATE TABLE financial_credits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    original_booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+    original_payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
+    source_type TEXT NOT NULL,
+    source_reason TEXT,
+    amount NUMERIC(10,2) NOT NULL CHECK (amount >= 0),
+    currency TEXT NOT NULL DEFAULT 'BRL',
+    status TEXT NOT NULL DEFAULT 'available', -- available, reserved, used, expired
+    reserved_at TIMESTAMPTZ,
+    used_at TIMESTAMPTZ,
+    used_booking_id UUID REFERENCES bookings(id) ON DELETE SET NULL,
+    used_payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
+    expires_at TIMESTAMPTZ,
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+- `user_credit_balances` (VIEW) agrega o saldo disponível/reservado/usado por usuário (RLS habilitado via tabela base).
 
 #### 6. **blocked_dates**
 ```sql

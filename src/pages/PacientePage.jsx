@@ -13,6 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { QRCodeSVG } from 'qrcode.react';
 import UserBadge from '@/components/UserBadge';
 
+const MAX_RESCHEDULE_ATTEMPTS = 2;
+const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
+
 const PacientePage = () => {
     const { toast } = useToast();
     const { user, signIn, signOut } = useAuth();
@@ -41,6 +44,14 @@ const PacientePage = () => {
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [selectedNewSlot, setSelectedNewSlot] = useState(null);
+
+    const resolvePaymentRecord = (booking) => {
+        if (!booking) return null;
+        if (Array.isArray(booking.payment)) {
+            return booking.payment[0] || null;
+        }
+        return booking.payment || null;
+    };
     
     // Função para ordenar bookings
     const getSortedBookings = (bookingsToSort) => {
@@ -181,16 +192,43 @@ const PacientePage = () => {
     };
 
     const cancelBooking = async (bookingId) => {
-        const { error } = await supabase
-            .from('bookings')
-            .update({ status: 'cancelled_by_patient' })
-            .eq('id', bookingId);
+        try {
+            const { data, error } = await supabase.functions.invoke('patient-cancel-booking', {
+                body: { booking_id: bookingId },
+            });
 
-        if (error) {
-            toast({ variant: "destructive", title: "Erro ao cancelar", description: error.message });
-        } else {
-            toast({ title: "Agendamento cancelado com sucesso." });
+            if (error) {
+                throw new Error(error.message || 'Falha ao cancelar agendamento');
+            }
+
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+
+            const creditCreated = Boolean(data?.credit_created);
+            const creditCurrency = data?.credit?.currency || 'BRL';
+            const creditAmountRaw = data?.credit?.amount;
+            const creditAmountNumber = Number(creditAmountRaw);
+            const creditMessage = creditCreated && Number.isFinite(creditAmountNumber)
+                ? `${new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: creditCurrency,
+                }).format(creditAmountNumber)} foi liberado para você.`
+                : null;
+
+            toast({
+                title: 'Agendamento cancelado com sucesso.',
+                description: creditMessage ? `Um crédito de ${creditMessage}` : undefined,
+            });
+
             fetchData();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Erro desconhecido ao cancelar';
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao cancelar',
+                description: message,
+            });
         }
     };
 
@@ -198,16 +236,57 @@ const PacientePage = () => {
      * Verifica se o agendamento pode ser reagendado (mínimo 24h de antecedência)
      */
     const canReschedule = (booking) => {
+        if (!booking) return false;
+
         if (booking.status === 'cancelled_by_patient' || booking.status === 'cancelled_by_professional') {
             return false;
         }
-        
+
+        const attemptsUsed = booking.reschedule_count || 0;
+        if (attemptsUsed >= MAX_RESCHEDULE_ATTEMPTS) {
+            return false;
+        }
+
+        const paymentRecord = resolvePaymentRecord(booking);
+        const paymentStatus = paymentRecord?.status?.toLowerCase();
+        if (!paymentStatus || !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus)) {
+            return false;
+        }
+
         const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
         const now = new Date();
         const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
-        
-        // Deve ter mais de 24h de antecedência
+
         return hoursDifference > 24;
+    };
+
+    const getRescheduleRestrictionMessage = (booking) => {
+        if (!booking) return null;
+
+        if (booking.status === 'cancelled_by_patient' || booking.status === 'cancelled_by_professional') {
+            return 'Agendamentos cancelados não podem ser reagendados automaticamente.';
+        }
+
+        const attemptsUsed = booking.reschedule_count || 0;
+        if (attemptsUsed >= MAX_RESCHEDULE_ATTEMPTS) {
+            return 'Limite de reagendamentos atingido. Entre em contato com nossa equipe para mais suporte.';
+        }
+
+        const paymentRecord = resolvePaymentRecord(booking);
+        const paymentStatus = paymentRecord?.status?.toLowerCase();
+        if (!paymentStatus || !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus)) {
+            return 'O reagendamento ficará disponível após a confirmação do pagamento.';
+        }
+
+        const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+        const now = new Date();
+        const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
+
+        if (hoursDifference <= 24) {
+            return 'O reagendamento só é permitido com pelo menos 24 horas de antecedência.';
+        }
+
+        return null;
     };
 
     /**
@@ -217,33 +296,103 @@ const PacientePage = () => {
         setLoadingSlots(true);
         try {
             logger.info('Fetching available slots for reschedule', { professionalId, serviceId });
-            
-            // Buscar disponibilidade do profissional
-            const { data: professional, error: profError } = await supabase
-                .from('professionals')
-                .select('availability')
-                .eq('id', professionalId)
-                .single();
-            
-            if (profError) throw profError;
-            
-            // Buscar horários disponíveis nos próximos 30 dias
+
+            const { data: availabilityRows, error: availabilityError } = await supabase
+                .from('availability')
+                .select('day_of_week, available_times, month, year')
+                .eq('professional_id', professionalId);
+
+            if (availabilityError) throw availabilityError;
+
+            const availabilityByDay = (availabilityRows || []).reduce((acc, row) => {
+                const dayKey = row?.day_of_week?.toLowerCase();
+                if (!dayKey) return acc;
+
+                if (!acc[dayKey]) {
+                    acc[dayKey] = [];
+                }
+
+                acc[dayKey].push({
+                    month: row?.month || null,
+                    year: row?.year || null,
+                    times: Array.isArray(row?.available_times) ? row.available_times : []
+                });
+                return acc;
+            }, {});
+
             const today = new Date();
-            const endDate = new Date();
+            today.setHours(0, 0, 0, 0);
+            const endDate = new Date(today);
             endDate.setDate(endDate.getDate() + 30);
-            
-            const { data: existingBookings, error } = await supabase
+
+            const dateToISO = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
+
+            const normalizeTimeString = (time) => {
+                if (!time) return null;
+                if (typeof time === 'object' && time.time) {
+                    time = time.time;
+                }
+                if (typeof time !== 'string') return null;
+
+                const parts = time.split(':');
+                if (parts.length === 1) {
+                    return `${parts[0].padStart(2, '0')}:00`;
+                }
+
+                const hours = parts[0]?.padStart(2, '0') || '00';
+                const minutes = parts[1]?.padStart(2, '0') || '00';
+                return `${hours}:${minutes}`;
+            };
+
+            const normalizeTimeWithSeconds = (time) => {
+                if (!time) return null;
+                if (typeof time === 'string' && time.length === 8) {
+                    return time;
+                }
+                const normalized = normalizeTimeString(time);
+                return normalized ? `${normalized}:00` : null;
+            };
+
+            const { data: existingBookings, error: bookingsError } = await supabase
                 .from('bookings')
                 .select('booking_date, booking_time')
                 .eq('professional_id', professionalId)
                 .in('status', ['confirmed', 'paid', 'pending_payment'])
-                .gte('booking_date', today.toISOString().split('T')[0])
-                .lte('booking_date', endDate.toISOString().split('T')[0]);
-            
-            if (error) throw error;
-            
-            // Parse da disponibilidade do profissional
-            const availability = professional?.availability || {};
+                .gte('booking_date', dateToISO(today))
+                .lte('booking_date', dateToISO(endDate));
+
+            if (bookingsError) throw bookingsError;
+
+            const { data: blockedRows, error: blockedError } = await supabase
+                .from('blocked_dates')
+                .select('blocked_date, start_time, end_time')
+                .eq('professional_id', professionalId)
+                .gte('blocked_date', dateToISO(today))
+                .lte('blocked_date', dateToISO(endDate));
+
+            if (blockedError) throw blockedError;
+
+            const bookedSlots = new Set(
+                (existingBookings || []).map((booking) => {
+                    const normalizedTime = normalizeTimeWithSeconds(booking?.booking_time);
+                    return normalizedTime ? `${booking.booking_date}T${normalizedTime}` : null;
+                }).filter(Boolean)
+            );
+
+            const blockedByDate = (blockedRows || []).reduce((acc, row) => {
+                if (!row?.blocked_date) return acc;
+                if (!acc[row.blocked_date]) {
+                    acc[row.blocked_date] = [];
+                }
+                acc[row.blocked_date].push(row);
+                return acc;
+            }, {});
+
             const weekdayMap = {
                 0: 'sunday',
                 1: 'monday',
@@ -253,53 +402,79 @@ const PacientePage = () => {
                 5: 'friday',
                 6: 'saturday'
             };
-            
-            // Gerar slots disponíveis baseado na agenda do profissional
+
             const slots = [];
-            const bookedSlots = new Set(
-                existingBookings.map(b => `${b.booking_date}T${b.booking_time}`)
-            );
-            
-            for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
-                const dayOfWeek = d.getDay();
-                const dayName = weekdayMap[dayOfWeek];
-                
-                // Verificar se o profissional trabalha neste dia
-                const dayAvailability = availability[dayName];
-                if (!dayAvailability || !dayAvailability.available) continue;
-                
-                const dateStr = d.toISOString().split('T')[0];
-                
-                // Usar horários da disponibilidade do profissional
-                const startHour = parseInt(dayAvailability.start?.split(':')[0] || '8');
-                const endHour = parseInt(dayAvailability.end?.split(':')[0] || '18');
-                
-                // Gerar slots dentro do horário de trabalho
-                for (let hour = startHour; hour < endHour; hour++) {
-                    const timeStr = `${hour.toString().padStart(2, '0')}:00:00`;
-                    const slotKey = `${dateStr}T${timeStr}`;
-                    
-                    // Verificar se não está ocupado
-                    if (!bookedSlots.has(slotKey)) {
-                        // Verificar se o slot está a mais de 24h do momento atual
-                        const slotDateTime = new Date(`${dateStr}T${timeStr}`);
+            const cursor = new Date(today);
+            while (cursor <= endDate) {
+                const slotDate = new Date(cursor);
+                const dateStr = dateToISO(slotDate);
+                const dayName = weekdayMap[slotDate.getDay()];
+                const dayAvailability = availabilityByDay[dayName];
+
+                if (Array.isArray(dayAvailability) && dayAvailability.length > 0) {
+                    const slotMonth = slotDate.getMonth() + 1;
+                    const slotYear = slotDate.getFullYear();
+                    const timesForDay = [];
+
+                    dayAvailability.forEach((entry) => {
+                        const matchesMonth = !entry.month || entry.month === slotMonth;
+                        const matchesYear = !entry.year || entry.year === slotYear;
+                        if (!matchesMonth || !matchesYear) return;
+
+                        entry.times.forEach((time) => {
+                            const normalized = normalizeTimeString(time);
+                            if (normalized && !timesForDay.includes(normalized)) {
+                                timesForDay.push(normalized);
+                            }
+                        });
+                    });
+
+                    timesForDay.sort((a, b) => a.localeCompare(b));
+
+                    const blockedForDate = blockedByDate[dateStr] || [];
+
+                    timesForDay.forEach((time) => {
+                        const timeWithSeconds = normalizeTimeWithSeconds(time);
+                        const timeWithoutSeconds = normalizeTimeString(time);
+                        if (!timeWithSeconds || !timeWithoutSeconds) return;
+
+                        const slotDateTime = new Date(`${dateStr}T${timeWithSeconds}`);
                         const hoursFromNow = (slotDateTime - new Date()) / (1000 * 60 * 60);
-                        
-                        if (hoursFromNow > 24) {
-                            slots.push({
-                                date: dateStr,
-                                time: timeStr,
-                                display: `${new Date(dateStr).toLocaleDateString('pt-BR', { 
-                                    weekday: 'short', 
-                                    day: '2-digit', 
-                                    month: 'short' 
-                                })} às ${hour}:00`
-                            });
-                        }
-                    }
+                        if (hoursFromNow <= 24) return;
+
+                        if (bookedSlots.has(`${dateStr}T${timeWithSeconds}`)) return;
+
+                        const isBlocked = blockedForDate.some((block) => {
+                            if (!block.start_time || !block.end_time) {
+                                return true;
+                            }
+                            return timeWithSeconds >= block.start_time && timeWithSeconds < block.end_time;
+                        });
+
+                        if (isBlocked) return;
+
+                        slots.push({
+                            date: dateStr,
+                            time: timeWithoutSeconds,
+                            timeWithSeconds,
+                            display: `${slotDate.toLocaleDateString('pt-BR', {
+                                weekday: 'short',
+                                day: '2-digit',
+                                month: 'short'
+                            })} às ${timeWithoutSeconds}`
+                        });
+                    });
                 }
+
+                cursor.setDate(cursor.getDate() + 1);
             }
-            
+
+            slots.sort((a, b) => {
+                const aDate = new Date(`${a.date}T${a.timeWithSeconds || `${a.time}:00`}`);
+                const bDate = new Date(`${b.date}T${b.timeWithSeconds || `${b.time}:00`}`);
+                return aDate - bDate;
+            });
+
             setAvailableSlots(slots);
             logger.success('Available slots loaded', { count: slots.length });
         } catch (error) {
@@ -328,40 +503,100 @@ const PacientePage = () => {
      */
     const confirmReschedule = async () => {
         if (!selectedNewSlot || !reschedulingBooking) return;
-        
+
+        const attemptsUsed = reschedulingBooking.reschedule_count || 0;
+        if (attemptsUsed >= MAX_RESCHEDULE_ATTEMPTS) {
+            toast({
+                variant: 'destructive',
+                title: 'Limite atingido',
+                description: 'Este agendamento já foi reagendado o número máximo de vezes permitido.'
+            });
+            return;
+        }
+
+        const paymentRecord = resolvePaymentRecord(reschedulingBooking);
+        const paymentStatus = paymentRecord?.status?.toLowerCase();
+        if (!paymentStatus || !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus)) {
+            toast({
+                variant: 'destructive',
+                title: 'Pagamento pendente',
+                description: 'O reagendamento só é liberado após a confirmação do pagamento.'
+            });
+            return;
+        }
+
+        const bookingDateTime = new Date(`${reschedulingBooking.booking_date}T${reschedulingBooking.booking_time}`);
+        const now = new Date();
+        const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
+        if (hoursDifference <= 24) {
+            toast({
+                variant: 'destructive',
+                title: 'Prazo expirado',
+                description: 'Só é possível reagendar com pelo menos 24 horas de antecedência.'
+            });
+            return;
+        }
+
+        const newBookingTime = selectedNewSlot.time;
+        const newBookingTimeWithSeconds = selectedNewSlot.timeWithSeconds || `${selectedNewSlot.time}:00`;
+
         try {
             logger.info('Confirming reschedule', {
                 bookingId: reschedulingBooking.id,
                 newDate: selectedNewSlot.date,
-                newTime: selectedNewSlot.time
+                newTime: newBookingTime
             });
-            
+
+            const nextCount = attemptsUsed + 1;
+            const rescheduleRootId = reschedulingBooking.rescheduled_from_id || reschedulingBooking.id;
+
             const { error } = await supabase
                 .from('bookings')
                 .update({
                     booking_date: selectedNewSlot.date,
-                    booking_time: selectedNewSlot.time,
+                    booking_time: newBookingTime,
+                    reschedule_count: nextCount,
+                    rescheduled_from_id: rescheduleRootId,
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', reschedulingBooking.id);
-            
+
             if (error) throw error;
-            
+
+            const historyPayload = {
+                booking_id: reschedulingBooking.id,
+                previous_booking_date: reschedulingBooking.booking_date,
+                previous_booking_time: reschedulingBooking.booking_time,
+                new_booking_date: selectedNewSlot.date,
+                new_booking_time: newBookingTimeWithSeconds,
+                attempt_number: nextCount,
+                status: 'success',
+                metadata: {
+                    triggered_by: 'patient_portal',
+                    user_id: user?.id || null
+                }
+            };
+
+            const { error: historyError } = await supabase
+                .from('booking_reschedule_history')
+                .insert([historyPayload]);
+
+            if (historyError) {
+                logger.error('Failed to log reschedule history', historyError);
+            }
+
             logger.success('Booking rescheduled successfully', {
                 bookingId: reschedulingBooking.id
             });
-            
+
             toast({
                 title: '✅ Reagendamento confirmado!',
-                description: `Seu horário foi alterado para ${new Date(selectedNewSlot.date).toLocaleDateString('pt-BR')} às ${selectedNewSlot.time.slice(0, 5)}.`
+                description: `Seu horário foi alterado para ${new Date(selectedNewSlot.date).toLocaleDateString('pt-BR')} às ${newBookingTime}.`
             });
-            
-            // Resetar estados
+
             setReschedulingBooking(null);
             setSelectedNewSlot(null);
             setAvailableSlots([]);
-            
-            // Recarregar dados
             fetchData();
         } catch (error) {
             logger.error('Error rescheduling booking', error);
@@ -581,8 +816,14 @@ const PacientePage = () => {
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {paginatedBookings.map((booking) => (
-                                    <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
+                                {paginatedBookings.map((booking) => {
+                                    const rescheduleAttemptsUsed = booking.reschedule_count || 0;
+                                    const rescheduleAttemptsRemaining = Math.max(0, MAX_RESCHEDULE_ATTEMPTS - rescheduleAttemptsUsed);
+                                    const isEligibleForReschedule = canReschedule(booking);
+                                    const restrictionMessage = isEligibleForReschedule ? null : getRescheduleRestrictionMessage(booking);
+
+                                    return (
+                                        <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
                                         <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
                                             <div>
                                                 <h3 className="font-bold text-lg">{booking.service.name}</h3>
@@ -783,7 +1024,24 @@ const PacientePage = () => {
                                                 <p className="text-sm text-green-800">Seu agendamento está confirmado! O link da consulta será disponibilizado em breve.</p>
                                             </div>
                                         )}
-                                        <div className="mt-4 flex flex-wrap gap-2">
+                                        <div className="mt-4 space-y-2">
+                                            <p className="text-xs text-gray-500">
+                                                Reagendamentos realizados: {rescheduleAttemptsUsed} de {MAX_RESCHEDULE_ATTEMPTS}
+                                            </p>
+                                            {isEligibleForReschedule && rescheduleAttemptsRemaining > 0 && (
+                                                <p className="text-xs text-green-600">
+                                                    Você ainda pode reagendar {rescheduleAttemptsRemaining} vez{rescheduleAttemptsRemaining > 1 ? 'es' : ''}.
+                                                </p>
+                                            )}
+                                            {!isEligibleForReschedule && restrictionMessage && (
+                                                <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+                                                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                    <span>{restrictionMessage}</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="mt-3 flex flex-wrap gap-2">
                                             {booking.status === 'completed' && !reviews.includes(booking.id) && (
                                                 <Dialog>
                                                     <DialogTrigger asChild>
@@ -817,7 +1075,7 @@ const PacientePage = () => {
                                                     <XCircle className="w-4 h-4 mr-1" /> Cancelar
                                                 </Button>
                                             )}
-                                            {canReschedule(booking) && (
+                                            {isEligibleForReschedule && (
                                                 <Dialog open={reschedulingBooking?.id === booking.id} onOpenChange={(open) => !open && setReschedulingBooking(null)}>
                                                     <DialogTrigger asChild>
                                                         <Button size="sm" variant="outline" onClick={() => startReschedule(booking)}>
@@ -897,8 +1155,9 @@ const PacientePage = () => {
                                                 </Dialog>
                                             )}
                                         </div>
-                                    </div>
-                                ))}
+                                        </div>
+                                    );
+                                })}
 
                                 {/* Paginação */}
                                 {totalPages > 1 && (

@@ -30,6 +30,11 @@ const CheckoutPage = () => {
     const [paymentStatus, setPaymentStatus] = useState(null);
     const [pixPayment, setPixPayment] = useState(null); // Armazena dados do pagamento PIX
     const [pollingInterval, setPollingInterval] = useState(null); // ID do interval para polling
+    const [creditState, setCreditState] = useState({ credits: [], balance: null });
+    const [creditLoading, setCreditLoading] = useState(false);
+    const [usingCredit, setUsingCredit] = useState(false);
+    const [selectedCreditId, setSelectedCreditId] = useState(null);
+    const [creditError, setCreditError] = useState(null);
 
     const paymentMethods = [
         {
@@ -77,6 +82,30 @@ const CheckoutPage = () => {
         }
     }, [bookingId, inscricaoId, type]);
 
+    useEffect(() => {
+        if (booking && type !== 'evento') {
+            loadCreditData();
+        }
+    }, [booking, type]);
+
+    const bookingTotal = type === 'evento'
+        ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
+        : Number(booking?.valor_consulta || booking?.service?.price || valorParam || 0);
+
+    const availableCredits = type === 'evento'
+        ? []
+        : (creditState.credits || []).filter((credit) => {
+            if (!credit || credit.status !== 'available') return false;
+            const amountNumber = Number(credit.amount);
+            if (Number.isNaN(amountNumber)) return false;
+            return amountNumber > 0;
+        });
+
+    const selectedCredit = availableCredits.find((credit) => credit.id === selectedCreditId) || null;
+    const selectedCreditAmount = selectedCredit ? Number(selectedCredit.amount) : 0;
+    const creditCoversTotal = usingCredit && selectedCredit && selectedCreditAmount >= bookingTotal && bookingTotal > 0;
+    const creditAppliedAmount = creditCoversTotal ? Math.min(selectedCreditAmount, bookingTotal) : 0;
+
     const fetchBooking = async () => {
         try {
             const { data, error } = await supabase
@@ -112,6 +141,37 @@ const CheckoutPage = () => {
             navigate('/');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadCreditData = async () => {
+        if (type === 'evento') return;
+        setCreditLoading(true);
+        setCreditError(null);
+        try {
+            const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
+                body: {
+                    action: 'list',
+                },
+            });
+
+            if (error) {
+                throw new Error(error.message || 'Erro ao consultar créditos');
+            }
+
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+
+            setCreditState({
+                credits: Array.isArray(data?.credits) ? data.credits : [],
+                balance: data?.balance ?? null,
+            });
+        } catch (error) {
+            console.error('Erro ao carregar créditos disponíveis:', error);
+            setCreditError(error instanceof Error ? error.message : 'Erro ao carregar créditos');
+        } finally {
+            setCreditLoading(false);
         }
     };
 
@@ -156,10 +216,137 @@ const CheckoutPage = () => {
         }
     };
 
+    const generateReservationToken = () => {
+        if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+            return crypto.randomUUID();
+        }
+        return `credit-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    };
+
+    const processCreditCheckout = async () => {
+        if (!bookingId || !selectedCredit || !creditCoversTotal) {
+            throw new Error('Configuração de crédito inválida.');
+        }
+
+        const creditAmount = Number(selectedCredit.amount);
+        if (!Number.isFinite(creditAmount) || creditAmount < bookingTotal || bookingTotal <= 0) {
+            throw new Error('Crédito selecionado insuficiente para cobrir o agendamento.');
+        }
+
+        const reservationToken = generateReservationToken();
+        let reserved = false;
+
+        try {
+            const reserveResponse = await supabase.functions.invoke('financial-credit-manager', {
+                body: {
+                    action: 'reserve',
+                    credit_id: selectedCredit.id,
+                    reservation_token: reservationToken,
+                    reservation_note: `booking:${bookingId}`,
+                },
+            });
+
+            if (reserveResponse.error) {
+                throw new Error(reserveResponse.error.message || 'Erro ao reservar crédito');
+            }
+
+            if (reserveResponse.data?.error) {
+                throw new Error(reserveResponse.data.error);
+            }
+
+            reserved = true;
+
+            const consumeResponse = await supabase.functions.invoke('financial-credit-manager', {
+                body: {
+                    action: 'consume',
+                    credit_id: selectedCredit.id,
+                    reservation_token: reservationToken,
+                    used_booking_id: bookingId,
+                    consumption_note: 'checkout_credit_full',
+                },
+            });
+
+            if (consumeResponse.error) {
+                throw new Error(consumeResponse.error.message || 'Erro ao consumir crédito');
+            }
+
+            if (consumeResponse.data?.error) {
+                throw new Error(consumeResponse.data.error);
+            }
+
+            const creditCurrency = consumeResponse.data?.credit?.currency || 'BRL';
+
+            const { error: bookingError } = await supabase
+                .from('bookings')
+                .update({
+                    status: 'confirmed',
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', bookingId);
+
+            if (bookingError) {
+                throw new Error('Não foi possível atualizar o status do agendamento');
+            }
+
+            const { error: paymentRecordError } = await supabase
+                .from('payments')
+                .insert({
+                    booking_id: bookingId,
+                    status: 'approved',
+                    status_detail: 'credit_applied',
+                    payment_method: 'financial_credit',
+                    payment_type: 'financial_credit',
+                    amount: bookingTotal,
+                    currency: creditCurrency,
+                    description: 'Pagamento realizado com crédito financeiro',
+                    raw_payload: consumeResponse.data?.credit ?? null,
+                });
+
+            if (paymentRecordError) {
+                console.warn('Falha ao registrar pagamento com crédito', paymentRecordError);
+            }
+
+            toast({
+                title: 'Crédito aplicado com sucesso!',
+                description: 'Seu agendamento foi confirmado utilizando o crédito disponível.',
+            });
+
+            navigate('/checkout/success', {
+                state: {
+                    bookingId,
+                    paymentStatus: 'approved',
+                    paymentMethod: 'financial_credit',
+                },
+            });
+        } catch (error) {
+            if (reserved) {
+                try {
+                    await supabase.functions.invoke('financial-credit-manager', {
+                        body: {
+                            action: 'release',
+                            credit_id: selectedCredit.id,
+                            reservation_token: reservationToken,
+                        },
+                    });
+                } catch (releaseError) {
+                    console.error('Falha ao liberar crédito após erro:', releaseError);
+                }
+            }
+
+            throw error instanceof Error ? error : new Error('Falha ao processar pagamento com crédito');
+        }
+    };
+
     const handlePayment = async () => {
+        if (processing) return;
         setProcessing(true);
 
         try {
+            if (creditCoversTotal && bookingId) {
+                await processCreditCheckout();
+                return;
+            }
+
             let amount, description, payerInfo, referenceId;
 
             if (type === 'evento') {
@@ -436,6 +623,98 @@ const CheckoutPage = () => {
                 <div className="grid md:grid-cols-3 gap-6">
                     {/* Métodos de Pagamento */}
                     <div className="md:col-span-2">
+                        {type !== 'evento' && (
+                            <Card className="p-6 mb-6">
+                                <h2 className="text-xl font-bold mb-4 flex items-center">
+                                    <CreditCard className="w-5 h-5 mr-2 text-green-600" />
+                                    Créditos financeiros disponíveis
+                                </h2>
+
+                                {creditLoading ? (
+                                    <div className="flex items-center text-sm text-gray-600">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#2d8659] mr-2"></div>
+                                        Carregando créditos...
+                                    </div>
+                                ) : creditError ? (
+                                    <p className="text-sm text-red-600">{creditError}</p>
+                                ) : availableCredits.length === 0 ? (
+                                    <p className="text-sm text-gray-600">
+                                        Nenhum crédito disponível no momento. Cancelamentos com antecedência de 24h geram créditos automáticos.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                className="form-checkbox h-5 w-5 text-[#2d8659]"
+                                                checked={usingCredit}
+                                                onChange={(event) => {
+                                                    const enabled = event.target.checked;
+                                                    setUsingCredit(enabled);
+                                                    if (!enabled) {
+                                                        setSelectedCreditId(null);
+                                                    } else if (!selectedCreditId && availableCredits.length === 1) {
+                                                        setSelectedCreditId(availableCredits[0].id);
+                                                    }
+                                                }}
+                                                disabled={processing}
+                                            />
+                                            <div>
+                                                <p className="font-semibold">Desejo utilizar meus créditos nesta consulta</p>
+                                                <p className="text-xs text-gray-600">
+                                                    Saldo disponível: {MercadoPagoService.formatCurrency(creditState.balance?.available_amount || 0)}
+                                                </p>
+                                            </div>
+                                        </label>
+
+                                        {usingCredit && (
+                                            <div className="space-y-3">
+                                                {availableCredits.map((credit) => {
+                                                    const amountNumber = Number(credit.amount);
+                                                    const covers = amountNumber >= bookingTotal;
+                                                    return (
+                                                        <button
+                                                            key={credit.id}
+                                                            type="button"
+                                                            className={`w-full text-left border rounded-lg p-3 transition ${
+                                                                selectedCreditId === credit.id
+                                                                    ? 'border-[#2d8659] bg-[#2d8659]/5'
+                                                                    : 'border-gray-200 hover:border-[#2d8659]/40'
+                                                            } ${!covers ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                            onClick={() => covers && setSelectedCreditId(credit.id)}
+                                                            disabled={!covers || processing}
+                                                        >
+                                                            <div className="flex justify-between items-center">
+                                                                <div>
+                                                                    <p className="font-semibold text-sm">Crédito #{credit.id.slice(0, 8)}</p>
+                                                                    <p className="text-xs text-gray-600">Origem: {credit.source_type || 'indefinido'}</p>
+                                                                </div>
+                                                                <span className="font-semibold text-[#2d8659]">
+                                                                    {MercadoPagoService.formatCurrency(amountNumber)}
+                                                                </span>
+                                                            </div>
+                                                            {credit.metadata?.policy && (
+                                                                <p className="text-[11px] text-gray-500 mt-1">Regra: {credit.metadata.policy}</p>
+                                                            )}
+                                                            {!covers && (
+                                                                <p className="text-xs text-yellow-700 mt-2">Valor insuficiente para cobrir o total desta consulta.</p>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+
+                                                {selectedCredit && !creditCoversTotal && (
+                                                    <div className="text-xs text-red-600">
+                                                        O crédito selecionado não cobre o valor total da consulta. Escolha outro crédito ou desmarque o uso de créditos.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </Card>
+                        )}
+
                         <Card className="p-6 mb-6">
                             <h2 className="text-xl font-bold mb-4 flex items-center">
                                 <Lock className="w-5 h-5 mr-2 text-green-600" />
@@ -447,7 +726,7 @@ const CheckoutPage = () => {
                                     <button
                                         key={method.id}
                                         onClick={() => setSelectedMethod(method.id)}
-                                        disabled={!method.available || processing}
+                                        disabled={!method.available || processing || creditCoversTotal}
                                         className={`p-4 rounded-lg border-2 transition-all ${
                                             selectedMethod === method.id
                                                 ? 'border-[#2d8659] bg-[#2d8659]/5'
@@ -556,7 +835,23 @@ const CheckoutPage = () => {
                             </Card>
                         )}
 
-                        {!pixPayment && !preference && (
+                        {creditCoversTotal ? (
+                            <Button
+                                onClick={handlePayment}
+                                disabled={processing}
+                                size="lg"
+                                className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                            >
+                                {processing ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                        Confirmando crédito...
+                                    </>
+                                ) : (
+                                    'Confirmar uso do crédito'
+                                )}
+                            </Button>
+                        ) : (!pixPayment && !preference && (
                             <>
                                 {/* Botão especial para cartão direto */}
                                 {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') && (
@@ -626,7 +921,7 @@ const CheckoutPage = () => {
                                     </Button>
                                 )}
                             </>
-                        )}
+                        ))}
                     </div>
 
                     {/* Resumo do Pedido */}
@@ -699,13 +994,19 @@ const CheckoutPage = () => {
                                             <div className="flex justify-between items-center mb-2">
                                                 <p className="text-gray-600">Subtotal</p>
                                                 <p className="font-semibold">
-                                                    {booking && MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
+                                                    {MercadoPagoService.formatCurrency(bookingTotal)}
                                                 </p>
                                             </div>
+                                            {creditCoversTotal && (
+                                                <div className="flex justify-between items-center mb-2 text-green-700">
+                                                    <p>Crédito aplicado</p>
+                                                    <p>-{MercadoPagoService.formatCurrency(creditAppliedAmount)}</p>
+                                                </div>
+                                            )}
                                             <div className="flex justify-between items-center text-lg font-bold">
                                                 <p>Total</p>
                                                 <p className="text-[#2d8659]">
-                                                    {booking && MercadoPagoService.formatCurrency(booking.valor_consulta || booking.service?.price)}
+                                                    {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : bookingTotal)}
                                                 </p>
                                             </div>
                                         </div>

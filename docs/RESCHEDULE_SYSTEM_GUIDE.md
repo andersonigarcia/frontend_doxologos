@@ -42,6 +42,13 @@ Sistema completo de reagendamento de consultas para pacientes, permitindo altera
 
 ## 🔧 IMPLEMENTAÇÃO TÉCNICA
 
+### **Estrutura de Banco de Dados** ⭐ NOVA
+- `bookings.reschedule_count` (**INTEGER**, default `0`): contabiliza o número de reagendamentos efetuados.
+- `bookings.rescheduled_from_id` (**UUID**): referência para o agendamento original na mesma cadeia.
+- `booking_reschedule_history` (**tabela nova**): registra cada tentativa com data/hora anterior e nova, número da tentativa, status e metadados (origem, usuário, etc.).
+
+Políticas RLS garantem que o paciente só consiga gravar/consultar históricos dos próprios agendamentos.
+
 ### **Estados Adicionados**
 ```javascript
 const [reschedulingBooking, setReschedulingBooking] = useState(null);
@@ -366,6 +373,7 @@ toast({
 - [ ] Limite de reagendamentos (ex: máx 2 por consulta)
 - [ ] Taxa de reagendamento (se aplicável)
 - [ ] Histórico de reagendamentos
+- [ ] Integração com créditos financeiros (ver `FINANCIAL_CREDITS_PLAN.md`)
 
 ### **Fase 3** (Avançado)
 - [ ] Sugestão inteligente de horários
