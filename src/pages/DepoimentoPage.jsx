@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Star, Send, MessageCircle, Heart, CheckCircle, User, Mail, Calendar } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
@@ -8,6 +8,7 @@ import { useToast } from '../components/ui/use-toast';
 import { supabase } from '../lib/customSupabaseClient';
 
 const DepoimentoPage = () => {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         patient_name: '',
         patient_email: '',
@@ -204,7 +205,7 @@ const DepoimentoPage = () => {
                 <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-                            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" aria-hidden="true" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center space-x-4">
