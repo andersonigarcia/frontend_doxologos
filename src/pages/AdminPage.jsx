@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -131,6 +131,7 @@ const AdminPage = () => {
     const [bookingSortField, setBookingSortField] = useState('default'); // 'default', 'date', 'status', 'professional'
     const [bookingSortOrder, setBookingSortOrder] = useState('asc'); // 'asc' ou 'desc'
     const [activeTab, setActiveTab] = useState('bookings');
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     
     // Estados de paginação
     const [currentPage, setCurrentPage] = useState(1);
@@ -1620,26 +1621,26 @@ const AdminPage = () => {
         <>
             <Helmet><title>Painel de Controle - Doxologos</title></Helmet>
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-40">
-                <nav className="container mx-auto px-4 py-4">
-                    <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-between gap-3">
-                            <Link to="/" className="flex items-center space-x-2">
-                                <Heart className="w-8 h-8 text-[#2d8659]" />
-                                <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                <nav className="container mx-auto px-4 py-3 md:py-4">
+                    {/* Desktop Header */}
+                    <div className="hidden md:flex items-center justify-between gap-4">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        </Link>
+                        <div className="flex items-center justify-end gap-3 flex-wrap">
+                            <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
+                                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
                             </Link>
-                            <div className="flex flex-wrap items-center justify-end gap-3">
-                                <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
-                                    <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
-                                </Link>
-                                <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border font-semibold text-sm ${roleConfig.classes}`}>
-                                    <RoleIcon className="w-4 h-4" />
-                                    {roleConfig.label} - {displayName}
-                                </span>
+                            <div className="flex items-center gap-2">
+                                <a href="/area-do-paciente" className="hidden sm:flex items-center gap-2 rounded-full border border-[#2d8659]/60 bg-[#2d8659]/10 px-4 py-2 font-semibold text-[#1d5c3b] hover:bg-[#2d8659]/20 transition-colors">
+                                    <UserCircle className="w-4 h-4" />
+                                    <span className="max-w-[160px] truncate">{roleConfig.label} - {displayName}</span>
+                                </a>
                                 {hasEventsTab && (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="border-[#2d8659] text-[#2d8659]"
+                                    <Button 
+                                        variant="outline" 
+                                        className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex"
                                         onClick={() => {
                                             setActiveTab('events');
                                             window.requestAnimationFrame(() => {
@@ -1653,16 +1654,88 @@ const AdminPage = () => {
                                         <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
                                     </Button>
                                 )}
-                                <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                                <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex">
                                     <LogOut className="w-4 h-4 mr-2" /> Sair
                                 </Button>
                             </div>
                         </div>
                     </div>
+
+                    {/* Mobile Header */}
+                    <div className="flex md:hidden items-center justify-between">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <Heart className="w-7 h-7 text-[#2d8659]" />
+                            <span className="text-xl font-bold gradient-text">Doxologos</span>
+                        </Link>
+                        <button 
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            {mobileMenuOpen ? (
+                                <X className="w-6 h-6 text-[#2d8659]" />
+                            ) : (
+                                <Menu className="w-6 h-6 text-[#2d8659]" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Mobile Menu */}
+                    {mobileMenuOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3 space-y-2"
+                        >
+                            <Link 
+                                to="/" 
+                                className="block px-3 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
+                            </Link>
+                            <a 
+                                href="/area-do-paciente" 
+                                className="flex items-center gap-2 rounded-md border border-[#2d8659]/50 bg-[#2d8659]/10 px-3 py-2 font-semibold text-[#1d5c3b] hover:bg-[#2d8659]/20 transition-colors text-sm"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <UserCircle className="w-4 h-4 flex-shrink-0" />
+                                <span className="max-w-[120px] truncate">{roleConfig.label} - {displayName}</span>
+                            </a>
+                            {hasEventsTab && (
+                                <Button 
+                                    variant="outline" 
+                                    className="w-full border-[#2d8659] text-[#2d8659] justify-start"
+                                    onClick={() => {
+                                        setActiveTab('events');
+                                        setMobileMenuOpen(false);
+                                        window.requestAnimationFrame(() => {
+                                            const tabsElement = document.getElementById('admin-tabs');
+                                            if (tabsElement) {
+                                                tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
+                                </Button>
+                            )}
+                            <Button 
+                                onClick={() => {
+                                    handleLogout();
+                                    setMobileMenuOpen(false);
+                                }} 
+                                variant="outline" 
+                                className="w-full border-[#2d8659] text-[#2d8659] justify-start"
+                            >
+                                <LogOut className="w-4 h-4 mr-2" /> Sair
+                            </Button>
+                        </motion.div>
+                    )}
                 </nav>
             </header>
-            <div className="min-h-screen bg-gray-50 py-12 pt-32">
-                <div className="container mx-auto px-4">
+            <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-32">
+                <div className="container mx-auto px-3 md:px-4">
                     <h1 className="text-4xl font-bold mb-2">Painel de Controle</h1>
                     <p className="text-gray-500 mb-8">Bem-vindo, {displayName}. Utilize os atalhos acima para navegar rapidamente.</p>
 

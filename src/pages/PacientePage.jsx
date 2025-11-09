@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -19,6 +19,7 @@ const PacientePage = () => {
     const [bookings, setBookings] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const [reviewingBooking, setReviewingBooking] = useState(null);
     const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
@@ -399,9 +400,18 @@ const PacientePage = () => {
             <>
                 <Helmet><title>Área do Paciente - Doxologos</title></Helmet>
                 <header className="bg-white shadow-sm">
-                    <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2"><Heart className="w-8 h-8 text-[#2d8659]" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
-                        <Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar ao Início</Button></Link>
+                    <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <Link to="/" className="flex items-center space-x-2">
+                                <Heart className="w-7 md:w-8 h-7 md:h-8 text-[#2d8659]" />
+                                <span className="text-xl md:text-2xl font-bold gradient-text">Doxologos</span>
+                            </Link>
+                            <Link to="/">
+                                <Button variant="outline" className="border-[#2d8659] text-[#2d8659] text-sm md:text-base">
+                                    <ArrowLeft className="w-4 h-4 mr-1 md:mr-2" /> Voltar
+                                </Button>
+                            </Link>
+                        </div>
                     </nav>
                 </header>
                 <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
@@ -431,13 +441,14 @@ const PacientePage = () => {
         <>
             <Helmet><title>Meus Agendamentos - Doxologos</title></Helmet>
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-                <nav className="container mx-auto px-4 py-4">
-                    <div className="flex items-center justify-between">
+                <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
+                    {/* Desktop Header */}
+                    <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
                             <Heart className="w-8 h-8 text-[#2d8659]" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center gap-3 flex-wrap justify-end">
                             <span className="text-sm text-gray-600">Olá, {user.user_metadata?.full_name || user.email.split('@')[0]}</span>
                             <Link to="/minhas-inscricoes">
                                 <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
@@ -449,10 +460,59 @@ const PacientePage = () => {
                             </Button>
                         </div>
                     </div>
+
+                    {/* Mobile Header */}
+                    <div className="flex md:hidden items-center justify-between">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <Heart className="w-7 h-7 text-[#2d8659]" />
+                            <span className="text-xl font-bold gradient-text">Doxologos</span>
+                        </Link>
+                        <button 
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                            {mobileMenuOpen ? (
+                                <X className="w-6 h-6 text-[#2d8659]" />
+                            ) : (
+                                <Menu className="w-6 h-6 text-[#2d8659]" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* Mobile Menu */}
+                    {mobileMenuOpen && (
+                        <motion.div 
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3 space-y-2"
+                        >
+                            <div className="px-3 py-2 text-sm font-medium text-gray-600 border-b border-gray-200 pb-3">
+                                Olá, {user.user_metadata?.full_name || user.email.split('@')[0]}
+                            </div>
+                            <Link 
+                                to="/minhas-inscricoes"
+                                className="block px-3 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <Calendar className="w-4 h-4 mr-2 inline" /> Meus Eventos
+                            </Link>
+                            <Button 
+                                onClick={() => {
+                                    handleLogout();
+                                    setMobileMenuOpen(false);
+                                }} 
+                                variant="outline" 
+                                className="w-full border-[#2d8659] text-[#2d8659] justify-start"
+                            >
+                                <LogOut className="w-4 h-4 mr-2" /> Sair
+                            </Button>
+                        </motion.div>
+                    )}
                 </nav>
             </header>
-            <div className="min-h-screen bg-gray-50 py-12 pt-24">
-                <div className="container mx-auto px-4 max-w-4xl">
+            <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-24">
+                <div className="container mx-auto px-3 md:px-4 max-w-4xl">
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
                     <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
                     <div className="bg-white rounded-xl shadow-lg p-6">
