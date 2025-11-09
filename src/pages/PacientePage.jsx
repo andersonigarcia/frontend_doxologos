@@ -45,6 +45,52 @@ const PacientePage = () => {
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [selectedNewSlot, setSelectedNewSlot] = useState(null);
 
+    const [creditSummary, setCreditSummary] = useState({ balance: null, credits: [] });
+    const [creditLoading, setCreditLoading] = useState(false);
+    const [creditError, setCreditError] = useState(null);
+
+    const formatCurrency = useCallback((value, currency = 'BRL') => {
+        const numericValue = Number(value || 0);
+        const safeNumber = Number.isFinite(numericValue) ? numericValue : 0;
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency,
+        }).format(safeNumber);
+    }, []);
+
+    const loadCreditSummary = useCallback(async () => {
+        if (!user) {
+            return;
+        }
+
+        setCreditLoading(true);
+        setCreditError(null);
+
+        try {
+            const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
+                body: { action: 'list' },
+            });
+
+            if (error) {
+                throw new Error(error.message || 'Erro ao consultar créditos');
+            }
+
+            if (data?.error) {
+                throw new Error(data.error);
+            }
+
+            setCreditSummary({
+                balance: data?.balance ?? null,
+                credits: Array.isArray(data?.credits) ? data.credits : [],
+            });
+        } catch (err) {
+            logger.error('Erro ao carregar créditos do paciente', err);
+            setCreditError(err instanceof Error ? err.message : 'Erro ao carregar créditos');
+        } finally {
+            setCreditLoading(false);
+        }
+    }, [user]);
+
     const resolvePaymentRecord = (booking) => {
         if (!booking) return null;
         if (Array.isArray(booking.payment)) {
@@ -181,6 +227,14 @@ const PacientePage = () => {
         }
     }, [user, fetchData]);
 
+    useEffect(() => {
+        if (user) {
+            loadCreditSummary();
+        } else {
+            setCreditSummary({ balance: null, credits: [] });
+        }
+    }, [user, loadCreditSummary]);
+
     const handleLogin = async (e) => {
         e.preventDefault();
         await signIn(loginData.email, loginData.password);
@@ -221,6 +275,7 @@ const PacientePage = () => {
                 description: creditMessage ? `Um crédito de ${creditMessage}` : undefined,
             });
 
+            await loadCreditSummary();
             fetchData();
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro desconhecido ao cancelar';
@@ -631,6 +686,11 @@ const PacientePage = () => {
         }
     };
 
+    const availableCreditAmount = creditSummary.balance ? Number(creditSummary.balance.available_amount) || 0 : 0;
+    const reservedCreditAmount = creditSummary.balance ? Number(creditSummary.balance.reserved_amount) || 0 : 0;
+    const availableCreditsList = (creditSummary.credits || []).filter((credit) => credit.status === 'available');
+    const hasCreditInfo = availableCreditAmount > 0 || reservedCreditAmount > 0;
+
     if (!user) {
         return (
             <>
@@ -755,6 +815,71 @@ const PacientePage = () => {
                 <div className="container mx-auto px-3 md:px-4 max-w-4xl">
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
                     <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
+                    {creditError && (
+                        <div className="mb-6">
+                            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                                Não foi possível carregar seus créditos no momento. Tente novamente mais tarde.
+                            </div>
+                        </div>
+                    )}
+                    {hasCreditInfo && (
+                        <div className="mb-6">
+                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                                <div className="flex items-start gap-3">
+                                    <CreditCard className="w-6 h-6 text-emerald-600 mt-1" />
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-emerald-900">Créditos disponíveis para novas consultas</p>
+                                        <p className="text-sm text-emerald-800 mt-1">
+                                            Você possui <strong>{formatCurrency(availableCreditAmount)}</strong> que pode ser aplicado no próximo agendamento.
+                                        </p>
+                                        {reservedCreditAmount > 0 && (
+                                            <p className="text-xs text-emerald-700 mt-2">
+                                                {formatCurrency(reservedCreditAmount)} estão reservados enquanto um pagamento está em andamento.
+                                            </p>
+                                        )}
+                                        {creditLoading && (
+                                            <p className="text-xs text-emerald-600 mt-2">Atualizando informações de crédito...</p>
+                                        )}
+                                        {availableCreditsList.length > 0 && (
+                                            <ul className="mt-3 space-y-2">
+                                                {availableCreditsList.slice(0, 3).map((credit) => {
+                                                    const creditDate = credit.created_at ? new Date(credit.created_at) : null;
+                                                    const formattedDate = creditDate && !Number.isNaN(creditDate.getTime())
+                                                        ? creditDate.toLocaleDateString('pt-BR')
+                                                        : 'Data indisponível';
+                                                    const sourceLabel = credit.source_type === 'cancellation'
+                                                        ? 'Crédito por cancelamento'
+                                                        : credit.source_reason || `Origem: ${credit.source_type || 'manual'}`;
+                                                    const currencyCode = credit.currency || 'BRL';
+                                                    return (
+                                                        <li
+                                                            key={credit.id}
+                                                            className="flex items-center justify-between bg-white/70 border border-emerald-100 rounded-lg px-3 py-2 text-sm text-emerald-900"
+                                                        >
+                                                            <span className="pr-3 truncate">
+                                                                {formattedDate} • {sourceLabel}
+                                                            </span>
+                                                            <span className="font-semibold whitespace-nowrap">
+                                                                {formatCurrency(credit.amount, currencyCode)}
+                                                            </span>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        )}
+                                        {availableCreditsList.length > 3 && (
+                                            <p className="text-xs text-emerald-700 mt-2">
+                                                Você possui {availableCreditsList.length - 3} crédito(s) adicional(is). Todos ficam disponíveis na tela de pagamento.
+                                            </p>
+                                        )}
+                                        <p className="text-xs text-emerald-800 mt-3">
+                                            Durante o checkout, selecione a opção 'Usar crédito' para aplicar o saldo automaticamente.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className="bg-white rounded-xl shadow-lg p-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-2xl font-bold flex items-center">

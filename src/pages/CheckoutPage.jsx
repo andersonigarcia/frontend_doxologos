@@ -62,8 +62,8 @@ const CheckoutPage = () => {
             id: 'bank_transfer',
             name: 'Boleto Bancário',
             icon: <Barcode className="w-6 h-6" />,
-            description: 'Vencimento em 3 dias',
-            available: true
+            description: 'Temporariamente indisponível',
+            available: false
         }
     ];
 
