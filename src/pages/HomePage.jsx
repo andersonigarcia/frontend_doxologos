@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users, Play } from 'lucide-react';
+import { Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -427,7 +427,7 @@ const HomePage = () => {
       <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
-            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
+            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
             <span className="text-2xl font-bold gradient-text">Doxologos</span>
           </Link>
           <div className="hidden md:flex items-center space-x-8">
@@ -801,7 +801,7 @@ const HomePage = () => {
             { icon: Calendar, title: '1. Agende', description: 'Escolha o profissional, serviço e horário ideal' },
             { icon: MessageCircle, title: '2. Pagamento', description: 'Realize o pagamento de forma segura' },
             { icon: Mail, title: '3. Confirmação', description: 'Receba o link da sala virtual por email' },
-            { icon: Heart, title: '4. Atendimento', description: 'Participe da sessão online com total privacidade' }
+            { icon: Phone, title: '4. Atendimento', description: 'Participe da sessão online com total privacidade' }
           ].map((step, index) => (
             <motion.div key={index} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="text-center p-6 rounded-xl hover:shadow-lg transition-shadow bg-white">
               <div className="w-16 h-16 bg-[#2d8659]/10 rounded-full flex items-center justify-center mx-auto mb-4"><step.icon className="w-8 h-8 text-[#2d8659]" /></div>
@@ -1009,7 +1009,7 @@ const HomePage = () => {
       <div className="container mx-auto px-4">
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <div className="flex items-center space-x-2 mb-4"><Heart className="w-8 h-8 text-primary-light" /><span className="text-2xl font-bold">Doxologos</span></div>
+            <div className="flex items-center space-x-2 mb-4"><img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" /><span className="text-2xl font-bold">Doxologos</span></div>
             <p className="text-gray-400">Cuidado integral para sua saúde mental com ética cristã.</p>
           </div>
           <div>

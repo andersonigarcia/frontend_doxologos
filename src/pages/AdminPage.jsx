@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -1625,7 +1625,7 @@ const AdminPage = () => {
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center justify-end gap-3 flex-wrap">
@@ -1664,7 +1664,7 @@ const AdminPage = () => {
                     {/* Mobile Header */}
                     <div className="flex md:hidden items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-7 h-7 text-[#2d8659]" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 h-7" />
                             <span className="text-xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <button 

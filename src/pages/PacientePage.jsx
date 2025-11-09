@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X } from 'lucide-react';
+import { ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -403,7 +403,7 @@ const PacientePage = () => {
                     <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
                         <div className="flex items-center justify-between gap-3">
                             <Link to="/" className="flex items-center space-x-2">
-                                <Heart className="w-7 md:w-8 h-7 md:h-8 text-[#2d8659]" />
+                                <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 md:w-8 h-7 md:h-8" />
                                 <span className="text-xl md:text-2xl font-bold gradient-text">Doxologos</span>
                             </Link>
                             <Link to="/">
@@ -445,7 +445,7 @@ const PacientePage = () => {
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center gap-3 flex-wrap justify-end">
@@ -464,7 +464,7 @@ const PacientePage = () => {
                     {/* Mobile Header */}
                     <div className="flex md:hidden items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-7 h-7 text-[#2d8659]" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 h-7" />
                             <span className="text-xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <button 
