@@ -18,6 +18,12 @@ config/local.env
 # Temporary Files
 temp/
 *.tmp
+
+# Credentials & Secrets
+*.json.backup
+doxologos-*.json
+*-credentials.json
+service-account-*.json
 *.temp
 
 # Logs
