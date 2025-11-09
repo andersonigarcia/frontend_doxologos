@@ -202,12 +202,40 @@ const AdminPage = () => {
                 .select(reviewSelect)
                 .order('created_at', { ascending: false });
         } else if (professionalFilterId) {
-            reviewsPromise = supabase
-                .from('reviews')
-                .select(reviewSelect)
-                .eq('professional_id', professionalFilterId)
-                .eq('is_approved', true)
-                .order('created_at', { ascending: false });
+            reviewsPromise = (async () => {
+                const [directRes, bookingRes] = await Promise.all([
+                    supabase
+                        .from('reviews')
+                        .select(reviewSelect)
+                        .eq('professional_id', professionalFilterId)
+                        .eq('is_approved', true)
+                        .order('created_at', { ascending: false }),
+                    supabase
+                        .from('reviews')
+                        .select(reviewSelect)
+                        .eq('is_approved', true)
+                        .eq('bookings.professional_id', professionalFilterId)
+                        .order('created_at', { ascending: false })
+                ]);
+
+                const firstError = directRes.error || bookingRes.error || null;
+                const mergedData = [...(directRes.data || []), ...(bookingRes.data || [])];
+
+                if (mergedData.length === 0) {
+                    return { data: [], error: firstError };
+                }
+
+                const uniqueById = [];
+                const seenIds = new Set();
+                mergedData.forEach(review => {
+                    if (review?.id && !seenIds.has(review.id)) {
+                        seenIds.add(review.id);
+                        uniqueById.push(review);
+                    }
+                });
+
+                return { data: uniqueById, error: firstError };
+            })();
         } else {
             reviewsPromise = Promise.resolve({ data: [], error: null });
         }
