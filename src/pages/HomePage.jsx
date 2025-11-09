@@ -141,7 +141,7 @@ const HomePage = () => {
         .select(`
           *,
           professionals(name),
-          bookings(patient_name, patient_email, booking_date, booking_time)
+          bookings(patient_name, patient_email, booking_date, booking_time, professional:professionals(name))
         `)
         .eq('is_approved', true)
         .order('created_at', { ascending: false })
@@ -904,15 +904,24 @@ const HomePage = () => {
         ) : testimonials.length > 0 ? (
           <div className="relative">
             <motion.div ref={testimonialsCarouselRef} className="flex overflow-x-auto space-x-8 pb-8 scroll-smooth carousel-container" style={{ scrollSnapType: 'x mandatory' }}>
-              {testimonials.map((testimonial, index) => (
-                <motion.div key={testimonial.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-white p-8 rounded-xl flex-shrink-0 w-full sm:w-1/2 md:w-1/3 hover:shadow-lg transition-shadow" style={{ scrollSnapAlign: 'start' }}>
-                  <div className="flex mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />)}
-                  </div>
-                  <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
-                  <p className="font-bold text-[#2d8659]">- {testimonial.bookings?.patient_name || testimonial.patient_name || 'Paciente Anônimo'}</p>
-                </motion.div>
-              ))}
+              {testimonials.map((testimonial, index) => {
+                const patientName = testimonial.bookings?.patient_name || testimonial.patient_name || 'Paciente Anônimo';
+                const professionalName = testimonial.professionals?.name || testimonial.bookings?.professional?.name;
+                return (
+                  <motion.div key={testimonial.id} initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: index * 0.1 }} className="bg-white p-8 rounded-xl flex-shrink-0 w-full sm:w-1/2 md:w-1/3 hover:shadow-lg transition-shadow" style={{ scrollSnapAlign: 'start' }}>
+                    <div className="flex mb-4">
+                      {[...Array(testimonial.rating)].map((_, i) => <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />)}
+                    </div>
+                    <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
+                    <div className="space-y-1">
+                      <p className="font-bold text-[#2d8659]">- {patientName}</p>
+                      {professionalName && (
+                        <p className="text-sm text-gray-600">Atendido por <span className="font-semibold text-[#2d8659]">{professionalName}</span></p>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </motion.div>
             <div className="flex justify-center mt-8 space-x-2">
               {testimonials.map((_, index) => <button key={index} onClick={() => scrollCarousel(testimonialsCarouselRef, index)} className={`w-3 h-3 rounded-full transition-colors ${activeTestimonialIndex === index ? 'bg-[#2d8659]' : 'bg-gray-300 hover:bg-gray-400'}`} />)}
