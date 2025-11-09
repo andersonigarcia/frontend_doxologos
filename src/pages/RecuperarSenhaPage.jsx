@@ -72,7 +72,7 @@ export default function RecuperarSenhaPage() {
                 <CardTitle className="text-2xl">Recuperar Senha</CardTitle>
                 <CardDescription>
                   {emailSent 
-                    ? 'Verifique seu email para continuar'
+                    ? 'Se o endereço informado estiver cadastrado, você receberá instruções em instantes'
                     : 'Digite seu email para receber as instruções'
                   }
                 </CardDescription>
@@ -91,10 +91,10 @@ export default function RecuperarSenhaPage() {
                     
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        Email enviado com sucesso!
+                        Solicitação registrada
                       </h3>
                       <p className="text-sm text-gray-600 mb-4">
-                        Enviamos um link de recuperação para:
+                        Se existir uma conta associada a este endereço, enviaremos um link de recuperação para:
                       </p>
                       <p className="text-sm font-medium text-gray-900 bg-gray-50 p-3 rounded-md break-all">
                         {email}
