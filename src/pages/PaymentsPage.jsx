@@ -890,18 +890,6 @@ const PaymentsPage = () => {
                                                         </DialogContent>
                                                     </Dialog>
 
-                                                    {/* {payment.status === 'approved' && !payment.refund_id && (
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="text-gray-400"
-                                                            disabled
-                                                            title="Utilize o reembolso manual para registrar devoluções"
-                                                        >
-                                                            <RefreshCw className="w-4 h-4 mr-1" />
-                                                            Reembolsar
-                                                        </Button>
-                                                    )} */}
                                                 </div>
                                             </div>
                                         </div>
