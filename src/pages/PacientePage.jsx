@@ -11,6 +11,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { QRCodeSVG } from 'qrcode.react';
+import UserBadge from '@/components/UserBadge';
 
 const PacientePage = () => {
     const { toast } = useToast();
@@ -448,16 +449,20 @@ const PacientePage = () => {
                             <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
-                        <div className="flex items-center gap-3 flex-wrap justify-end">
-                            <span className="text-sm text-gray-600">Olá, {user.user_metadata?.full_name || user.email.split('@')[0]}</span>
+                        <div className="flex items-center gap-4 flex-wrap justify-end">
                             <Link to="/minhas-inscricoes">
                                 <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
                                     <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
                                 </Button>
                             </Link>
-                            <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                                <LogOut className="w-4 h-4 mr-2" /> Sair
-                            </Button>
+                            <div className="h-6 w-px bg-gray-300"></div>
+                            <UserBadge
+                                user={user}
+                                userRole="patient"
+                                onLogout={handleLogout}
+                                layout="row"
+                                showLogoutButton={true}
+                            />
                         </div>
                     </div>
 
@@ -485,28 +490,28 @@ const PacientePage = () => {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3 space-y-2"
+                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3"
                         >
-                            <div className="px-3 py-2 text-sm font-medium text-gray-600 border-b border-gray-200 pb-3">
-                                Olá, {user.user_metadata?.full_name || user.email.split('@')[0]}
-                            </div>
-                            <Link 
-                                to="/minhas-inscricoes"
-                                className="block px-3 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                <Calendar className="w-4 h-4 mr-2 inline" /> Meus Eventos
-                            </Link>
-                            <Button 
-                                onClick={() => {
+                            <UserBadge
+                                user={user}
+                                userRole="patient"
+                                onLogout={() => {
                                     handleLogout();
                                     setMobileMenuOpen(false);
-                                }} 
-                                variant="outline" 
-                                className="w-full border-[#2d8659] text-[#2d8659] justify-start"
-                            >
-                                <LogOut className="w-4 h-4 mr-2" /> Sair
-                            </Button>
+                                }}
+                                layout="column"
+                                showLogoutButton={true}
+                                compact={true}
+                            />
+                            <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
+                                <Link 
+                                    to="/minhas-inscricoes"
+                                    className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    <Calendar className="w-4 h-4 mr-2 inline" /> Meus Eventos
+                                </Link>
+                            </div>
                         </motion.div>
                     )}
                 </nav>

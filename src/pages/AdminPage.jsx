@@ -15,6 +15,7 @@ import { bookingEmailManager } from '@/lib/bookingEmailManager';
 import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
+import UserBadge from '@/components/UserBadge';
 
 const ROLE_DISPLAY = {
     admin: { label: 'Administrador', classes: 'bg-purple-100 text-purple-800 border-purple-200', Icon: ShieldCheck },
@@ -1632,36 +1633,35 @@ const AdminPage = () => {
                             <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
-                        <div className="flex items-center justify-end gap-3 flex-wrap">
+                        <div className="flex items-center justify-end gap-4 flex-wrap">
                             <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
                                 <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
                             </Link>
-                            <div className="flex items-center gap-2">
-                                <a href="/area-do-paciente" className="hidden sm:flex items-center gap-2 rounded-full border border-[#2d8659]/60 bg-[#2d8659]/10 px-4 py-2 font-semibold text-[#1d5c3b] hover:bg-[#2d8659]/20 transition-colors">
-                                    <UserCircle className="w-4 h-4" />
-                                    <span className="max-w-[160px] truncate">{roleConfig.label} - {displayName}</span>
-                                </a>
-                                {hasEventsTab && (
-                                    <Button 
-                                        variant="outline" 
-                                        className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex"
-                                        onClick={() => {
-                                            setActiveTab('events');
-                                            window.requestAnimationFrame(() => {
-                                                const tabsElement = document.getElementById('admin-tabs');
-                                                if (tabsElement) {
-                                                    tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }
-                                            });
-                                        }}
-                                    >
-                                        <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
-                                    </Button>
-                                )}
-                                <Button onClick={handleLogout} variant="outline" className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex">
-                                    <LogOut className="w-4 h-4 mr-2" /> Sair
+                            <div className="h-6 w-px bg-gray-300"></div>
+                            <UserBadge
+                                user={user}
+                                userRole={userRole}
+                                onLogout={handleLogout}
+                                layout="row"
+                                showLogoutButton={true}
+                            />
+                            {hasEventsTab && (
+                                <Button 
+                                    variant="outline" 
+                                    className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex"
+                                    onClick={() => {
+                                        setActiveTab('events');
+                                        window.requestAnimationFrame(() => {
+                                            const tabsElement = document.getElementById('admin-tabs');
+                                            if (tabsElement) {
+                                                tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
                                 </Button>
-                            </div>
+                            )}
                         </div>
                     </div>
 
@@ -1689,51 +1689,46 @@ const AdminPage = () => {
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3 space-y-2"
+                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3"
                         >
-                            <Link 
-                                to="/" 
-                                className="block px-3 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
-                            </Link>
-                            <a 
-                                href="/area-do-paciente" 
-                                className="flex items-center gap-2 rounded-md border border-[#2d8659]/50 bg-[#2d8659]/10 px-3 py-2 font-semibold text-[#1d5c3b] hover:bg-[#2d8659]/20 transition-colors text-sm"
-                                onClick={() => setMobileMenuOpen(false)}
-                            >
-                                <UserCircle className="w-4 h-4 flex-shrink-0" />
-                                <span className="max-w-[120px] truncate">{roleConfig.label} - {displayName}</span>
-                            </a>
-                            {hasEventsTab && (
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full border-[#2d8659] text-[#2d8659] justify-start"
-                                    onClick={() => {
-                                        setActiveTab('events');
-                                        setMobileMenuOpen(false);
-                                        window.requestAnimationFrame(() => {
-                                            const tabsElement = document.getElementById('admin-tabs');
-                                            if (tabsElement) {
-                                                tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                            }
-                                        });
-                                    }}
-                                >
-                                    <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
-                                </Button>
-                            )}
-                            <Button 
-                                onClick={() => {
+                            <UserBadge
+                                user={user}
+                                userRole={userRole}
+                                onLogout={() => {
                                     handleLogout();
                                     setMobileMenuOpen(false);
-                                }} 
-                                variant="outline" 
-                                className="w-full border-[#2d8659] text-[#2d8659] justify-start"
-                            >
-                                <LogOut className="w-4 h-4 mr-2" /> Sair
-                            </Button>
+                                }}
+                                layout="column"
+                                showLogoutButton={true}
+                                compact={true}
+                            />
+                            <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
+                                <Link 
+                                    to="/" 
+                                    className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
+                                </Link>
+                                {hasEventsTab && (
+                                    <Button 
+                                        variant="outline" 
+                                        className="w-full border-[#2d8659] text-[#2d8659] justify-start"
+                                        onClick={() => {
+                                            setActiveTab('events');
+                                            setMobileMenuOpen(false);
+                                            window.requestAnimationFrame(() => {
+                                                const tabsElement = document.getElementById('admin-tabs');
+                                                if (tabsElement) {
+                                                    tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
+                                    </Button>
+                                )}
+                            </div>
                         </motion.div>
                     )}
                 </nav>

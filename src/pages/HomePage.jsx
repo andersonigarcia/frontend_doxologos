@@ -2,17 +2,21 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useFormTracking, useVideoTracking, useEngagementTracking } from '@/hooks/useAnalytics';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import emailService from '@/lib/emailService';
+import UserBadge from '@/components/UserBadge';
 
 const HomePage = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, userRole, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
   const [emailError, setEmailError] = useState('');
@@ -435,11 +439,27 @@ const HomePage = () => {
             {activeEvents.length > 0 && <a href="#eventos" className="text-gray-700 hover:text-[#2d8659] transition-colors">Eventos</a>}
             <a href="#profissionais" className="text-gray-700 hover:text-[#2d8659] transition-colors">Profissionais</a>
             <a href="#depoimentos" className="text-gray-700 hover:text-[#2d8659] transition-colors">Depoimentos</a>
-            <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">Área do Paciente</Link>
+            {!user && <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">Área do Paciente</Link>}
             <a href="#contato" className="text-gray-700 hover:text-[#2d8659] transition-colors">Contato</a>
-            <Link to="/agendamento">
-              <Button className="bg-[#2d8659] hover:bg-[#236b47]">Encontre seu psicólogo</Button>
-            </Link>
+            {user ? (
+              <>
+                <div className="h-6 w-px bg-gray-300"></div>
+                <UserBadge
+                  user={user}
+                  userRole={userRole}
+                  onLogout={() => {
+                    signOut();
+                    setMobileMenuOpen(false);
+                  }}
+                  layout="row"
+                  showLogoutButton={true}
+                />
+              </>
+            ) : (
+              <Link to="/agendamento">
+                <Button className="bg-[#2d8659] hover:bg-[#236b47]">Encontre seu psicólogo</Button>
+              </Link>
+            )}
           </div>
           <button 
             className="md:hidden" 
@@ -464,11 +484,29 @@ const HomePage = () => {
             {activeEvents.length > 0 && <a href="#eventos" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Eventos</a>}
             <a href="#profissionais" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Profissionais</a>
             <a href="#depoimentos" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Depoimentos</a>
-            <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Área do Paciente</Link>
+            {!user && <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Área do Paciente</Link>}
             <a href="#contato" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">Contato</a>
-            <Link to="/agendamento">
-              <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
-            </Link>
+            {user ? (
+              <>
+                <div className="border-t border-gray-200 pt-4">
+                  <UserBadge
+                    user={user}
+                    userRole={userRole}
+                    onLogout={() => {
+                      signOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    layout="column"
+                    showLogoutButton={true}
+                    compact={true}
+                  />
+                </div>
+              </>
+            ) : (
+              <Link to="/agendamento">
+                <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
+              </Link>
+            )}
           </motion.div>
         )}
       </nav>
