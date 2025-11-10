@@ -1033,6 +1033,14 @@ const AgendamentoPage = () => {
             );
             const selectedServiceData = services.find(s => s.id === selectedService);
             
+            const professionalHasAvailability = (prof) => {
+              if (!prof?.id) return false;
+              const schedule = availability[prof.id];
+              if (!schedule) return false;
+
+              return Object.values(schedule).some(times => Array.isArray(times) && times.length > 0);
+            };
+
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
                 <div className="text-center mb-8">
@@ -1067,57 +1075,75 @@ const AgendamentoPage = () => {
                   </div>
                 ) : (
                   <div className="grid gap-4 md:grid-cols-2">
-                    {availableProfessionals.map((prof) => (
-                      <button 
-                        key={prof.id} 
-                        onClick={() => { setSelectedProfessional(prof.id); setStep(3); }} 
-                        className={`p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left group hover:scale-[1.02] ${
-                          selectedProfessional === prof.id 
-                            ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md' 
-                            : 'border-gray-200 hover:border-[#2d8659] bg-white'
-                        }`}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="flex-shrink-0">
-                            {prof.image_url ? (
-                              <img 
-                                src={prof.image_url} 
-                                alt={prof.name} 
-                                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors" 
-                              />
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl">
-                                {prof.name.charAt(0)}
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
-                              {prof.name}
-                            </h3>
-                            {prof.mini_curriculum && (
-                              <p className="text-gray-600 text-sm mb-3 line-clamp-3">
-                                {prof.mini_curriculum.length > 120 
-                                  ? `${prof.mini_curriculum.substring(0, 120)}...` 
-                                  : prof.mini_curriculum
-                                }
-                              </p>
-                            )}
-                            {prof.email && (
-                              <p className="text-xs text-gray-500 mb-2">📧 {prof.email}</p>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500">
-                                ✓ Especialista em {selectedServiceData?.name}
-                              </span>
-                              <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                Selecionar
+                    {availableProfessionals.map((prof) => {
+                      const isSelectable = professionalHasAvailability(prof);
+                      return (
+                        <button
+                          key={prof.id}
+                          onClick={() => {
+                            if (!isSelectable) return;
+                            setSelectedProfessional(prof.id);
+                            setStep(3);
+                          }}
+                          disabled={!isSelectable}
+                          className={`relative p-6 rounded-lg border-2 transition-all text-left group ${
+                            selectedProfessional === prof.id && isSelectable
+                              ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
+                              : 'border-gray-200 bg-white'
+                          } ${
+                            isSelectable
+                              ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
+                              : 'opacity-60 cursor-not-allowed'
+                          }`}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0">
+                              {prof.image_url ? (
+                                <img
+                                  src={prof.image_url}
+                                  alt={prof.name}
+                                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
+                                />
+                              ) : (
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl">
+                                  {prof.name.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                                {prof.name}
+                              </h3>
+                              {prof.mini_curriculum && (
+                                <p className="text-sm text-gray-600 mb-3">
+                                  {prof.mini_curriculum.length > 120
+                                    ? `${prof.mini_curriculum.substring(0, 120)}...`
+                                    : prof.mini_curriculum}
+                                </p>
+                              )}
+                              {prof.email && (
+                                <p className="text-xs text-gray-500 mb-2">📧 {prof.email}</p>
+                              )}
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-gray-500">
+                                  ✓ Especialista em {selectedServiceData?.name}
+                                </span>
+                                <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                  Selecionar
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                          {!isSelectable && (
+                            <div className="absolute inset-0 rounded-lg bg-white/75 backdrop-blur-[1px] border-2 border-transparent flex items-center justify-center">
+                              <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full">
+                                Agenda indisponível no momento
+                              </span>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
                 <Button onClick={() => setStep(1)} variant="outline" className="mt-6">Voltar</Button>
