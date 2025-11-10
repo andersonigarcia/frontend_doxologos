@@ -144,6 +144,40 @@ const AgendamentoPage = () => {
     await resetPassword(patientData.email);
   };
 
+  useEffect(() => {
+    if (!authUser) {
+      return;
+    }
+
+    const authMetadata = authUser.user_metadata || {};
+    const authEmail = authUser.email || '';
+    const authName = authMetadata.full_name || authMetadata.name || '';
+    const authPhoneRaw = authMetadata.phone || authMetadata.phone_number || '';
+    const formattedPhone = authPhoneRaw ? formatPhoneNumber(String(authPhoneRaw)) : '';
+
+    setPatientData((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      if (!prev.email && authEmail) {
+        next.email = authEmail;
+        changed = true;
+      }
+
+      if (!prev.name && authName) {
+        next.name = authName;
+        changed = true;
+      }
+
+      if (!prev.phone && formattedPhone) {
+        next.phone = formattedPhone;
+        changed = true;
+      }
+
+      return changed ? next : prev;
+    });
+  }, [authUser]);
+
     // Analytics and Error Tracking Hooks
     const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
     const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
@@ -670,6 +704,28 @@ const AgendamentoPage = () => {
             title: 'Cadastro criado!',
             description: 'Enviamos um email para confirmar seu acesso à Área do Paciente.'
           });
+
+          try {
+            if (!signUpData.session) {
+              console.log('🔐 [handleBooking] Criando sessão pós-cadastro para garantir acesso imediato...');
+              const { data: autoSignInData, error: autoSignInError } = await supabase.auth.signInWithPassword({
+                email: patientData.email,
+                password: patientData.password
+              });
+
+              if (autoSignInError) {
+                console.warn('⚠️ [handleBooking] Não foi possível criar sessão automática após cadastro:', autoSignInError.message);
+              } else {
+                const sessionUserId = autoSignInData.session?.user?.id || autoSignInData.user?.id;
+                if (sessionUserId) {
+                  userId = sessionUserId;
+                  console.log('✅ [handleBooking] Sessão autenticada após cadastro:', sessionUserId);
+                }
+              }
+            }
+          } catch (autoSignInException) {
+            console.warn('⚠️ [handleBooking] Tentativa de sessão automática falhou:', autoSignInException);
+          }
         }
       }
 
@@ -700,6 +756,24 @@ const AgendamentoPage = () => {
 
       console.log('📝 [handleBooking] Preparando dados do agendamento...');
             
+      const authMetadata = authUser?.user_metadata || {};
+      const normalizedPatientEmail = (patientData.email || authUser?.email || '').trim();
+      const normalizedPatientName = (patientData.name || authMetadata.full_name || authMetadata.name || '').trim();
+      const safePatientName = normalizedPatientName || (authUser?.email ? authUser.email.split('@')[0] : 'Paciente Doxologos');
+      const rawPatientPhone = (patientData.phone || authMetadata.phone || authMetadata.phone_number || '').trim();
+      const safePatientPhone = rawPatientPhone ? formatPhoneNumber(rawPatientPhone) : '';
+
+      if (!normalizedPatientEmail || !validateEmail(normalizedPatientEmail)) {
+        console.error('❌ [handleBooking] Email do paciente ausente ou inválido. Abortando fluxo para evitar erros no envio de email.');
+        toast({
+          variant: 'destructive',
+          title: 'Email obrigatório para o agendamento',
+          description: 'Não identificamos um email válido para enviar a confirmação. Faça login novamente ou informe o email na etapa anterior.'
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       // 4. Preparar dados do agendamento
       const bookingData = { 
         professional_id: selectedProfessional, 
@@ -707,9 +781,9 @@ const AgendamentoPage = () => {
         booking_date: selectedDate, 
         booking_time: selectedTime, 
         status: 'pending_payment', 
-        patient_name: patientData.name, 
-        patient_email: patientData.email, 
-        patient_phone: patientData.phone,
+        patient_name: safePatientName, 
+        patient_email: normalizedPatientEmail, 
+        patient_phone: safePatientPhone,
         valor_consulta: valorConsulta
       };
             
@@ -730,7 +804,7 @@ const AgendamentoPage = () => {
         console.log('🎥 Criando sala do Zoom...', {
           booking_date: selectedDate,
           booking_time: selectedTime,
-          patient_name: patientData.name,
+          patient_name: safePatientName,
           service_name: serviceDetails?.name,
           professional_name: professionalDetails?.name
         });
@@ -738,7 +812,7 @@ const AgendamentoPage = () => {
         zoomMeetingData = await zoomService.createBookingMeeting({
           booking_date: selectedDate,
           booking_time: selectedTime,
-          patient_name: patientData.name,
+          patient_name: safePatientName,
           service_name: serviceDetails?.name || 'Consulta',
           professional_name: professionalDetails?.name || 'Profissional'
         });
@@ -814,9 +888,9 @@ const AgendamentoPage = () => {
                 
         const bookingDetails = {
           id: bookingId,
-          patient_name: patientData.name,
-          patient_email: patientData.email,
-          patient_phone: patientData.phone,
+          patient_name: safePatientName,
+          patient_email: normalizedPatientEmail,
+          patient_phone: safePatientPhone,
           service_name: serviceDetails?.name || 'Consulta',
           professional_name: professionalDetails?.name || 'Profissional',
           appointment_date: selectedDate,
@@ -826,7 +900,7 @@ const AgendamentoPage = () => {
           meeting_password: zoomMeetingData?.meeting_password
         };
 
-        console.log('📧 Enviando email para:', patientData.email);
+        console.log('📧 Enviando email para:', normalizedPatientEmail);
         await emailManager.sendBookingConfirmation(bookingDetails);
         console.log('✅ Email de confirmação enviado com sucesso!');
       } catch (emailError) {

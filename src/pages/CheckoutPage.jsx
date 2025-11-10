@@ -149,7 +149,20 @@ const CheckoutPage = () => {
         setCreditLoading(true);
         setCreditError(null);
         try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const session = sessionData?.session;
+
+            if (!session) {
+                console.warn('⚠️ Nenhuma sessão ativa encontrada. Créditos só estão disponíveis após login.');
+                setCreditError('Faça login na sua conta para utilizar créditos disponíveis.');
+                setCreditState({ credits: [], balance: null });
+                return;
+            }
+
             const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                },
                 body: {
                     action: 'list',
                 },
@@ -169,7 +182,8 @@ const CheckoutPage = () => {
             });
         } catch (error) {
             console.error('Erro ao carregar créditos disponíveis:', error);
-            setCreditError(error instanceof Error ? error.message : 'Erro ao carregar créditos');
+            const message = error instanceof Error ? error.message : 'Erro ao carregar créditos';
+            setCreditError(message.includes('Authentication required') ? 'Faça login novamente para consultar seus créditos.' : message);
         } finally {
             setCreditLoading(false);
         }

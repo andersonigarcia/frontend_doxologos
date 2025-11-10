@@ -19,6 +19,13 @@ class BookingEmailManager {
    */
   async sendConfirmation(bookingData, sendCopy = true) {
     try {
+      const recipientEmail = (bookingData.patient_email || '').trim();
+
+      if (!recipientEmail) {
+        logger.error('❌ Email do paciente ausente para confirmação de agendamento', { bookingId: bookingData.id });
+        return { success: false, error: 'missing_patient_email' };
+      }
+
       const html = this.templates.bookingConfirmation({
         patient_name: bookingData.patient_name,
         service_name: bookingData.service_name || bookingData.service?.name,
@@ -28,7 +35,7 @@ class BookingEmailManager {
       });
 
       const emailConfig = {
-        to: bookingData.patient_email,
+        to: recipientEmail,
         subject: '✅ Agendamento Confirmado - Doxologos',
         html,
         type: 'booking_confirmation'
@@ -42,7 +49,7 @@ class BookingEmailManager {
       const result = await this.emailService.sendEmail(emailConfig);
 
       if (result.success) {
-        logger.success('📧 Email de confirmação enviado', { to: bookingData.patient_email });
+        logger.success('📧 Email de confirmação enviado', { to: recipientEmail });
       }
       return result;
     } catch (error) {
