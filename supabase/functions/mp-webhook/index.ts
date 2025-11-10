@@ -157,7 +157,15 @@ export default async function handler(req: Request) {
         <h3 style="color: #2d8659; margin-top: 0;">🎥 Link da Sala Zoom</h3>
         <p style="word-break: break-all;"><a href="${evento.meeting_link}" style="color: #2d8659; font-weight: bold;">${evento.meeting_link}</a></p>
         ${evento.meeting_password ? `<p><strong>🔒 Senha:</strong> <code style="background: #f5f5f5; padding: 4px 8px; border-radius: 4px; font-size: 16px;">${evento.meeting_password}</code></p>` : ''}
-        <a href="${evento.meeting_link}" class="btn">Acessar Sala Zoom</a>
+        <p style="text-align: center; margin: 15px 0;">
+          <a href="${evento.meeting_link}" class="btn">🎥 Acessar Sala Zoom</a>
+        </p>
+      </div>
+
+      <div style="background: #dbeafe; border: 2px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+        <h3 style="color: #1e40af; margin-top: 0;">📱 Acesso Rápido à Sua Área</h3>
+        <p style="margin: 0 0 15px 0;">Salve o link do evento e acompanhe outros na sua área de inscrições:</p>
+        <a href="https://appsite.doxologos.com.br/minhas-inscricoes" class="btn" style="background: #3b82f6; display: inline-block;">🔐 Acessar Minhas Inscrições</a>
       </div>
       
       <div class="checklist">
@@ -235,7 +243,7 @@ export default async function handler(req: Request) {
         // create zoom
         let zoomResp = null;
         try {
-          let startIso = null;
+          let startIso: string | undefined = undefined;
           try { if (booking.booking_date && booking.booking_time) startIso = new Date(`${booking.booking_date}T${booking.booking_time}:00`).toISOString(); } catch (e) { }
           zoomResp = await createZoomMeeting(ZOOM_TOKEN, Deno.env.get('ZOOM_USER_ID') || 'me', `Sessão - ${booking.professional_id}`, startIso, booking.duration_minutes || 60, Deno.env.get('ZOOM_TIMEZONE') || 'UTC');
           if (zoomResp && zoomResp.join_url) {
