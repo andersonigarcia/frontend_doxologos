@@ -107,7 +107,7 @@
           Você pode fazer isso acessando sua área do cliente.
         </p>
         <p style="text-align: center; margin: 0;">
-          <a href="${this.baseUrl}/paciente" class="btn" style="background: #f59e0b; padding: 14px 32px; font-size: 15px; font-weight: 600;">
+          <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #f59e0b; padding: 14px 32px; font-size: 15px; font-weight: 600;">
             💳 Finalizar Pagamento na Minha Área
           </a>
         </p>
@@ -134,7 +134,7 @@
       </div>
 
       <p style="text-align: center; margin-top: 30px;">
-        <a href="${this.baseUrl}/paciente" class="btn">Acessar Minha Área</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn">Acessar Minha Área</a>
       </p>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
@@ -215,7 +215,7 @@
           O link e a senha da sala Zoom estão aguardando você na sua área do cliente. 
           Clique no botão abaixo para acessar agora:
         </p>
-        <a href="${this.baseUrl}/paciente" class="btn" style="background: #3b82f6; font-size: 16px; padding: 14px 30px; text-decoration: none;">🔐 Acessar Minha Área - Link da Reunião</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px; padding: 14px 30px; text-decoration: none;">🔐 Acessar Minha Área - Link da Reunião</a>
         <p style="margin: 20px 0 0 0; font-size: 13px; color: #1e3a8a;">
           💡 Salve este email! Você precisará consultar o link da reunião no dia da consulta.
         </p>
