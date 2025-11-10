@@ -14,9 +14,9 @@ const DoacaoPage = () => {
     const { toast } = useToast();
 
     // PIX da clínica (substitua pela chave real)
-    const pixKey = "doe@doxologos.com.br";
+    const pixKey = "02369210613";
     const recipientName = "Doxologos Clinica";
-    const city = "SAO PAULO";
+    const city = "Belo Horizonte";
 
     const predefinedAmounts = [25, 50, 100, 200, 500];
 
