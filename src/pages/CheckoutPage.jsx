@@ -340,6 +340,7 @@ const CheckoutPage = () => {
     const handlePayment = async () => {
         if (processing) return;
         setProcessing(true);
+        setPaymentStatus(null);
 
         try {
             if (type === 'evento') {
@@ -525,11 +526,21 @@ const CheckoutPage = () => {
                         console.log('❌ Pagamento rejeitado/cancelado');
                         clearInterval(intervalId);
                         setPollingInterval(null);
-                        
+
+                        const friendlyMessage = MercadoPagoService.getFriendlyStatusMessage(
+                            statusResult.status_detail,
+                            statusResult.status
+                        );
+
+                        setPaymentStatus({
+                            status: statusResult.status,
+                            detail: statusResult.status_detail,
+                        });
+
                         toast({
                             variant: 'destructive',
                             title: 'Pagamento não aprovado',
-                            description: 'O pagamento não foi concluído. Tente novamente.'
+                            description: friendlyMessage
                         });
                     }
                 }
@@ -619,6 +630,10 @@ const CheckoutPage = () => {
         return null;
     }
 
+    const friendlyCheckoutMessage = paymentStatus
+        ? MercadoPagoService.getFriendlyStatusMessage(paymentStatus.detail, paymentStatus.status)
+        : null;
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
             {/* Header com navegação */}
@@ -645,6 +660,15 @@ const CheckoutPage = () => {
                     <h1 className="text-4xl font-bold mb-2">Finalizar Pagamento</h1>
                     <p className="text-gray-600">Complete seu agendamento</p>
                 </div>
+
+                {friendlyCheckoutMessage && (
+                    <div className="mb-6">
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                            <p className="font-semibold mb-1">Não conseguimos aprovar o pagamento anterior.</p>
+                            <p>{friendlyCheckoutMessage}</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid md:grid-cols-3 gap-6">
                     {/* Métodos de Pagamento */}

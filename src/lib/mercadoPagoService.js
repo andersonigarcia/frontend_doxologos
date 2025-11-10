@@ -405,6 +405,56 @@ export class MercadoPagoService {
     }
 
     /**
+     * Retorna mensagem amigável baseada no status_detail retornado pelo MP
+     * @param {string|null} statusDetail - Detalhe do status
+     * @param {string|string[]} [status] - Status principal (opcional)
+     * @returns {string}
+     */
+    static getFriendlyStatusMessage(statusDetail, status) {
+        const detailMap = {
+            'cc_rejected_insufficient_amount': 'Saldo insuficiente no cartão. Escolha outro cartão ou entre em contato com o banco.',
+            'cc_rejected_bad_filled_card_number': 'Número do cartão inválido. Verifique os dados digitados e tente novamente.',
+            'cc_rejected_bad_filled_date': 'Data de validade do cartão inválida. Corrija a informação e tente novamente.',
+            'cc_rejected_bad_filled_security_code': 'Código de segurança inválido. Confira o CVV e tente novamente.',
+            'cc_rejected_call_for_authorize': 'O banco emissor não autorizou a compra. Entre em contato com o banco e tente novamente.',
+            'cc_rejected_card_disabled': 'O cartão está desabilitado para compras. Fale com o banco emissor ou utilize outro cartão.',
+            'cc_rejected_duplicated_payment': 'Identificamos uma tentativa duplicada. Confira se a cobrança anterior foi aprovada.',
+            'cc_rejected_high_risk': 'Pagamento recusado por segurança. Utilize outro cartão ou método de pagamento.',
+            'cc_rejected_invalid_installments': 'Número de parcelas inválido para este cartão. Ajuste as parcelas ou escolha outro cartão.',
+            'cc_rejected_max_attempts': 'Você atingiu o número máximo de tentativas. Aguarde alguns minutos ou tente outro cartão.',
+            'cc_rejected_other_reason': 'O banco não autorizou a compra. Verifique com o banco ou escolha outro método.',
+            'rejected_other_reason': 'O pagamento foi rejeitado pelo emissor. Tente novamente com outro método.',
+            'cc_rejected_blacklist': 'Não foi possível aprovar o pagamento. Utilize outro cartão ou entre em contato com o banco.'
+        };
+
+        if (statusDetail && detailMap[statusDetail]) {
+            return detailMap[statusDetail];
+        }
+
+        const normalizedStatus = Array.isArray(status)
+            ? status.map((value) => value?.toString().toLowerCase())
+            : status?.toString().toLowerCase();
+
+        if (normalizedStatus === 'cancelled' || normalizedStatus?.includes('cancelled')) {
+            return 'O pagamento foi cancelado. Você pode tentar novamente escolhendo outra forma de pagamento.';
+        }
+
+        if (normalizedStatus === 'rejected' || normalizedStatus?.includes('rejected')) {
+            return 'O pagamento foi rejeitado. Confira os dados informados ou escolha outra forma de pagamento.';
+        }
+
+        if (normalizedStatus === 'pending' || normalizedStatus?.includes('pending')) {
+            return 'Estamos aguardando a confirmação do pagamento. Assim que o banco confirmar, sua consulta será liberada.';
+        }
+
+        if (normalizedStatus === 'in_process' || normalizedStatus?.includes('in_process')) {
+            return 'Estamos analisando o pagamento com o emissor. Em alguns minutos você receberá a confirmação por email.';
+        }
+
+        return 'Não foi possível processar o pagamento. Tente novamente ou escolha outro método.';
+    }
+
+    /**
      * Processa pagamento com cartão (tokenizado)
      * @param {Object} paymentData - Dados do pagamento com token
      * @returns {Promise<Object>} - Resultado do pagamento
@@ -431,11 +481,56 @@ export class MercadoPagoService {
             const result = await response.json();
             console.log('✅ [MP] Pagamento processado:', result);
 
+            const status = result?.status;
+            const statusDetail = result?.status_detail;
+            const normalizedStatus = typeof status === 'string'
+                ? status.toLowerCase()
+                : undefined;
+            const friendlyMessage = this.getFriendlyStatusMessage(statusDetail, status);
+
+            if (normalizedStatus && normalizedStatus !== 'approved') {
+                const fallbackMessage = friendlyMessage
+                    || result?.message
+                    || result?.error
+                    || 'Não foi possível processar o pagamento.';
+
+                return {
+                    success: false,
+                    status,
+                    status_detail: statusDetail,
+                    payment_id: result?.payment_id,
+                    friendlyMessage,
+                    error: fallbackMessage,
+                    transaction_amount: result?.transaction_amount,
+                    raw: result
+                };
+            }
+
+            if (result?.success === false) {
+                const fallbackMessage = result?.message
+                    || result?.error
+                    || friendlyMessage
+                    || 'Não foi possível processar o pagamento.';
+
+                return {
+                    success: false,
+                    status,
+                    status_detail: statusDetail,
+                    payment_id: result?.payment_id,
+                    friendlyMessage,
+                    error: fallbackMessage,
+                    transaction_amount: result?.transaction_amount,
+                    raw: result
+                };
+            }
+
             return {
                 success: true,
-                payment_id: result.payment_id,
-                status: result.status,
-                ...result
+                payment_id: result?.payment_id,
+                status,
+                status_detail: statusDetail,
+                transaction_amount: result?.transaction_amount,
+                raw: result
             };
 
         } catch (error) {

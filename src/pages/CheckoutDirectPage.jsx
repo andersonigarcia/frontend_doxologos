@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CreditCard, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,8 @@ const CheckoutDirectPage = () => {
     const bookingId = searchParams.get('booking_id');
     const type = searchParams.get('type');
     const inscricaoId = searchParams.get('inscricao_id');
+    const emailParam = searchParams.get('email');
+    const valorParam = searchParams.get('valor');
     
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
@@ -30,10 +31,17 @@ const CheckoutDirectPage = () => {
     const [installments, setInstallments] = useState(1);
     const [docType, setDocType] = useState('CPF');
     const [docNumber, setDocNumber] = useState('');
+    const [payerEmail, setPayerEmail] = useState('');
     
     // Mercado Pago
     const [mp, setMp] = useState(null);
     const [cardForm, setCardForm] = useState(null);
+
+    useEffect(() => {
+        if (emailParam && !payerEmail) {
+            setPayerEmail(emailParam);
+        }
+    }, [emailParam, payerEmail]);
 
     useEffect(() => {
         // Inicializar Mercado Pago
@@ -74,6 +82,7 @@ const CheckoutDirectPage = () => {
             setBooking(data);
             setCardholderName(data.patient_name || '');
             setDocNumber(data.patient_cpf || '');
+            setPayerEmail((current) => current || data.patient_email || '');
         } catch (error) {
             console.error('Erro ao carregar booking:', error);
             toast({
@@ -99,6 +108,7 @@ const CheckoutDirectPage = () => {
             setInscricao(data);
             setCardholderName(data.patient_name || '');
             setDocNumber(data.patient_cpf || '');
+            setPayerEmail((current) => current || data.patient_email || '');
         } catch (error) {
             console.error('Erro ao carregar inscrição:', error);
             toast({
@@ -187,12 +197,10 @@ const CheckoutDirectPage = () => {
 
             console.log('💰 Valor do pagamento:', amount);
 
-            const email = type === 'evento'
-                ? inscricao?.patient_email
-                : booking?.patient_email;
-            
+            const email = payerEmail?.trim().toLowerCase();
+
             if (!email) {
-                throw new Error('Email não encontrado. Por favor, retorne à página anterior.');
+                throw new Error('Informe um e-mail válido para continuar.');
             }
 
             // Criar token do cartão
@@ -226,7 +234,7 @@ const CheckoutDirectPage = () => {
                     ? `Evento - ${inscricao?.evento?.titulo}`
                     : `Consulta - ${booking?.services?.name}`,
                 payer: {
-                    email: email,
+                    email,
                     identification: {
                         type: docType,
                         number: docNumber.replace(/\D/g, '')
@@ -251,9 +259,19 @@ const CheckoutDirectPage = () => {
                 const referenceId = bookingId || inscricaoId;
                 const referenceType = type || 'booking';
                 navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
-            } else {
-                throw new Error(result.error || 'Erro ao processar pagamento');
+                return;
             }
+
+            const status = typeof result.status === 'string' ? result.status.toLowerCase() : '';
+            const isPending = status === 'pending' || status === 'in_process';
+            const friendlyMessage = result.friendlyMessage || result.error || 'Não foi possível processar o pagamento.';
+
+            toast({
+                variant: isPending ? 'default' : 'destructive',
+                title: isPending ? 'Pagamento em análise' : 'Pagamento não aprovado',
+                description: friendlyMessage
+            });
+            return;
 
         } catch (error) {
             console.error('Erro no pagamento:', error);
@@ -388,6 +406,21 @@ const CheckoutDirectPage = () => {
                                         placeholder="000.000.000-00"
                                         className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                                         maxLength="14"
+                                        required
+                                    />
+                                </div>
+
+                                {/* Email */}
+                                <div>
+                                    <label className="block text-sm font-medium mb-2">
+                                        E-mail para confirmação
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={payerEmail}
+                                        onChange={(e) => setPayerEmail(e.target.value)}
+                                        placeholder="nome@exemplo.com"
+                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                                         required
                                     />
                                 </div>

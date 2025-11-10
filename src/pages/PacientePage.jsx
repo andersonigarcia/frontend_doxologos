@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+import MercadoPagoService from '@/lib/mercadoPagoService';
 import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { QRCodeSVG } from 'qrcode.react';
@@ -18,7 +19,7 @@ const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
 
 const PacientePage = () => {
     const { toast } = useToast();
-    const { user, signIn, signOut } = useAuth();
+    const { user, session, signIn, signOut } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [bookings, setBookings] = useState([]);
     const [reviews, setReviews] = useState([]);
@@ -67,8 +68,17 @@ const PacientePage = () => {
         setCreditError(null);
 
         try {
+            const accessToken = session?.access_token;
+
+            if (!accessToken) {
+                throw new Error('Sessão expirada. Faça login novamente.');
+            }
+
             const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
                 body: { action: 'list' },
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
             });
 
             if (error) {
@@ -89,7 +99,7 @@ const PacientePage = () => {
         } finally {
             setCreditLoading(false);
         }
-    }, [user]);
+    }, [user, session]);
 
     const resolvePaymentRecord = (booking) => {
         if (!booking) return null;
@@ -247,8 +257,17 @@ const PacientePage = () => {
 
     const cancelBooking = async (bookingId) => {
         try {
+            const accessToken = session?.access_token;
+
+            if (!accessToken) {
+                throw new Error('Sessão expirada. Faça login novamente.');
+            }
+
             const { data, error } = await supabase.functions.invoke('patient-cancel-booking', {
                 body: { booking_id: bookingId },
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
             });
 
             if (error) {
@@ -946,6 +965,13 @@ const PacientePage = () => {
                                     const rescheduleAttemptsRemaining = Math.max(0, MAX_RESCHEDULE_ATTEMPTS - rescheduleAttemptsUsed);
                                     const isEligibleForReschedule = canReschedule(booking);
                                     const restrictionMessage = isEligibleForReschedule ? null : getRescheduleRestrictionMessage(booking);
+                                    const latestPayment = resolvePaymentRecord(booking);
+                                    const latestPaymentStatus = latestPayment?.status?.toLowerCase() || null;
+                                    const latestPaymentMessage = MercadoPagoService.getFriendlyStatusMessage(
+                                        latestPayment?.status_detail,
+                                        latestPayment?.status
+                                    );
+                                    const paymentNeedsRetry = latestPaymentStatus === 'rejected' || latestPaymentStatus === 'cancelled';
 
                                     return (
                                         <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
@@ -1047,7 +1073,7 @@ const PacientePage = () => {
                                                             Pagamento Pendente
                                                         </h4>
                                                         <p className="text-sm text-amber-800 mb-3">
-                                                            Complete o pagamento para confirmar seu agendamento
+                                                            {latestPaymentMessage || 'Complete o pagamento para confirmar seu agendamento.'}
                                                         </p>
                                                         
                                                         {/* Exibir QR Code PIX se disponível */}
@@ -1128,17 +1154,19 @@ const PacientePage = () => {
                                                             </div>
                                                         )}
                                                         
-                                                        {/* Caso não tenha QR Code (pagamento antigo ou outro método) */}
-                                                        {!booking.payment?.[0]?.qr_code && (
-                                                            <div className="flex items-center gap-2 mt-2">
-                                                                <Link to={`/checkout?booking_id=${booking.id}`}>
-                                                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                                                                        <CreditCard className="w-4 h-4 mr-2" />
-                                                                        Realizar Pagamento
-                                                                    </Button>
-                                                                </Link>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center gap-2 mt-3">
+                                                            <Link to={`/checkout?booking_id=${booking.id}`}>
+                                                                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                                                                    <CreditCard className="w-4 h-4 mr-2" />
+                                                                    Realizar Pagamento
+                                                                </Button>
+                                                            </Link>
+                                                            {paymentNeedsRetry && (
+                                                                <span className="text-xs text-amber-700">
+                                                                    Você pode escolher outro cartão ou alterar o método de pagamento.
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

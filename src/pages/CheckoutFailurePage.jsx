@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import analytics from '@/lib/analytics';
 import { logger } from '@/lib/logger';
+import MercadoPagoService from '@/lib/mercadoPagoService';
 
 const CheckoutFailurePage = () => {
     const [searchParams] = useSearchParams();
@@ -77,26 +78,10 @@ const CheckoutFailurePage = () => {
     }, [paymentId, externalReference, payment?.booking_id]);
 
     const getFailureMessage = () => {
-        if (payment?.status_detail) {
-            const messages = {
-                'cc_rejected_insufficient_amount': 'Saldo insuficiente no cartão',
-                'cc_rejected_bad_filled_card_number': 'Número do cartão inválido',
-                'cc_rejected_bad_filled_date': 'Data de validade inválida',
-                'cc_rejected_bad_filled_security_code': 'Código de segurança inválido',
-                'cc_rejected_call_for_authorize': 'Pagamento rejeitado, entre em contato com o banco',
-                'cc_rejected_card_disabled': 'Cartão desabilitado',
-                'cc_rejected_duplicated_payment': 'Pagamento duplicado',
-                'cc_rejected_max_attempts': 'Número máximo de tentativas excedido',
-                'cc_rejected_other_reason': 'Pagamento rejeitado pelo banco',
-            };
-            return messages[payment.status_detail] || 'Pagamento rejeitado';
-        }
-
-        if (collectionStatus === 'cancelled') {
-            return 'Pagamento cancelado pelo usuário';
-        }
-
-        return 'Não foi possível processar o pagamento';
+        const detail = payment?.status_detail || collectionStatus;
+        const status = payment?.status || collectionStatus;
+        const message = MercadoPagoService.getFriendlyStatusMessage(detail, status);
+        return message || 'Não foi possível processar o pagamento';
     };
 
     const handleRetry = () => {
