@@ -516,14 +516,14 @@ const EventoDetalhePage = () => {
                         
                         {isEventoPago ? (
                             <div className="space-y-3 text-gray-600">
-                                <p className="text-lg">Enviamos um <strong>email com o QR Code PIX</strong> para pagamento.</p>
+                                <p className="text-lg">Enviamos um <strong>email com as informações para pagamento</strong>.</p>
                                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left">
                                     <p className="text-sm font-semibold text-amber-800 mb-2">⏰ Próximos passos:</p>
                                     <ol className="text-sm space-y-1 list-decimal list-inside text-amber-900">
-                                        <li>Abra o email e escaneie o QR Code</li>
-                                        <li>Realize o pagamento via PIX</li>
+                                        <li>Acesse a <strong>Área do Paciente</strong> no site</li>
+                                        <li>Escolha o evento e realize o pagamento </li>
                                         <li>Aguarde a confirmação automática (até 5 minutos)</li>
-                                        <li>Você receberá um novo email com o <strong>link da sala Zoom</strong></li>
+                                        <li>O <strong>link da sala Zoom</strong> será disponibilizado na Área do Paciente</li>
                                     </ol>
                                 </div>
                                 <p className="text-sm text-gray-500 mt-4">
