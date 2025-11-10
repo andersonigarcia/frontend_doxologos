@@ -292,33 +292,38 @@ const AgendamentoPage = () => {
   ]), []);
 
   const canSubmitBooking = useMemo(() => {
-    if (!patientData.name || !patientData.email || !patientData.phone || emailError) {
+    if (!authUser && (!patientData.name || !patientData.email || !patientData.phone || emailError)) {
       return false;
     }
 
     if (authUser) {
-      return true;
+      return patientData.acceptTerms;
     }
 
     if (isExistingPatient) {
-      return Boolean(patientData.password && patientData.password.length >= MIN_PASSWORD_LENGTH);
+      return Boolean(patientData.password && patientData.password.length >= MIN_PASSWORD_LENGTH && patientData.acceptTerms);
     }
 
     return (
       Boolean(patientData.password) &&
       Boolean(patientData.confirmPassword) &&
       patientData.password.length >= MIN_PASSWORD_LENGTH &&
-      patientData.password === patientData.confirmPassword
+      patientData.password === patientData.confirmPassword &&
+      patientData.acceptTerms
     );
-  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, emailError, authUser, isExistingPatient]);
+  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient]);
 
   const submitButtonTitle = useMemo(() => {
-    if (!patientData.name || !patientData.email || !patientData.phone) {
+    if (!authUser && (!patientData.name || !patientData.email || !patientData.phone)) {
       return 'Preencha todos os campos obrigatórios';
     }
 
-    if (emailError) {
+    if (!authUser && emailError) {
       return 'Digite um email válido';
+    }
+
+    if (!patientData.acceptTerms) {
+      return 'Aceite os termos e condições';
     }
 
     if (authUser) {
@@ -342,7 +347,7 @@ const AgendamentoPage = () => {
     }
 
     return '';
-  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, emailError, authUser, isExistingPatient]);
+  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient]);
 
   const formatPatientName = (name) => {
     if (!name) return 'Paciente atendido';
@@ -1364,45 +1369,49 @@ const AgendamentoPage = () => {
                   <p className="text-gray-600 text-lg">Revise os detalhes e preencha seus dados para finalizar</p>
                 </div>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nome Completo</label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={patientData.name} 
-                      onChange={(e) => setPatientData((prev) => ({ ...prev, name: e.target.value }))} 
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                      placeholder="Seu nome completo" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email</label>
-                    <input 
-                      type="email" 
-                      required 
-                      value={patientData.email} 
-                      onChange={handleEmailChange}
-                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
-                        emailError ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                      placeholder="seu@email.com" 
-                    />
-                    {emailError && (
-                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Telefone</label>
-                    <input 
-                      type="tel" 
-                      required 
-                      value={patientData.phone} 
-                      onChange={handlePhoneChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                      placeholder="(00) 00000-0000"
-                      maxLength="15"
-                    />
-                  </div>
+                  {!authUser && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Nome Completo</label>
+                        <input 
+                          type="text" 
+                          required 
+                          value={patientData.name} 
+                          onChange={(e) => setPatientData((prev) => ({ ...prev, name: e.target.value }))} 
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                          placeholder="Seu nome completo" 
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Email</label>
+                        <input 
+                          type="email" 
+                          required 
+                          value={patientData.email} 
+                          onChange={handleEmailChange}
+                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
+                            emailError ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="seu@email.com" 
+                        />
+                        {emailError && (
+                          <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Telefone</label>
+                        <input 
+                          type="tel" 
+                          required 
+                          value={patientData.phone} 
+                          onChange={handlePhoneChange}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                          placeholder="(00) 00000-0000"
+                          maxLength="15"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
                 {!authUser ? (
                   <div className="mt-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
