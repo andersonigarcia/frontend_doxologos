@@ -1608,7 +1608,7 @@ const AgendamentoPage = () => {
                   </div>
                 </div>
 
-                {topTestimonials.length > 0 && (
+                {/* {topTestimonials.length > 0 && (
                   <div className="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-sm">
                     <div className="flex items-center gap-2 mb-4">
                       <Quote className="w-5 h-5 text-[#2d8659]" />
@@ -1633,7 +1633,7 @@ const AgendamentoPage = () => {
                       })}
                     </div>
                   </div>
-                )}
+                )} */}
                 <div className="flex items-start gap-2 mt-6">
                   <input
                     type="checkbox"
