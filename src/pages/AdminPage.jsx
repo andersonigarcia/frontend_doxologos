@@ -24,6 +24,8 @@ const ROLE_DISPLAY = {
     user: { label: 'Usuário', classes: 'bg-gray-100 text-gray-800 border-gray-200', Icon: UserCircle }
 };
 
+const MIN_PROFESSIONAL_PASSWORD_LENGTH = 6;
+
 const AdminPage = () => {
     const { toast } = useToast();
     const { user, userRole, signIn, signOut, updatePassword } = useAuth();
@@ -622,6 +624,17 @@ const AdminPage = () => {
                 return;
             }
 
+            const trimmedAdminPassword = userRole === 'admin' ? (professionalFormData.password || '').trim() : '';
+
+            if (trimmedAdminPassword && trimmedAdminPassword.length < MIN_PROFESSIONAL_PASSWORD_LENGTH) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Senha muito curta',
+                    description: `A nova senha deve ter pelo menos ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres.`
+                });
+                return;
+            }
+
             try {
                 setIsSavingProfessionalProfile(true);
 
@@ -656,6 +669,69 @@ const AdminPage = () => {
                             title: 'Confirme o novo email',
                             description: 'Enviamos um link de confirmação para o novo endereço. Conclua o processo para finalizar a alteração.'
                         });
+                    }
+                }
+
+                if (userRole === 'admin' && trimmedAdminPassword) {
+                    const adminTargetUserId = professionalFormData.user_id || professionalFormData.id;
+
+                    if (!adminTargetUserId) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Usuário não associado',
+                            description: 'Não foi possível localizar o usuário de autenticação para atualizar a senha.'
+                        });
+                    } else {
+                        try {
+                            const { data: sessionData } = await supabase.auth.getSession();
+                            const accessToken = sessionData?.session?.access_token;
+
+                            if (!accessToken) {
+                                toast({
+                                    variant: 'destructive',
+                                    title: 'Sessão expirada',
+                                    description: 'Faça login novamente para concluir a redefinição de senha do profissional.'
+                                });
+                            } else {
+                                const response = await fetch(
+                                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user`,
+                                    {
+                                        method: 'POST',
+                                        headers: {
+                                            'Authorization': `Bearer ${accessToken}`,
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            userId: adminTargetUserId,
+                                            userData: { password: trimmedAdminPassword }
+                                        })
+                                    }
+                                );
+
+                                const payload = await response.json().catch(() => ({}));
+
+                                if (!response.ok) {
+                                    toast({
+                                        variant: 'destructive',
+                                        title: 'Erro ao atualizar senha',
+                                        description: payload?.error || 'Não foi possível redefinir a senha do profissional.'
+                                    });
+                                } else {
+                                    toast({
+                                        title: 'Senha redefinida!',
+                                        description: 'O profissional já pode acessar com a nova senha informada.'
+                                    });
+                                }
+                            }
+                        } catch (passwordError) {
+                            secureLog.error('Erro inesperado ao redefinir senha do profissional:', passwordError?.message || passwordError);
+                            secureLog.debug('Detalhes do erro inesperado ao redefinir senha do profissional', passwordError);
+                            toast({
+                                variant: 'destructive',
+                                title: 'Erro inesperado',
+                                description: 'Não foi possível atualizar a senha do profissional.'
+                            });
+                        }
                     }
                 }
 
@@ -2997,7 +3073,7 @@ const AdminPage = () => {
                                             />
                                         </div>
                                         
-                                        {!isEditingProfessional && (
+                                        {(userRole === 'admin' || !isEditingProfessional) && (
                                             <div>
                                                 <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
                                                 <input 
@@ -3005,10 +3081,13 @@ const AdminPage = () => {
                                                     value={professionalFormData.password} 
                                                     onChange={e => setProfessionalFormData({...professionalFormData, password: e.target.value})} 
                                                     type="password" 
-                                                    placeholder="******" 
+                                                    placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'} 
                                                     className="w-full input" 
-                                                    required 
+                                                    required={!isEditingProfessional} 
                                                 />
+                                                {isEditingProfessional && userRole === 'admin' && (
+                                                    <p className="text-xs text-gray-500 mt-1">{`Deixe em branco para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
+                                                )}
                                             </div>
                                         )}
                                         
