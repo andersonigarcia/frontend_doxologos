@@ -679,27 +679,88 @@ const AdminPage = () => {
         } else {
             try {
                 setIsSavingProfessionalProfile(true);
+                let createdUserId = null;
 
-                const { data: authData, error: signUpError } = await supabase.auth.signUp({
-                    email: trimmedEmail,
-                    password,
-                    options: { data: { full_name: profData.name, role: 'professional' } }
-                });
+                if (userRole === 'admin') {
+                    const { data: sessionData } = await supabase.auth.getSession();
+                    const accessToken = sessionData?.session?.access_token;
 
-                if (signUpError) {
-                    toast({ variant: 'destructive', title: 'Erro ao criar usuário', description: signUpError.message });
-                    return;
-                }
+                    if (!accessToken) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Sessão expirada',
+                            description: 'Faça login novamente para criar novos profissionais.'
+                        });
+                        return;
+                    }
 
-                if (!authData.user) {
-                    toast({ variant: 'destructive', title: 'Erro ao criar profissional', description: 'Não foi possível criar o usuário.' });
-                    return;
+                    const response = await fetch(
+                        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-create-user`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                email: trimmedEmail,
+                                password,
+                                userMetadata: {
+                                    role: 'professional',
+                                    full_name: profData.name
+                                },
+                                appMetadata: {
+                                    role: 'professional'
+                                }
+                            })
+                        }
+                    );
+
+                    const payload = await response.json();
+
+                    if (!response.ok) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Erro ao criar usuário',
+                            description: payload?.error || 'Não foi possível criar o usuário profissional.'
+                        });
+                        return;
+                    }
+
+                    createdUserId = payload?.user?.id || null;
+
+                    if (!createdUserId) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Erro ao criar usuário',
+                            description: 'Usuário criado, mas não foi possível obter o identificador.'
+                        });
+                        return;
+                    }
+                } else {
+                    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+                        email: trimmedEmail,
+                        password,
+                        options: { data: { full_name: profData.name, role: 'professional' } }
+                    });
+
+                    if (signUpError) {
+                        toast({ variant: 'destructive', title: 'Erro ao criar usuário', description: signUpError.message });
+                        return;
+                    }
+
+                    if (!authData.user) {
+                        toast({ variant: 'destructive', title: 'Erro ao criar profissional', description: 'Não foi possível criar o usuário.' });
+                        return;
+                    }
+
+                    createdUserId = authData.user.id;
                 }
 
                 const professionalPayload = {
                     ...profData,
                     services_ids: Array.isArray(profData.services_ids) ? profData.services_ids : [],
-                    user_id: authData.user.id
+                    user_id: createdUserId
                 };
 
                 const { error: profError } = await supabase
