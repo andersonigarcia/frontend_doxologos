@@ -16,7 +16,7 @@ import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 
 const MIN_PASSWORD_LENGTH = 8;
-const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '' };
+const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
@@ -544,6 +544,17 @@ const AgendamentoPage = () => {
         
     setIsSubmitting(true);
     setPasswordError('');
+        
+    // Validar aceitação dos termos
+    if (!patientData.acceptTerms) {
+      toast({
+        variant: 'destructive',
+        title: 'Aceite os termos',
+        description: 'Você precisa aceitar os termos e condições para continuar.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
         
     try {
       if (!authUser) {
@@ -1623,6 +1634,22 @@ const AgendamentoPage = () => {
                     </div>
                   </div>
                 )}
+                <div className="flex items-start gap-2 mt-6">
+                  <input
+                    type="checkbox"
+                    id="acceptTerms"
+                    checked={patientData.acceptTerms}
+                    onChange={(e) => setPatientData({...patientData, acceptTerms: e.target.checked})}
+                    className="mt-1"
+                  />
+                  <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+                    Li e aceito os{' '}
+                    <a href="/termos-e-condicoes" target="_blank" className="text-[#2d8659] hover:underline font-medium">
+                      termos e condições
+                    </a>
+                    {' '}*
+                  </label>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
                   <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
                   <motion.div
