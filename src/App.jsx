@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
@@ -29,6 +28,7 @@ import RecuperarSenhaPage from '@/pages/RecuperarSenhaPage';
 import RedefinirSenhaPage from '@/pages/RedefinirSenhaPage';
 import MinhasInscricoesPage from '@/pages/MinhasInscricoesPage';
 import AdminUsuariosPage from '@/pages/AdminUsuariosPage';
+import TermosCondicoesPage from '@/pages/TermosCondicoesPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -113,6 +113,11 @@ function AppContent() {
         <Route path="/minhas-inscricoes" element={
           <PageErrorBoundary pageName="Minhas Inscrições">
             <MinhasInscricoesPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/termos-e-condicoes" element={
+          <PageErrorBoundary pageName="Termos e Condições">
+            <TermosCondicoesPage />
           </PageErrorBoundary>
         } />
         <Route path="/criar-usuarios" element={
