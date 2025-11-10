@@ -366,9 +366,10 @@ const AdminPage = () => {
             try {
                 const { count, error } = await supabase
                     .from('inscricoes_eventos')
-                    .select('*', { count: 'exact' })
-                    .eq('evento_id', event.id);
-                    
+                    .select('*', { count: 'exact', head: true })
+                    .eq('evento_id', event.id)
+                    .in('status', ['pending', 'confirmed']);
+
                 if (!error) {
                     inscricoesCount = count || 0;
                 }

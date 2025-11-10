@@ -130,10 +130,15 @@ const EventoDetalhePage = () => {
                 }
 
                 // Buscar contagem de inscrições
-                const { count } = await supabase
+                const { count, error: inscricoesError } = await supabase
                     .from('inscricoes_eventos')
-                    .select('*', { count: 'exact' })
-                    .eq('evento_id', data.id);
+                    .select('*', { count: 'exact', head: true })
+                    .eq('evento_id', data.id)
+                    .in('status', ['pending', 'confirmed']);
+
+                if (inscricoesError) {
+                    console.error('Erro ao contar inscrições do evento:', inscricoesError);
+                }
 
                 setEvent(data);
                 setInscricoesCount(count || 0);
