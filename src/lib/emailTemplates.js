@@ -13,6 +13,22 @@
     this.supportEmail = "doxologos@doxologos.com.br";
   }
   
+  // Função para sanitizar dados antes de inserir no HTML
+  sanitizeForHtml(text) {
+    if (!text || typeof text !== 'string') return '';
+    
+    // Escapa caracteres especiais que podem causar problemas de codificação
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/\n/g, '<br>')
+      .replace(/\s+/g, ' ') // Remove espaços extras que podem causar =20
+      .trim();
+  }
+  
   baseTemplate(content, title = "Doxologos") {
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -72,16 +88,16 @@
   // EMAIL 1: Confirmação de Agendamento (para o PACIENTE)
   bookingConfirmation(booking) {
     const content = `
-      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${booking.patient_name}!</h2>
+      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${this.sanitizeForHtml(booking.patient_name)}!</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
         Seu agendamento foi realizado com sucesso! Seguem os detalhes:
       </p>
       
       <div class="info-box">
         <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
-        <p><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
-        <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
+        <p><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(booking.service_name)}</p>
+        <p><strong>👨‍⚕️ Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
       </div>
 
       <div style="background: #fef3c7; padding: 20px; margin: 25px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
@@ -132,18 +148,18 @@
   // EMAIL 2: Novo Agendamento (para o PROFISSIONAL)
   newBookingForProfessional(booking) {
     const content = `
-      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${booking.professional_name}!</h2>
+      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${this.sanitizeForHtml(booking.professional_name)}!</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
         Temos uma nova consulta confirmada para você na Doxologos. Seguem os detalhes:
       </p>
       
       <div class="info-box">
         <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
-        <p><strong>👤 Paciente:</strong> ${booking.patient_name}</p>
-        ${booking.patient_phone ? `<p><strong>📱 Telefone:</strong> ${booking.patient_phone}</p>` : ''}
-        ${booking.patient_email ? `<p><strong>📧 E-mail:</strong> ${booking.patient_email}</p>` : ''}
-        <p><strong>🖥️ Atendimento:</strong> ${booking.service_name} (via Zoom)</p>
+        <p><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p><strong>👤 Paciente:</strong> ${this.sanitizeForHtml(booking.patient_name)}</p>
+        ${booking.patient_phone ? `<p><strong>📱 Telefone:</strong> ${this.sanitizeForHtml(booking.patient_phone)}</p>` : ''}
+        ${booking.patient_email ? `<p><strong>📧 E-mail:</strong> ${this.sanitizeForHtml(booking.patient_email)}</p>` : ''}
+        <p><strong>🖥️ Atendimento:</strong> ${this.sanitizeForHtml(booking.service_name)} (via Zoom)</p>
       </div>
 
       ${booking.meeting_link ? `
@@ -180,7 +196,7 @@
     const content = `
       <h2 style="color: #059669; font-size: 22px; margin: 0 0 10px 0;">✅ Pagamento Confirmado - Consulta Garantida!</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Olá <strong>${booking.patient_name}</strong>,
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
         Ótimas notícias! Seu pagamento foi processado com sucesso e sua consulta está <strong>confirmada</strong>. 🎉
@@ -188,9 +204,9 @@
       
       <div class="info-box">
         <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
-        <p><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
-        <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
+        <p><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(booking.service_name)}</p>
+        <p><strong>👨‍⚕️ Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
       </div>
 
       <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
@@ -252,7 +268,7 @@
     const content = `
       <h2 style="color: #f59e0b; font-size: 22px; margin: 0 0 10px 0;">📅 Agendamento Reagendado</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Olá <strong>${booking.patient_name}</strong>,
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
         Informamos que seu agendamento foi alterado.
@@ -260,21 +276,21 @@
       
       ${reason ? `
         <div style="background: #fef3c7; padding: 15px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
-          <p style="margin: 0; color: #92400e; font-style: italic;"><strong>Motivo:</strong> "${reason}"</p>
+          <p style="margin: 0; color: #92400e; font-style: italic;"><strong>Motivo:</strong> "${this.sanitizeForHtml(reason)}"</p>
         </div>
       ` : ''}
 
       <div style="background: #fee2e2; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #dc2626;">
         <h3 style="margin: 0 0 12px 0; color: #991b1b; font-size: 16px;">❌ Horário Anterior:</h3>
         <p style="margin: 5px 0; color: #7f1d1d;"><strong>Data:</strong> ${this.formatDate(oldDate)}</p>
-        <p style="margin: 5px 0; color: #7f1d1d;"><strong>Horário:</strong> ${oldTime}</p>
+        <p style="margin: 5px 0; color: #7f1d1d;"><strong>Horário:</strong> ${this.sanitizeForHtml(oldTime)}</p>
       </div>
 
       <div style="background: #d1fae5; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #059669;">
         <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 16px;">✅ Novo Horário:</h3>
         <p style="margin: 5px 0; color: #064e3b;"><strong>Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin: 5px 0; color: #064e3b;"><strong>Horário:</strong> ${booking.appointment_time}</p>
-        <p style="margin: 5px 0; color: #064e3b;"><strong>Profissional:</strong> ${booking.professional_name}</p>
+        <p style="margin: 5px 0; color: #064e3b;"><strong>Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p style="margin: 5px 0; color: #064e3b;"><strong>Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
       </div>
 
       <p style="font-size: 15px; color: #4b5563; margin: 20px 0;">
@@ -297,7 +313,7 @@
     const content = `
       <h2 style="color: #dc2626; font-size: 22px; margin: 0 0 10px 0;">❌ Agendamento Cancelado</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Olá <strong>${booking.patient_name}</strong>,
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
         Informamos que seu agendamento foi cancelado.
@@ -305,21 +321,21 @@
       
       ${reason ? `
         <div style="background: #fee2e2; padding: 15px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #dc2626;">
-          <p style="margin: 0; color: #991b1b;"><strong>Motivo:</strong> ${reason}</p>
+          <p style="margin: 0; color: #991b1b;"><strong>Motivo:</strong> ${this.sanitizeForHtml(reason)}</p>
         </div>
       ` : ''}
 
       <div class="info-box">
-        <p><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
+        <p><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(booking.service_name)}</p>
         <p><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
-        <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
+        <p><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p><strong>👨‍⚕️ Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
       </div>
 
       ${refundInfo ? `
         <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6;">
           <p style="margin: 0 0 10px 0; color: #1e40af; font-weight: 600;">💰 Informações sobre Reembolso:</p>
-          <p style="margin: 0; color: #1e3a8a;">${refundInfo}</p>
+          <p style="margin: 0; color: #1e3a8a;">${this.sanitizeForHtml(refundInfo)}</p>
         </div>
       ` : ''}
 
@@ -349,7 +365,7 @@
     const content = `
       <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">⏰ Sua Consulta é Amanhã!</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Olá <strong>${booking.patient_name}</strong>,
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
         Este é um lembrete amigável de que sua consulta está agendada para <strong>amanhã</strong>!
@@ -357,9 +373,9 @@
       
       <div style="background: #fef3c7; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
         <p style="margin: 8px 0; color: #78350f;"><strong>📅 Data:</strong> ${this.formatDate(booking.appointment_date)}</p>
-        <p style="margin: 8px 0; color: #78350f;"><strong>⏰ Horário:</strong> ${booking.appointment_time}</p>
-        <p style="margin: 8px 0; color: #78350f;"><strong>👨‍⚕️ Profissional:</strong> ${booking.professional_name}</p>
-        <p style="margin: 8px 0; color: #78350f;"><strong>🩺 Serviço:</strong> ${booking.service_name}</p>
+        <p style="margin: 8px 0; color: #78350f;"><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p style="margin: 8px 0; color: #78350f;"><strong>👨‍⚕️ Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
+        <p style="margin: 8px 0; color: #78350f;"><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(booking.service_name)}</p>
       </div>
 
       <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6; text-align: center;">
@@ -403,10 +419,10 @@
     const content = `
       <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">🙏 Obrigado pela Consulta!</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Olá <strong>${booking.patient_name}</strong>,
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
-        Esperamos que sua consulta com <strong>${booking.professional_name}</strong> tenha sido proveitosa!
+        Esperamos que sua consulta com <strong>${this.sanitizeForHtml(booking.professional_name)}</strong> tenha sido proveitosa!
       </p>
       
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; margin: 25px 0; border-radius: 8px; text-align: center; color: white;">
@@ -464,11 +480,11 @@
       <h2 style="color: #1f2937; margin: 0 0 20px 0;">✅ Inscrição Confirmada!</h2>
       
       <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-        Olá, <strong>${inscricao.nome}</strong>!
+        Olá, <strong>${this.sanitizeForHtml(inscricao.nome)}</strong>!
       </p>
       
       <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
-        Sua inscrição no evento <strong>"${evento.titulo}"</strong> foi confirmada com sucesso! 🎉
+        Sua inscrição no evento <strong>"${this.sanitizeForHtml(evento.titulo)}"</strong> foi confirmada com sucesso! 🎉
       </p>
       
       <div style="background: #dcfce7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
@@ -476,7 +492,7 @@
         <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
         <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${horaFormatada}</p>
         <p style="margin: 8px 0; font-size: 15px;"><strong>💻 Modalidade:</strong> Online via Zoom</p>
-        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #166534; line-height: 1.6;">${evento.descricao}</p>` : ''}
+        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #166534; line-height: 1.6;">${this.sanitizeForHtml(evento.descricao)}</p>` : ''}
       </div>
       
       <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">
@@ -557,11 +573,11 @@
       <h2 style="color: #1f2937; margin: 0 0 20px 0;">⏳ Quase Lá! Finalize seu Pagamento</h2>
       
       <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-        Olá, <strong>${inscricao.nome}</strong>!
+        Olá, <strong>${this.sanitizeForHtml(inscricao.nome)}</strong>!
       </p>
       
       <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
-        Recebemos sua inscrição no evento <strong>"${evento.titulo}"</strong>. 
+        Recebemos sua inscrição no evento <strong>"${this.sanitizeForHtml(evento.titulo)}"</strong>. 
         Para confirmar sua participação, realize o pagamento via PIX.
       </p>
       
@@ -570,7 +586,7 @@
         <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
         <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${horaFormatada}</p>
         <p style="margin: 8px 0; font-size: 15px;"><strong>💰 Valor:</strong> R$ ${parseFloat(evento.valor).toFixed(2).replace('.', ',')}</p>
-        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #78350f; line-height: 1.6;">${evento.descricao}</p>` : ''}
+        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #78350f; line-height: 1.6;">${this.sanitizeForHtml(evento.descricao)}</p>` : ''}
       </div>
       
       <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
@@ -648,11 +664,11 @@
       <h2 style="color: #1f2937; margin: 0 0 20px 0;">✅ Pagamento Confirmado!</h2>
       
       <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
-        Olá, <strong>${inscricao.nome}</strong>!
+        Olá, <strong>${this.sanitizeForHtml(inscricao.nome)}</strong>!
       </p>
       
       <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
-        Seu pagamento foi confirmado e sua inscrição no evento <strong>"${evento.titulo}"</strong> está garantida! 🎉
+        Seu pagamento foi confirmado e sua inscrição no evento <strong>"${this.sanitizeForHtml(evento.titulo)}"</strong> está garantida! 🎉
       </p>
       
       <div style="background: #dcfce7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a; text-align: center;">
@@ -665,10 +681,10 @@
       <div style="background: #fef3c7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
         <h3 style="margin: 0 0 15px 0; color: #92400e; font-size: 18px;">📅 Detalhes do Evento</h3>
         <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
-        <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${evento.hora_evento}</p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(evento.hora_evento)}</p>
         <p style="margin: 8px 0; font-size: 15px;"><strong>💻 Modalidade:</strong> Online via Zoom</p>
         <p style="margin: 8px 0; font-size: 15px;"><strong>✅ Status:</strong> <span style="color: #15803d; font-weight: bold;">CONFIRMADO</span></p>
-        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #78350f; line-height: 1.6;">${evento.descricao}</p>` : ''}
+        ${evento.descricao ? `<p style="margin: 15px 0 0 0; color: #78350f; line-height: 1.6;">${this.sanitizeForHtml(evento.descricao)}</p>` : ''}
       </div>
       
       <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">
