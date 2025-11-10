@@ -11,10 +11,10 @@ Antes de começar, preciso saber:
 ### **1. Domínio Temporário**
 - [ ] Subdomínio: `novo.doxologos.com.br`
 - [ ] Ou domínio temporário Hostinger: `seu-site.hostingersite.com`
-- [ ] Outro: _________________
+- [x] Outro: doxologos.com.br
 
 ### **2. Banco de Dados**
-- [ ] **Opção A:** Criar novo projeto Supabase (100% limpo) ✅ Recomendado
+- [x] **Opção A:** Criar novo projeto Supabase (100% limpo) ✅ Recomendado
 - [ ] **Opção B:** Limpar banco atual e reutilizar
 - [ ] **Opção C:** Migrar profissionais/serviços apenas
 
