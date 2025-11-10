@@ -323,14 +323,23 @@ export function AuthProvider({ children }) {
       let errorTitle = "Erro ao atualizar senha";
       let errorMessage = "Não foi possível atualizar sua senha. Tente novamente.";
 
-      const errorCode = error.message?.toLowerCase() || '';
-      
-      if (errorCode.includes('password')) {
+      const normalizedCode = (error.code || error.error_code || '').toLowerCase();
+      const normalizedMessage = (error.message || '').toLowerCase();
+
+      if (
+        normalizedCode === 'same_password' ||
+        normalizedMessage.includes('same password') ||
+        normalizedMessage.includes('different from the old password')
+      ) {
+        errorTitle = "Senha inalterada";
+        errorMessage = "A nova senha precisa ser diferente da senha atual.";
+      } else if (
+        normalizedMessage.includes('at least') ||
+        normalizedMessage.includes('least 6') ||
+        normalizedMessage.includes('too short')
+      ) {
         errorTitle = "Senha inválida";
         errorMessage = "A senha deve ter no mínimo 6 caracteres.";
-      } else if (errorCode.includes('same password')) {
-        errorTitle = "Senha já utilizada";
-        errorMessage = "A nova senha não pode ser igual à senha anterior.";
       }
 
       toast({

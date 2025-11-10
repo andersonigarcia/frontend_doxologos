@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -26,7 +26,7 @@ const ROLE_DISPLAY = {
 
 const AdminPage = () => {
     const { toast } = useToast();
-    const { user, userRole, signIn, signOut } = useAuth();
+    const { user, userRole, signIn, signOut, updatePassword } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [bookings, setBookings] = useState([]);
     const [services, setServices] = useState([]);
@@ -36,6 +36,9 @@ const AdminPage = () => {
     const [professionals, setProfessionals] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isSavingProfessionalProfile, setIsSavingProfessionalProfile] = useState(false);
+    const [passwordFormData, setPasswordFormData] = useState({ newPassword: '', confirmPassword: '' });
+    const [isSavingPassword, setIsSavingPassword] = useState(false);
 
     const [isEditingService, setIsEditingService] = useState(false);
     const [serviceFormData, setServiceFormData] = useState({ id: null, name: '', price: '', duration_minutes: 50 });
@@ -140,6 +143,11 @@ const AdminPage = () => {
     
     // Estado para controlar expansão dos dados do Zoom
     const [expandedZoomCards, setExpandedZoomCards] = useState({});
+
+    const currentProfessional = useMemo(() => {
+        if (!user) return null;
+        return professionals.find((prof) => prof?.user_id === user.id || prof?.id === user.id) || null;
+    }, [professionals, user]);
     
     // Sistema de Loading Global
     const { isLoading, withLoading, isAnyLoading } = useLoadingState();
@@ -524,6 +532,7 @@ const AdminPage = () => {
             // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
         ],
         professional: [
+            { value: 'professionals', label: 'Meu Perfil', icon: UserCircle },
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
             { value: 'reviews', label: 'Avaliações', icon: Star },
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
@@ -536,6 +545,33 @@ const AdminPage = () => {
             setActiveTab(currentTabs[0]?.value || 'bookings');
         }
     }, [userRole, activeTab, tabsConfig]);
+
+    useEffect(() => {
+        if (!currentProfessional) {
+            if (userRole !== 'admin') {
+                setIsEditingProfessional(false);
+            }
+            return;
+        }
+
+        if (userRole !== 'admin') {
+            setIsEditingProfessional(true);
+            setProfessionalFormData(prev => {
+                if (prev?.id === currentProfessional.id) {
+                    return {
+                        ...prev,
+                        email: currentProfessional.email || prev.email,
+                        services_ids: currentProfessional.services_ids || prev.services_ids || []
+                    };
+                }
+                return {
+                    ...currentProfessional,
+                    password: '',
+                    services_ids: currentProfessional.services_ids || []
+                };
+            });
+        }
+    }, [userRole, currentProfessional]);
 
     const handleLogin = async (e) => { e.preventDefault(); await signIn(loginData.email, loginData.password); };
     const handleLogout = async () => { await signOut(); setLoginData({ email: '', password: '' }); };
@@ -572,17 +608,157 @@ const AdminPage = () => {
     const handleProfessionalSubmit = async (e) => {
         e.preventDefault();
         const { id, email, password, ...profData } = professionalFormData;
+        const isSelfUpdate = userRole !== 'admin';
+        const trimmedEmail = (email || '').trim();
+
+        if (!trimmedEmail) {
+            toast({ variant: 'destructive', title: 'Email obrigatório', description: 'Informe um email válido para continuar.' });
+            return;
+        }
+
         if (isEditingProfessional) {
-            const { error } = await supabase.from('professionals').update(profData).eq('id', id);
-            if (error) { toast({ variant: "destructive", title: "Erro ao atualizar profissional", description: error.message }); }
-            else { toast({ title: "Profissional atualizado!" }); resetProfessionalForm(); fetchAllData(); }
+            if (!id) {
+                toast({ variant: 'destructive', title: 'Registro não encontrado', description: 'Não foi possível localizar seu cadastro.' });
+                return;
+            }
+
+            try {
+                setIsSavingProfessionalProfile(true);
+
+                const updates = {
+                    ...profData,
+                    services_ids: Array.isArray(profData.services_ids) ? profData.services_ids : []
+                };
+
+                const { error } = await supabase
+                    .from('professionals')
+                    .update(updates)
+                    .eq('id', id);
+
+                if (error) {
+                    toast({ variant: 'destructive', title: 'Erro ao atualizar profissional', description: error.message });
+                    return;
+                }
+
+                const currentUserEmail = (user?.email || '').trim();
+                const hasEmailChanged = isSelfUpdate && user && trimmedEmail.toLowerCase() !== currentUserEmail.toLowerCase();
+
+                if (hasEmailChanged) {
+                    const { error: emailUpdateError } = await supabase.auth.updateUser({ email: trimmedEmail });
+                    if (emailUpdateError) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Erro ao atualizar email',
+                            description: emailUpdateError.message || 'Não foi possível atualizar o email de acesso.'
+                        });
+                    } else {
+                        toast({
+                            title: 'Confirme o novo email',
+                            description: 'Enviamos um link de confirmação para o novo endereço. Conclua o processo para finalizar a alteração.'
+                        });
+                    }
+                }
+
+                toast({
+                    title: isSelfUpdate ? 'Dados atualizados!' : 'Profissional atualizado!',
+                    description: isSelfUpdate ? 'Seu perfil profissional foi salvo com sucesso.' : undefined
+                });
+
+                if (!isSelfUpdate) {
+                    resetProfessionalForm();
+                }
+
+                await fetchAllData();
+            } catch (error) {
+                secureLog.error('Erro inesperado ao atualizar profissional:', error?.message || error);
+                secureLog.debug('Detalhes do erro inesperado ao atualizar profissional', error);
+                toast({ variant: 'destructive', title: 'Erro inesperado', description: 'Não foi possível atualizar o cadastro.' });
+            } finally {
+                setIsSavingProfessionalProfile(false);
+            }
         } else {
-            const { data: authData, error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: profData.name, role: 'professional' } } });
-            if (signUpError) { toast({ variant: "destructive", title: "Erro ao criar usuário", description: signUpError.message }); return; }
-            if(!authData.user) { toast({ variant: 'destructive', title: 'Erro ao criar profissional', description: "Não foi possível criar o usuário." }); return; }
-            const { error: profError } = await supabase.from('professionals').insert([{ ...profData, user_id: authData.user.id }]);
-            if (profError) { toast({ variant: "destructive", title: "Erro ao criar profissional", description: profError.message }); }
-            else { toast({ title: "Profissional criado com sucesso!" }); resetProfessionalForm(); fetchAllData(); }
+            try {
+                setIsSavingProfessionalProfile(true);
+
+                const { data: authData, error: signUpError } = await supabase.auth.signUp({
+                    email: trimmedEmail,
+                    password,
+                    options: { data: { full_name: profData.name, role: 'professional' } }
+                });
+
+                if (signUpError) {
+                    toast({ variant: 'destructive', title: 'Erro ao criar usuário', description: signUpError.message });
+                    return;
+                }
+
+                if (!authData.user) {
+                    toast({ variant: 'destructive', title: 'Erro ao criar profissional', description: 'Não foi possível criar o usuário.' });
+                    return;
+                }
+
+                const professionalPayload = {
+                    ...profData,
+                    services_ids: Array.isArray(profData.services_ids) ? profData.services_ids : [],
+                    user_id: authData.user.id
+                };
+
+                const { error: profError } = await supabase
+                    .from('professionals')
+                    .insert([professionalPayload]);
+
+                if (profError) {
+                    toast({ variant: 'destructive', title: 'Erro ao criar profissional', description: profError.message });
+                    return;
+                }
+
+                toast({ title: 'Profissional criado com sucesso!' });
+                resetProfessionalForm();
+                await fetchAllData();
+            } catch (error) {
+                secureLog.error('Erro inesperado ao criar profissional:', error?.message || error);
+                secureLog.debug('Detalhes do erro inesperado ao criar profissional', error);
+                toast({ variant: 'destructive', title: 'Erro inesperado', description: 'Não foi possível criar o profissional.' });
+            } finally {
+                setIsSavingProfessionalProfile(false);
+            }
+        }
+    };
+
+    const handleProfessionalPasswordChange = async (e) => {
+        e.preventDefault();
+        const trimmedNewPassword = passwordFormData.newPassword?.trim() || '';
+        const trimmedConfirmPassword = passwordFormData.confirmPassword?.trim() || '';
+
+        if (trimmedNewPassword.length < 6) {
+            toast({
+                variant: 'destructive',
+                title: 'Senha muito curta',
+                description: 'A nova senha deve ter pelo menos 6 caracteres.'
+            });
+            return;
+        }
+
+        if (trimmedNewPassword !== trimmedConfirmPassword) {
+            toast({
+                variant: 'destructive',
+                title: 'Senhas diferentes',
+                description: 'Confirme a nova senha digitando o mesmo valor nos dois campos.'
+            });
+            return;
+        }
+
+        try {
+            setIsSavingPassword(true);
+            const { error } = await updatePassword(trimmedNewPassword);
+            if (!error) {
+                setPasswordFormData({ newPassword: '', confirmPassword: '' });
+            }
+        } catch (error) {
+            secureLog.error('Erro inesperado ao atualizar senha do profissional:', error?.message || error);
+            secureLog.debug('Detalhes do erro inesperado ao atualizar senha do profissional', error);
+            toast({ variant: 'destructive', title: 'Erro inesperado', description: 'Não foi possível atualizar a senha.' });
+        } finally {
+            setIsSavingPassword(false);
         }
     };
 
@@ -1068,19 +1244,31 @@ const AdminPage = () => {
         setIsEditingService(false); 
         setServiceFormData({ id: null, name: '', price: '', duration_minutes: '' }); 
     };
-    const resetProfessionalForm = () => { 
-        setIsEditingProfessional(false); 
-        setProfessionalFormData({ 
-            id: null, 
-            name: '', 
-            services_ids: [], 
-            email: '', 
-            password: '', 
-            mini_curriculum: '', 
-            description: '', 
-            image_url: '' 
-        }); 
-    };
+    const resetProfessionalForm = useCallback(() => { 
+        if (userRole === 'admin') {
+            setIsEditingProfessional(false);
+            setProfessionalFormData({
+                id: null,
+                name: '',
+                services_ids: [],
+                email: '',
+                password: '',
+                mini_curriculum: '',
+                description: '',
+                image_url: ''
+            });
+            return;
+        }
+
+        if (currentProfessional) {
+            setIsEditingProfessional(true);
+            setProfessionalFormData({
+                ...currentProfessional,
+                password: '',
+                services_ids: currentProfessional.services_ids || []
+            });
+        }
+    }, [userRole, currentProfessional]);
     
     const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
     const handleDeleteService = async (serviceId) => {
@@ -2743,8 +2931,8 @@ const AdminPage = () => {
                                                 type="email" 
                                                 placeholder="joao@clinica.com" 
                                                 className="w-full input" 
-                                                disabled={isEditingProfessional}
-                                                required={!isEditingProfessional} 
+                                                disabled={userRole === 'admin' && isEditingProfessional}
+                                                required 
                                             />
                                         </div>
                                         
@@ -2957,13 +3145,14 @@ const AdminPage = () => {
                                         </div>
                                         
                                         <div className="flex gap-2">
-                                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingProfessionalProfile}>
+                                                {isSavingProfessionalProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                                                 {userRole === 'admin' 
                                                     ? (isEditingProfessional ? 'Salvar' : 'Criar')
                                                     : 'Salvar Alterações'
                                                 }
                                             </Button>
-                                            {isEditingProfessional && (
+                                            {userRole === 'admin' && isEditingProfessional && (
                                                 <Button type="button" variant="outline" onClick={resetProfessionalForm}>
                                                     Cancelar
                                                 </Button>
@@ -2972,6 +3161,45 @@ const AdminPage = () => {
                                     </form>
                                 </div>
                             </div>
+
+                            {userRole !== 'admin' && (
+                                <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
+                                    <h3 className="text-xl font-semibold mb-2">Alterar senha de acesso</h3>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        Defina uma nova senha segura para acessar o painel profissional.
+                                    </p>
+                                    <form onSubmit={handleProfessionalPasswordChange} className="space-y-4 text-sm max-w-xl">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Nova senha</label>
+                                                <input
+                                                    type="password"
+                                                    value={passwordFormData.newPassword}
+                                                    onChange={(e) => setPasswordFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                                    placeholder="Mínimo de 6 caracteres"
+                                                    className="w-full input"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Confirmar nova senha</label>
+                                                <input
+                                                    type="password"
+                                                    value={passwordFormData.confirmPassword}
+                                                    onChange={(e) => setPasswordFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                                    placeholder="Repita a nova senha"
+                                                    className="w-full input"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingPassword}>
+                                            {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                            Atualizar senha
+                                        </Button>
+                                    </form>
+                                </div>
+                            )}
                         </TabsContent>
                         )}
 
