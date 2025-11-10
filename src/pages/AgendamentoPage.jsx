@@ -954,7 +954,11 @@ const AgendamentoPage = () => {
                     </div>
                   </div>
                 )}
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:hidden mb-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
+                  <ChevronRight className="w-4 h-4 text-[#2d8659]" aria-hidden="true" />
+                  Arraste para ver todos os serviços disponíveis
+                </div>
+                <div className="grid gap-4 grid-flow-col auto-cols-[minmax(260px,_80%)] overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scroll-smooth md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-3">
                   {services.map((service) => {
                     const professionalCount = professionals.filter(prof => 
                       prof.services_ids && prof.services_ids.includes(service.id)
@@ -964,7 +968,7 @@ const AgendamentoPage = () => {
                       <button 
                         key={service.id} 
                         onClick={() => { setSelectedService(service.id); setStep(2); }} 
-                        className={`p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left group hover:scale-[1.02] ${
+                        className={`p-5 md:p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left group hover:scale-[1.02] snap-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659] ${
                           selectedService === service.id 
                             ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md' 
                             : 'border-gray-200 hover:border-[#2d8659] bg-white'
