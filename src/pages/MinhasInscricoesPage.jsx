@@ -164,18 +164,28 @@ export default function MinhasInscricoesPage() {
               Voltar para o site
             </Link>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Minhas Inscrições em Eventos</h1>
                 <p className="text-gray-600">
                   Acompanhe o status e acesse os detalhes dos seus eventos
                 </p>
               </div>
-              <Link to="/#eventos">
-                <Button className="bg-[#2d8659] hover:bg-[#236b47]">
-                  Ver Eventos Disponíveis
-                </Button>
-              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Link to="/area-do-paciente">
+                  <Button
+                    variant="outline"
+                    className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white"
+                  >
+                    Ir para Área do Paciente
+                  </Button>
+                </Link>
+                <Link to="/#eventos">
+                  <Button className="bg-[#2d8659] hover:bg-[#236b47]">
+                    Ver Eventos Disponíveis
+                  </Button>
+                </Link>
+              </div>
             </div>
           </motion.div>
 
