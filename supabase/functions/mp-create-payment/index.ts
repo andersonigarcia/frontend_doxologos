@@ -49,11 +49,11 @@ serve(async (req) => {
     });
 
     const body = await req.json();
-    const { booking_id, amount, description, payer, payment_method_id } = body;
+    const { booking_id, inscricao_id, amount, description, payer, payment_method_id } = body;
     
-    if (!booking_id) {
+    if (!booking_id && !inscricao_id) {
       return new Response(
-        JSON.stringify({ error: 'booking_id required' }),
+        JSON.stringify({ error: 'booking_id or inscricao_id required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -64,38 +64,103 @@ serve(async (req) => {
       );
     }
 
-    // Load booking
-    const { data: booking, error: bookErr } = await supabaseAdmin
-      .from('bookings')
-      .select('*, services:service_id(*), professional:professional_id(*)')
-      .eq('id', booking_id)
-      .maybeSingle();
+    const isBookingPayment = Boolean(booking_id);
+    const referenceId = booking_id || inscricao_id;
 
-    if (bookErr) {
-      return new Response(
-        JSON.stringify({ error: 'error fetching booking', details: bookErr.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-    if (!booking) {
-      return new Response(
-        JSON.stringify({ error: 'booking not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    let booking = null;
+    let inscricao = null;
+
+    if (isBookingPayment) {
+      const { data: bookingData, error: bookErr } = await supabaseAdmin
+        .from('bookings')
+        .select('*, services:service_id(*), professional:professional_id(*)')
+        .eq('id', booking_id)
+        .maybeSingle();
+
+      if (bookErr) {
+        return new Response(
+          JSON.stringify({ error: 'error fetching booking', details: bookErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!bookingData) {
+        return new Response(
+          JSON.stringify({ error: 'booking not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      booking = bookingData;
+    } else {
+      const { data: inscricaoData, error: inscricaoErr } = await supabaseAdmin
+        .from('inscricoes_eventos')
+        .select('*, evento:eventos(*)')
+        .eq('id', inscricao_id)
+        .maybeSingle();
+
+      if (inscricaoErr) {
+        return new Response(
+          JSON.stringify({ error: 'error fetching inscricao', details: inscricaoErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!inscricaoData) {
+        return new Response(
+          JSON.stringify({ error: 'inscricao not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      inscricao = inscricaoData;
     }
 
     const finalAmount = Number(amount);
-    const payerData = payer || {
-      name: booking.patient_name,
-      email: booking.patient_email
+    const payerData = {
+      ...(typeof payer === 'object' && payer ? payer : {}),
+      ...(isBookingPayment
+        ? {
+            name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : booking?.patient_name,
+            email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : booking?.patient_email,
+            phone: payer?.phone || (booking?.patient_phone
+              ? {
+                  area_code: booking.patient_phone.substring(0, 2) || '11',
+                  number: booking.patient_phone.substring(2) || '999999999'
+                }
+              : undefined)
+          }
+        : {
+            name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : inscricao?.patient_name,
+            email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : inscricao?.patient_email,
+            phone: payer?.phone || (inscricao?.patient_phone
+              ? {
+                  area_code: inscricao.patient_phone.substring(0, 2) || '11',
+                  number: inscricao.patient_phone.substring(2) || '999999999'
+                }
+              : undefined)
+          })
     };
+
+    const paymentDescription = description || (
+      isBookingPayment
+        ? `Consulta ${booking?.services?.name || 'Doxologos'} - Agendamento ${booking_id}`
+        : `Evento ${inscricao?.evento?.titulo || 'Doxologos'} - Inscrição ${inscricao_id}`
+    );
+
+    const metadata: Record<string, unknown> = {
+      integration_type: 'direct_payment'
+    };
+
+    if (booking_id) {
+      metadata.booking_id = booking_id;
+    }
+    if (inscricao_id) {
+      metadata.inscricao_id = inscricao_id;
+    }
 
     // Criar pagamento PIX no Mercado Pago
     console.log('🔵 Creating PIX payment in Mercado Pago...');
     
     const paymentPayload = {
       transaction_amount: finalAmount,
-      description: description || `Consulta ${booking.services?.name} - Agendamento ${booking_id}`,
+      description: paymentDescription,
       payment_method_id: payment_method_id || 'pix',
       payer: {
         email: payerData.email,
@@ -103,10 +168,8 @@ serve(async (req) => {
         last_name: payerData.name?.split(' ').slice(1).join(' ') || '',
       },
       notification_url: `${supabaseUrl}/functions/v1/mp-webhook`,
-      metadata: {
-        booking_id: booking_id,
-        integration_type: 'direct_payment'
-      }
+      metadata,
+      external_reference: referenceId
     };
 
     console.log('📤 Mercado Pago payment payload:', JSON.stringify(paymentPayload, null, 2));
@@ -116,7 +179,7 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${mpAccessToken}`,
-        'X-Idempotency-Key': `${booking_id}-${Date.now()}`
+        'X-Idempotency-Key': `${referenceId}-${Date.now()}`
       },
       body: JSON.stringify(paymentPayload)
     });
@@ -146,23 +209,31 @@ serve(async (req) => {
 
     // Salvar pagamento no banco de dados
     console.log('💾 Salvando pagamento no banco de dados...');
+    const paymentInsert: Record<string, unknown> = {
+      mp_payment_id: paymentResult.id.toString(),
+      status: paymentResult.status,
+      status_detail: paymentResult.status_detail,
+      payment_method: paymentResult.payment_method_id,
+      amount: finalAmount,
+      payer_email: payerData.email,
+      payer_name: payerData.name,
+      external_reference: referenceId,
+      qr_code: qrCodeData.qr_code,
+      qr_code_base64: qrCodeData.qr_code_base64,
+      ticket_url: qrCodeData.ticket_url,
+      raw_payload: paymentResult
+    };
+
+    if (booking_id) {
+      paymentInsert.booking_id = booking_id;
+    }
+    if (inscricao_id) {
+      paymentInsert.inscricao_id = inscricao_id;
+    }
+
     const { data: insertedPayment, error: insertErr } = await supabaseAdmin
       .from('payments')
-      .insert({
-        booking_id: booking_id,
-        mp_payment_id: paymentResult.id.toString(),
-        status: paymentResult.status,
-        status_detail: paymentResult.status_detail,
-        payment_method: paymentResult.payment_method_id,
-        amount: finalAmount,
-        payer_email: payerData.email,
-        payer_name: payerData.name,
-        external_reference: booking_id,
-        qr_code: qrCodeData.qr_code,
-        qr_code_base64: qrCodeData.qr_code_base64,
-        ticket_url: qrCodeData.ticket_url,
-        raw_payload: paymentResult
-      })
+      .insert(paymentInsert)
       .select()
       .single();
 
@@ -174,14 +245,31 @@ serve(async (req) => {
     }
 
     // Atualizar booking com ID do pagamento
-    await supabaseAdmin
-      .from('bookings')
-      .update({ 
-        marketplace_payment_id: paymentResult.id.toString(),
-        payment_status: 'pending',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', booking_id);
+    const nowIso = new Date().toISOString();
+
+    if (booking_id) {
+      await supabaseAdmin
+        .from('bookings')
+        .update({ 
+          marketplace_payment_id: paymentResult.id.toString(),
+          payment_status: 'pending',
+          updated_at: nowIso
+        })
+        .eq('id', booking_id);
+    } else if (inscricao_id) {
+      const { error: inscricaoUpdateErr } = await supabaseAdmin
+        .from('inscricoes_eventos')
+        .update({
+          marketplace_payment_id: paymentResult.id.toString(),
+          status_pagamento: 'pendente',
+          updated_at: nowIso
+        })
+        .eq('id', inscricao_id);
+
+      if (inscricaoUpdateErr) {
+        console.error('❌ Error updating inscrição:', inscricaoUpdateErr);
+      }
+    }
 
     // Retornar dados do pagamento PIX
     return new Response(

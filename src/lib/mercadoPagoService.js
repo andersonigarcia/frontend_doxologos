@@ -23,17 +23,22 @@ export class MercadoPagoService {
         try {
             console.log('🔵 [MP] Criando pagamento PIX direto...', paymentData);
 
-            const { booking_id, amount, description, payer } = paymentData;
+            const { booking_id, inscricao_id, amount, description, payer } = paymentData;
 
-            if (!booking_id || !amount) {
-                throw new Error('booking_id e amount são obrigatórios');
+            if ((!booking_id && !inscricao_id) || !amount) {
+                throw new Error('booking_id ou inscricao_id e amount são obrigatórios');
             }
+
+            const referenceId = booking_id || inscricao_id;
 
             // Chamar Edge Function para criar pagamento PIX
             const payload = {
-                booking_id,
+                ...(booking_id ? { booking_id } : {}),
+                ...(inscricao_id ? { inscricao_id } : {}),
                 amount,
-                description: description || `Consulta Online - Agendamento ${booking_id}`,
+                description: description || (booking_id
+                    ? `Consulta Online - Agendamento ${referenceId}`
+                    : `Pagamento de Evento - Inscrição ${referenceId}`),
                 payer: payer || {},
                 payment_method_id: 'pix'
             };
@@ -132,17 +137,22 @@ export class MercadoPagoService {
         try {
             console.log('💳 [MP] Criando preferência de pagamento...', paymentData);
 
-            const { booking_id, amount, description, payer, payment_methods } = paymentData;
+            const { booking_id, inscricao_id, amount, description, payer, payment_methods } = paymentData;
 
-            if (!booking_id || !amount) {
-                throw new Error('booking_id e amount são obrigatórios');
+            if ((!booking_id && !inscricao_id) || !amount) {
+                throw new Error('booking_id ou inscricao_id e amount são obrigatórios');
             }
+
+            const referenceId = booking_id || inscricao_id;
 
             // Chamar Edge Function para criar preferência
             const payload = {
-                booking_id,
+                ...(booking_id ? { booking_id } : {}),
+                ...(inscricao_id ? { inscricao_id } : {}),
                 amount,
-                description: description || `Consulta Online - Agendamento ${booking_id}`,
+                description: description || (booking_id
+                    ? `Consulta Online - Agendamento ${referenceId}`
+                    : `Pagamento de Evento - Inscrição ${referenceId}`),
                 payer: payer || {},
                 payment_methods: payment_methods || {
                     excluded_payment_methods: [],
