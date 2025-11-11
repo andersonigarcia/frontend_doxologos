@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote, ShieldCheck, Lock, RefreshCcw, Eye, EyeOff, KeyRound } from 'lucide-react';
+import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote, ShieldCheck, Lock, RefreshCcw, Eye, EyeOff, KeyRound, Video, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -17,6 +17,43 @@ import analytics from '@/lib/analytics';
 
 const MIN_PASSWORD_LENGTH = 8;
 const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
+const generateGoogleMeetLink = () => {
+  const randomSegment = (length) => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < length; i += 1) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
+  const parts = [randomSegment(3), randomSegment(4), randomSegment(3)];
+  return `https://meet.google.com/${parts.join('-')}`;
+};
+const MEETING_OPTIONS = [
+  {
+    id: 'zoom',
+    label: 'Zoom',
+    icon: Video,
+    description: 'Sala criada automaticamente e disponibilizada após o pagamento.',
+    highlights: [
+      'Link enviado imediatamente quando o pagamento é confirmado',
+      'Sala com senha e sala de espera ativada',
+      'Compatível em computador e celular sem instalações adicionais'
+    ]
+  },
+  {
+    id: 'google_meet',
+    label: 'Google Meet',
+    icon: Globe,
+    description: 'Link enviado pelo time da Doxologos ou pelo profissional.',
+    highlights: [
+      'Ideal se você já utiliza o Google Workspace',
+      'Link compartilhado por email e WhatsApp após confirmação',
+      'Funciona direto no navegador e aplicativos Google'
+    ]
+  }
+];
 
 const AgendamentoPage = () => {
     const { toast } = useToast();
@@ -34,6 +71,7 @@ const AgendamentoPage = () => {
     const [selectedService, setSelectedService] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
+  const [meetingPlatform, setMeetingPlatform] = useState('zoom');
   const [patientData, setPatientData] = useState(INITIAL_PATIENT_DATA);
   const [isExistingPatient, setIsExistingPatient] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -43,6 +81,7 @@ const AgendamentoPage = () => {
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [emailError, setEmailError] = useState('');
+  const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
 
   const whatsappSupportNumber = '5531971982947';
   const servicePriceRange = useMemo(() => {
@@ -177,6 +216,50 @@ const AgendamentoPage = () => {
       return changed ? next : prev;
     });
   }, [authUser]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const verifyMeetingPlatformColumn = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .limit(1);
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (error) {
+          setSupportsMeetingPlatform(false);
+          console.warn('⚠️ [Agendamento] Falha ao consultar bookings para detectar meeting_platform:', error);
+          return;
+        }
+
+        const firstRow = Array.isArray(data) ? data[0] : null;
+        if (firstRow && Object.prototype.hasOwnProperty.call(firstRow, 'meeting_platform')) {
+          setSupportsMeetingPlatform(true);
+        } else if (firstRow) {
+          setSupportsMeetingPlatform(false);
+        } else {
+          // Nenhum registro disponível; assumimos suporte apenas se o metadado vier na resposta
+          setSupportsMeetingPlatform(false);
+        }
+      } catch (columnError) {
+        if (isMounted) {
+          setSupportsMeetingPlatform(false);
+          console.warn('⚠️ [Agendamento] Falha ao verificar suporte a meeting_platform:', columnError);
+        }
+      }
+    };
+
+    verifyMeetingPlatformColumn();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
     // Analytics and Error Tracking Hooks
     const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
@@ -331,11 +414,16 @@ const AgendamentoPage = () => {
     }
 
     if (authUser) {
-      return patientData.acceptTerms;
+      return Boolean(patientData.acceptTerms && meetingPlatform);
     }
 
     if (isExistingPatient) {
-      return Boolean(patientData.password && patientData.password.length >= MIN_PASSWORD_LENGTH && patientData.acceptTerms);
+      return Boolean(
+        patientData.password &&
+        patientData.password.length >= MIN_PASSWORD_LENGTH &&
+        patientData.acceptTerms &&
+        meetingPlatform
+      );
     }
 
     return (
@@ -343,9 +431,10 @@ const AgendamentoPage = () => {
       Boolean(patientData.confirmPassword) &&
       patientData.password.length >= MIN_PASSWORD_LENGTH &&
       patientData.password === patientData.confirmPassword &&
-      patientData.acceptTerms
+      patientData.acceptTerms &&
+      Boolean(meetingPlatform)
     );
-  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient]);
+  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient, meetingPlatform]);
 
   const submitButtonTitle = useMemo(() => {
     if (!authUser && (!patientData.name || !patientData.email || !patientData.phone)) {
@@ -358,6 +447,10 @@ const AgendamentoPage = () => {
 
     if (!patientData.acceptTerms) {
       return 'Aceite os termos e condições';
+    }
+
+    if (!meetingPlatform) {
+      return 'Selecione a plataforma da consulta';
     }
 
     if (authUser) {
@@ -381,7 +474,7 @@ const AgendamentoPage = () => {
     }
 
     return '';
-  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient]);
+  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient, meetingPlatform]);
 
   const formatPatientName = (name) => {
     if (!name) return 'Paciente atendido';
@@ -786,6 +879,19 @@ const AgendamentoPage = () => {
         patient_phone: safePatientPhone,
         valor_consulta: valorConsulta
       };
+
+      if (supportsMeetingPlatform) {
+        bookingData.meeting_platform = meetingPlatform;
+      }
+
+      if (meetingPlatform === 'google_meet') {
+        const generatedMeetLink = generateGoogleMeetLink();
+        bookingData.meeting_link = generatedMeetLink;
+        bookingData.meeting_password = null;
+        bookingData.meeting_id = null;
+        bookingData.meeting_start_url = generatedMeetLink;
+        console.log('🎥 Link Google Meet gerado para o agendamento:', generatedMeetLink);
+      }
             
       // Adicionar user_id se disponível
       if (userId) {
@@ -796,58 +902,62 @@ const AgendamentoPage = () => {
         ...bookingData,
         user_id: bookingData.user_id ? '***' : null
       });
-      console.log('🎯 [handleBooking] Iniciando criação do Zoom...');
+  console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
 
-      // 4.5. Criar sala do Zoom ANTES de inserir o agendamento
-      let zoomMeetingData = null;
-      try {
-        console.log('🎥 Criando sala do Zoom...', {
-          booking_date: selectedDate,
-          booking_time: selectedTime,
-          patient_name: safePatientName,
-          service_name: serviceDetails?.name,
-          professional_name: professionalDetails?.name
-        });
+  // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
+  let zoomMeetingData = null;
+  if (meetingPlatform === 'zoom') {
+        try {
+          console.log('🎥 Criando sala do Zoom...', {
+            booking_date: selectedDate,
+            booking_time: selectedTime,
+            patient_name: safePatientName,
+            service_name: serviceDetails?.name,
+            professional_name: professionalDetails?.name
+          });
 
-        zoomMeetingData = await zoomService.createBookingMeeting({
-          booking_date: selectedDate,
-          booking_time: selectedTime,
-          patient_name: safePatientName,
-          service_name: serviceDetails?.name || 'Consulta',
-          professional_name: professionalDetails?.name || 'Profissional'
-        });
+          zoomMeetingData = await zoomService.createBookingMeeting({
+            booking_date: selectedDate,
+            booking_time: selectedTime,
+            patient_name: safePatientName,
+            service_name: serviceDetails?.name || 'Consulta',
+            professional_name: professionalDetails?.name || 'Profissional'
+          });
 
-        if (zoomMeetingData) {
-          secureLog.success('Sala do Zoom criada com sucesso!');
-          secureLog.info('Link:', zoomMeetingData.meeting_link);
-          secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
-          // Adicionar dados do Zoom ao booking
-          bookingData.meeting_link = zoomMeetingData.meeting_link;
-          bookingData.meeting_password = zoomMeetingData.meeting_password;
-          bookingData.meeting_id = zoomMeetingData.meeting_id;
-          bookingData.meeting_start_url = zoomMeetingData.start_url;
-        } else {
-          console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
+          if (zoomMeetingData) {
+            secureLog.success('Sala do Zoom criada com sucesso!');
+            secureLog.info('Link:', zoomMeetingData.meeting_link);
+            secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
+            // Adicionar dados do Zoom ao booking
+            bookingData.meeting_link = zoomMeetingData.meeting_link;
+            bookingData.meeting_password = zoomMeetingData.meeting_password;
+            bookingData.meeting_id = zoomMeetingData.meeting_id;
+            bookingData.meeting_start_url = zoomMeetingData.start_url;
+          } else {
+            console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
+            toast({
+              title: 'Vamos finalizar o link da sala',
+              description: 'Não conseguimos gerar a sala do Zoom agora. Nossa equipe enviará o link completo por email assim que estiver pronto.',
+              variant: 'default'
+            });
+          }
+        } catch (zoomError) {
+          console.error('❌ Erro ao criar sala do Zoom:', zoomError);
+          console.error('❌ Detalhes do erro:', {
+            name: zoomError.name,
+            message: zoomError.message,
+            stack: zoomError.stack
+          });
+                  
+          // Mostrar aviso ao usuário mas não bloquear o fluxo
           toast({
-            title: 'Vamos finalizar o link da sala',
-            description: 'Não conseguimos gerar a sala do Zoom agora. Nossa equipe enviará o link completo por email assim que estiver pronto.',
+            title: 'Link do encontro em validação',
+            description: 'Ainda não geramos a sala do Zoom. Você receberá o link confirmado por email em breve.',
             variant: 'default'
           });
         }
-      } catch (zoomError) {
-        console.error('❌ Erro ao criar sala do Zoom:', zoomError);
-        console.error('❌ Detalhes do erro:', {
-          name: zoomError.name,
-          message: zoomError.message,
-          stack: zoomError.stack
-        });
-                
-        // Mostrar aviso ao usuário mas não bloquear o fluxo
-        toast({
-          title: 'Link do encontro em validação',
-          description: 'Ainda não geramos a sala do Zoom. Você receberá o link confirmado por email em breve.',
-          variant: 'default'
-        });
+      } else {
+        console.log('ℹ️ Paciente preferiu Google Meet. Pular criação automática do Zoom.');
       }
 
       // 5. Criar o agendamento
@@ -859,7 +969,35 @@ const AgendamentoPage = () => {
         has_meeting_start_url: !!bookingData.meeting_start_url
       });
 
-      const { data: bookingInsertData, error: bookingError } = await supabase.from('bookings').insert([bookingData]).select().single();
+  let insertPayload = { ...bookingData };
+      let bookingInsertData = null;
+      let bookingError = null;
+
+      const attemptInsert = async (payload) => supabase.from('bookings').insert([payload]).select().single();
+
+      let insertResult = await attemptInsert(insertPayload);
+      bookingInsertData = insertResult.data;
+      bookingError = insertResult.error;
+
+      if (!bookingError && insertPayload.meeting_platform && supportsMeetingPlatform === false) {
+        setSupportsMeetingPlatform(true);
+      }
+
+      if (
+        insertPayload.meeting_platform &&
+        bookingError &&
+        bookingError.message &&
+        bookingError.message.toLowerCase().includes('meeting_platform')
+      ) {
+        console.warn('⚠️ Coluna meeting_platform indisponível no banco. Reenviando sem essa informação.');
+        const { meeting_platform, ...fallbackPayload } = insertPayload;
+        insertResult = await attemptInsert(fallbackPayload);
+        bookingInsertData = insertResult.data;
+        bookingError = insertResult.error;
+        if (!bookingError) {
+          setSupportsMeetingPlatform(false);
+        }
+      }
 
       console.log('💾 Resultado do insert:', {
         success: !bookingError,
@@ -897,7 +1035,8 @@ const AgendamentoPage = () => {
           appointment_time: selectedTime,
           status: 'pending',
           meeting_link: zoomMeetingData?.meeting_link,
-          meeting_password: zoomMeetingData?.meeting_password
+          meeting_password: zoomMeetingData?.meeting_password,
+          meeting_platform: bookingInsertData?.meeting_platform || (supportsMeetingPlatform ? bookingData.meeting_platform : undefined)
         };
 
         console.log('📧 Enviando email para:', normalizedPatientEmail);
@@ -1610,6 +1749,57 @@ const AgendamentoPage = () => {
                     Você está acessando como <span className="font-semibold">{authUser.email}</span>. Usaremos seu cadastro atual para concluir o agendamento.
                   </div>
                 )}
+                <div className="mt-8">
+                  <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                    <Video className="w-5 h-5 text-[#2d8659]" />
+                    Como prefere acessar a consulta?
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    A Doxologos oferece Zoom e Google Meet. Escolha a plataforma que for mais confortável para você.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                    {MEETING_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+                      const isActive = meetingPlatform === option.id;
+                      return (
+                        <button
+                          type="button"
+                          key={option.id}
+                          onClick={() => setMeetingPlatform(option.id)}
+                          aria-pressed={isActive}
+                          className={`w-full text-left border rounded-xl p-5 transition-all ${
+                            isActive
+                              ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
+                              : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-[#2d8659] text-white' : 'bg-gray-100 text-[#2d8659]'}`}>
+                              <Icon className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900 text-lg">{option.label}</p>
+                              <p className="text-sm text-gray-600">{option.description}</p>
+                            </div>
+                          </div>
+                          <ul className="space-y-1 text-sm text-gray-600 pl-1">
+                            {option.highlights.map((highlight) => (
+                              <li key={highlight} className="flex items-start gap-2">
+                                <Check className="w-4 h-4 text-[#2d8659] mt-0.5 flex-shrink-0" />
+                                <span>{highlight}</span>
+                              </li>
+                            ))}
+                          </ul>
+                          <div className={`mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
+                            isActive ? 'text-[#2d8659]' : 'text-gray-400'
+                          }`}>
+                            {isActive ? 'Selecionado' : 'Selecionar'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="bg-gradient-to-br from-[#2d8659]/5 to-blue-50 p-8 rounded-xl border border-[#2d8659]/20 mt-8">
                   <h3 className="font-bold text-xl mb-6 flex items-center text-[#2d8659]">
                     <CheckCircle className="w-6 h-6 mr-2" />
@@ -1638,6 +1828,9 @@ const AgendamentoPage = () => {
                               ? `${Math.floor(serviceDetails.duration_minutes / 60)}h${serviceDetails.duration_minutes % 60 > 0 ? ` ${serviceDetails.duration_minutes % 60}min` : ''}` 
                               : `${serviceDetails?.duration_minutes}min`
                             }
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Plataforma: {meetingPlatform === 'zoom' ? 'Zoom' : 'Google Meet'}
                           </p>
                         </div>
                       </div>
@@ -1691,7 +1884,7 @@ const AgendamentoPage = () => {
                       <div>
                         <h4 className="font-semibold text-blue-900 mb-1">Próximos passos</h4>
                         <p className="text-sm text-blue-800">
-                          Após o pagamento, você receberá por email e WhatsApp o link da sala de consulta. 
+                          Após o pagamento, você receberá por email e WhatsApp o link da sala {meetingPlatform === 'zoom' ? 'Zoom gerada automaticamente' : 'Google Meet selecionada no agendamento'}. 
                           A sessão começará pontualmente no horário agendado.
                         </p>
                       </div>
