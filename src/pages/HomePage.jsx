@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, Menu, X, PlayCircle, Star, Users, Play } from 'lucide-react';
+import { Calendar, MessageCircle, Phone, Mail, MapPin, ChevronDown, ChevronLeft, ChevronRight, Menu, X, PlayCircle, Star, Users, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -79,6 +79,10 @@ const HomePage = () => {
       { question: 'Como posso agendar minha primeira consulta?', answer: 'Basta acessar nosso site, selecionar o profissional de sua preferência e agendar a consulta no horário que for mais conveniente para você.' },
       { question: ' As terapias têm custo acessível?', answer: 'Sim, na Doxologos nos comprometemos a oferecer atendimento de alta qualidade a preços justos, garantindo que mais pessoas possam cuidar da sua saúde mental.' }
   ];
+
+  const sortProfessionals = (list = []) => {
+    return [...list].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'pt-BR', { sensitivity: 'base' }));
+  };
   
   const professionalsCarouselRef = useRef(null);
   const testimonialsCarouselRef = useRef(null);
@@ -88,118 +92,217 @@ const HomePage = () => {
   const [activeEventIndex, setActiveEventIndex] = useState(0);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('eventos')
-        .select('*')
-        .eq('status', 'aberto')
-        .eq('ativo', true) // Só eventos ativos
-        .gt('data_limite_inscricao', new Date().toISOString())
-        .lte('data_inicio_exibicao', new Date().toISOString()) // Já começou a exibir
-        .gte('data_fim_exibicao', new Date().toISOString()) // Ainda não terminou de exibir
-        .order('data_inicio', { ascending: true });
+    let isMounted = true;
 
-      if (eventsError) {
-        console.error('Erro ao buscar eventos:', eventsError);
-      } else {
-        // Buscar profissionais dos eventos se houver eventos
-        if (eventsData && eventsData.length > 0) {
+    const fetchData = async () => {
+      if (isMounted) {
+        setTestimonialsLoading(true);
+      }
+
+      try {
+        const { data: eventsData, error: eventsError } = await supabase
+          .from('eventos')
+          .select('*')
+          .eq('status', 'aberto')
+          .eq('ativo', true)
+          .gt('data_limite_inscricao', new Date().toISOString())
+          .lte('data_inicio_exibicao', new Date().toISOString())
+          .gte('data_fim_exibicao', new Date().toISOString())
+          .order('data_inicio', { ascending: true });
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (eventsError) {
+          console.error('Erro ao buscar eventos:', eventsError);
+          trackAsyncError(eventsError, 'fetch_events');
+        } else if (eventsData && eventsData.length > 0) {
           const professionalIds = [...new Set(eventsData.map(event => event.professional_id).filter(Boolean))];
+
           if (professionalIds.length > 0) {
-            const { data: eventProfessionals } = await supabase
+            const { data: eventProfessionals, error: eventProfError } = await supabase
               .from('professionals')
               .select('id, name')
               .in('id', professionalIds);
-            
-            // Mapear profissionais aos eventos
-            const eventsWithProfessionals = eventsData.map(event => ({
-              ...event,
-              professional: eventProfessionals?.find(p => p.id === event.professional_id)
-            }));
-            setActiveEvents(eventsWithProfessionals);
+
+            if (!isMounted) {
+              return;
+            }
+
+            if (eventProfError) {
+              console.error('Erro ao buscar profissionais dos eventos:', eventProfError);
+              trackAsyncError(eventProfError, 'fetch_event_professionals');
+              setActiveEvents(eventsData || []);
+            } else {
+              const eventsWithProfessionals = eventsData.map(event => ({
+                ...event,
+                professional: eventProfessionals?.find(p => p.id === event.professional_id)
+              }));
+              setActiveEvents(eventsWithProfessionals);
+            }
           } else {
-            setActiveEvents(eventsData);
+            setActiveEvents(eventsData || []);
           }
         } else {
-          setActiveEvents(eventsData);
+          setActiveEvents(eventsData || []);
+        }
+
+        const { data: profsData, error: profsError } = await supabase
+          .from('professionals')
+          .select('*');
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (profsError) {
+          console.error('Erro ao buscar profissionais:', profsError);
+          trackAsyncError(profsError, 'fetch_professionals');
+          toast({ variant: 'destructive', title: 'Erro ao carregar profissionais', description: profsError.message });
+        } else {
+          setProfessionals(sortProfessionals(profsData || []));
+        }
+
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select(`
+            *,
+            professionals(name),
+            bookings(patient_name, patient_email, booking_date, booking_time, professional:professionals(name))
+          `)
+          .eq('is_approved', true)
+          .order('created_at', { ascending: false })
+          .limit(7);
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (reviewsError) {
+          console.error('Erro ao buscar depoimentos:', reviewsError);
+          trackAsyncError(reviewsError, 'fetch_reviews');
+        } else {
+          setTestimonials(reviewsData || []);
+        }
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        trackAsyncError(error, 'fetch_home_data');
+        console.error('Erro ao carregar dados da HomePage:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar conteúdo',
+          description: 'Não foi possível carregar algumas seções. Tente novamente.'
+        });
+      } finally {
+        if (isMounted) {
+          setTestimonialsLoading(false);
         }
       }
-
-      const { data: profsData, error: profsError } = await supabase
-        .from('professionals')
-        .select('*');
-      
-      if (profsError) {
-        console.error('Erro ao buscar profissionais:', profsError);
-        toast({ variant: 'destructive', title: 'Erro ao carregar profissionais', description: profsError.message });
-      } else {
-        setProfessionals(profsData || []);
-      }
-
-      const { data: reviewsData, error: reviewsError } = await supabase
-        .from('reviews')
-        .select(`
-          *,
-          professionals(name),
-          bookings(patient_name, patient_email, booking_date, booking_time, professional:professionals(name))
-        `)
-        .eq('is_approved', true)
-        .order('created_at', { ascending: false })
-        .limit(7);
-      
-      if (reviewsError) {
-        console.error('Erro ao buscar depoimentos:', reviewsError);
-        toast({ 
-          variant: 'destructive', 
-          title: 'Erro ao carregar depoimentos', 
-          description: reviewsError.message 
-        });
-        setTestimonials([]);
-      } else {
-
-        setTestimonials(reviewsData || []);
-      }
-      setTestimonialsLoading(false);
     };
-    fetchData();
-  }, []);
 
-  const scrollCarousel = (ref, index) => {
-    if (ref.current) {
-      const scrollAmount = ref.current.children[index].offsetLeft - ref.current.offsetLeft;
-      ref.current.scrollTo({ left: scrollAmount, behavior: 'smooth' });
+    fetchData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [toast, trackAsyncError]);
+
+  const scrollCarousel = useCallback((carouselRef, index) => {
+    const element = carouselRef?.current;
+    if (!element) {
+      return;
     }
-  };
+
+    const clampedIndex = Math.max(0, Math.min(index, element.children.length - 1));
+    const targetChild = element.children[clampedIndex];
+
+    if (targetChild) {
+      element.scrollTo({ left: targetChild.offsetLeft, behavior: 'smooth' });
+    }
+  }, []);
 
   const handleProfScroll = useCallback(() => {
     const element = professionalsCarouselRef.current;
-    if (!element || professionals.length === 0) return;
-    const itemWidth = element.scrollWidth / professionals.length;
-    const newIndex = Math.round(element.scrollLeft / itemWidth);
-    if (newIndex < professionals.length) {
-      setActiveProfIndex(newIndex);
+    if (!element || professionals.length === 0) {
+      return;
     }
+
+    const itemWidth = element.scrollWidth / professionals.length;
+    if (itemWidth === 0) {
+      return;
+    }
+
+    const newIndex = Math.round(element.scrollLeft / itemWidth);
+    setActiveProfIndex((prev) => (prev !== newIndex ? newIndex : prev));
   }, [professionals.length]);
 
   const handleTestimonialScroll = useCallback(() => {
     const element = testimonialsCarouselRef.current;
-    if (!element || testimonials.length === 0) return;
-    const itemWidth = element.scrollWidth / testimonials.length;
-    const newIndex = Math.round(element.scrollLeft / itemWidth);
-    if (newIndex < testimonials.length) {
-      setActiveTestimonialIndex(newIndex);
+    if (!element || testimonials.length === 0) {
+      return;
     }
+
+    const itemWidth = element.scrollWidth / testimonials.length;
+    if (itemWidth === 0) {
+      return;
+    }
+
+    const newIndex = Math.round(element.scrollLeft / itemWidth);
+    setActiveTestimonialIndex((prev) => (prev !== newIndex ? newIndex : prev));
   }, [testimonials.length]);
 
   const handleEventScroll = useCallback(() => {
     const element = eventsCarouselRef.current;
-    if (!element || activeEvents.length === 0) return;
-    const itemWidth = element.scrollWidth / activeEvents.length;
-    const newIndex = Math.round(element.scrollLeft / itemWidth);
-    if (newIndex < activeEvents.length) {
-      setActiveEventIndex(newIndex);
+    if (!element || activeEvents.length === 0) {
+      return;
     }
+
+    const itemWidth = element.scrollWidth / activeEvents.length;
+    if (itemWidth === 0) {
+      return;
+    }
+
+    const newIndex = Math.round(element.scrollLeft / itemWidth);
+    setActiveEventIndex((prev) => (prev !== newIndex ? newIndex : prev));
   }, [activeEvents.length]);
+
+  const scrollToProfIndex = useCallback((index) => {
+    if (professionals.length === 0) return;
+    const clampedIndex = Math.max(0, Math.min(index, professionals.length - 1));
+    setActiveProfIndex(clampedIndex);
+    scrollCarousel(professionalsCarouselRef, clampedIndex);
+  }, [professionals.length, scrollCarousel]);
+
+  const navigateProfCarousel = useCallback((direction) => {
+    if (professionals.length === 0) return;
+    const nextIndex = (activeProfIndex + direction + professionals.length) % professionals.length;
+    scrollToProfIndex(nextIndex);
+  }, [activeProfIndex, professionals.length, scrollToProfIndex]);
+
+  const handleProfessionalCarouselKeyDown = useCallback((event) => {
+    if (professionals.length <= 1) return;
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      navigateProfCarousel(1);
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      navigateProfCarousel(-1);
+    }
+  }, [navigateProfCarousel, professionals.length]);
+
+  useEffect(() => {
+    setActiveProfIndex((prevIndex) => {
+      if (professionals.length === 0) return 0;
+      return Math.min(prevIndex, professionals.length - 1);
+    });
+  }, [professionals.length]);
+
+  const canNavigateProfessionals = professionals.length > 1;
 
   // Funções para controlar vídeo inline
   const getEmbedUrl = (videoId) => {
