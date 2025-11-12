@@ -19,13 +19,13 @@ DECLARE
         'booking_reschedule_history',
         'payments',
         'inscricoes_eventos',
-        'reviews',
         'bookings',
-        'availability',
-        'blocked_dates',
-        'eventos',
-        'services',
-        'professionals'
+        'eventos'
+        --'reviews',        
+        --'availability',
+        --'blocked_dates',        
+        --'services',
+        --'professionals',
     ];
 BEGIN
     SELECT id INTO v_admin_id
