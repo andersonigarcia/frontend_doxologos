@@ -89,20 +89,20 @@ const AdminPage = () => {
     const [professionalAvailability, setProfessionalAvailability] = useState({});
     const [professionalBlockedDates, setProfessionalBlockedDates] = useState([]);
     const [newBlockedDate, setNewBlockedDate] = useState({ date: '', start_time: '', end_time: '', reason: '' });
-    const [focusedDay, setFocusedDay] = useState('monday'); // Controla o dia focado para adicionar horários
+    const [focusedDay, setFocusedDay] = useState('monday');
     const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    const [eventFormData, setEventFormData] = useState({ 
-        id: null, 
-        titulo: '', 
-        descricao: '', 
-        tipo_evento: 'Workshop', 
-        data_inicio: '', 
-        data_fim: '', 
-        professional_id: '', 
-        limite_participantes: '', 
-        data_limite_inscricao: '', 
+    const [eventFormData, setEventFormData] = useState({
+        id: null,
+        titulo: '',
+        descricao: '',
+        tipo_evento: 'Workshop',
+        data_inicio: '',
+        data_fim: '',
+        professional_id: '',
+        limite_participantes: '',
+        data_limite_inscricao: '',
         valor: 0,
         link_slug: '',
         data_inicio_exibicao: '',
@@ -113,18 +113,16 @@ const AdminPage = () => {
     const [isEditingEvent, setIsEditingEvent] = useState(false);
     const [eventFormErrors, setEventFormErrors] = useState({});
 
-    // Função para gerar slug único a partir do título
     const generateUniqueSlug = (title) => {
         const baseSlug = title
             .toLowerCase()
-            .normalize('NFD') // Normalizar acentos
-            .replace(/[\u0300-\u036f]/g, '') // Remover diacríticos
-            .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiais
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
             .trim()
-            .replace(/\s+/g, '-') // Substituir espaços por hífen
-            .replace(/-+/g, '-'); // Remover hífens duplicados
-        
-        // Adicionar timestamp para garantir unicidade
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+
         const timestamp = Date.now().toString().slice(-6);
         return `${baseSlug}-${timestamp}`;
     };
@@ -147,10 +145,10 @@ const AdminPage = () => {
     };
 
     const [editingBooking, setEditingBooking] = useState(null);
-    const [bookingEditData, setBookingEditData] = useState({ 
-        booking_date: '', 
-        booking_time: '', 
-        status: '', 
+    const [bookingEditData, setBookingEditData] = useState({
+        booking_date: '',
+        booking_time: '',
+        status: '',
         professional_id: '',
         service_id: '',
         patient_name: '',
@@ -159,8 +157,7 @@ const AdminPage = () => {
         valor_consulta: '',
         valor_repasse_profissional: ''
     });
-    
-    // Estados para filtros de agendamentos
+
     const [bookingFilters, setBookingFilters] = useState({
         service_id: '',
         professional_id: '',
@@ -170,18 +167,15 @@ const AdminPage = () => {
         search: ''
     });
     const [showFilters, setShowFilters] = useState(false);
-    
-    // Estados de ordenação
-    const [bookingSortField, setBookingSortField] = useState('default'); // 'default', 'date', 'status', 'professional'
-    const [bookingSortOrder, setBookingSortOrder] = useState('asc'); // 'asc' ou 'desc'
+
+    const [bookingSortField, setBookingSortField] = useState('default');
+    const [bookingSortOrder, setBookingSortOrder] = useState('asc');
     const [activeTab, setActiveTab] = useState('bookings');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    
-    // Estados de paginação
+
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    
-    // Estado para controlar expansão dos dados do Zoom
+
     const [expandedZoomCards, setExpandedZoomCards] = useState({});
 
     const currentProfessional = useMemo(() => {
@@ -189,6 +183,16 @@ const AdminPage = () => {
         return professionals.find((prof) => prof?.user_id === user.id || prof?.id === user.id) || null;
     }, [professionals, user]);
 
+    const isAdminView = userRole === 'admin';
+    const isProfessionalView = userRole === 'professional';
+
+    const professionalServiceIds = useMemo(() => {
+        if (!isProfessionalView) return [];
+        const ids = currentProfessional?.services_ids;
+        return Array.isArray(ids) ? ids : [];
+    }, [isProfessionalView, currentProfessional]);
+
+    const professionalServiceIdSet = useMemo(() => new Set(professionalServiceIds), [professionalServiceIds]);
     const servicePricingPreview = useMemo(() => {
         const patientValue = parseCurrencyToNumber(serviceFormData.price);
         const payoutValue = parseCurrencyToNumber(
@@ -1167,19 +1171,32 @@ const AdminPage = () => {
 
     const handleUpdateBooking = async () => {
         if (!editingBooking) return;
-        
-        // Validar dados obrigatórios
-        if (!bookingEditData.professional_id || !bookingEditData.service_id || !bookingEditData.patient_name) {
+
+        const baseRequiredMissing = !bookingEditData.service_id || !bookingEditData.booking_date || !bookingEditData.booking_time;
+        const adminRequiredMissing = isAdminView && (!bookingEditData.professional_id || !bookingEditData.patient_name);
+
+        if (baseRequiredMissing || adminRequiredMissing) {
             toast({ variant: 'destructive', title: 'Erro', description: 'Preencha todos os campos obrigatórios.' });
             return;
         }
 
-        const patientValueNumber = parseCurrencyToNumber(bookingEditData.valor_consulta);
-        const professionalValueNumber = parseCurrencyToNumber(
+        const selectedService = services.find(s => s.id === bookingEditData.service_id);
+        if (!selectedService) {
+            toast({ variant: 'destructive', title: 'Serviço inválido', description: 'Selecione um serviço válido.' });
+            return;
+        }
+
+        let patientValueNumber = parseCurrencyToNumber(bookingEditData.valor_consulta);
+        let professionalValueNumber = parseCurrencyToNumber(
             bookingEditData.valor_repasse_profissional === ''
                 ? bookingEditData.valor_consulta
                 : bookingEditData.valor_repasse_profissional
         );
+
+        if (!isAdminView) {
+            patientValueNumber = Number(selectedService.price) || 0;
+            professionalValueNumber = Number(selectedService.professional_payout ?? selectedService.price) || patientValueNumber;
+        }
 
         if (!Number.isFinite(patientValueNumber) || patientValueNumber < 0) {
             toast({ variant: 'destructive', title: 'Informe um valor de consulta válido.' });
@@ -1195,93 +1212,102 @@ const AdminPage = () => {
             toast({ variant: 'destructive', title: 'O repasse não pode exceder o valor cobrado do paciente.' });
             return;
         }
-        
+
         await withItemLoading('edit', editingBooking.id, async () => {
             try {
-                // Capturar valores antigos antes da atualização
                 const oldStatus = editingBooking.status;
                 const oldDate = editingBooking.booking_date;
                 const oldTime = editingBooking.booking_time;
-                const statusChanged = oldStatus !== bookingEditData.status;
+                const statusChanged = isAdminView ? oldStatus !== bookingEditData.status : false;
                 const dateChanged = oldDate !== bookingEditData.booking_date || oldTime !== bookingEditData.booking_time;
-                
-                const { error } = await supabase
-                    .from('bookings')
-                    .update({
-                        booking_date: bookingEditData.booking_date,
-                        booking_time: bookingEditData.booking_time,
+
+                const updatePayload = {
+                    booking_date: bookingEditData.booking_date,
+                    booking_time: bookingEditData.booking_time,
+                    service_id: bookingEditData.service_id,
+                    valor_consulta: Number.isFinite(patientValueNumber) ? patientValueNumber : null,
+                    valor_repasse_profissional: Number.isFinite(professionalValueNumber) ? professionalValueNumber : null
+                };
+
+                if (isAdminView) {
+                    Object.assign(updatePayload, {
                         status: bookingEditData.status,
                         professional_id: bookingEditData.professional_id,
-                        service_id: bookingEditData.service_id,
                         patient_name: bookingEditData.patient_name,
                         patient_email: bookingEditData.patient_email,
-                        patient_phone: bookingEditData.patient_phone,
-                        valor_consulta: Number.isFinite(patientValueNumber) ? patientValueNumber : null,
-                        valor_repasse_profissional: Number.isFinite(professionalValueNumber) ? professionalValueNumber : null
-                    })
+                        patient_phone: bookingEditData.patient_phone
+                    });
+                }
+
+                const { error } = await supabase
+                    .from('bookings')
+                    .update(updatePayload)
                     .eq('id', editingBooking.id);
-                    
-                if (error) { 
-                    toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message }); 
+
+                if (error) {
+                    toast({ variant: 'destructive', title: 'Erro ao atualizar agendamento', description: error.message });
                     return;
                 }
-                
-                // Enviar e-mails apropriados baseados nas alterações
+
                 try {
                     const emailData = {
                         patient_name: bookingEditData.patient_name,
                         patient_email: bookingEditData.patient_email,
                         booking_date: bookingEditData.booking_date,
                         booking_time: bookingEditData.booking_time,
-                        service_name: services.find(s => s.id === bookingEditData.service_id)?.name || 'Consulta',
-                        professional_name: professionals.find(p => p.id === bookingEditData.professional_id)?.name || 'Profissional'
+                        service_name: selectedService?.name || 'Consulta',
+                        professional_name: professionals.find(p => p.id === (isAdminView ? bookingEditData.professional_id : editingBooking.professional_id))?.name || 'Profissional'
                     };
-                    
-                    // Se o status mudou para 'confirmed' ou 'paid'
+
                     if (statusChanged && (bookingEditData.status === 'confirmed' || bookingEditData.status === 'paid')) {
                         await bookingEmailManager.sendPaymentApproved(emailData);
                         secureLog.success('📧 Email de confirmação/pagamento enviado');
                     }
-                    
-                    // Se o status mudou para cancelado
+
                     if (statusChanged && bookingEditData.status.includes('cancelled')) {
-                        const reason = oldStatus === 'pending_payment' ? 'Cancelado pela administração' : null;
+                        let reason = null;
+                        if (isAdminView) {
+                            reason = oldStatus === 'pending_payment'
+                                ? 'Cancelado pela administração antes do pagamento'
+                                : 'Cancelado pela administração';
+                        } else {
+                            reason = 'Cancelado pelo profissional';
+                        }
+
                         await bookingEmailManager.sendCancellation(emailData, reason);
                         secureLog.success('📧 Email de cancelamento enviado');
                     }
-                    
-                    // Se o status mudou para completed
+
                     if (statusChanged && bookingEditData.status === 'completed') {
                         await bookingEmailManager.sendThankYou(emailData);
                         secureLog.success('📧 Email de agradecimento enviado');
                     }
-                    
-                    // Se a data/hora foi alterada (independente do status)
+
                     if (dateChanged && !bookingEditData.status.includes('cancelled')) {
-                        await bookingEmailManager.sendRescheduled(emailData, oldDate, oldTime, 'Alterado pela administração');
+                        const rescheduleReason = isAdminView ? 'Alterado pela administração' : 'Alterado pelo profissional';
+                        await bookingEmailManager.sendRescheduled(emailData, oldDate, oldTime, rescheduleReason);
                         secureLog.success('📧 Email de reagendamento enviado');
                     }
                 } catch (emailError) {
                     secureLog.error('Erro ao enviar email de atualização de agendamento:', emailError?.message || emailError);
                     secureLog.debug('Detalhes do erro ao enviar email de atualização de agendamento', emailError);
-                    // Não bloqueia a atualização se o email falhar
-                    toast({ 
-                        variant: 'default', 
-                        title: 'Agendamento atualizado', 
-                        description: 'Atenção: O email de notificação não pôde ser enviado.' 
+                    toast({
+                        variant: 'default',
+                        title: 'Agendamento atualizado',
+                        description: 'Atenção: O email de notificação não pôde ser enviado.'
                     });
                 }
-                
-                toast({ title: 'Agendamento atualizado com sucesso!' }); 
-                setEditingBooking(null); 
+
+                toast({ title: 'Agendamento atualizado com sucesso!' });
+                setEditingBooking(null);
                 await fetchAllData();
             } catch (error) {
                 secureLog.error('Erro ao atualizar agendamento:', error?.message || error);
                 secureLog.debug('Detalhes do erro ao atualizar agendamento', error);
-                toast({ 
-                    variant: 'destructive', 
-                    title: 'Erro ao atualizar', 
-                    description: error.message 
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro ao atualizar',
+                    description: error.message
                 });
             }
         });
@@ -1289,6 +1315,24 @@ const AdminPage = () => {
     
     // Função para mudança rápida de status
     const handleQuickStatusChange = async (bookingId, newStatus, bookingData) => {
+        const isAdminUser = isAdminView;
+        if (!isAdminUser) {
+            const allowedStatuses = new Set(['cancelled_by_professional', 'completed']);
+            if (!allowedStatuses.has(newStatus)) {
+                toast({ variant: 'destructive', title: 'Ação não permitida', description: 'Profissionais só podem cancelar ou concluir consultas.' });
+                return;
+            }
+
+            if (newStatus === 'completed' && bookingData.status !== 'confirmed') {
+                toast({ variant: 'destructive', title: 'Conclua apenas após confirmação', description: 'Uma consulta só pode ser concluída depois de confirmada.' });
+                return;
+            }
+        }
+
+        if (newStatus === bookingData.status) {
+            return;
+        }
+
         await withItemLoading('status', bookingId, async () => {
             try {
                 const { error } = await supabase
@@ -1314,7 +1358,8 @@ const AdminPage = () => {
                     } else if (newStatus === 'completed') {
                         await bookingEmailManager.sendThankYou(emailData);
                     } else if (newStatus.includes('cancelled')) {
-                        await bookingEmailManager.sendCancellation(emailData, 'Cancelado pela administração');
+                        const cancellationReason = isAdminUser ? 'Cancelado pela administração' : 'Cancelado pelo profissional';
+                        await bookingEmailManager.sendCancellation(emailData, cancellationReason);
                     }
                 } catch (emailError) {
                     secureLog.error('Erro ao enviar email na atualização rápida de status:', emailError?.message || emailError);
@@ -1343,6 +1388,7 @@ const AdminPage = () => {
         const labels = {
             'pending_payment': 'Pendente Pagamento',
             'confirmed': 'Confirmado',
+            'paid': 'Pago',
             'completed': 'Concluído',
             'cancelled_by_patient': 'Cancelado pelo Paciente',
             'cancelled_by_professional': 'Cancelado pelo Profissional'
@@ -2706,6 +2752,7 @@ const AdminPage = () => {
                                             const statusColors = {
                                                 'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                 'confirmed': 'bg-green-100 text-green-800 border-green-200',
+                                                'paid': 'bg-green-100 text-green-800 border-green-200',
                                                 'completed': 'bg-blue-100 text-blue-800 border-blue-200',
                                                 'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
                                                 'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200'
@@ -2714,6 +2761,7 @@ const AdminPage = () => {
                                             const statusLabels = {
                                                 'pending_payment': 'Pendente Pagamento',
                                                 'confirmed': 'Confirmado',
+                                                'paid': 'Pago',
                                                 'completed': 'Concluído',
                                                 'cancelled_by_patient': 'Cancelado pelo Paciente',
                                                 'cancelled_by_professional': 'Cancelado pelo Profissional'
@@ -2725,7 +2773,68 @@ const AdminPage = () => {
             b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
         ) || 0;
         const platformFeeValue = Math.max(patientValue - professionalValue, 0);
-        const professionalChipLabel = userRole === 'admin' ? 'Profissional' : 'Você recebe';
+        const professionalChipLabel = isAdminView ? 'Profissional' : 'Você recebe';
+
+        const bookingService = services.find(service => service.id === b.service_id) || null;
+
+        let availableServices;
+        if (isAdminView) {
+            availableServices = services;
+        } else {
+            const uniqueServices = [];
+            const seenServiceIds = new Set();
+            const pushService = (service) => {
+                if (service && service.id && !seenServiceIds.has(service.id)) {
+                    uniqueServices.push(service);
+                    seenServiceIds.add(service.id);
+                }
+            };
+
+            pushService(bookingService);
+            services.forEach((service) => {
+                if (professionalServiceIdSet.has(service.id)) {
+                    pushService(service);
+                }
+            });
+
+            availableServices = uniqueServices;
+        }
+
+        const quickStatusOptions = isAdminView
+            ? [
+                { value: 'pending_payment', label: statusLabels['pending_payment'] },
+                { value: 'confirmed', label: statusLabels['confirmed'] },
+                { value: 'completed', label: statusLabels['completed'] },
+                { value: 'cancelled_by_patient', label: statusLabels['cancelled_by_patient'] },
+                { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] }
+            ]
+            : (() => {
+                const options = [
+                    { value: b.status, label: `${statusLabels[b.status] || b.status} (atual)`, disabled: true }
+                ];
+
+                if (b.status !== 'completed') {
+                    options.push({ value: 'completed', label: statusLabels['completed'], disabled: b.status !== 'confirmed' });
+                }
+
+                if (b.status !== 'cancelled_by_professional') {
+                    options.push({ value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'], disabled: false });
+                }
+
+                return options;
+            })();
+
+        const hasEnabledQuickStatusOption = quickStatusOptions.some(option => !option.disabled && option.value !== b.status);
+        const quickStatusSelectDisabled = isAnyItemLoading() || (!isAdminView && !hasEnabledQuickStatusOption);
+
+        const serviceOptionLabel = (service) => {
+            if (!service) return '';
+            if (isAdminView) {
+                const priceNumber = Number(service.price) || 0;
+                return `${service.name} - R$ ${priceNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            }
+            return service.name;
+        };
                                             
                                             return (
                                                 <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${
@@ -2907,16 +3016,20 @@ const AdminPage = () => {
                                                                     <select
                                                                         value={b.status}
                                                                         onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
-                                                                        disabled={isAnyItemLoading()}
+                                                                        disabled={quickStatusSelectDisabled}
                                                                         className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${
-                                                                            isAnyItemLoading() ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
+                                                                            quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
                                                                         } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
                                                                     >
-                                                                        <option value="pending_payment">Pendente Pagamento</option>
-                                                                        <option value="confirmed">Confirmado</option>
-                                                                        <option value="completed">Concluído</option>
-                                                                        <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                                        <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                        {quickStatusOptions.map((option) => (
+                                                                            <option
+                                                                                key={option.value}
+                                                                                value={option.value}
+                                                                                disabled={option.disabled}
+                                                                            >
+                                                                                {option.label}
+                                                                            </option>
+                                                                        ))}
                                                                     </select>
                                                                 </LoadingInput>
                                                             </div>
@@ -2928,13 +3041,17 @@ const AdminPage = () => {
                                                                         size="sm" 
                                                                         variant="outline"
                                                                         disabled={isAnyItemLoading()}
-                                                                        onClick={() => { 
-                                                                            setEditingBooking(b); 
-                                                                            setBookingEditData({ 
-                                                                                booking_date: b.booking_date, 
-                                                                                booking_time: b.booking_time, 
+                                                                        onClick={() => {
+                                                                            setEditingBooking(b);
+                                                                            const resolvedProfessionalId = isAdminView
+                                                                                ? (b.professional_id || '')
+                                                                                : (currentProfessional?.id || b.professional_id || '');
+
+                                                                            setBookingEditData({
+                                                                                booking_date: b.booking_date,
+                                                                                booking_time: b.booking_time,
                                                                                 status: b.status,
-                                                                                professional_id: b.professional_id || '',
+                                                                                professional_id: resolvedProfessionalId,
                                                                                 service_id: b.service_id || '',
                                                                                 patient_name: b.patient_name || '',
                                                                                 patient_email: b.patient_email || '',
@@ -2943,7 +3060,7 @@ const AdminPage = () => {
                                                                                 valor_repasse_profissional: formatNumberToCurrencyInput(
                                                                                     b.valor_repasse_profissional ?? b.valor_consulta ?? ''
                                                                                 )
-                                                                            }); 
+                                                                            });
                                                                         }}
                                                                         className={`hover:bg-blue-50 transition-all ${
                                                                             isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
@@ -2967,63 +3084,75 @@ const AdminPage = () => {
                                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
                                                                         <div>
                                                                             <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
-                                                                            <input 
-                                                                                type="text" 
-                                                                                value={bookingEditData.patient_name} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, patient_name: e.target.value})} 
-                                                                                className="w-full input" 
+                                                                            <input
+                                                                                type="text"
+                                                                                value={bookingEditData.patient_name}
+                                                                                onChange={e => {
+                                                                                    if (!isAdminView) return;
+                                                                                    setBookingEditData({ ...bookingEditData, patient_name: e.target.value });
+                                                                                }}
+                                                                                className={`w-full input ${!isAdminView ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                                                                                 placeholder="Nome completo"
                                                                                 required
+                                                                                readOnly={!isAdminView}
                                                                             />
                                                                         </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Email</label>
-                                                                            <input 
-                                                                                type="email" 
-                                                                                value={bookingEditData.patient_email} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, patient_email: e.target.value})} 
-                                                                                className="w-full input" 
-                                                                                placeholder="email@exemplo.com"
-                                                                            />
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Telefone</label>
-                                                                            <input 
-                                                                                type="tel" 
-                                                                                value={bookingEditData.patient_phone} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, patient_phone: e.target.value})} 
-                                                                                className="w-full input" 
-                                                                                placeholder="(11) 99999-9999"
-                                                                            />
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Status *</label>
-                                                                            <select 
-                                                                                value={bookingEditData.status} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, status: e.target.value})} 
-                                                                                className="w-full input"
-                                                                            >
-                                                                                <option value="pending_payment">Pendente Pagamento</option>
-                                                                                <option value="confirmed">Confirmado</option>
-                                                                                <option value="completed">Concluído</option>
-                                                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
-                                                                            </select>
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Profissional *</label>
-                                                                            <select 
-                                                                                value={bookingEditData.professional_id} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, professional_id: e.target.value})} 
-                                                                                className="w-full input"
-                                                                                required
-                                                                            >
-                                                                                <option value="">Selecione um profissional</option>
-                                                                                {professionals.map(prof => (
-                                                                                    <option key={prof.id} value={prof.id}>{prof.name}</option>
-                                                                                ))}
-                                                                            </select>
-                                                                        </div>
+                                                                        {isAdminView && (
+                                                                            <>
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium mb-1">Email</label>
+                                                                                    <input
+                                                                                        type="email"
+                                                                                        value={bookingEditData.patient_email}
+                                                                                        onChange={e => setBookingEditData({ ...bookingEditData, patient_email: e.target.value })}
+                                                                                        className="w-full input"
+                                                                                        placeholder="email@exemplo.com"
+                                                                                    />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium mb-1">Telefone</label>
+                                                                                    <input
+                                                                                        type="tel"
+                                                                                        value={bookingEditData.patient_phone}
+                                                                                        onChange={e => setBookingEditData({ ...bookingEditData, patient_phone: e.target.value })}
+                                                                                        className="w-full input"
+                                                                                        placeholder="(11) 99999-9999"
+                                                                                    />
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                        {isAdminView && (
+                                                                            <div>
+                                                                                <label className="block text-sm font-medium mb-1">Status *</label>
+                                                                                <select
+                                                                                    value={bookingEditData.status}
+                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, status: e.target.value })}
+                                                                                    className="w-full input"
+                                                                                >
+                                                                                    <option value="pending_payment">Pendente Pagamento</option>
+                                                                                    <option value="confirmed">Confirmado</option>
+                                                                                    <option value="completed">Concluído</option>
+                                                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                                </select>
+                                                                            </div>
+                                                                        )}
+                                                                        {isAdminView && (
+                                                                            <div>
+                                                                                <label className="block text-sm font-medium mb-1">Profissional *</label>
+                                                                                <select 
+                                                                                    value={bookingEditData.professional_id} 
+                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, professional_id: e.target.value })}
+                                                                                    className="w-full input"
+                                                                                    required
+                                                                                >
+                                                                                    <option value="">Selecione um profissional</option>
+                                                                                    {professionals.map(prof => (
+                                                                                        <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                        )}
                                                                         <div>
                                                                             <label className="block text-sm font-medium mb-1">Serviço *</label>
                                                                             <select 
@@ -3046,9 +3175,9 @@ const AdminPage = () => {
                                                                                 required
                                                                             >
                                                                                 <option value="">Selecione um serviço</option>
-                                                                                {services.map(service => (
+                                                                                {availableServices.map(service => (
                                                                                     <option key={service.id} value={service.id}>
-                                                                                        {service.name} - R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                                                                                        {serviceOptionLabel(service)}
                                                                                     </option>
                                                                                 ))}
                                                                             </select>
@@ -3073,38 +3202,42 @@ const AdminPage = () => {
                                                                                 required
                                                                             />
                                                                         </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
-                                                                            <input 
-                                                                                type="text" 
-                                                                                value={bookingEditData.valor_consulta} 
-                                                                                onChange={e => setBookingEditData(prev => ({
-                                                                                    ...prev,
-                                                                                    valor_consulta: sanitizeCurrencyInput(e.target.value)
-                                                                                }))} 
-                                                                                className="w-full input" 
-                                                                                placeholder="150,00"
-                                                                            />
-                                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                                Valor histórico cobrado do paciente no momento do agendamento
-                                                                            </p>
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
-                                                                            <input 
-                                                                                type="text" 
-                                                                                value={bookingEditData.valor_repasse_profissional} 
-                                                                                onChange={e => setBookingEditData(prev => ({
-                                                                                    ...prev,
-                                                                                    valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
-                                                                                }))} 
-                                                                                className="w-full input" 
-                                                                                placeholder="150,00"
-                                                                            />
-                                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                                Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
-                                                                            </p>
-                                                                        </div>
+                                                                        {isAdminView && (
+                                                                            <>
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={bookingEditData.valor_consulta}
+                                                                                        onChange={e => setBookingEditData(prev => ({
+                                                                                            ...prev,
+                                                                                            valor_consulta: sanitizeCurrencyInput(e.target.value)
+                                                                                        }))}
+                                                                                        className="w-full input"
+                                                                                        placeholder="150,00"
+                                                                                    />
+                                                                                    <p className="text-xs text-gray-500 mt-1">
+                                                                                        Valor histórico cobrado do paciente no momento do agendamento
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={bookingEditData.valor_repasse_profissional}
+                                                                                        onChange={e => setBookingEditData(prev => ({
+                                                                                            ...prev,
+                                                                                            valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
+                                                                                        }))}
+                                                                                        className="w-full input"
+                                                                                        placeholder="150,00"
+                                                                                    />
+                                                                                    <p className="text-xs text-gray-500 mt-1">
+                                                                                        Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
+                                                                                    </p>
+                                                                                </div>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                     <DialogFooter>
                                                                         <DialogClose asChild>
