@@ -841,10 +841,18 @@ const AgendamentoPage = () => {
       const serviceDetails = services.find(s => s.id === selectedService);
       const professionalDetails = professionals.find(p => p.id === selectedProfessional);
       const valorConsulta = parseFloat(serviceDetails?.price || 0);
+      const valorRepasseProfissionalRaw = parseFloat(
+        serviceDetails?.professional_payout ?? serviceDetails?.price ?? 0
+      );
+      const valorRepasseProfissional = Number.isFinite(valorRepasseProfissionalRaw)
+        ? valorRepasseProfissionalRaw
+        : valorConsulta;
             
       console.log('💰 [handleBooking] Serviço encontrado:', { 
         serviceName: serviceDetails?.name, 
-        price: valorConsulta 
+        price: valorConsulta,
+        professionalPayout: valorRepasseProfissional,
+        platformFee: Math.max(valorConsulta - valorRepasseProfissional, 0)
       });
 
       console.log('📝 [handleBooking] Preparando dados do agendamento...');
@@ -877,7 +885,8 @@ const AgendamentoPage = () => {
         patient_name: safePatientName, 
         patient_email: normalizedPatientEmail, 
         patient_phone: safePatientPhone,
-        valor_consulta: valorConsulta
+        valor_consulta: valorConsulta,
+        valor_repasse_profissional: valorRepasseProfissional
       };
 
       if (supportsMeetingPlatform) {

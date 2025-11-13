@@ -26,6 +26,43 @@ const ROLE_DISPLAY = {
 
 const MIN_PROFESSIONAL_PASSWORD_LENGTH = 6;
 
+const sanitizeCurrencyInput = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value).replace(/[^0-9.,-]/g, '');
+};
+
+const parseCurrencyToNumber = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+
+    const sanitized = sanitizeCurrencyInput(value);
+    if (!sanitized) {
+        return null;
+    }
+
+    const normalized = sanitized.replace(/\./g, '').replace(',', '.');
+    const parsed = Number.parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+};
+
+const formatNumberToCurrencyInput = (value) => {
+    if (value === null || value === undefined || value === '') {
+        return '';
+    }
+
+    const numberValue = typeof value === 'string' ? parseCurrencyToNumber(value) : value;
+    if (!Number.isFinite(numberValue)) {
+        return '';
+    }
+
+    return numberValue.toFixed(2).replace('.', ',');
+};
+
 const AdminPage = () => {
     const { toast } = useToast();
     const { user, userRole, signIn, signOut, updatePassword } = useAuth();
@@ -43,7 +80,7 @@ const AdminPage = () => {
     const [isSavingPassword, setIsSavingPassword] = useState(false);
 
     const [isEditingService, setIsEditingService] = useState(false);
-    const [serviceFormData, setServiceFormData] = useState({ id: null, name: '', price: '', duration_minutes: 50 });
+    const [serviceFormData, setServiceFormData] = useState({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' });
 
     const [isEditingProfessional, setIsEditingProfessional] = useState(false);
     const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '' });
@@ -119,7 +156,8 @@ const AdminPage = () => {
         patient_name: '',
         patient_email: '',
         patient_phone: '',
-        valor_consulta: ''
+        valor_consulta: '',
+        valor_repasse_profissional: ''
     });
     
     // Estados para filtros de agendamentos
@@ -150,6 +188,22 @@ const AdminPage = () => {
         if (!user) return null;
         return professionals.find((prof) => prof?.user_id === user.id || prof?.id === user.id) || null;
     }, [professionals, user]);
+
+    const servicePricingPreview = useMemo(() => {
+        const patientValue = parseCurrencyToNumber(serviceFormData.price);
+        const payoutValue = parseCurrencyToNumber(
+            serviceFormData.professional_payout === '' ? serviceFormData.price : serviceFormData.professional_payout
+        );
+
+        const safePatientValue = Number.isFinite(patientValue) ? patientValue : 0;
+        const safePayoutValue = Number.isFinite(payoutValue) ? payoutValue : safePatientValue;
+
+        return {
+            patientValue: safePatientValue,
+            professionalValue: safePayoutValue,
+            platformFee: Math.max(safePatientValue - safePayoutValue, 0)
+        };
+    }, [serviceFormData.price, serviceFormData.professional_payout]);
     
     // Sistema de Loading Global
     const { isLoading, withLoading, isAnyLoading } = useLoadingState();
@@ -201,10 +255,6 @@ const AdminPage = () => {
             )
         `;
 
-        const eventsPromise = isAdmin
-            ? supabase.from('eventos').select('*').order('data_inicio', { ascending: false })
-            : Promise.resolve({ data: [], error: null });
-
         let reviewsPromise;
         if (isAdmin) {
             reviewsPromise = supabase
@@ -250,10 +300,23 @@ const AdminPage = () => {
             reviewsPromise = Promise.resolve({ data: [], error: null });
         }
 
-        const bookingsPromise = isAdmin
-            ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)')
+        const eventsPromise = isAdmin
+            ? supabase
+                .from('eventos')
+                .select('*')
+                .order('data_inicio', { ascending: false })
             : professionalFilterId
-                ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(name)').eq('professional_id', professionalFilterId)
+                ? supabase
+                    .from('eventos')
+                    .select('*')
+                    .eq('professional_id', professionalFilterId)
+                    .order('data_inicio', { ascending: false })
+                : Promise.resolve({ data: [], error: null });
+
+        const bookingsPromise = isAdmin
+            ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(id, name, price, duration_minutes, professional_payout)')
+            : professionalFilterId
+                ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(id, name, price, duration_minutes, professional_payout)').eq('professional_id', professionalFilterId)
                 : Promise.resolve({ data: [], error: null });
 
         const servicesPromise = supabase.from('services').select('*');
@@ -353,8 +416,80 @@ const AdminPage = () => {
             }
         }
 
-        setBookings(bookingsRes.data || []);
-        setServices(servicesRes.data || []);
+        const normalizedServices = (servicesRes.data || []).map((service) => {
+            const patientValue = parseCurrencyToNumber(service.price);
+            const payoutValue = parseCurrencyToNumber(
+                service.professional_payout === undefined || service.professional_payout === null
+                    ? service.price
+                    : service.professional_payout
+            );
+
+            return {
+                ...service,
+                price: Number.isFinite(patientValue) ? patientValue : 0,
+                professional_payout: Number.isFinite(payoutValue)
+                    ? payoutValue
+                    : (Number.isFinite(patientValue) ? patientValue : 0),
+                duration_minutes: Number.isFinite(Number.parseInt(service.duration_minutes, 10))
+                    ? Number.parseInt(service.duration_minutes, 10)
+                    : service.duration_minutes
+            };
+        });
+
+        const serviceMap = new Map(normalizedServices.map((service) => [service.id, service]));
+
+        const normalizedBookings = (bookingsRes.data || []).map((booking) => {
+            const joinedService = booking.service
+                ? {
+                      ...booking.service,
+                      price: Number.isFinite(parseCurrencyToNumber(booking.service.price))
+                          ? parseCurrencyToNumber(booking.service.price)
+                          : 0,
+                      professional_payout: Number.isFinite(
+                          parseCurrencyToNumber(
+                              booking.service.professional_payout === undefined || booking.service.professional_payout === null
+                                  ? booking.service.price
+                                  : booking.service.professional_payout
+                          )
+                      )
+                          ? parseCurrencyToNumber(
+                                booking.service.professional_payout === undefined || booking.service.professional_payout === null
+                                    ? booking.service.price
+                                    : booking.service.professional_payout
+                            )
+                          : 0,
+                      duration_minutes: Number.isFinite(Number.parseInt(booking.service.duration_minutes, 10))
+                          ? Number.parseInt(booking.service.duration_minutes, 10)
+                          : booking.service.duration_minutes
+                  }
+                : null;
+
+            const resolvedService = serviceMap.get(booking.service_id) || joinedService;
+
+            const patientValueRaw = parseCurrencyToNumber(booking.valor_consulta);
+            const fallbackPatientValue = parseCurrencyToNumber(resolvedService?.price);
+            const patientValue = Number.isFinite(patientValueRaw)
+                ? patientValueRaw
+                : (Number.isFinite(fallbackPatientValue) ? fallbackPatientValue : 0);
+
+            const payoutValueRaw = parseCurrencyToNumber(booking.valor_repasse_profissional);
+            const fallbackPayoutValue = parseCurrencyToNumber(
+                resolvedService?.professional_payout ?? resolvedService?.price ?? patientValue
+            );
+            const professionalValue = Number.isFinite(payoutValueRaw)
+                ? payoutValueRaw
+                : (Number.isFinite(fallbackPayoutValue) ? fallbackPayoutValue : patientValue);
+
+            return {
+                ...booking,
+                valor_consulta: patientValue,
+                valor_repasse_profissional: professionalValue,
+                service: resolvedService ? { ...resolvedService } : joinedService
+            };
+        });
+
+        setServices(normalizedServices);
+        setBookings(normalizedBookings);
         setProfessionals(enrichedProfessionals);
         if (enrichedProfessionals.length > 0) {
             // Para admin, usa o primeiro profissional da lista
@@ -580,16 +715,52 @@ const AdminPage = () => {
 
     const handleServiceSubmit = async (e) => {
         e.preventDefault();
+
+        const trimmedName = (serviceFormData.name || '').trim();
+        const priceNumber = parseCurrencyToNumber(serviceFormData.price);
+        const payoutInput = serviceFormData.professional_payout === ''
+            ? serviceFormData.price
+            : serviceFormData.professional_payout;
+        const payoutNumber = parseCurrencyToNumber(payoutInput);
+        const durationNumber = Number.parseInt(serviceFormData.duration_minutes, 10);
+
+        if (!trimmedName) {
+            toast({ variant: 'destructive', title: 'Nome do serviço é obrigatório' });
+            return;
+        }
+
+        if (!Number.isFinite(priceNumber) || priceNumber <= 0) {
+            toast({ variant: 'destructive', title: 'Informe um valor válido cobrado do paciente.' });
+            return;
+        }
+
+        if (!Number.isFinite(payoutNumber) || payoutNumber < 0) {
+            toast({ variant: 'destructive', title: 'Informe um repasse válido para o profissional.' });
+            return;
+        }
+
+        if (payoutNumber > priceNumber) {
+            toast({ variant: 'destructive', title: 'O repasse não pode ser maior que o valor cobrado.' });
+            return;
+        }
+
+        if (!Number.isFinite(durationNumber) || durationNumber <= 0) {
+            toast({ variant: 'destructive', title: 'Informe a duração em minutos.' });
+            return;
+        }
+
+        const payload = {
+            name: trimmedName,
+            price: priceNumber,
+            professional_payout: payoutNumber,
+            duration_minutes: durationNumber
+        };
         
         let result;
         if (isEditingService) {
-            // Para edição, usar campos específicos
-            const { name, price, duration_minutes } = serviceFormData;
-            result = await supabase.from('services').update({ name, price, duration_minutes }).eq('id', serviceFormData.id);
+            result = await supabase.from('services').update(payload).eq('id', serviceFormData.id);
         } else {
-            // Para inserção, remover o id
-            const { id, ...serviceDataWithoutId } = serviceFormData;
-            result = await supabase.from('services').insert([serviceDataWithoutId]);
+            result = await supabase.from('services').insert([payload]);
         }
         
         if (result.error) {
@@ -1002,6 +1173,28 @@ const AdminPage = () => {
             toast({ variant: 'destructive', title: 'Erro', description: 'Preencha todos os campos obrigatórios.' });
             return;
         }
+
+        const patientValueNumber = parseCurrencyToNumber(bookingEditData.valor_consulta);
+        const professionalValueNumber = parseCurrencyToNumber(
+            bookingEditData.valor_repasse_profissional === ''
+                ? bookingEditData.valor_consulta
+                : bookingEditData.valor_repasse_profissional
+        );
+
+        if (!Number.isFinite(patientValueNumber) || patientValueNumber < 0) {
+            toast({ variant: 'destructive', title: 'Informe um valor de consulta válido.' });
+            return;
+        }
+
+        if (!Number.isFinite(professionalValueNumber) || professionalValueNumber < 0) {
+            toast({ variant: 'destructive', title: 'Informe um repasse válido para o profissional.' });
+            return;
+        }
+
+        if (professionalValueNumber > patientValueNumber) {
+            toast({ variant: 'destructive', title: 'O repasse não pode exceder o valor cobrado do paciente.' });
+            return;
+        }
         
         await withItemLoading('edit', editingBooking.id, async () => {
             try {
@@ -1023,7 +1216,8 @@ const AdminPage = () => {
                         patient_name: bookingEditData.patient_name,
                         patient_email: bookingEditData.patient_email,
                         patient_phone: bookingEditData.patient_phone,
-                        valor_consulta: parseFloat(bookingEditData.valor_consulta) || null
+                        valor_consulta: Number.isFinite(patientValueNumber) ? patientValueNumber : null,
+                        valor_repasse_profissional: Number.isFinite(professionalValueNumber) ? professionalValueNumber : null
                     })
                     .eq('id', editingBooking.id);
                     
@@ -1341,45 +1535,50 @@ const AdminPage = () => {
         const totals = {
             totalBookings: bookingsList.length,
             totalValue: 0,
+            totalProfessionalValue: 0,
+            totalPlatformFee: 0,
             confirmedValue: 0,
             completedValue: 0,
             pendingValue: 0,
             cancelledValue: 0
         };
-        
-        bookingsList.forEach(booking => {
-            // Usa valor histórico se disponível, senão usa preço atual do serviço
-            const servicePrice = booking.valor_consulta 
-                ? parseFloat(booking.valor_consulta) 
-                : (booking.service?.price ? parseFloat(booking.service.price) : 0);
-            
-            // Totaliza todos os serviços independente do status
-            totals.totalValue += servicePrice;
-            
-            // Separa por status para análise detalhada
+
+        bookingsList.forEach((booking) => {
+            const patientValue = Number(booking.valor_consulta ?? booking.service?.price ?? 0) || 0;
+            const professionalValue = Number(
+                booking.valor_repasse_profissional ?? booking.service?.professional_payout ?? booking.valor_consulta ?? 0
+            ) || 0;
+            const platformFee = Math.max(patientValue - professionalValue, 0);
+
+            totals.totalValue += patientValue;
+            totals.totalProfessionalValue += professionalValue;
+            totals.totalPlatformFee += platformFee;
+
             switch (booking.status) {
                 case 'confirmed':
-                    totals.confirmedValue += servicePrice;
+                    totals.confirmedValue += patientValue;
                     break;
                 case 'completed':
-                    totals.completedValue += servicePrice;
+                    totals.completedValue += patientValue;
                     break;
                 case 'pending_payment':
-                    totals.pendingValue += servicePrice;
+                    totals.pendingValue += patientValue;
                     break;
                 case 'cancelled_by_patient':
                 case 'cancelled_by_professional':
-                    totals.cancelledValue += servicePrice;
+                    totals.cancelledValue += patientValue;
+                    break;
+                default:
                     break;
             }
         });
-        
+
         return totals;
     };
 
     const resetServiceForm = () => { 
         setIsEditingService(false); 
-        setServiceFormData({ id: null, name: '', price: '', duration_minutes: '' }); 
+        setServiceFormData({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' }); 
     };
     const resetProfessionalForm = useCallback(() => { 
         if (userRole === 'admin') {
@@ -1407,7 +1606,18 @@ const AdminPage = () => {
         }
     }, [userRole, currentProfessional]);
     
-    const handleEditService = (service) => { setIsEditingService(true); setServiceFormData(service); };
+    const handleEditService = (service) => {
+        if (!service) return;
+
+        setIsEditingService(true);
+        setServiceFormData({
+            id: service.id,
+            name: service.name || '',
+            price: formatNumberToCurrencyInput(service.price),
+            professional_payout: formatNumberToCurrencyInput(service.professional_payout ?? service.price),
+            duration_minutes: service.duration_minutes ? String(service.duration_minutes) : '50'
+        });
+    };
     const handleDeleteService = async (serviceId) => {
         const service = services.find(s => s.id === serviceId);
         if (!service) return;
@@ -2170,7 +2380,7 @@ const AdminPage = () => {
                                     const totals = calculateTotals(filteredBookings);
                                     
                                     return (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
                                             <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                                                 <div className="flex items-center">
                                                     <Calendar className="w-8 h-8 text-blue-600 mr-3" />
@@ -2187,13 +2397,39 @@ const AdminPage = () => {
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                                                     </svg>
                                                     <div>
-                                                        <p className="text-sm text-green-600 font-medium">Valor Total</p>
+                                                        <p className="text-sm text-green-600 font-medium">{userRole === 'admin' ? 'Valor total cobrado' : 'Faturamento bruto'}</p>
                                                         <p className="text-2xl font-bold text-green-900">
                                                             R$ {totals.totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+                                                <div className="flex items-center">
+                                                    <DollarSign className="w-8 h-8 text-blue-600 mr-3" />
+                                                    <div>
+                                                        <p className="text-sm text-blue-600 font-medium">{userRole === 'admin' ? 'Total repassado' : 'Total a receber'}</p>
+                                                        <p className="text-2xl font-bold text-blue-900">
+                                                            R$ {totals.totalProfessionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {userRole === 'admin' && (
+                                                <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+                                                    <div className="flex items-center">
+                                                        <ShieldCheck className="w-8 h-8 text-purple-600 mr-3" />
+                                                        <div>
+                                                            <p className="text-sm text-purple-600 font-medium">Taxa da plataforma</p>
+                                                            <p className="text-2xl font-bold text-purple-900">
+                                                                R$ {totals.totalPlatformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                             
                                             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
                                                 <div className="flex items-center">
@@ -2467,9 +2703,12 @@ const AdminPage = () => {
                                             };
                                             
                                             // Usa valor histórico se disponível, senão usa preço atual do serviço
-                                            const servicePrice = b.valor_consulta 
-                                                ? parseFloat(b.valor_consulta) 
-                                                : (b.service?.price ? parseFloat(b.service.price) : 0);
+                                            const patientValue = Number(b.valor_consulta ?? b.service?.price ?? 0) || 0;
+        const professionalValue = Number(
+            b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
+        ) || 0;
+        const platformFeeValue = Math.max(patientValue - professionalValue, 0);
+        const professionalChipLabel = userRole === 'admin' ? 'Profissional' : 'Você recebe';
                                             
                                             return (
                                                 <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${
@@ -2491,10 +2730,24 @@ const AdminPage = () => {
                                                                 <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
                                                                     {statusLabels[b.status] || b.status}
                                                                 </span>
-                                                                {servicePrice > 0 && (
-                                                                    <span className="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-200">
-                                                                        R$ {servicePrice.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                                                    </span>
+                                                                {(patientValue > 0 || professionalValue > 0) && (
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {patientValue > 0 && (
+                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
+                                                                                Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                        )}
+                                                                        {professionalValue > 0 && (
+                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                                                                {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                        )}
+                                                                        {userRole === 'admin' && platformFeeValue > 0 && (
+                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                                                                Taxa: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 )}
                                                             </div>
                                                             
@@ -2516,14 +2769,22 @@ const AdminPage = () => {
                                                                     )}
                                                                 </div>
                                                                 <div>
-                                                                    <span className="text-gray-500 block">Valor</span>
-                                                                    <span className="font-bold text-green-700">
-                                                                        {servicePrice > 0 
-                                                                            ? `R$ ${servicePrice.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` 
-                                                                            : 'N/A'
-                                                                        }
-                                                                    </span>
-                                                                    {b.service?.name && servicePrice === 0 && (
+                                                                    <span className="text-gray-500 block">Financeiro</span>
+                                                                    {patientValue > 0 ? (
+                                                                        <div className="space-y-1">
+                                                                            <span className="font-bold text-green-700 block">
+                                                                                Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                            <span className="font-semibold text-blue-700 block">
+                                                                                {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                            {userRole === 'admin' && (
+                                                                                <span className="text-xs text-purple-700 block">
+                                                                                    Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
                                                                         <span className="text-orange-500 block text-xs">Valor não definido</span>
                                                                     )}
                                                                 </div>
@@ -2657,7 +2918,10 @@ const AdminPage = () => {
                                                                                 patient_name: b.patient_name || '',
                                                                                 patient_email: b.patient_email || '',
                                                                                 patient_phone: b.patient_phone || '',
-                                                                                valor_consulta: b.valor_consulta || ''
+                                                                                valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
+                                                                                valor_repasse_profissional: formatNumberToCurrencyInput(
+                                                                                    b.valor_repasse_profissional ?? b.valor_consulta ?? ''
+                                                                                )
                                                                             }); 
                                                                         }}
                                                                         className={`hover:bg-blue-50 transition-all ${
@@ -2743,7 +3007,20 @@ const AdminPage = () => {
                                                                             <label className="block text-sm font-medium mb-1">Serviço *</label>
                                                                             <select 
                                                                                 value={bookingEditData.service_id} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, service_id: e.target.value})} 
+                                                                                onChange={e => {
+                                                                                    const nextServiceId = e.target.value;
+                                                                                    const matchedService = services.find(service => service.id === nextServiceId);
+                                                                                    setBookingEditData(prev => ({
+                                                                                        ...prev,
+                                                                                        service_id: nextServiceId,
+                                                                                        valor_consulta: matchedService
+                                                                                            ? formatNumberToCurrencyInput(matchedService.price)
+                                                                                            : prev.valor_consulta,
+                                                                                        valor_repasse_profissional: matchedService
+                                                                                            ? formatNumberToCurrencyInput(matchedService.professional_payout ?? matchedService.price)
+                                                                                            : prev.valor_repasse_profissional
+                                                                                    }));
+                                                                                }} 
                                                                                 className="w-full input"
                                                                                 required
                                                                             >
@@ -2778,16 +3055,33 @@ const AdminPage = () => {
                                                                         <div>
                                                                             <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
                                                                             <input 
-                                                                                type="number" 
-                                                                                step="0.01"
-                                                                                min="0"
+                                                                                type="text" 
                                                                                 value={bookingEditData.valor_consulta} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, valor_consulta: e.target.value})} 
+                                                                                onChange={e => setBookingEditData(prev => ({
+                                                                                    ...prev,
+                                                                                    valor_consulta: sanitizeCurrencyInput(e.target.value)
+                                                                                }))} 
                                                                                 className="w-full input" 
-                                                                                placeholder="150.00"
+                                                                                placeholder="150,00"
                                                                             />
                                                                             <p className="text-xs text-gray-500 mt-1">
-                                                                                Valor histórico preservado no momento do agendamento
+                                                                                Valor histórico cobrado do paciente no momento do agendamento
+                                                                            </p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
+                                                                            <input 
+                                                                                type="text" 
+                                                                                value={bookingEditData.valor_repasse_profissional} 
+                                                                                onChange={e => setBookingEditData(prev => ({
+                                                                                    ...prev,
+                                                                                    valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
+                                                                                }))} 
+                                                                                className="w-full input" 
+                                                                                placeholder="150,00"
+                                                                            />
+                                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                                Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
                                                                             </p>
                                                                         </div>
                                                                     </div>
@@ -3616,18 +3910,36 @@ const AdminPage = () => {
                                                                     {professionalsCount} {professionalsCount === 1 ? 'profissional' : 'profissionais'}
                                                                 </span>
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-4 text-sm">
+                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                                                                 <div>
-                                                                    <span className="text-gray-500 block">Preço</span>
+                                                                    <span className="text-gray-500 block">Valor cobrado (paciente)</span>
                                                                     <span className="font-bold text-green-600">
-                                                                        R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                                        R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Repasse ao profissional</span>
+                                                                    <span className="font-semibold text-blue-600">
+                                                                        R$ {parseFloat(service.professional_payout ?? service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                    </span>
+                                                                    <span className="text-xs text-gray-500 block mt-1">
+                                                                        {(() => {
+                                                                            const patientAmount = parseCurrencyToNumber(service.price) ?? 0;
+                                                                            const payoutAmount = parseCurrencyToNumber(
+                                                                                service.professional_payout === undefined || service.professional_payout === null
+                                                                                    ? service.price
+                                                                                    : service.professional_payout
+                                                                            ) ?? 0;
+                                                                            const fee = Math.max(patientAmount - payoutAmount, 0);
+                                                                            return `Taxa plataforma: R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                        })()}
                                                                     </span>
                                                                 </div>
                                                                 <div>
                                                                     <span className="text-gray-500 block">Duração</span>
                                                                     <span className="font-medium">
-                                                                        {service.duration_minutes >= 60 
-                                                                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}` 
+                                                                        {service.duration_minutes >= 60
+                                                                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}`
                                                                             : `${service.duration_minutes}min`
                                                                         }
                                                                     </span>
@@ -3679,15 +3991,15 @@ const AdminPage = () => {
                                         </div>
                                         
                                         <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Preço</label>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Valor cobrado do paciente (R$)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
                                                 <input 
                                                     name="price" 
                                                     value={serviceFormData.price} 
                                                     onChange={e => {
-                                                        const value = e.target.value.replace(/[^0-9.,]/g, '');
-                                                        setServiceFormData({...serviceFormData, price: value});
+                                                        const value = sanitizeCurrencyInput(e.target.value);
+                                                        setServiceFormData(prev => ({ ...prev, price: value }));
                                                     }} 
                                                     type="text" 
                                                     placeholder="150,00" 
@@ -3695,6 +4007,42 @@ const AdminPage = () => {
                                                     required 
                                                 />
                                             </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium mb-1 text-gray-600">Repasse ao profissional (R$)</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                                                <input 
+                                                    name="professional_payout" 
+                                                    value={serviceFormData.professional_payout} 
+                                                    onChange={e => {
+                                                        const value = sanitizeCurrencyInput(e.target.value);
+                                                        setServiceFormData(prev => ({ ...prev, professional_payout: value }));
+                                                    }} 
+                                                    type="text" 
+                                                    placeholder="150,00" 
+                                                    className="w-full input pl-8" 
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Caso deixe em branco, será usado o mesmo valor cobrado do paciente.
+                                            </p>
+                                        </div>
+
+                                        <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
+                                            <p className="flex justify-between">
+                                                <span>Paciente paga</span>
+                                                <span className="font-semibold text-gray-900">R$ {servicePricingPreview.patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </p>
+                                            <p className="flex justify-between mt-1">
+                                                <span>Profissional recebe</span>
+                                                <span className="font-semibold text-blue-700">R$ {servicePricingPreview.professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </p>
+                                            <p className="flex justify-between mt-1">
+                                                <span>Taxa estimada da plataforma</span>
+                                                <span className="font-semibold text-emerald-700">R$ {servicePricingPreview.platformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                            </p>
                                         </div>
                                         
                                         <div>
@@ -3705,7 +4053,7 @@ const AdminPage = () => {
                                                     value={serviceFormData.duration_minutes} 
                                                     onChange={e => {
                                                         const value = e.target.value.replace(/[^0-9]/g, '');
-                                                        setServiceFormData({...serviceFormData, duration_minutes: value});
+                                                        setServiceFormData(prev => ({ ...prev, duration_minutes: value }));
                                                     }} 
                                                     type="text" 
                                                     placeholder="50" 
