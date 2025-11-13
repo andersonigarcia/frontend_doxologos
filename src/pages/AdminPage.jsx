@@ -1529,9 +1529,16 @@ const AdminPage = () => {
     useEffect(() => {
         setCurrentPage(1);
     }, [bookingFilters, bookingSortField, bookingSortOrder]);
+
+    useEffect(() => {
+        if (userRole !== 'admin' && bookingSortField === 'professional') {
+            setBookingSortField('default');
+        }
+    }, [userRole, bookingSortField]);
     
     // Funções para calcular totalizadores
     const calculateTotals = (bookingsList) => {
+        const isAdminUser = userRole === 'admin';
         const totals = {
             totalBookings: bookingsList.length,
             totalValue: 0,
@@ -1550,23 +1557,25 @@ const AdminPage = () => {
             ) || 0;
             const platformFee = Math.max(patientValue - professionalValue, 0);
 
+            const amountForStatus = isAdminUser ? patientValue : professionalValue;
+
             totals.totalValue += patientValue;
             totals.totalProfessionalValue += professionalValue;
             totals.totalPlatformFee += platformFee;
 
             switch (booking.status) {
                 case 'confirmed':
-                    totals.confirmedValue += patientValue;
+                    totals.confirmedValue += amountForStatus;
                     break;
                 case 'completed':
-                    totals.completedValue += patientValue;
+                    totals.completedValue += amountForStatus;
                     break;
                 case 'pending_payment':
-                    totals.pendingValue += patientValue;
+                    totals.pendingValue += amountForStatus;
                     break;
                 case 'cancelled_by_patient':
                 case 'cancelled_by_professional':
-                    totals.cancelledValue += patientValue;
+                    totals.cancelledValue += amountForStatus;
                     break;
                 default:
                     break;
@@ -2379,8 +2388,12 @@ const AdminPage = () => {
                                     const filteredBookings = getFilteredBookings();
                                     const totals = calculateTotals(filteredBookings);
                                     
+                                    const gridColsClass = userRole === 'admin'
+                                        ? 'xl:grid-cols-6'
+                                        : (totals.cancelledValue > 0 ? 'xl:grid-cols-5' : 'xl:grid-cols-4');
+
                                     return (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-4 mb-6">
+                                        <div className={`grid grid-cols-1 md:grid-cols-2 ${gridColsClass} gap-4 mb-6`}>
                                             <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                                                 <div className="flex items-center">
                                                     <Calendar className="w-8 h-8 text-blue-600 mr-3" />
@@ -2391,25 +2404,27 @@ const AdminPage = () => {
                                                 </div>
                                             </div>
                                             
-                                            <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                                                <div className="flex items-center">
-                                                    <svg className="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                                    </svg>
-                                                    <div>
-                                                        <p className="text-sm text-green-600 font-medium">{userRole === 'admin' ? 'Valor total cobrado' : 'Faturamento bruto'}</p>
-                                                        <p className="text-2xl font-bold text-green-900">
-                                                            R$ {totals.totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                                        </p>
+                                            {userRole === 'admin' && (
+                                                <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+                                                    <div className="flex items-center">
+                                                        <svg className="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                                                        </svg>
+                                                        <div>
+                                                            <p className="text-sm text-green-600 font-medium">Valor total cobrado</p>
+                                                            <p className="text-2xl font-bold text-green-900">
+                                                                R$ {totals.totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                            )}
 
                                             <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
                                                 <div className="flex items-center">
                                                     <DollarSign className="w-8 h-8 text-blue-600 mr-3" />
                                                     <div>
-                                                        <p className="text-sm text-blue-600 font-medium">{userRole === 'admin' ? 'Total repassado' : 'Total a receber'}</p>
+                                                        <p className="text-sm text-blue-600 font-medium">{userRole === 'admin' ? 'Total repassado' : 'A faturar'}</p>
                                                         <p className="text-2xl font-bold text-blue-900">
                                                             R$ {totals.totalProfessionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </p>
@@ -2437,7 +2452,7 @@ const AdminPage = () => {
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
                                                     <div>
-                                                        <p className="text-sm text-emerald-600 font-medium">Concluídos</p>
+                                                        <p className="text-sm text-emerald-600 font-medium">Total a Receber</p>
                                                         <p className="text-2xl font-bold text-emerald-900">
                                                             R$ {totals.completedValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                                         </p>
@@ -2512,14 +2527,16 @@ const AdminPage = () => {
                                             >
                                                 📅 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                                             </Button>
-                                            <Button 
-                                                onClick={() => handleBookingSort('professional')} 
-                                                variant="outline" 
-                                                size="sm"
-                                                className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                            >
-                                                👤 Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                            </Button>
+                                            {userRole === 'admin' && (
+                                                <Button 
+                                                    onClick={() => handleBookingSort('professional')} 
+                                                    variant="outline" 
+                                                    size="sm"
+                                                    className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                                >
+                                                    👤 Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -2732,7 +2749,7 @@ const AdminPage = () => {
                                                                 </span>
                                                                 {(patientValue > 0 || professionalValue > 0) && (
                                                                     <div className="flex flex-wrap gap-2">
-                                                                        {patientValue > 0 && (
+                                                                        {patientValue > 0 && userRole === 'admin' && (
                                                                             <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
                                                                                 Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                             </span>
@@ -2770,14 +2787,18 @@ const AdminPage = () => {
                                                                 </div>
                                                                 <div>
                                                                     <span className="text-gray-500 block">Financeiro</span>
-                                                                    {patientValue > 0 ? (
+                                                                    {(userRole === 'admin' ? patientValue : professionalValue) > 0 ? (
                                                                         <div className="space-y-1">
-                                                                            <span className="font-bold text-green-700 block">
-                                                                                Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                            </span>
-                                                                            <span className="font-semibold text-blue-700 block">
-                                                                                {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                            </span>
+                                                                            {userRole === 'admin' && patientValue > 0 && (
+                                                                                <span className="font-bold text-green-700 block">
+                                                                                    Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                </span>
+                                                                            )}
+                                                                            {professionalValue > 0 && (
+                                                                                <span className="font-semibold text-blue-700 block">
+                                                                                    {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                </span>
+                                                                            )}
                                                                             {userRole === 'admin' && (
                                                                                 <span className="text-xs text-purple-700 block">
                                                                                     Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
