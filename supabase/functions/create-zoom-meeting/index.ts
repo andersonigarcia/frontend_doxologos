@@ -6,6 +6,16 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 const ZOOM_CLIENT_ID = Deno.env.get('ZOOM_CLIENT_ID')
 const ZOOM_CLIENT_SECRET = Deno.env.get('ZOOM_CLIENT_SECRET')
 const ZOOM_ACCOUNT_ID = Deno.env.get('ZOOM_ACCOUNT_ID')
+const ZOOM_PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+const generatePassword = (length = 8): string => {
+  let result = ''
+  for (let i = 0; i < length; i += 1) {
+    const charIndex = Math.floor(Math.random() * ZOOM_PASSWORD_CHARS.length)
+    result += ZOOM_PASSWORD_CHARS.charAt(charIndex)
+  }
+  return result
+}
 
 interface ZoomMeetingRequest {
   booking_date: string
@@ -13,6 +23,9 @@ interface ZoomMeetingRequest {
   patient_name: string
   service_name: string
   professional_name: string
+  professional_email?: string
+  meeting_password?: string
+  duration?: number
 }
 
 async function getZoomAccessToken(): Promise<string> {
@@ -45,13 +58,15 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
   const bookingDateTime = new Date(`${meetingData.booking_date}T${meetingData.booking_time}:00`)
   const startTime = bookingDateTime.toISOString()
 
-  const meetingConfig = {
+  const password = meetingData.meeting_password || generatePassword();
+  const meetingConfig: Record<string, unknown> = {
     topic: `Consulta - ${meetingData.patient_name}`,
     type: 2, // Reunião agendada
     start_time: startTime,
-    duration: 60, // 1 hora
+    duration: meetingData.duration || 60, // 1 hora
     timezone: 'America/Sao_Paulo',
     agenda: `Consulta de ${meetingData.service_name} com ${meetingData.professional_name}`,
+    password,
     settings: {
       host_video: true,
       participant_video: true,
@@ -63,7 +78,7 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
       approval_type: 0,
       registration_type: 1,
       enforce_login: false,
-      alternative_hosts: '',
+      alternative_hosts: meetingData.professional_email || '',
       close_registration: false,
       show_share_button: true,
       allow_multiple_devices: true,
@@ -71,6 +86,8 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
       meeting_authentication: false
     }
   }
+
+  // meetingConfig already inclui a senha acima
 
   const response = await fetch('https://api.zoom.us/v2/users/me/meetings', {
     method: 'POST',
@@ -80,7 +97,6 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
     },
     body: JSON.stringify(meetingConfig)
   })
-
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(`Falha ao criar reunião Zoom: ${response.status} - ${errorText}`)
@@ -92,13 +108,13 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
 
   return {
     meeting_link: meeting.join_url,
-    meeting_password: meeting.password,
+    meeting_password: meeting.password || password,
     meeting_id: meeting.id,
     start_url: meeting.start_url
   }
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -136,11 +152,12 @@ serve(async (req) => {
     )
   } catch (error) {
     console.error('❌ Erro:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
     
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message 
+        error: errorMessage 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

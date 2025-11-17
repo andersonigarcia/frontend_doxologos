@@ -17,18 +17,14 @@ import analytics from '@/lib/analytics';
 
 const MIN_PASSWORD_LENGTH = 8;
 const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
-const generateGoogleMeetLink = () => {
-  const randomSegment = (length) => {
-    const chars = 'abcdefghijklmnopqrstuvwxyz';
-    let result = '';
-    for (let i = 0; i < length; i += 1) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
-  const parts = [randomSegment(3), randomSegment(4), randomSegment(3)];
-  return `https://meet.google.com/${parts.join('-')}`;
+const generateGoogleMeetLink = () => 'https://meet.google.com/new';
+const ZOOM_PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const generateZoomPassword = (length = 8) => {
+  let pass = '';
+  for (let i = 0; i < length; i += 1) {
+    pass += ZOOM_PASSWORD_CHARS.charAt(Math.floor(Math.random() * ZOOM_PASSWORD_CHARS.length));
+  }
+  return pass;
 };
 const MEETING_OPTIONS = [
   {
@@ -674,8 +670,8 @@ const AgendamentoPage = () => {
       isExistingPatient
     });
         
-    setIsSubmitting(true);
-    setPasswordError('');
+  setIsSubmitting(true);
+  setPasswordError('');
         
     // Validar aceitação dos termos
     if (!patientData.acceptTerms) {
@@ -683,6 +679,39 @@ const AgendamentoPage = () => {
         variant: 'destructive',
         title: 'Aceite os termos',
         description: 'Você precisa aceitar os termos e condições para continuar.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!selectedDate || !selectedTime) {
+      toast({
+        variant: 'destructive',
+        title: 'Escolha data e horário',
+        description: 'Selecione um dia e horário disponíveis para continuar.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
+    if (Number.isNaN(selectedDateTime.getTime())) {
+      toast({
+        variant: 'destructive',
+        title: 'Horário inválido',
+        description: 'Não conseguimos interpretar a data escolhida. Tente novamente.'
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    const minimumAdvance = new Date();
+    minimumAdvance.setHours(minimumAdvance.getHours() + 24);
+    if (selectedDateTime < minimumAdvance) {
+      toast({
+        variant: 'destructive',
+        title: 'Antecedência mínima',
+        description: 'Consultas precisam ser agendadas com pelo menos 24 horas de antecedência.'
       });
       setIsSubmitting(false);
       return;
@@ -914,6 +943,7 @@ const AgendamentoPage = () => {
   console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
 
   // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
+  const zoomPassword = generateZoomPassword();
   let zoomMeetingData = null;
   if (meetingPlatform === 'zoom') {
         try {
@@ -930,7 +960,10 @@ const AgendamentoPage = () => {
             booking_time: selectedTime,
             patient_name: safePatientName,
             service_name: serviceDetails?.name || 'Consulta',
-            professional_name: professionalDetails?.name || 'Profissional'
+            professional_name: professionalDetails?.name || 'Profissional',
+            professional_email: professionalDetails?.email,
+            meeting_password: zoomPassword,
+            duration: 60
           });
 
           if (zoomMeetingData) {
@@ -939,7 +972,7 @@ const AgendamentoPage = () => {
             secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
             // Adicionar dados do Zoom ao booking
             bookingData.meeting_link = zoomMeetingData.meeting_link;
-            bookingData.meeting_password = zoomMeetingData.meeting_password;
+            bookingData.meeting_password = zoomMeetingData.meeting_password || zoomPassword;
             bookingData.meeting_id = zoomMeetingData.meeting_id;
             bookingData.meeting_start_url = zoomMeetingData.start_url;
           } else {

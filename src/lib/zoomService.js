@@ -204,7 +204,10 @@ class ZoomService {
           booking_time: booking.booking_time,
           patient_name: booking.patient_name,
           service_name: booking.service_name || 'Consulta',
-          professional_name: booking.professional_name || 'Profissional'
+          professional_name: booking.professional_name || 'Profissional',
+          professional_email: booking.professional_email || null,
+          meeting_password: booking.meeting_password || null,
+          duration: booking.duration || 60
         })
       });
 
