@@ -224,7 +224,8 @@ export default async function handler(req: Request) {
     // ========================================
     // FLUXO ORIGINAL: BOOKINGS (CONSULTAS)
     // ========================================
-    const preferenceId = mpPayment.preference_id || mpPayment.external_reference || null;
+    const preferenceId = mpPayment.preference_id || null;
+    const externalReference = mpPayment.external_reference || null;
     let booking = null;
     if (preferenceId) {
       const q = `${SUPABASE_URL}/rest/v1/bookings?marketplace_preference_id=eq.${preferenceId}&select=*`;
@@ -233,8 +234,18 @@ export default async function handler(req: Request) {
       booking = arr[0];
     }
 
+    if (!booking && externalReference) {
+      const sanitizedReference = externalReference.replace(/^BOOKING[_-]?/i, '').trim();
+      const referenceForQuery = sanitizedReference.length > 0 ? sanitizedReference : externalReference;
+      const encodedRef = encodeURIComponent(referenceForQuery);
+      const byIdQuery = `${SUPABASE_URL}/rest/v1/bookings?id=eq.${encodedRef}&select=*`;
+      const fallbackRes = await fetch(byIdQuery, { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } });
+      const fallbackArr = await fallbackRes.json();
+      booking = fallbackArr[0];
+    }
+
     // insert payment record
-    await fetch(`${SUPABASE_URL}/rest/v1/payments`, { method: 'POST', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_id: booking?.id || null, mp_payment_id: mpPayment.id?.toString(), status: mpPayment.status || 'unknown', amount: mpPayment.transaction_amount || null, raw_payload: mpPayment, created_at: new Date().toISOString() }) });
+  await fetch(`${SUPABASE_URL}/rest/v1/payments`, { method: 'POST', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_id: booking?.id || null, mp_payment_id: mpPayment.id?.toString(), status: mpPayment.status || 'unknown', amount: mpPayment.transaction_amount || null, raw_payload: mpPayment, created_at: new Date().toISOString() }) });
 
     if (mpPayment.status === 'approved' || mpPayment.status === 'paid') {
       if (booking && booking.id) {
