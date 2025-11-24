@@ -8,7 +8,7 @@
 ## ✅ STATUS GERAL
 
 ### **Configuração Completa**
-- ✅ Measurement ID: `G-FSXFYQVCEC`
+- ✅ Measurement ID: `G-1RMKGB754J`
 - ✅ Script GA4 instalado no `index.html`
 - ✅ `.env.production` configurado
 - ✅ Privacy compliance (LGPD)
@@ -66,8 +66,8 @@ gtag('config', 'G-XXXXXXXXXX', {...});
 
 **Depois:**
 ```html
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC"></script>
-gtag('config', 'G-FSXFYQVCEC', {
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1RMKGB754J"></script>
+gtag('config', 'G-1RMKGB754J', {
   send_page_view: true,
   anonymize_ip: true,
   cookie_flags: 'SameSite=None;Secure'

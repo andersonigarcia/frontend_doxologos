@@ -1,14 +1,14 @@
 # ✅ Google Analytics 4 - Checklist Final de Produção
 
 **Data:** 28/10/2025  
-**Measurement ID:** `G-FSXFYQVCEC`
+**Measurement ID:** `G-1RMKGB754J`
 
 ---
 
 ## 📋 PRÉ-DEPLOY
 
 ### **Configuração Base**
-- [x] Measurement ID configurado (`G-FSXFYQVCEC`)
+- [x] Measurement ID configurado (`G-1RMKGB754J`)
 - [x] Script GA4 no `index.html` atualizado
 - [x] `.env.production` com variáveis corretas
 - [x] Privacy compliance (LGPD) configurado

@@ -161,19 +161,25 @@
 		</script>
 		
 		<!-- Google Analytics 4 -->
-		<script async src="https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC"></script>
+		<script async src="https://www.googletagmanager.com/gtag/js?id=G-1RMKGB754J"></script>
 		<script>
 			window.dataLayer = window.dataLayer || [];
 			function gtag(){dataLayer.push(arguments);}
 			gtag('js', new Date());
-			gtag('config', 'G-FSXFYQVCEC', {
+		</script>
+		<script type="module">
+			const gaMeasurementId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-1RMKGB754J';
+			const gaCookieDomain = import.meta.env.VITE_GA_COOKIE_DOMAIN || 'doxologos.com.br';
+			const configPayload = {
 				page_title: document.title,
 				page_location: window.location.href,
 				custom_map: {'custom_parameter_1': 'clinic_page'},
 				send_page_view: true,
 				anonymize_ip: true,
-				cookie_flags: 'SameSite=None;Secure'
-			});
+				cookie_flags: 'SameSite=None;Secure',
+				cookie_domain: gaCookieDomain
+			};
+			gtag('config', gaMeasurementId, configPayload);
 		</script>
 		
 		<!-- Performance Monitoring -->

@@ -1,15 +1,14 @@
 # 📊 Auditoria Google Analytics 4 - Produção
 
 **Data:** 28/10/2025  
-**Measurement ID:** `G-FSXFYQVCEC`  
+**Measurement ID:** `G-1RMKGB754J`  
 **Status:** ✅ PRONTO PARA PRODUÇÃO
 
----
 
 ## ✅ CHECKLIST DE PRODUÇÃO
 
 ### 1. **Configuração Base** ✅
-- [x] **Measurement ID configurado**: `G-FSXFYQVCEC`
+- [x] **Measurement ID configurado**: `G-1RMKGB754J`
 - [x] **Script GA4 no index.html**: Linhas 159-171
 - [x] **Variável de ambiente**: `.env.production` configurada
 - [x] **Preconnect otimizado**: `www.googletagmanager.com`
@@ -67,19 +66,18 @@
 - [x] **Lazy initialization**: Apenas em produção
 - [x] **Resource monitoring**: Recursos lentos (>1s) rastreados
 
----
 
 ## 📋 CONFIGURAÇÕES DO GA4
 
 ### **index.html (Linhas 159-171)**
 ```html
 <!-- Google Analytics 4 -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-1RMKGB754J"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-FSXFYQVCEC', {
+  gtag('config', 'G-1RMKGB754J', {
     page_title: document.title,
     page_location: window.location.href,
     custom_map: {'custom_parameter_1': 'clinic_page'},
@@ -92,7 +90,7 @@
 
 ### **.env.production**
 ```env
-VITE_GA_MEASUREMENT_ID=G-FSXFYQVCEC
+VITE_GA_MEASUREMENT_ID=G-1RMKGB754J
 VITE_ENABLE_ANALYTICS=true
 VITE_ENVIRONMENT=production
 VITE_ENABLE_PERFORMANCE_MONITORING=true
@@ -360,7 +358,7 @@ throw new Error('Test GA4 Error Tracking');
 
 Antes de fazer deploy para produção:
 
-- [ ] 1. Verificar `.env.production` com `G-FSXFYQVCEC`
+- [ ] 1. Verificar `.env.production` com `G-1RMKGB754J`
 - [ ] 2. Build de produção: `npm run build`
 - [ ] 3. Testar localmente: `npm run preview`
 - [ ] 4. Verificar console do navegador (sem erros GA4)
@@ -413,7 +411,7 @@ Antes de fazer deploy para produção:
 ### **Console GA4**
 - [Analytics Dashboard](https://analytics.google.com/)
 - Property ID: Doxologos Website
-- Measurement ID: `G-FSXFYQVCEC`
+- Measurement ID: `G-1RMKGB754J`
 
 ---
 

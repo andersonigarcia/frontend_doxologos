@@ -123,7 +123,7 @@ VITE_SUPABASE_URL=https://seu-projeto.supabase.co
 VITE_SUPABASE_ANON_KEY=sua-chave-anon
 
 # Google Analytics
-VITE_GA_MEASUREMENT_ID=G-FSXFYQVCEC
+VITE_GA_MEASUREMENT_ID=G-1RMKGB754J
 
 # Ambiente
 VITE_ENVIRONMENT=production

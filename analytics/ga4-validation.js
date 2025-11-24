@@ -11,7 +11,7 @@ if (typeof gtag !== 'undefined') {
   gtag('event', 'ga4_config_test', {
     event_category: 'Setup',
     event_label: 'Configuration Test',
-    custom_parameter_1: 'G-FSXFYQVCEC',
+    custom_parameter_1: 'G-1RMKGB754J',
     custom_parameter_2: 'production'
   });
   
