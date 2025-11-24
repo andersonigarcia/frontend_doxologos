@@ -37,7 +37,7 @@ const HomePage = () => {
     { 
       id: 1, 
       videoId: 'InxlTnye_9Y',
-      title: 'Como a Psicologia Cristã pode Transformar sua Vida',
+      title: 'Como a Psicologia pode Transformar sua Vida',
       description: 'Descubra como integrar fé e ciência para o seu bem-estar emocional e espiritual.'
     },
     { 
@@ -1030,7 +1030,7 @@ const HomePage = () => {
                       </p>
                       <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
                         <span className="text-[#2d8659] font-medium">Atendimento online</span>
-                        <span className="text-gray-400">Psicologia Cristã</span>
+                        <span className="text-gray-400">Psicologia </span>
                       </div>
                     </div>
                   </motion.div>
