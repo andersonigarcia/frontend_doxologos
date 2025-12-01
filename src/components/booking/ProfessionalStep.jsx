@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Clock, User, ChevronRight, ArrowLeft, Quote } from 'lucide-react';
+import { Clock, User, ChevronRight, ChevronLeft, ArrowLeft, Quote } from 'lucide-react';
 import analytics from '@/lib/analytics';
 
 const ProfessionalStep = ({
@@ -19,6 +19,7 @@ const ProfessionalStep = ({
   const [isMobile, setIsMobile] = useState(false);
   const [mobileStage, setMobileStage] = useState('service');
   const professionalsSectionRef = useRef(null);
+  const professionalCarouselRef = useRef(null);
   const professionalsViewedRef = useRef(false);
   const [activeFilters, setActiveFilters] = useState([]);
 
@@ -173,6 +174,7 @@ const ProfessionalStep = ({
   const showServiceSelection = !isMobile || mobileStage === 'service';
   const showProfessionalSelection = selectedService && (!isMobile || mobileStage === 'professional');
   const reserveMobileCtaSpace = isMobile && selectedService && mobileStage === 'service';
+  const stageIndicator = isMobile ? mobileStage : selectedProfessional ? 'professional' : 'service';
 
   const handleMoveToProfessionals = () => {
     if (!selectedService) {
@@ -190,6 +192,15 @@ const ProfessionalStep = ({
   const handleContinue = () => {
     trackBookingEvent('open_calendar');
     onNext?.();
+  };
+
+  const scrollProfessionalCarousel = (direction) => {
+    const node = professionalCarouselRef.current;
+    if (!node) {
+      return;
+    }
+    const amount = node.offsetWidth * 0.8;
+    node.scrollBy({ left: direction === 'next' ? amount : -amount, behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -245,8 +256,26 @@ const ProfessionalStep = ({
         </div>
       )}
 
-      {showServiceSelection && (
-        <>
+      <motion.div
+        key={stageIndicator}
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-xs font-semibold text-gray-600"
+      >
+        <span className="inline-block h-2 w-2 rounded-full bg-[#2d8659]" aria-hidden />
+        {stageIndicator === 'service' ? 'Etapa 1 de 2 · Serviço' : 'Etapa 2 de 2 · Profissional'}
+      </motion.div>
+
+      <AnimatePresence mode="wait">
+        {showServiceSelection && (
+          <motion.div
+            key="service-selection"
+            initial={{ opacity: 0, x: isMobile ? -20 : 0 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: isMobile ? 20 : 0 }}
+            transition={{ duration: 0.25 }}
+          >
           <div className="md:hidden mb-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
             <ChevronRight className="w-4 h-4 text-[#2d8659]" />
             Arraste para ver todos os serviços disponíveis
@@ -305,11 +334,21 @@ const ProfessionalStep = ({
               );
             })}
           </div>
-        </>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {showProfessionalSelection && (
-        <div className="mt-10" ref={professionalsSectionRef}>
+      <AnimatePresence mode="wait">
+        {showProfessionalSelection && (
+          <motion.div
+            key="professional-selection"
+            initial={{ opacity: 0, x: isMobile ? 20 : 0 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: isMobile ? -20 : 0 }}
+            transition={{ duration: 0.25 }}
+            className="mt-10"
+            ref={professionalsSectionRef}
+          >
           <div className="text-center mb-6">
             <h3 className="text-2xl font-bold text-gray-900">Escolha o profissional</h3>
             <p className="text-gray-600">
@@ -355,7 +394,7 @@ const ProfessionalStep = ({
 
           <div className="mb-6">
             <p className="text-sm text-gray-600 mb-2 font-semibold">Filtros rápidos</p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 md:m-0 md:px-0" role="toolbar" aria-label="Filtros de profissionais">
               {quickFilterDefinitions.map((filter) => {
                 const isActive = activeFilters.includes(filter.id);
                 return (
@@ -381,7 +420,7 @@ const ProfessionalStep = ({
                 <button
                   type="button"
                   onClick={() => setActiveFilters([])}
-                  className="text-sm text-[#2d8659] underline"
+                  className="text-sm text-[#2d8659] underline whitespace-nowrap"
                 >
                   Limpar filtros
                 </button>
@@ -402,8 +441,32 @@ const ProfessionalStep = ({
               )}
             </div>
           ) : (
-            <div className="grid gap-4 grid-flow-col auto-cols-[minmax(280px,_85%)] overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scroll-smooth md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2">
-              {filteredProfessionals.map((professional) => {
+            <div className="relative">
+              <div className="flex justify-end gap-2 mb-2" aria-hidden="true">
+                <button
+                  type="button"
+                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                  onClick={() => scrollProfessionalCarousel('prev')}
+                  aria-label="Ver profissionais anteriores"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                  onClick={() => scrollProfessionalCarousel('next')}
+                  aria-label="Ver mais profissionais"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+              <div
+                ref={professionalCarouselRef}
+                className="grid gap-4 grid-flow-col auto-cols-[minmax(280px,_85%)] overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scroll-smooth focus:outline-none no-scrollbar md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2"
+                role="listbox"
+                aria-label="Lista de profissionais disponíveis"
+              >
+                {filteredProfessionals.map((professional) => {
                 const isSelectable = professionalHasAvailability(professional);
                 const nextSlot = getNextAvailableSlot(professional);
                 return (
@@ -412,7 +475,10 @@ const ProfessionalStep = ({
                     type="button"
                     onClick={() => isSelectable && onSelectProfessional?.(professional.id)}
                     disabled={!isSelectable}
-                    className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${
+                      role="option"
+                      aria-selected={selectedProfessional === professional.id}
+                      aria-disabled={!isSelectable}
+                      className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${
                       selectedProfessional === professional.id && isSelectable
                         ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
                         : 'border-gray-200 bg-white'
@@ -473,10 +539,30 @@ const ProfessionalStep = ({
                   </button>
                 );
               })}
+              </div>
+              <div className="md:hidden flex justify-center gap-4 mt-2" aria-label="Controles do carrossel">
+                <button
+                  type="button"
+                  onClick={() => scrollProfessionalCarousel('prev')}
+                  className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                  aria-label="Ver profissional anterior"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scrollProfessionalCarousel('next')}
+                  className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                  aria-label="Ver próximo profissional"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {reserveMobileCtaSpace && (
         <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-6 w-[90%] max-w-md z-30">
