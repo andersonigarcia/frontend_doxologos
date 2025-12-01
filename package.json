@@ -71,6 +71,7 @@
     "@babel/preset-react": "^7.27.1",
     "@babel/traverse": "^7.27.0",
     "@babel/types": "^7.27.0",
+    "@mswjs/interceptors": "^0.40.0",
     "@playwright/test": "^1.43.0",
     "@testing-library/jest-dom": "^6.4.2",
     "@testing-library/react": "^14.2.1",
