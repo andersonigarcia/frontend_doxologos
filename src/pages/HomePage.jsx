@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -9,7 +9,6 @@ import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import emailService from '@/lib/emailService';
 import { useHomeContent } from '@/hooks/home/useHomeContent';
-import { useCarouselController } from '@/hooks/useCarouselController';
 import HomeHeader from '@/components/home/HomeHeader';
 import HeroSection from '@/components/home/HeroSection';
 import EventsHighlight from '@/components/home/EventsHighlight';
@@ -88,39 +87,6 @@ const HomePage = () => {
   const { trackComponentError, trackAsyncError } = useComponentErrorTracking('HomePage');
 
   const { activeEvents, professionals, testimonials, testimonialsLoading } = useHomeContent({ toast, trackAsyncError });
-
-  const {
-    scrollRef: professionalsCarouselRef,
-    activeIndex: activeProfIndex,
-    canNavigate: canNavigateProfessionals,
-    scrollToIndex: scrollToProfIndex,
-    goToNext: goToNextProfessional,
-    goToPrevious: goToPreviousProfessional,
-    handleKeyDown: handleProfessionalCarouselKeyDown,
-  } = useCarouselController(professionals.length);
-
-  const {
-    scrollRef: testimonialsCarouselRef,
-    activeIndex: activeTestimonialIndex,
-    scrollToIndex: scrollToTestimonialIndex,
-  } = useCarouselController(testimonials.length);
-
-  const {
-    scrollRef: eventsCarouselRef,
-    activeIndex: activeEventIndex,
-    scrollToIndex: scrollToEventIndex,
-    goToNext: goToNextEvent,
-  } = useCarouselController(activeEvents.length);
-
-  useEffect(() => {
-    if (activeEvents.length > 1) {
-      const interval = setInterval(() => {
-        goToNextEvent();
-      }, 5000);
-      return () => clearInterval(interval);
-    }
-    return undefined;
-  }, [activeEvents.length, goToNextEvent]);
 
   const markFormStarted = useCallback(() => {
     if (!formStartedRef.current) {
@@ -314,12 +280,7 @@ const HomePage = () => {
         />
 
         {activeEvents.length > 0 && (
-          <EventsHighlight
-            events={activeEvents}
-            carouselRef={eventsCarouselRef}
-            activeIndex={activeEventIndex}
-            onScrollToIndex={scrollToEventIndex}
-          />
+          <EventsHighlight events={activeEvents} />
         )}
 
         <section id="como-funciona" className="py-20 bg-gray-50">
@@ -354,23 +315,11 @@ const HomePage = () => {
           </div>
         </section>
 
-        <ProfessionalsCarousel
-          professionals={professionals}
-          carouselRef={professionalsCarouselRef}
-          canNavigate={canNavigateProfessionals}
-          onPrevious={goToPreviousProfessional}
-          onNext={goToNextProfessional}
-          onScrollToIndex={scrollToProfIndex}
-          activeIndex={activeProfIndex}
-          onCarouselKeyDown={handleProfessionalCarouselKeyDown}
-        />
+        <ProfessionalsCarousel professionals={professionals} />
 
         <TestimonialsSection
           testimonials={testimonials}
           isLoading={testimonialsLoading}
-          carouselRef={testimonialsCarouselRef}
-          activeIndex={activeTestimonialIndex}
-          onScrollToIndex={scrollToTestimonialIndex}
           onLeaveTestimonial={navigateToTestimonials}
         />
 

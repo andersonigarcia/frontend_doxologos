@@ -2,15 +2,9 @@ import React, { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { MessageCircle, Star } from 'lucide-react';
+import HorizontalCarousel from '@/components/common/HorizontalCarousel';
 
-const TestimonialsSection = ({
-  testimonials = [],
-  isLoading,
-  carouselRef,
-  activeIndex,
-  onScrollToIndex,
-  onLeaveTestimonial,
-}) => {
+const TestimonialsSection = ({ testimonials = [], isLoading, onLeaveTestimonial }) => {
   const handleContactScroll = useCallback(() => {
     if (typeof document === 'undefined') {
       return;
@@ -41,58 +35,47 @@ const TestimonialsSection = ({
             <p className="text-gray-500 text-lg">Carregando depoimentos...</p>
           </div>
         ) : testimonials.length > 0 ? (
-          <div className="relative">
-            <motion.div
-              ref={carouselRef}
-              className="flex overflow-x-auto space-x-8 pb-8 scroll-smooth carousel-container"
-              style={{ scrollSnapType: 'x mandatory' }}
-            >
-              {testimonials.map((testimonial, index) => {
-                const patientName =
-                  testimonial.bookings?.patient_name || testimonial.patient_name || 'Paciente Anônimo';
-                const professionalName =
-                  testimonial.professionals?.name || testimonial.bookings?.professional?.name;
+          <HorizontalCarousel
+            items={testimonials}
+            ariaLabel="Depoimentos de pacientes"
+            showArrows={false}
+            trackClassName="gap-8 pb-8"
+            itemClassName="w-full sm:w-1/2 md:w-1/3"
+            getItemKey={(testimonial) => testimonial.id}
+            dotAriaLabel={(testimonial, index) =>
+              `Ir para o depoimento ${testimonial?.patient_name || testimonial?.bookings?.patient_name || index + 1}`
+            }
+            itemRenderer={({ item: testimonial, index }) => {
+              const patientName =
+                testimonial.bookings?.patient_name || testimonial.patient_name || 'Paciente Anônimo';
+              const professionalName = testimonial.professionals?.name || testimonial.bookings?.professional?.name;
 
-                return (
-                  <motion.div
-                    key={testimonial.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="bg-white p-8 rounded-xl flex-shrink-0 w-full sm:w-1/2 md:w-1/3 hover:shadow-lg transition-shadow"
-                    style={{ scrollSnapAlign: 'start' }}
-                  >
-                    <div className="flex mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
-                      ))}
-                    </div>
-                    <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
-                    <div className="space-y-1">
-                      <p className="font-bold text-[#2d8659]">- {patientName}</p>
-                      {professionalName && (
-                        <p className="text-sm text-gray-600">
-                          Atendido por <span className="font-semibold text-[#2d8659]">{professionalName}</span>
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-            <div className="flex justify-center mt-8 space-x-2">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => onScrollToIndex(index)}
-                  className={`w-3 h-3 rounded-full transition-colors ${
-                    activeIndex === index ? 'bg-[#2d8659]' : 'bg-gray-300 hover:bg-gray-400'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
+              return (
+                <motion.article
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-white p-8 rounded-xl hover:shadow-lg transition-shadow h-full"
+                >
+                  <div className="flex mb-4">
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
+                    ))}
+                  </div>
+                  <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
+                  <div className="space-y-1">
+                    <p className="font-bold text-[#2d8659]">- {patientName}</p>
+                    {professionalName && (
+                      <p className="text-sm text-gray-600">
+                        Atendido por <span className="font-semibold text-[#2d8659]">{professionalName}</span>
+                      </p>
+                    )}
+                  </div>
+                </motion.article>
+              );
+            }}
+          />
         ) : (
           <div className="text-center py-16">
             <div className="bg-blue-50 rounded-lg p-8 max-w-2xl mx-auto">
