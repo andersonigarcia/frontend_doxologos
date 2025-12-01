@@ -1,9 +1,23 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Calendar, User, Clock, CreditCard, Check, CalendarX, Shield, Zap, CheckCircle, ChevronLeft, ChevronRight, MessageCircle, Star, Quote, ShieldCheck, Lock, RefreshCcw, Eye, EyeOff, KeyRound, Video, Globe } from 'lucide-react';
+import {
+  Heart,
+  ArrowLeft,
+  Calendar,
+  User,
+  Clock,
+  CreditCard,
+  Check,
+  CheckCircle,
+  Video,
+  Globe,
+  ShieldCheck,
+  Lock,
+  RefreshCcw,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -16,6 +30,12 @@ import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 import { useBookingData } from '@/hooks/booking/useBookingData';
 import { usePatientForm, formatPhoneNumber, validateEmail } from '@/hooks/booking/usePatientForm';
+import BookingStepper from '@/components/booking/BookingStepper';
+import ProfessionalStep from '@/components/booking/ProfessionalStep';
+import DateTimeStep from '@/components/booking/DateTimeStep';
+import PatientAccountStep from '@/components/booking/PatientAccountStep';
+import PaymentSummaryStep from '@/components/booking/PaymentSummaryStep';
+import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
 
 const MIN_PASSWORD_LENGTH = 8;
 const generateGoogleMeetLink = () => 'https://meet.google.com/new';
@@ -49,24 +69,27 @@ const AgendamentoPage = () => {
     const navigate = useNavigate();
   const { user: authUser, resetPassword } = useAuth();
     const [step, setStep] = useState(1);
-    const [bookedSlots, setBookedSlots] = useState([]);
-    
     const [selectedProfessional, setSelectedProfessional] = useState('');
     const [selectedService, setSelectedService] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
   const [meetingPlatform, setMeetingPlatform] = useState('zoom');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isLoadingTimes, setIsLoadingTimes] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
   const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
 
+  const { bookedSlots, isLoadingSlots } = useBookedSlots({
+    professionalId: selectedProfessional,
+    date: selectedDate,
+    toast,
+  });
+
   const {
-    professionals,
-    services,
-    availability,
-    blockedDates,
-    testimonials,
+    professionals = [],
+    services = [],
+    availability = {},
+    blockedDates = [],
+    testimonials = [],
   } = useBookingData({ toast });
 
   const {
@@ -106,8 +129,28 @@ const AgendamentoPage = () => {
     return services.find((service) => service.id === selectedService) || null;
   }, [selectedService, services]);
 
+  const hasScheduleSelection = Boolean(selectedService && selectedProfessional && selectedDate && selectedTime);
+
   const whatsappSupportMessage = 'Olá! Estou no agendamento e tenho uma dúvida.';
   const whatsappSupportLink = `https://wa.me/${whatsappSupportNumber}?text=${encodeURIComponent(whatsappSupportMessage)}`;
+
+  const handleServiceSelect = (serviceId) => {
+    setSelectedService(serviceId);
+    setSelectedProfessional('');
+    setSelectedDate('');
+    setSelectedTime('');
+  };
+
+  const handleProfessionalSelect = (professionalId) => {
+    setSelectedProfessional(professionalId);
+    setSelectedDate('');
+    setSelectedTime('');
+  };
+
+  const handleDateSelect = (dateString) => {
+    setSelectedDate(dateString);
+    setSelectedTime('');
+  };
 
 
   useEffect(() => {
@@ -159,35 +202,6 @@ const AgendamentoPage = () => {
     const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
     const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
 
-    const fetchBookedSlots = useCallback(async () => {
-        if (!selectedProfessional || !selectedDate) {
-            setBookedSlots([]);
-            return;
-        }
-        const { data, error } = await supabase
-            .from('bookings')
-            .select('booking_time')
-            .eq('professional_id', selectedProfessional)
-            .eq('booking_date', selectedDate)
-            .in('status', ['confirmed', 'pending_payment']);
-        
-    if (error) {
-      console.error('Erro ao buscar horários ocupados:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Não foi possível atualizar os horários',
-        description: 'Verifique sua conexão ou tente outro horário. Nosso time pode ajudar pelo WhatsApp.'
-      });
-            setBookedSlots([]);
-        } else {
-            setBookedSlots(data.map(b => b.booking_time));
-        }
-    }, [selectedProfessional, selectedDate, toast]);
-
-    useEffect(() => {
-        fetchBookedSlots();
-    }, [fetchBookedSlots]);
-
   const handleSupportWhatsappClick = () => {
     analytics.trackEvent('whatsapp_click', {
       event_category: 'booking',
@@ -219,20 +233,23 @@ const AgendamentoPage = () => {
     }
   ]), []);
 
-  const canSubmitBooking = useMemo(() => {
+  const canProceedToSummary = useMemo(() => {
+    if (!hasScheduleSelection) {
+      return false;
+    }
+
     if (!authUser && (!patientData.name || !patientData.email || !patientData.phone || emailError)) {
       return false;
     }
 
     if (authUser) {
-      return Boolean(patientData.acceptTerms && meetingPlatform);
+      return Boolean(meetingPlatform);
     }
 
     if (isExistingPatient) {
       return Boolean(
         patientData.password &&
         patientData.password.length >= MIN_PASSWORD_LENGTH &&
-        patientData.acceptTerms &&
         meetingPlatform
       );
     }
@@ -242,10 +259,25 @@ const AgendamentoPage = () => {
       Boolean(patientData.confirmPassword) &&
       patientData.password.length >= MIN_PASSWORD_LENGTH &&
       patientData.password === patientData.confirmPassword &&
-      patientData.acceptTerms &&
       Boolean(meetingPlatform)
     );
-  }, [patientData.name, patientData.email, patientData.phone, patientData.password, patientData.confirmPassword, patientData.acceptTerms, emailError, authUser, isExistingPatient, meetingPlatform]);
+  }, [
+    authUser,
+    emailError,
+    hasScheduleSelection,
+    isExistingPatient,
+    meetingPlatform,
+    patientData.confirmPassword,
+    patientData.email,
+    patientData.name,
+    patientData.password,
+    patientData.phone,
+  ]);
+
+  const canSubmitBooking = useMemo(
+    () => canProceedToSummary && Boolean(patientData.acceptTerms),
+    [canProceedToSummary, patientData.acceptTerms]
+  );
 
   const submitButtonTitle = useMemo(() => {
     if (!authUser && (!patientData.name || !patientData.email || !patientData.phone)) {
@@ -403,6 +435,11 @@ const AgendamentoPage = () => {
         return times;
     };
 
+  const availableTimes = useMemo(
+    () => getAvailableTimesForDate(),
+    [selectedDate, selectedProfessional, availability, selectedService, services, bookedSlots, blockedDates]
+  );
+
     // Funções do calendário
     const getDaysInMonth = (date) => {
         const year = date.getFullYear();
@@ -458,16 +495,6 @@ const AgendamentoPage = () => {
                (currentYear === today.getFullYear() && currentMonthNum <= today.getMonth());
     };
 
-    // Simular loading de horários quando data ou profissional mudam
-    useEffect(() => {
-        if (selectedDate && selectedProfessional) {
-            setIsLoadingTimes(true);
-            const timer = setTimeout(() => {
-                setIsLoadingTimes(false);
-            }, 800);
-            return () => clearTimeout(timer);
-        }
-    }, [selectedDate, selectedProfessional]);
 
   const handleBooking = async () => {
     console.log('🚀 [handleBooking] INÍCIO - Iniciando processo de agendamento');
@@ -923,933 +950,103 @@ const AgendamentoPage = () => {
         switch (step) {
           case 1:
             return (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-bold mb-3 flex items-center justify-center" id="step-1-title"><CreditCard className="w-8 h-8 mr-3 text-[#2d8659]" aria-hidden="true" />Escolha o Serviço</h2>
-                  <p className="text-gray-600 text-lg">Selecione o tipo de atendimento que você precisa</p>
-                </div>
-                {servicePriceRange && (
-                  <div className="mb-8 p-5 bg-gradient-to-r from-[#2d8659]/10 via-white to-blue-50 border border-[#2d8659]/20 rounded-xl">
-                    <p className="text-sm font-semibold text-[#2d8659] uppercase tracking-wide mb-1">Investimento transparente</p>
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                      <p className="text-gray-700 text-base md:text-lg">
-                        Consultas a partir de
-                        <span className="font-bold text-[#2d8659] ml-2">
-                          R$ {servicePriceRange.min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                        {servicePriceRange.max !== servicePriceRange.min && (
-                          <span className="text-gray-600"> e até R$ {servicePriceRange.max.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600 md:text-right">
-                        Você só informa seus dados após confirmar o profissional e horário ideal.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div className="md:hidden mb-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-                  <ChevronRight className="w-4 h-4 text-[#2d8659]" aria-hidden="true" />
-                  Arraste para ver todos os serviços disponíveis
-                </div>
-                <div className="grid gap-4 grid-flow-col auto-cols-[minmax(260px,_80%)] overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scroll-smooth md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-3">
-                  {services.map((service) => {
-                    const professionalCount = professionals.filter(prof => 
-                      prof.services_ids && prof.services_ids.includes(service.id)
-                    ).length;
-                    
-                    return (
-                      <button 
-                        key={service.id} 
-                        onClick={() => { setSelectedService(service.id); setStep(2); }} 
-                        className={`p-5 md:p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left group hover:scale-[1.02] snap-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659] ${
-                          selectedService === service.id 
-                            ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md' 
-                            : 'border-gray-200 hover:border-[#2d8659] bg-white'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
-                              {service.name}
-                            </h3>
-                            <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-4 h-4" />
-                                {service.duration_minutes >= 60 
-                                  ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}` 
-                                  : `${service.duration_minutes}min`
-                                }
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <User className="w-4 h-4" />
-                                {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
-                              </span>
-                            </div>
-                            {service.description && (
-                              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                                {service.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="text-2xl font-bold text-[#2d8659]">
-                            R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                          </div>
-                          <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                            Selecionar
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-blue-900 mb-1">Como funciona?</h4>
-                      <p className="text-sm text-blue-800">
-                        Após selecionar o serviço, você poderá escolher o profissional, data e horário de sua preferência. 
-                        O pagamento é seguro e o link da consulta será enviado após a confirmação.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+              <ProfessionalStep
+                services={services}
+                professionals={professionals}
+                servicePriceRange={servicePriceRange}
+                selectedService={selectedService}
+                selectedProfessional={selectedProfessional}
+                onSelectService={handleServiceSelect}
+                onSelectProfessional={handleProfessionalSelect}
+                onNext={() => setStep(2)}
+                availability={availability}
+              />
             );
           case 2:
-            const availableProfessionals = professionals.filter(prof => 
-              prof.services_ids && prof.services_ids.includes(selectedService)
-            );
-            const selectedServiceData = services.find(s => s.id === selectedService);
-            
-            const professionalHasAvailability = (prof) => {
-              if (!prof?.id) return false;
-              const schedule = availability[prof.id];
-              if (!schedule) return false;
-
-              return Object.values(schedule).some(times => Array.isArray(times) && times.length > 0);
-            };
-
             return (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-bold mb-3 flex items-center justify-center"><User className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha o Profissional</h2>
-                  <p className="text-gray-600 text-lg">Selecione o profissional que irá atendê-lo</p>
-                </div>
-                
-                <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-700 mb-1">Serviço selecionado:</p>
-                      <p className="font-bold text-[#2d8659] text-lg">{selectedServiceData?.name}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Duração: {selectedServiceData?.duration_minutes >= 60 
-                        ? `${Math.floor(selectedServiceData.duration_minutes / 60)}h${selectedServiceData.duration_minutes % 60 > 0 ? ` ${selectedServiceData.duration_minutes % 60}min` : ''}` 
-                        : `${selectedServiceData?.duration_minutes}min`}</p>
-                      <p className="font-bold text-[#2d8659]">R$ {parseFloat(selectedServiceData?.price || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                {availableProfessionals.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <User className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-500 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
-                    <Button onClick={() => setStep(1)} variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                      <ArrowLeft className="w-4 h-4 mr-2" />Escolher outro serviço
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {availableProfessionals.map((prof) => {
-                      const isSelectable = professionalHasAvailability(prof);
-                      return (
-                        <button
-                          key={prof.id}
-                          onClick={() => {
-                            if (!isSelectable) return;
-                            setSelectedProfessional(prof.id);
-                            setStep(3);
-                          }}
-                          disabled={!isSelectable}
-                          className={`relative p-6 rounded-lg border-2 transition-all text-left group ${
-                            selectedProfessional === prof.id && isSelectable
-                              ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
-                              : 'border-gray-200 bg-white'
-                          } ${
-                            isSelectable
-                              ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
-                              : 'opacity-60 cursor-not-allowed'
-                          }`}
-                        >
-                          <div className="flex items-start gap-4">
-                            <div className="flex-shrink-0">
-                              {prof.image_url ? (
-                                <img
-                                  src={prof.image_url}
-                                  alt={prof.name}
-                                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
-                                />
-                              ) : (
-                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl">
-                                  {prof.name.charAt(0)}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
-                                {prof.name}
-                              </h3>
-                              {prof.mini_curriculum && (
-                                <p className="text-sm text-gray-600 mb-3">
-                                  {prof.mini_curriculum.length > 120
-                                    ? `${prof.mini_curriculum.substring(0, 120)}...`
-                                    : prof.mini_curriculum}
-                                </p>
-                              )}
-                              {prof.email && (
-                                <p className="text-xs text-gray-500 mb-2">📧 {prof.email}</p>
-                              )}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500">
-                                  ✓ Especialista em {selectedServiceData?.name}
-                                </span>
-                                <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                  Selecionar
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          {!isSelectable && (
-                            <div className="absolute inset-0 rounded-lg bg-white/75 backdrop-blur-[1px] border-2 border-transparent flex items-center justify-center">
-                              <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full">
-                                Agenda indisponível no momento
-                              </span>
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                <Button onClick={() => setStep(1)} variant="outline" className="mt-6">Voltar</Button>
-              </motion.div>
+              <DateTimeStep
+                professionals={professionals}
+                selectedProfessional={selectedProfessional}
+                selectedServiceDetails={selectedServiceDetails}
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                onSelectDate={handleDateSelect}
+                onSelectTime={setSelectedTime}
+                currentMonth={currentMonth}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+                isPrevMonthDisabled={isPrevMonthDisabled}
+                isDateDisabled={isDateDisabled}
+                getDaysInMonth={getDaysInMonth}
+                formatDateToString={formatDateToString}
+                availableTimes={availableTimes}
+                bookedSlots={bookedSlots}
+                isLoadingTimes={isLoadingSlots}
+                topTestimonials={topTestimonials}
+                onBack={() => setStep(1)}
+                onNext={() => setStep(3)}
+              />
             );
           case 3:
-            const availableTimes = getAvailableTimesForDate();
             return (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-bold mb-3 flex items-center justify-center"><Clock className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha Data e Horário</h2>
-                  <p className="text-gray-600 text-lg">Selecione o melhor dia e horário para sua consulta</p>
-                </div>
-                
-                <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-[#2d8659] rounded-full flex items-center justify-center flex-shrink-0">
-                        {professionals.find(p => p.id === selectedProfessional)?.image_url ? (
-                          <img 
-                            src={professionals.find(p => p.id === selectedProfessional)?.image_url} 
-                            alt="Profissional" 
-                            className="w-12 h-12 rounded-full object-cover" 
-                          />
-                        ) : (
-                          <User className="w-6 h-6 text-white" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">Profissional:</p>
-                        <p className="font-bold text-[#2d8659]">{professionals.find(p => p.id === selectedProfessional)?.name}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                        <CreditCard className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-700">Serviço:</p>
-                        <p className="font-bold text-blue-600">{selectedServiceDetails?.name}</p>
-                        <p className="text-sm text-gray-600">
-                          {selectedServiceDetails?.duration_minutes >= 60 
-                            ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${selectedServiceDetails.duration_minutes % 60 > 0 ? ` ${selectedServiceDetails.duration_minutes % 60}min` : ''}` 
-                            : `${selectedServiceDetails?.duration_minutes}min`
-                          } • R$ {parseFloat(selectedServiceDetails?.price || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedServiceDetails && (
-                  <div className="mb-8">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5 rounded-xl border border-[#2d8659]/20 bg-[#2d8659]/5">
-                      <div>
-                        <p className="text-sm text-[#2d8659] font-semibold uppercase tracking-wide">Investimento da sessão</p>
-                        <p className="text-3xl font-bold text-[#236b47] mt-1">
-                          R$ {parseFloat(selectedServiceDetails.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                      </div>
-                      <p className="text-sm text-gray-700 md:text-right">
-                        O valor é confirmado agora e você só finaliza o pagamento na próxima etapa.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {topTestimonials.length > 0 && (
-                  <div className="mb-10">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-2">
-                        <Quote className="w-5 h-5 text-[#2d8659]" />
-                        <p className="text-lg font-semibold text-gray-900">Pacientes que já passaram por aqui</p>
-                      </div>
-                      <p className="text-sm text-gray-600 md:text-right">"Escolhi o horário perfeito e fui super bem atendido" — é isso que ouvimos com frequência.</p>
-                    </div>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      {topTestimonials.map((testimonial) => {
-                        const rating = getRatingValue(testimonial);
-                        const comment = getTestimonialComment(testimonial);
-                        const displayName = formatPatientName(testimonial.bookings?.patient_name || testimonial.patient_name);
-                        const professionalName = getProfessionalName(testimonial);
-                        return (
-                          <div key={testimonial.id} className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm">
-                            <div className="flex items-center gap-1 mb-3">
-                              {Array.from({ length: rating }).map((_, index) => (
-                                <Star key={index} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                              ))}
-                            </div>
-                            <p className="text-sm text-gray-700 italic mb-3">“{comment}”</p>
-                            <p className="text-xs text-gray-500 font-semibold uppercase">{displayName}</p>
-                            {professionalName && (
-                              <p className="text-xs text-gray-400 mt-1">Atendido por {professionalName}</p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Layout em Grid: Calendário e Horários lado a lado */}
-                <div className="grid lg:grid-cols-2 gap-6 mb-6">
-                  {/* Calendário Visual */}
-                  <div>
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
-                      {/* Header do Calendário */}
-                      <div className="bg-gradient-to-r from-[#2d8659] to-[#236b47] text-white px-4 py-3">
-                        <div className="flex items-center justify-between">
-                          <button
-                            onClick={prevMonth}
-                            disabled={isPrevMonthDisabled()}
-                            className={`p-1.5 rounded-lg transition-all ${
-                              isPrevMonthDisabled() 
-                                ? 'opacity-30 cursor-not-allowed' 
-                                : 'hover:bg-white/20 active:scale-95'
-                            }`}
-                            aria-label="Mês anterior"
-                          >
-                            <ChevronLeft className="w-5 h-5" />
-                          </button>
-                          
-                          <h3 className="text-lg font-bold capitalize">
-                            {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                          </h3>
-                          
-                          <button
-                            onClick={nextMonth}
-                            className="p-1.5 rounded-lg hover:bg-white/20 active:scale-95 transition-all"
-                            aria-label="Próximo mês"
-                          >
-                            <ChevronRight className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Dias da Semana */}
-                      <div className="grid grid-cols-7 gap-1 px-3 py-2 bg-gray-50">
-                        {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                          <div key={day} className="text-center text-xs font-semibold text-gray-600 py-1">
-                            {day}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      {/* Grade de Dias */}
-                      <div className="grid grid-cols-7 gap-1.5 p-3">
-                        {getDaysInMonth(currentMonth).map((date, index) => {
-                          if (!date) {
-                            return <div key={`empty-${index}`} className="aspect-square" />;
-                          }
-                          
-                          const dateString = formatDateToString(date);
-                          const isSelected = selectedDate === dateString;
-                          const isDisabled = isDateDisabled(date);
-                          const isToday = date.toDateString() === new Date().toDateString();
-                          
-                          return (
-                            <motion.button
-                              key={dateString}
-                              onClick={() => {
-                                if (!isDisabled) {
-                                  setSelectedDate(dateString);
-                                  setSelectedTime('');
-                                }
-                              }}
-                              disabled={isDisabled}
-                              className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all ${
-                                isDisabled
-                                  ? 'text-gray-300 cursor-not-allowed bg-gray-50'
-                                  : isSelected
-                                  ? 'bg-[#2d8659] text-white shadow-lg scale-105'
-                                  : isToday
-                                  ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200'
-                                  : 'text-gray-700 hover:bg-[#2d8659]/10 hover:scale-105 border border-gray-200'
-                              }`}
-                              whileHover={!isDisabled ? { scale: 1.05 } : {}}
-                              whileTap={!isDisabled ? { scale: 0.95 } : {}}
-                            >
-                              <span className="text-base">{date.getDate()}</span>
-                              {isToday && !isSelected && (
-                                <span className="text-[9px] text-blue-600 font-bold">Hoje</span>
-                              )}
-                            </motion.button>
-                          );
-                        })}
-                      </div>
-                      
-                      {/* Legenda */}
-                      <div className="flex items-center justify-center gap-4 px-3 py-2 bg-gray-50 border-t text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 bg-blue-100 border-2 border-blue-400 rounded"></div>
-                          <span className="text-gray-600">Hoje</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 bg-[#2d8659] rounded"></div>
-                          <span className="text-gray-600">Selecionado</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 bg-gray-50 rounded border"></div>
-                          <span className="text-gray-600">Disponível</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Horários Disponíveis */}
-                  <div className="flex flex-col">
-                    {selectedDate ? (
-                      <>
-                        <div className="mb-4">
-                          <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 border border-blue-200">
-                            <p className="text-base font-semibold text-[#2d8659] text-center">
-                              📅 {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                                weekday: 'long', 
-                                day: 'numeric', 
-                                month: 'long',
-                                timeZone: 'UTC' 
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex-1 bg-white rounded-xl shadow-md border border-gray-200 p-4">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2" id="available-times-label">
-                            ⏰ Horários Disponíveis
-                          </h3>
-                          
-                          {/* Indicador de duração do serviço */}
-                          {selectedService && services.find(s => s.id === selectedService) && (
-                            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <div className="flex items-center gap-2 text-sm">
-                                <Clock className="w-4 h-4 text-blue-600" />
-                                <span className="text-gray-700">
-                                  Duração do serviço: 
-                                  <span className="font-semibold text-blue-600 ml-1">
-                                    {services.find(s => s.id === selectedService)?.duration_minutes >= 60 
-                                      ? `${Math.floor(services.find(s => s.id === selectedService).duration_minutes / 60)}h${services.find(s => s.id === selectedService).duration_minutes % 60 > 0 ? ` ${services.find(s => s.id === selectedService).duration_minutes % 60}min` : ''}` 
-                                      : `${services.find(s => s.id === selectedService)?.duration_minutes} minutos`
-                                    }
-                                  </span>
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-600 mt-1 ml-6">
-                                Os horários exibidos garantem tempo suficiente para o atendimento completo.
-                              </p>
-                            </div>
-                          )}
-                          
-                          {isLoadingTimes ? (
-                            <div className="flex flex-col items-center justify-center py-12">
-                              <motion.div 
-                                className="w-8 h-8 border-4 border-[#2d8659] border-t-transparent rounded-full"
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                              />
-                              <span className="mt-3 text-gray-600">Carregando horários...</span>
-                            </div>
-                          ) : availableTimes.length > 0 ? (
-                            <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
-                              {availableTimes.map((time) => {
-                                const isBooked = bookedSlots.includes(time);
-                                return (
-                                  <motion.button 
-                                    key={time} 
-                                    onClick={() => !isBooked && setSelectedTime(time)} 
-                                    disabled={isBooked}
-                                    className={`p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${
-                                      isBooked 
-                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through' 
-                                        : selectedTime === time 
-                                          ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg' 
-                                          : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
-                                    }`}
-                                    whileHover={!isBooked ? { scale: 1.02, y: -2 } : {}}
-                                    whileTap={!isBooked ? { scale: 0.98 } : {}}
-                                    title={isBooked ? 'Horário não disponível' : `Agendar para ${time}`}
-                                  >
-                                    <div className="text-base">{time}</div>
-                                    {!isBooked && selectedTime !== time && (
-                                      <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                        <Clock className="w-4 h-4" />
-                                      </div>
-                                    )}
-                                    {isBooked && (
-                                      <div className="text-xs text-gray-400 mt-1">Ocupado</div>
-                                    )}
-                                  </motion.button>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="text-center py-12">
-                              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <CalendarX className="w-8 h-8 text-gray-400" />
-                              </div>
-                              <p className="text-gray-500 font-medium mb-2">Nenhum horário disponível</p>
-                              <p className="text-sm text-gray-400">Selecione outra data</p>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center p-8">
-                        <div className="text-center">
-                          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                          <p className="text-gray-500 font-medium">Selecione uma data</p>
-                          <p className="text-sm text-gray-400 mt-1">Os horários disponíveis aparecerão aqui</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex gap-4 mt-6">
-                  <Button onClick={() => setStep(2)} variant="outline">Voltar</Button>
-                  {selectedDate && selectedTime && <Button onClick={() => setStep(4)} className="bg-[#2d8659] hover:bg-[#236b47]">Continuar</Button>}
-                </div>
-              </motion.div>
-            );
-          case 4:
-            const serviceDetails = services.find(s => s.id === selectedService);
-            return (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-                <div className="text-center mb-8">
-                  <h2 className="text-3xl font-bold mb-3">Confirmação e Dados Pessoais</h2>
-                  <p className="text-gray-600 text-lg">Revise os detalhes e preencha seus dados para finalizar</p>
-                </div>
-                <div className="space-y-4">
-                  {!authUser && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Nome Completo</label>
-                        <input 
-                          type="text" 
-                          required 
-                          value={patientData.name} 
-                          onChange={(e) => setPatientData((prev) => ({ ...prev, name: e.target.value }))} 
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                          placeholder="Seu nome completo" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Email</label>
-                        <input 
-                          type="email" 
-                          required 
-                          value={patientData.email} 
-                          onChange={handleEmailChange}
-                          className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
-                            emailError ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="seu@email.com" 
-                        />
-                        {emailError && (
-                          <p className="text-red-500 text-sm mt-1">{emailError}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Telefone</label>
-                        <input 
-                          type="tel" 
-                          required 
-                          value={patientData.phone} 
-                          onChange={handlePhoneChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                          placeholder="(00) 00000-0000"
-                          maxLength="15"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-                {!authUser ? (
-                  <div className="mt-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                          <KeyRound className="w-5 h-5 text-[#2d8659]" />
-                          {isExistingPatient ? 'Confirme seu acesso' : 'Crie sua senha de acesso'}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {isExistingPatient
-                            ? 'Informe sua senha atual para vincular este agendamento à sua conta.'
-                            : `Defina uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a Área do Paciente.`}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={toggleExistingPatient}
-                        className="text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors self-start"
-                      >
-                        {isExistingPatient ? 'Sou um novo paciente' : 'Já sou paciente'}
-                      </button>
-                    </div>
-                    <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                      <div className="relative">
-                        <label className="block text-sm font-medium mb-2">{isExistingPatient ? 'Senha do paciente' : 'Crie uma senha'}</label>
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          value={patientData.password}
-                          onChange={(e) => handlePasswordChange(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
-                          placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${MIN_PASSWORD_LENGTH} caracteres`}
-                          autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-                          aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                        >
-                          {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
-                      </div>
-                      {!isExistingPatient && (
-                        <div className="relative">
-                          <label className="block text-sm font-medium mb-2">Confirme a senha</label>
-                          <input
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            value={patientData.confirmPassword}
-                            onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
-                            placeholder="Repita a senha"
-                            autoComplete="new-password"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirmPassword((prev) => !prev)}
-                            className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-                            aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
-                          >
-                            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="text-sm text-gray-500">
-                        {isExistingPatient
-                          ? 'Caso não lembre sua senha, solicite um link de redefinição abaixo.'
-                          : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
-                      </p>
-                      <div className="flex items-center gap-4">
-                        <button
-                          type="button"
-                          onClick={handlePasswordResetRequest}
-                          className="text-sm font-medium text-[#2d8659] hover:text-[#236b47] disabled:text-gray-400 disabled:hover:text-gray-400"
-                          disabled={!patientData.email || !!emailError}
-                        >
-                          Esqueci minha senha
-                        </button>
-                        <Link to="/recuperar-senha" className="text-sm text-[#2d8659] hover:text-[#236b47] font-medium">
-                          Recuperar agora
-                        </Link>
-                      </div>
-                    </div>
-                    {passwordError && (
-                      <p className="text-red-500 text-sm mt-3">{passwordError}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
-                    Você está acessando como <span className="font-semibold">{authUser.email}</span>. Usaremos seu cadastro atual para concluir o agendamento.
-                  </div>
-                )}
-                <div className="mt-8">
-                  <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                    <Video className="w-5 h-5 text-[#2d8659]" />
-                    Como prefere acessar a consulta?
-                  </h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    A Doxologos oferece Zoom e Google Meet. Escolha a plataforma que for mais confortável para você.
-                  </p>
-                  <div className="grid gap-4 sm:grid-cols-2 mt-4">
-                    {MEETING_OPTIONS.map((option) => {
-                      const Icon = option.icon;
-                      const isActive = meetingPlatform === option.id;
-                      return (
-                        <button
-                          type="button"
-                          key={option.id}
-                          onClick={() => setMeetingPlatform(option.id)}
-                          aria-pressed={isActive}
-                          className={`w-full text-left border rounded-xl p-5 transition-all ${
-                            isActive
-                              ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
-                              : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-[#2d8659] text-white' : 'bg-gray-100 text-[#2d8659]'}`}>
-                              <Icon className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-900 text-lg">{option.label}</p>
-                              <p className="text-sm text-gray-600">{option.description}</p>
-                            </div>
-                          </div>
-                          <ul className="space-y-1 text-sm text-gray-600 pl-1">
-                            {option.highlights.map((highlight) => (
-                              <li key={highlight} className="flex items-start gap-2">
-                                <Check className="w-4 h-4 text-[#2d8659] mt-0.5 flex-shrink-0" />
-                                <span>{highlight}</span>
-                              </li>
-                            ))}
-                          </ul>
-                          <div className={`mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
-                            isActive ? 'text-[#2d8659]' : 'text-gray-400'
-                          }`}>
-                            {isActive ? 'Selecionado' : 'Selecionar'}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <div className="bg-gradient-to-br from-[#2d8659]/5 to-blue-50 p-8 rounded-xl border border-[#2d8659]/20 mt-8">
-                  <h3 className="font-bold text-xl mb-6 flex items-center text-[#2d8659]">
-                    <CheckCircle className="w-6 h-6 mr-2" />
-                    Resumo do Agendamento
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#2d8659] rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Profissional</p>
-                          <p className="font-bold text-gray-900">{professionals.find(p => p.id === selectedProfessional)?.name}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                          <CreditCard className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Serviço</p>
-                          <p className="font-bold text-gray-900">{serviceDetails?.name}</p>
-                          <p className="text-sm text-gray-600">
-                            Duração: {serviceDetails?.duration_minutes >= 60 
-                              ? `${Math.floor(serviceDetails.duration_minutes / 60)}h${serviceDetails.duration_minutes % 60 > 0 ? ` ${serviceDetails.duration_minutes % 60}min` : ''}` 
-                              : `${serviceDetails?.duration_minutes}min`
-                            }
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Plataforma: {meetingPlatform === 'zoom' ? 'Zoom' : 'Google Meet'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                          <Calendar className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Data</p>
-                          <p className="font-bold text-gray-900">
-                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                              weekday: 'long', 
-                              day: 'numeric', 
-                              month: 'long', 
-                              year: 'numeric',
-                              timeZone: 'UTC' 
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                          <Clock className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Horário</p>
-                          <p className="font-bold text-gray-900">{selectedTime}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="border-t border-gray-200 mt-6 pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-green-600" />
-                        <span className="text-sm text-gray-600">Pagamento seguro</span>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600 mb-1">Valor total:</p>
-                        <p className="text-3xl font-bold text-[#2d8659]">
-                          R$ {parseFloat(serviceDetails?.price || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-start gap-3">
-                      <Zap className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <h4 className="font-semibold text-blue-900 mb-1">Próximos passos</h4>
-                        <p className="text-sm text-blue-800">
-                          Após o pagamento, você receberá por email e WhatsApp o link da sala {meetingPlatform === 'zoom' ? 'Zoom gerada automaticamente' : 'Google Meet selecionada no agendamento'}. 
-                          A sessão começará pontualmente no horário agendado.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#2d8659]">Pagamento 100% seguro</p>
-                      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {paymentSecurityHighlights.map((highlight) => {
-                          const Icon = highlight.icon;
-                          return (
-                            <div key={highlight.title} className="flex items-start gap-3">
-                              <div className="w-10 h-10 rounded-full bg-[#2d8659]/10 flex items-center justify-center text-[#2d8659]">
-                                <Icon className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-semibold text-gray-900">{highlight.title}</h4>
-                                <p className="text-sm text-gray-600 leading-relaxed">{highlight.description}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* {topTestimonials.length > 0 && (
-                  <div className="mt-8 p-6 bg-white border border-gray-200 rounded-xl shadow-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Quote className="w-5 h-5 text-[#2d8659]" />
-                      <p className="text-base font-semibold text-gray-900">Mais de {topTestimonials.length * 25}+ pacientes satisfeitos</p>
-                    </div>
-                    <div className="grid sm:grid-cols-3 gap-4">
-                      {topTestimonials.map((testimonial) => {
-                        const rating = getRatingValue(testimonial);
-                        const comment = getTestimonialComment(testimonial);
-                        const displayName = formatPatientName(testimonial.bookings?.patient_name || testimonial.patient_name);
-                        return (
-                          <div key={`${testimonial.id}-summary`} className="p-4 rounded-lg bg-gray-50 border border-gray-100">
-                            <div className="flex items-center gap-1 mb-2">
-                              {Array.from({ length: rating }).map((_, index) => (
-                                <Star key={index} className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                              ))}
-                            </div>
-                            <p className="text-xs text-gray-600 leading-relaxed">“{comment.length > 120 ? `${comment.slice(0, 120)}...` : comment}”</p>
-                            <p className="text-xs text-[#2d8659] font-semibold mt-3">{displayName}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )} */}
-                <div className="flex items-start gap-2 mt-6">
-                  <input
-                    type="checkbox"
-                    id="acceptTerms"
-                    checked={patientData.acceptTerms}
-                    onChange={(e) => setPatientData({...patientData, acceptTerms: e.target.checked})}
-                    className="mt-1"
-                  />
-                  <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                    Li e aceito os{' '}
-                    <a href="/termos-e-condicoes" target="_blank" className="text-[#2d8659] hover:underline font-medium">
-                      termos e condições
-                    </a>
-                    {' '}*
-                  </label>
-                </div>
+              <>
+                <PatientAccountStep
+                  authUser={authUser}
+                  patientData={patientData}
+                  emailError={emailError}
+                  passwordError={passwordError}
+                  isExistingPatient={isExistingPatient}
+                  minPasswordLength={MIN_PASSWORD_LENGTH}
+                  showPassword={showPassword}
+                  showConfirmPassword={showConfirmPassword}
+                  meetingPlatform={meetingPlatform}
+                  meetingOptions={MEETING_OPTIONS}
+                  onChangeName={(value) => setPatientData((prev) => ({ ...prev, name: value }))}
+                  onEmailChange={handleEmailChange}
+                  onPhoneChange={handlePhoneChange}
+                  onPasswordChange={handlePasswordChange}
+                  onConfirmPasswordChange={handleConfirmPasswordChange}
+                  onToggleExistingPatient={toggleExistingPatient}
+                  onToggleShowPassword={() => setShowPassword((prev) => !prev)}
+                  onToggleShowConfirmPassword={() => setShowConfirmPassword((prev) => !prev)}
+                  onPasswordResetRequest={handlePasswordResetRequest}
+                  onSelectMeetingPlatform={setMeetingPlatform}
+                />
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                  <Button onClick={() => setStep(3)} variant="outline">Voltar</Button>
-                  <motion.div
-                    whileHover={!isSubmitting && canSubmitBooking ? { scale: 1.02, y: -1 } : {}}
-                    whileTap={!isSubmitting && canSubmitBooking ? { scale: 0.98 } : {}}
-                    className="flex-1"
-                  >
-                    <Button 
-                      onClick={handleBooking} 
-                      disabled={!canSubmitBooking || isSubmitting} 
-                      className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${
-                        isSubmitting ? 'cursor-not-allowed opacity-75' : ''
-                      }`}
-                      title={submitButtonTitle}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <motion.div 
-                            className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                          />
-                          Processando...
-                        </>
-                      ) : (
-                        'Ir para Pagamento'
-                      )}
-                    </Button>
-                  </motion.div>
+                  <Button onClick={() => setStep(2)} variant="outline">
+                    Voltar
+                  </Button>
                   <Button
-                    type="button"
-                    onClick={handleSupportWhatsappClick}
-                    variant="outline"
-                    className="sm:w-auto flex items-center gap-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
+                    onClick={() => setStep(4)}
+                    disabled={!canProceedToSummary}
+                    className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <MessageCircle className="w-5 h-5" />
-                    Tirar dúvidas no WhatsApp
+                    Continuar
                   </Button>
                 </div>
-              </motion.div>
+              </>
+            );
+          case 4:
+            return (
+              <PaymentSummaryStep
+                professionals={professionals}
+                selectedProfessional={selectedProfessional}
+                serviceDetails={selectedServiceDetails}
+                selectedDate={selectedDate}
+                selectedTime={selectedTime}
+                meetingPlatform={meetingPlatform}
+                paymentSecurityHighlights={paymentSecurityHighlights}
+                patientData={patientData}
+                onToggleAcceptTerms={(checked) =>
+                  setPatientData((prev) => ({ ...prev, acceptTerms: checked }))
+                }
+                onBack={() => setStep(3)}
+                onSubmit={handleBooking}
+                onSupport={handleSupportWhatsappClick}
+                isSubmitting={isSubmitting}
+                canSubmit={canSubmitBooking}
+                submitButtonTitle={submitButtonTitle}
+              />
             );
           case 5:
             return (
@@ -1910,43 +1107,52 @@ const AgendamentoPage = () => {
       };
 
       const progressSteps = [
-        { id: 1, label: 'Serviço' },
-        { id: 2, label: 'Profissional' },
-        { id: 3, label: 'Data/Hora' },
-        { id: 4, label: 'Dados' },
+        { id: 1, label: 'Serviço & Profissional' },
+        { id: 2, label: 'Data/Hora' },
+        { id: 3, label: 'Dados do Paciente' },
+        { id: 4, label: 'Pagamento' },
       ];
 
+      const selectionLabels = useMemo(() => {
+        const serviceList = Array.isArray(services) ? services : [];
+        const professionalList = Array.isArray(professionals) ? professionals : [];
+        const serviceLabel = selectedService ? serviceList.find((service) => service.id === selectedService)?.name : null;
+        const professionalLabel = selectedProfessional
+          ? professionalList.find((professional) => professional.id === selectedProfessional)?.name
+          : null;
+        const dateLabel = selectedDate
+          ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
+              day: 'numeric',
+              month: 'short',
+              timeZone: 'UTC',
+            })
+          : null;
+
+        return {
+          serviceLabel,
+          professionalLabel,
+          dateLabel,
+          timeLabel: selectedTime || null,
+        };
+      }, [selectedDate, selectedProfessional, selectedService, selectedTime, services, professionals]);
+
       const handleStepClick = (clickedStep) => {
-        // Permite navegar para qualquer step anterior ou o atual
         if (clickedStep <= step) {
-            // Ao voltar para step 1, limpa as seleções posteriores
-            if (clickedStep === 1) {
-                setSelectedService('');
-                setSelectedProfessional('');
-                setSelectedDate('');
-                setSelectedTime('');
-            }
-            // Ao voltar para step 2, limpa seleções de data/hora
-            else if (clickedStep === 2) {
-                setSelectedProfessional('');
-                setSelectedDate('');
-                setSelectedTime('');
-            }
-            // Ao voltar para step 3, limpa apenas data/hora
-            else if (clickedStep === 3) {
-                setSelectedDate('');
-                setSelectedTime('');
-            }
-            setStep(clickedStep);
+          if (clickedStep === 1) {
+            setSelectedService('');
+            setSelectedProfessional('');
+            setSelectedDate('');
+            setSelectedTime('');
+          }
+          setStep(clickedStep);
         }
       };
       
-      // Função para verificar se um step é acessível
       const canAccessStep = (stepNumber) => {
         if (stepNumber === 1) return true;
-        if (stepNumber === 2) return selectedService !== '';
-        if (stepNumber === 3) return selectedService !== '' && selectedProfessional !== '';
-        if (stepNumber === 4) return selectedService !== '' && selectedProfessional !== '' && selectedDate !== '' && selectedTime !== '';
+        if (stepNumber === 2) return Boolean(selectedService && selectedProfessional);
+        if (stepNumber === 3) return hasScheduleSelection;
+        if (stepNumber === 4) return canProceedToSummary;
         return false;
       };
 
@@ -1974,106 +1180,13 @@ const AgendamentoPage = () => {
           <div className="min-h-screen bg-gray-50 py-12 pt-24">
             <div className="container mx-auto px-4 max-w-4xl">
               {step < 5 && (
-                <div className="mb-12">
-                  <div className="relative">
-                    {/* Linha de progresso */}
-                    <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-200 -z-10"></div>
-                    <div 
-                      className="absolute top-5 left-0 h-0.5 bg-[#2d8659] -z-10 transition-all duration-500 ease-out"
-                      style={{ width: `${((step - 1) / (progressSteps.length - 1)) * 100}%` }}
-                    ></div>
-                    
-                    <div className="flex items-center justify-between">
-                      {progressSteps.map((s, index) => {
-                        const isCompleted = step > s.id;
-                        const isCurrent = step === s.id;
-                        const canAccess = canAccessStep(s.id);
-                        const isClickable = s.id <= step;
-                        
-                        return (
-                          <div key={s.id} className="flex flex-col items-center relative">
-                            <button 
-                              onClick={() => handleStepClick(s.id)} 
-                              disabled={!isClickable}
-                              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 relative group ${
-                                isCompleted 
-                                  ? 'bg-[#2d8659] text-white shadow-lg hover:bg-[#236b47] hover:scale-110' 
-                                  : isCurrent 
-                                    ? 'bg-[#2d8659] text-white shadow-lg ring-4 ring-[#2d8659]/30 animate-glow' 
-                                    : canAccess 
-                                      ? 'bg-gray-300 text-gray-600 hover:bg-gray-400 cursor-pointer' 
-                                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                              }`}
-                              title={isClickable ? `Ir para ${s.label}` : `Complete as etapas anteriores`}
-                            >
-                              {isCompleted ? (
-                                <CheckCircle className="w-5 h-5" />
-                              ) : (
-                                s.id
-                              )}
-                              
-                              {/* Tooltip on hover */}
-                              {isClickable && (
-                                <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                                  {isCompleted ? `✓ ${s.label} concluído` : `Voltar para ${s.label}`}
-                                </div>
-                              )}
-                            </button>
-                            <p className={`mt-3 text-xs text-center md:text-sm transition-colors font-medium ${
-                              isCompleted || isCurrent 
-                                ? 'text-[#2d8659]' 
-                                : 'text-gray-500'
-                            }`}>
-                              {s.label}
-                            </p>
-                            
-                            {/* Indicador de seleção */}
-                            {((s.id === 1 && selectedService) || 
-                              (s.id === 2 && selectedProfessional) || 
-                              (s.id === 3 && selectedDate && selectedTime) ||
-                              (s.id === 4 && patientData.name)) && (
-                              <div className="mt-1 w-2 h-2 bg-green-500 rounded-full"></div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Resumo das seleções */}
-                    {step > 1 && (
-                      <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                        {selectedService && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                            <CreditCard className="w-3 h-3" />
-                            {services.find(s => s.id === selectedService)?.name}
-                          </span>
-                        )}
-                        {selectedProfessional && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                            <User className="w-3 h-3" />
-                            {professionals.find(p => p.id === selectedProfessional)?.name}
-                          </span>
-                        )}
-                        {selectedDate && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                              day: 'numeric', 
-                              month: 'short',
-                              timeZone: 'UTC' 
-                            })}
-                          </span>
-                        )}
-                        {selectedTime && (
-                          <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">
-                            <Clock className="w-3 h-3" />
-                            {selectedTime}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <BookingStepper
+                  steps={progressSteps}
+                  currentStep={step}
+                  onStepClick={handleStepClick}
+                  canAccessStep={canAccessStep}
+                  selections={selectionLabels}
+                />
               )}
               
               {/* Conteúdo da etapa atual */}
