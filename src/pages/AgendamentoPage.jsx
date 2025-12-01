@@ -94,7 +94,8 @@ const AgendamentoPage = () => {
 
   const {
     patientData,
-    setPatientData,
+    register,
+    formState: patientFormState,
     emailError,
     passwordError,
     setPasswordError,
@@ -104,13 +105,10 @@ const AgendamentoPage = () => {
     setShowPassword,
     showConfirmPassword,
     setShowConfirmPassword,
-    handlePhoneChange,
-    handleEmailChange,
-    handlePasswordChange,
-    handleConfirmPasswordChange,
     toggleExistingPatient,
     handlePasswordResetRequest,
   } = usePatientForm({ authUser, resetPassword, toast });
+  const formErrors = patientFormState?.errors || {};
 
   const whatsappSupportNumber = '5531971982947';
   const servicePriceRange = useMemo(() => {
@@ -993,6 +991,8 @@ const AgendamentoPage = () => {
                 <PatientAccountStep
                   authUser={authUser}
                   patientData={patientData}
+                  register={register}
+                  errors={formErrors}
                   emailError={emailError}
                   passwordError={passwordError}
                   isExistingPatient={isExistingPatient}
@@ -1001,11 +1001,6 @@ const AgendamentoPage = () => {
                   showConfirmPassword={showConfirmPassword}
                   meetingPlatform={meetingPlatform}
                   meetingOptions={MEETING_OPTIONS}
-                  onChangeName={(value) => setPatientData((prev) => ({ ...prev, name: value }))}
-                  onEmailChange={handleEmailChange}
-                  onPhoneChange={handlePhoneChange}
-                  onPasswordChange={handlePasswordChange}
-                  onConfirmPasswordChange={handleConfirmPasswordChange}
                   onToggleExistingPatient={toggleExistingPatient}
                   onToggleShowPassword={() => setShowPassword((prev) => !prev)}
                   onToggleShowConfirmPassword={() => setShowConfirmPassword((prev) => !prev)}
@@ -1036,10 +1031,8 @@ const AgendamentoPage = () => {
                 selectedTime={selectedTime}
                 meetingPlatform={meetingPlatform}
                 paymentSecurityHighlights={paymentSecurityHighlights}
-                patientData={patientData}
-                onToggleAcceptTerms={(checked) =>
-                  setPatientData((prev) => ({ ...prev, acceptTerms: checked }))
-                }
+                acceptTermsField={register('acceptTerms')}
+                acceptTermsError={formErrors.acceptTerms?.message}
                 onBack={() => setStep(3)}
                 onSubmit={handleBooking}
                 onSupport={handleSupportWhatsappClick}

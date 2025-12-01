@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 export const INITIAL_PATIENT_DATA = {
   name: '',
@@ -32,54 +35,126 @@ export const validateEmail = (email) => {
   return emailRegex.test(email);
 };
 
+const phoneDigits = (value = '') => value.replace(/\D/g, '');
+
+const MIN_PASSWORD_LENGTH = 8;
+
+const buildPatientSchema = ({ requireIdentityFields, requirePassword, requireConfirmation }) => {
+  return z
+    .object({
+      name: z
+        .string()
+        .optional()
+        .transform((value) => (value ?? '').trim()),
+      email: z
+        .string({ required_error: 'Informe seu email' })
+        .trim()
+        .min(1, 'Informe seu email')
+        .email('Por favor, insira um email válido'),
+      phone: z
+        .string()
+        .optional()
+        .transform((value) => (value ?? '').trim()),
+      password: z
+        .string()
+        .optional()
+        .transform((value) => value ?? ''),
+      confirmPassword: z
+        .string()
+        .optional()
+        .transform((value) => value ?? ''),
+      acceptTerms: z.boolean().optional().transform((value) => Boolean(value)),
+    })
+    .superRefine((data, ctx) => {
+      if (requireIdentityFields) {
+        if (!data.name) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe seu nome completo', path: ['name'] });
+        }
+
+        if (!data.phone) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe um telefone com DDD', path: ['phone'] });
+        }
+      }
+
+      if (data.phone) {
+        const digits = phoneDigits(data.phone);
+        if (digits.length < 10) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe um telefone válido', path: ['phone'] });
+        }
+      }
+
+      if (requirePassword) {
+        if (!data.password) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe sua senha de acesso', path: ['password'] });
+        } else if (data.password.length < MIN_PASSWORD_LENGTH) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`,
+            path: ['password'],
+          });
+        }
+      }
+
+      if (requireConfirmation) {
+        if (!data.confirmPassword) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Confirme a senha', path: ['confirmPassword'] });
+        } else if (data.password !== data.confirmPassword) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'As senhas precisam ser iguais', path: ['confirmPassword'] });
+        }
+      }
+    });
+};
+
 export function usePatientForm({ authUser, resetPassword, toast } = {}) {
-  const [patientData, setPatientData] = useState(INITIAL_PATIENT_DATA);
-  const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [isExistingPatient, setIsExistingPatient] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handlePhoneChange = useCallback((event) => {
-    const formatted = formatPhoneNumber(event.target.value);
-    setPatientData((prev) => ({ ...prev, phone: formatted }));
-  }, []);
+  const schema = useMemo(
+    () =>
+      buildPatientSchema({
+        requireIdentityFields: !authUser,
+        requirePassword: !authUser,
+        requireConfirmation: !authUser && !isExistingPatient,
+      }),
+    [authUser, isExistingPatient]
+  );
 
-  const handleEmailChange = useCallback((event) => {
-    const email = event.target.value;
-    setPatientData((prev) => ({ ...prev, email }));
+  const form = useForm({
+    defaultValues: INITIAL_PATIENT_DATA,
+    resolver: zodResolver(schema),
+    mode: 'onBlur',
+  });
 
-    if (email && !validateEmail(email)) {
-      setEmailError('Por favor, insira um email válido');
-    } else {
-      setEmailError('');
-    }
-  }, []);
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    getValues,
+    trigger,
+    formState,
+  } = form;
 
-  const handlePasswordChange = useCallback((value) => {
-    setPatientData((prev) => ({ ...prev, password: value }));
-    if (passwordError) {
-      setPasswordError('');
-    }
-  }, [passwordError]);
-
-  const handleConfirmPasswordChange = useCallback((value) => {
-    setPatientData((prev) => ({ ...prev, confirmPassword: value }));
-    if (passwordError) {
-      setPasswordError('');
-    }
-  }, [passwordError]);
+  const patientData = watch();
+  const emailError = formState.errors.email?.message || '';
 
   const toggleExistingPatient = useCallback(() => {
     setIsExistingPatient((prev) => !prev);
     setPasswordError('');
     setShowPassword(false);
     setShowConfirmPassword(false);
-    setPatientData((prev) => ({ ...prev, password: '', confirmPassword: '' }));
-  }, []);
+    setValue('password', '', { shouldDirty: false, shouldValidate: false });
+    setValue('confirmPassword', '', { shouldDirty: false, shouldValidate: false });
+  }, [setValue]);
 
   const handlePasswordResetRequest = useCallback(async () => {
-    if (!patientData.email || emailError) {
+    const isValidEmail = await trigger('email');
+    const email = getValues('email');
+
+    if (!isValidEmail || !email) {
       toast?.({
         variant: 'destructive',
         title: 'Informe um email válido',
@@ -88,8 +163,8 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
       return;
     }
 
-    await resetPassword?.(patientData.email);
-  }, [emailError, patientData.email, resetPassword, toast]);
+    await resetPassword?.(email);
+  }, [getValues, resetPassword, toast, trigger]);
 
   useEffect(() => {
     if (!authUser) {
@@ -102,32 +177,26 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
     const authPhoneRaw = authMetadata.phone || authMetadata.phone_number || '';
     const formattedPhone = authPhoneRaw ? formatPhoneNumber(String(authPhoneRaw)) : '';
 
-    setPatientData((prev) => {
-      let changed = false;
-      const next = { ...prev };
+    if (!getValues('email') && authEmail) {
+      setValue('email', authEmail, { shouldDirty: false });
+    }
 
-      if (!prev.email && authEmail) {
-        next.email = authEmail;
-        changed = true;
-      }
+    if (!getValues('name') && authName) {
+      setValue('name', authName, { shouldDirty: false });
+    }
 
-      if (!prev.name && authName) {
-        next.name = authName;
-        changed = true;
-      }
-
-      if (!prev.phone && formattedPhone) {
-        next.phone = formattedPhone;
-        changed = true;
-      }
-
-      return changed ? next : prev;
-    });
-  }, [authUser]);
+    if (!getValues('phone') && formattedPhone) {
+      setValue('phone', formattedPhone, { shouldDirty: false });
+    }
+  }, [authUser, getValues, setValue]);
 
   return {
+    form,
+    register,
+    control,
+    handleSubmit,
+    formState,
     patientData,
-    setPatientData,
     emailError,
     passwordError,
     setPasswordError,
@@ -137,12 +206,11 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
     setShowPassword,
     showConfirmPassword,
     setShowConfirmPassword,
-    handlePhoneChange,
-    handleEmailChange,
-    handlePasswordChange,
-    handleConfirmPasswordChange,
     toggleExistingPatient,
     handlePasswordResetRequest,
+    setValue,
+    getValues,
+    trigger,
     formatPhoneNumber,
     validateEmail,
   };

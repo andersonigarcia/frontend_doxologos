@@ -11,8 +11,8 @@ const PaymentSummaryStep = ({
   selectedTime,
   meetingPlatform,
   paymentSecurityHighlights = [],
-  patientData = {},
-  onToggleAcceptTerms,
+  acceptTermsField = {},
+  acceptTermsError,
   onBack,
   onSubmit,
   onSupport,
@@ -158,21 +158,18 @@ const PaymentSummaryStep = ({
         </div>
       </div>
 
-      <div className="flex items-start gap-2 mt-6">
-        <input
-          type="checkbox"
-          id="acceptTerms"
-          checked={patientData.acceptTerms || false}
-          onChange={(e) => onToggleAcceptTerms?.(e.target.checked)}
-          className="mt-1"
-        />
-        <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-          Li e aceito os{' '}
-          <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-[#2d8659] hover:underline font-medium">
-            termos e condições
-          </a>{' '}
-          *
-        </label>
+      <div className="flex flex-col gap-1 mt-6">
+        <div className="flex items-start gap-2">
+          <input type="checkbox" id="acceptTerms" className="mt-1" {...acceptTermsField} />
+          <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+            Li e aceito os{' '}
+            <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-[#2d8659] hover:underline font-medium">
+              termos e condições
+            </a>{' '}
+            *
+          </label>
+        </div>
+        {acceptTermsError && <p className="text-red-500 text-sm">{acceptTermsError}</p>}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mt-6">

@@ -2,10 +2,13 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Check, Eye, EyeOff, KeyRound, Video } from 'lucide-react';
+import { formatPhoneNumber } from '@/hooks/booking/usePatientForm';
 
 const PatientAccountStep = ({
   authUser,
   patientData = {},
+  register = () => ({}),
+  errors = {},
   emailError,
   passwordError,
   isExistingPatient,
@@ -14,11 +17,6 @@ const PatientAccountStep = ({
   showConfirmPassword,
   meetingPlatform,
   meetingOptions = [],
-  onChangeName,
-  onEmailChange,
-  onPhoneChange,
-  onPasswordChange,
-  onConfirmPasswordChange,
   onToggleExistingPatient,
   onToggleShowPassword,
   onToggleShowConfirmPassword,
@@ -38,18 +36,21 @@ const PatientAccountStep = ({
             <label className="block text-sm font-medium mb-2">Nome completo</label>
             <input
               type="text"
-              value={patientData.name || ''}
-              onChange={(event) => onChangeName?.(event.target.value)}
+              {...register('name', {
+                setValueAs: (value) => (value ?? '').trim(),
+              })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
               placeholder="Seu nome completo"
             />
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium mb-2">Email</label>
             <input
               type="email"
-              value={patientData.email || ''}
-              onChange={(event) => onEmailChange?.(event)}
+              {...register('email', {
+                setValueAs: (value) => (value ?? '').trim(),
+              })}
               className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
                 emailError ? 'border-red-500' : 'border-gray-300'
               }`}
@@ -61,12 +62,17 @@ const PatientAccountStep = ({
             <label className="block text-sm font-medium mb-2">Telefone</label>
             <input
               type="tel"
-              value={patientData.phone || ''}
-              onChange={(event) => onPhoneChange?.(event)}
+              {...register('phone', {
+                onChange: (event) => {
+                  const formatted = formatPhoneNumber(event.target.value);
+                  event.target.value = formatted;
+                },
+              })}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
               placeholder="(00) 00000-0000"
               maxLength={15}
             />
+            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
           </div>
         </div>
       )}
@@ -98,8 +104,7 @@ const PatientAccountStep = ({
               <label className="block text-sm font-medium mb-2">{isExistingPatient ? 'Senha do paciente' : 'Crie uma senha'}</label>
               <input
                 type={showPassword ? 'text' : 'password'}
-                value={patientData.password || ''}
-                onChange={(event) => onPasswordChange?.(event.target.value)}
+                {...register('password')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
                 placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
                 autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
@@ -118,8 +123,7 @@ const PatientAccountStep = ({
                 <label className="block text-sm font-medium mb-2">Confirme a senha</label>
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  value={patientData.confirmPassword || ''}
-                  onChange={(event) => onConfirmPasswordChange?.(event.target.value)}
+                  {...register('confirmPassword')}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
                   placeholder="Repita a senha"
                   autoComplete="new-password"
@@ -155,7 +159,12 @@ const PatientAccountStep = ({
               </Link>
             </div>
           </div>
-          {passwordError && <p className="text-red-500 text-sm mt-3">{passwordError}</p>}
+          {(passwordError || errors.password) && (
+            <p className="text-red-500 text-sm mt-3">{passwordError || errors.password?.message}</p>
+          )}
+          {!isExistingPatient && errors.confirmPassword && (
+            <p className="text-red-500 text-sm mt-2">{errors.confirmPassword.message}</p>
+          )}
         </div>
       ) : (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
