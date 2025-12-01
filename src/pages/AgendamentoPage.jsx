@@ -14,9 +14,10 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { zoomService } from '@/lib/zoomService';
 import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
+import { useBookingData } from '@/hooks/booking/useBookingData';
+import { usePatientForm, formatPhoneNumber, validateEmail } from '@/hooks/booking/usePatientForm';
 
 const MIN_PASSWORD_LENGTH = 8;
-const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
 const generateGoogleMeetLink = () => 'https://meet.google.com/new';
 const MEETING_OPTIONS = [
   {
@@ -48,11 +49,6 @@ const AgendamentoPage = () => {
     const navigate = useNavigate();
   const { user: authUser, resetPassword } = useAuth();
     const [step, setStep] = useState(1);
-    const [professionals, setProfessionals] = useState([]);
-    const [services, setServices] = useState([]);
-  const [testimonials, setTestimonials] = useState([]);
-    const [availability, setAvailability] = useState({});
-    const [blockedDates, setBlockedDates] = useState([]);
     const [bookedSlots, setBookedSlots] = useState([]);
     
     const [selectedProfessional, setSelectedProfessional] = useState('');
@@ -60,16 +56,38 @@ const AgendamentoPage = () => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
   const [meetingPlatform, setMeetingPlatform] = useState('zoom');
-  const [patientData, setPatientData] = useState(INITIAL_PATIENT_DATA);
-  const [isExistingPatient, setIsExistingPatient] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isLoadingTimes, setIsLoadingTimes] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [emailError, setEmailError] = useState('');
   const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
+
+  const {
+    professionals,
+    services,
+    availability,
+    blockedDates,
+    testimonials,
+  } = useBookingData({ toast });
+
+  const {
+    patientData,
+    setPatientData,
+    emailError,
+    passwordError,
+    setPasswordError,
+    isExistingPatient,
+    setIsExistingPatient,
+    showPassword,
+    setShowPassword,
+    showConfirmPassword,
+    setShowConfirmPassword,
+    handlePhoneChange,
+    handleEmailChange,
+    handlePasswordChange,
+    handleConfirmPasswordChange,
+    toggleExistingPatient,
+    handlePasswordResetRequest,
+  } = usePatientForm({ authUser, resetPassword, toast });
 
   const whatsappSupportNumber = '5531971982947';
   const servicePriceRange = useMemo(() => {
@@ -91,119 +109,6 @@ const AgendamentoPage = () => {
   const whatsappSupportMessage = 'Olá! Estou no agendamento e tenho uma dúvida.';
   const whatsappSupportLink = `https://wa.me/${whatsappSupportNumber}?text=${encodeURIComponent(whatsappSupportMessage)}`;
 
-    // Função para formatar telefone com máscara (00) 00000-0000
-    const formatPhoneNumber = (value) => {
-        // Remove tudo que não é dígito
-        const numbers = value.replace(/\D/g, '');
-        
-        // Aplica a máscara
-        if (numbers.length <= 2) {
-            return numbers;
-        } else if (numbers.length <= 7) {
-            return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-        } else if (numbers.length <= 11) {
-            return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-        }
-        // Limita a 11 dígitos
-        return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-    };
-
-    // Função para validar email
-    const validateEmail = (email) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        return emailRegex.test(email);
-    };
-
-    // Handler para mudança de telefone com máscara
-  const handlePhoneChange = (e) => {
-    const formatted = formatPhoneNumber(e.target.value);
-    setPatientData((prev) => ({ ...prev, phone: formatted }));
-  };
-
-    // Handler para mudança de email com validação
-    const handleEmailChange = (e) => {
-        const email = e.target.value;
-    setPatientData((prev) => ({ ...prev, email }));
-        
-        if (email && !validateEmail(email)) {
-            setEmailError('Por favor, insira um email válido');
-        } else {
-            setEmailError('');
-        }
-    };
-
-  const handlePasswordChange = (value) => {
-    setPatientData((prev) => ({ ...prev, password: value }));
-    if (passwordError) {
-      setPasswordError('');
-    }
-  };
-
-  const handleConfirmPasswordChange = (value) => {
-    setPatientData((prev) => ({ ...prev, confirmPassword: value }));
-    if (passwordError) {
-      setPasswordError('');
-    }
-  };
-
-  const toggleExistingPatient = () => {
-    setIsExistingPatient((prev) => !prev);
-    setPasswordError('');
-    setShowPassword(false);
-    setShowConfirmPassword(false);
-    setPatientData((prev) => ({
-      ...prev,
-      password: '',
-      confirmPassword: ''
-    }));
-  };
-
-  const handlePasswordResetRequest = async () => {
-    if (!patientData.email || emailError) {
-      toast({
-        variant: 'destructive',
-        title: 'Informe um email válido',
-        description: 'Use um email válido para receber o link de redefinição de senha.'
-      });
-      return;
-    }
-
-    await resetPassword(patientData.email);
-  };
-
-  useEffect(() => {
-    if (!authUser) {
-      return;
-    }
-
-    const authMetadata = authUser.user_metadata || {};
-    const authEmail = authUser.email || '';
-    const authName = authMetadata.full_name || authMetadata.name || '';
-    const authPhoneRaw = authMetadata.phone || authMetadata.phone_number || '';
-    const formattedPhone = authPhoneRaw ? formatPhoneNumber(String(authPhoneRaw)) : '';
-
-    setPatientData((prev) => {
-      let changed = false;
-      const next = { ...prev };
-
-      if (!prev.email && authEmail) {
-        next.email = authEmail;
-        changed = true;
-      }
-
-      if (!prev.name && authName) {
-        next.name = authName;
-        changed = true;
-      }
-
-      if (!prev.phone && formattedPhone) {
-        next.phone = formattedPhone;
-        changed = true;
-      }
-
-      return changed ? next : prev;
-    });
-  }, [authUser]);
 
   useEffect(() => {
     let isMounted = true;
@@ -253,88 +158,6 @@ const AgendamentoPage = () => {
     const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
     const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
     const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
-
-    const fetchData = useCallback(async () => {
-        const { data: profsData, error: profsError } = await supabase
-            .from('professionals')
-            .select('*');
-        
-    if (profsError) {
-      console.error('Erro ao buscar profissionais:', profsError);
-      toast({
-        variant: 'destructive',
-        title: 'Não conseguimos carregar os profissionais',
-        description: 'Atualize a página ou tente novamente em alguns minutos. Se continuar, fale conosco pelo WhatsApp.'
-      });
-        } else {
-            setProfessionals(profsData || []);
-        }
-
-        const { data: servicesData, error: servicesError } = await supabase.from('services').select('*');
-    if (servicesError) {
-      console.error('Erro ao buscar serviços:', servicesError);
-      toast({
-        variant: 'destructive',
-        title: 'Não conseguimos carregar os serviços',
-        description: 'Tente novamente em instantes. Caso o erro persista, entre em contato com nossa equipe.'
-      });
-    }
-        else setServices(servicesData || []);
-
-        const { data: availData, error: availError } = await supabase.from('availability').select('*');
-    if (availError) {
-      console.error('Erro ao buscar horários disponíveis:', availError);
-      toast({
-        variant: 'destructive',
-        title: 'Agenda indisponível no momento',
-        description: 'Estamos ajustando os horários. Volte em alguns minutos ou escolha outro profissional.'
-      });
-    }
-        else {
-          const availabilityMap = {};
-          (availData || []).forEach(avail => {
-            if (!availabilityMap[avail.professional_id]) {
-              availabilityMap[avail.professional_id] = {};
-            }
-            availabilityMap[avail.professional_id][avail.day_of_week] = avail.available_times;
-          });
-          setAvailability(availabilityMap);
-        }
-
-    const { data: blockedData, error: blockedError } = await supabase.from('blocked_dates').select('*');
-    if (blockedError) {
-      console.error('Erro ao buscar datas bloqueadas:', blockedError);
-      toast({
-        variant: 'destructive',
-        title: 'Não foi possível validar as datas',
-        description: 'Recarregue a página para atualizar a agenda. Persistindo, fale conosco.'
-      });
-    }
-        else setBlockedDates(blockedData || []);
-
-    const { data: reviewsData, error: reviewsError } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        professionals(name),
-        bookings(patient_name, patient_email)
-      `)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (reviewsError) {
-      console.error('Erro ao buscar depoimentos para prova social:', reviewsError);
-      setTestimonials([]);
-    } else {
-      setTestimonials(reviewsData || []);
-    }
-
-    }, [toast]);
-
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
 
     const fetchBookedSlots = useCallback(async () => {
         if (!selectedProfessional || !selectedDate) {
