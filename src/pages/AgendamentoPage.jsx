@@ -18,14 +18,6 @@ import analytics from '@/lib/analytics';
 const MIN_PASSWORD_LENGTH = 8;
 const INITIAL_PATIENT_DATA = { name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false };
 const generateGoogleMeetLink = () => 'https://meet.google.com/new';
-const ZOOM_PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-const generateZoomPassword = (length = 8) => {
-  let pass = '';
-  for (let i = 0; i < length; i += 1) {
-    pass += ZOOM_PASSWORD_CHARS.charAt(Math.floor(Math.random() * ZOOM_PASSWORD_CHARS.length));
-  }
-  return pass;
-};
 const MEETING_OPTIONS = [
   {
     id: 'zoom',
@@ -943,7 +935,6 @@ const AgendamentoPage = () => {
   console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
 
   // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
-  const zoomPassword = generateZoomPassword();
   let zoomMeetingData = null;
   if (meetingPlatform === 'zoom') {
         try {
@@ -962,17 +953,15 @@ const AgendamentoPage = () => {
             service_name: serviceDetails?.name || 'Consulta',
             professional_name: professionalDetails?.name || 'Profissional',
             professional_email: professionalDetails?.email,
-            meeting_password: zoomPassword,
             duration: 60
           });
 
           if (zoomMeetingData) {
             secureLog.success('Sala do Zoom criada com sucesso!');
             secureLog.info('Link:', zoomMeetingData.meeting_link);
-            secureLog.sensitive('Senha:', zoomMeetingData.meeting_password);
             // Adicionar dados do Zoom ao booking
             bookingData.meeting_link = zoomMeetingData.meeting_link;
-            bookingData.meeting_password = zoomMeetingData.meeting_password || zoomPassword;
+            bookingData.meeting_password = zoomMeetingData.meeting_password || null;
             bookingData.meeting_id = zoomMeetingData.meeting_id;
             bookingData.meeting_start_url = zoomMeetingData.start_url;
           } else {

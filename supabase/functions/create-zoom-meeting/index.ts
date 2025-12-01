@@ -6,16 +6,6 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 const ZOOM_CLIENT_ID = Deno.env.get('ZOOM_CLIENT_ID')
 const ZOOM_CLIENT_SECRET = Deno.env.get('ZOOM_CLIENT_SECRET')
 const ZOOM_ACCOUNT_ID = Deno.env.get('ZOOM_ACCOUNT_ID')
-const ZOOM_PASSWORD_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-
-const generatePassword = (length = 8): string => {
-  let result = ''
-  for (let i = 0; i < length; i += 1) {
-    const charIndex = Math.floor(Math.random() * ZOOM_PASSWORD_CHARS.length)
-    result += ZOOM_PASSWORD_CHARS.charAt(charIndex)
-  }
-  return result
-}
 
 interface ZoomMeetingRequest {
   booking_date: string
@@ -58,7 +48,6 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
   const bookingDateTime = new Date(`${meetingData.booking_date}T${meetingData.booking_time}:00`)
   const startTime = bookingDateTime.toISOString()
 
-  const password = meetingData.meeting_password || generatePassword();
   const meetingConfig: Record<string, unknown> = {
     topic: `Consulta - ${meetingData.patient_name}`,
     type: 2, // Reunião agendada
@@ -66,7 +55,6 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
     duration: meetingData.duration || 60, // 1 hora
     timezone: 'America/Sao_Paulo',
     agenda: `Consulta de ${meetingData.service_name} com ${meetingData.professional_name}`,
-    password,
     settings: {
       host_video: true,
       participant_video: true,
@@ -87,7 +75,9 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
     }
   }
 
-  // meetingConfig already inclui a senha acima
+  if (meetingData.meeting_password) {
+    meetingConfig.password = meetingData.meeting_password
+  }
 
   const response = await fetch('https://api.zoom.us/v2/users/me/meetings', {
     method: 'POST',
@@ -108,7 +98,7 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
 
   return {
     meeting_link: meeting.join_url,
-    meeting_password: meeting.password || password,
+    meeting_password: meeting.password || null,
     meeting_id: meeting.id,
     start_url: meeting.start_url
   }
