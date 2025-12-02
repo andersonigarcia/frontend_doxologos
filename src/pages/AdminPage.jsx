@@ -1264,9 +1264,11 @@ const AdminPage = () => {
                         secureLog.success('📧 Email de confirmação/pagamento enviado');
                     }
 
-                    if (statusChanged && bookingEditData.status.includes('cancelled')) {
+                    if (statusChanged && (bookingEditData.status.includes('cancelled') || bookingEditData.status === 'no_show_unjustified')) {
                         let reason = null;
-                        if (isAdminView) {
+                        if (bookingEditData.status === 'no_show_unjustified') {
+                            reason = 'Consulta marcada como falta injustificada (sem reembolso)';
+                        } else if (isAdminView) {
                             reason = oldStatus === 'pending_payment'
                                 ? 'Cancelado pela administração antes do pagamento'
                                 : 'Cancelado pela administração';
@@ -1312,14 +1314,54 @@ const AdminPage = () => {
             }
         });
     };
+
+    const handleDeleteBooking = (booking) => {
+        if (!booking) {
+            return;
+        }
+
+        const dateLabel = booking.booking_date
+            ? new Date(`${booking.booking_date}T00:00:00`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+            : 'data não informada';
+        const timeLabel = booking.booking_time ? `${booking.booking_time}h` : 'horário indefinido';
+
+        let warningMessage = '';
+        if (['confirmed', 'paid', 'completed'].includes(booking.status)) {
+            warningMessage = 'Este agendamento já estava confirmado/pago. Considere alterar o status para cancelado se precisar manter o histórico.';
+        }
+
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Excluir Agendamento',
+            message: `Deseja excluir o agendamento de ${booking.patient_name || 'Paciente'} em ${dateLabel} às ${timeLabel}?`,
+            warningMessage,
+            type: 'danger',
+            onConfirm: async () => {
+                await withItemLoading('delete', booking.id, async () => {
+                    const { error } = await supabase.from('bookings').delete().eq('id', booking.id);
+                    if (error) {
+                        secureLog.error('Erro ao excluir agendamento:', error?.message || error);
+                        secureLog.debug('Detalhes do erro ao excluir agendamento', error);
+                        toast({ variant: 'destructive', title: 'Erro ao excluir agendamento', description: error.message });
+                        return;
+                    }
+
+                    toast({ title: 'Agendamento excluído com sucesso!' });
+                    await fetchAllData();
+                });
+
+                setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+            },
+        });
+    };
     
     // Função para mudança rápida de status
     const handleQuickStatusChange = async (bookingId, newStatus, bookingData) => {
         const isAdminUser = isAdminView;
         if (!isAdminUser) {
-            const allowedStatuses = new Set(['cancelled_by_professional', 'completed']);
+            const allowedStatuses = new Set(['cancelled_by_professional', 'completed', 'no_show_unjustified']);
             if (!allowedStatuses.has(newStatus)) {
-                toast({ variant: 'destructive', title: 'Ação não permitida', description: 'Profissionais só podem cancelar ou concluir consultas.' });
+                toast({ variant: 'destructive', title: 'Ação não permitida', description: 'Profissionais só podem cancelar, marcar falta injustificada ou concluir consultas.' });
                 return;
             }
 
@@ -1357,6 +1399,8 @@ const AdminPage = () => {
                         await bookingEmailManager.sendPaymentApproved(emailData);
                     } else if (newStatus === 'completed') {
                         await bookingEmailManager.sendThankYou(emailData);
+                    } else if (newStatus === 'no_show_unjustified') {
+                        await bookingEmailManager.sendCancellation(emailData, 'Consulta marcada como falta injustificada (sem reembolso)');
                     } else if (newStatus.includes('cancelled')) {
                         const cancellationReason = isAdminUser ? 'Cancelado pela administração' : 'Cancelado pelo profissional';
                         await bookingEmailManager.sendCancellation(emailData, cancellationReason);
@@ -1391,7 +1435,8 @@ const AdminPage = () => {
             'paid': 'Pago',
             'completed': 'Concluído',
             'cancelled_by_patient': 'Cancelado pelo Paciente',
-            'cancelled_by_professional': 'Cancelado pelo Profissional'
+            'cancelled_by_professional': 'Cancelado pelo Profissional',
+            'no_show_unjustified': 'Falta injustificada'
         };
         return labels[status] || status;
     };
@@ -1418,7 +1463,8 @@ const AdminPage = () => {
             'pending_payment': 2,
             'completed': 3,
             'cancelled_by_patient': 4,
-            'cancelled_by_professional': 4
+            'cancelled_by_professional': 4,
+            'no_show_unjustified': 4
         };
         
         const now = new Date();
@@ -1621,6 +1667,7 @@ const AdminPage = () => {
                     break;
                 case 'cancelled_by_patient':
                 case 'cancelled_by_professional':
+                case 'no_show_unjustified':
                     totals.cancelledValue += amountForStatus;
                     break;
                 default:
@@ -2652,6 +2699,7 @@ const AdminPage = () => {
                                                 <option value="completed">Concluído</option>
                                                 <option value="cancelled_by_patient">Cancelado (Paciente)</option>
                                                 <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                <option value="no_show_unjustified">Falta injustificada</option>
                                             </select>
                                         </div>
                                         
@@ -2755,7 +2803,8 @@ const AdminPage = () => {
                                                 'paid': 'bg-green-100 text-green-800 border-green-200',
                                                 'completed': 'bg-blue-100 text-blue-800 border-blue-200',
                                                 'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
-                                                'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200'
+                                                'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
+                                                'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200'
                                             };
                                             
                                             const statusLabels = {
@@ -2764,7 +2813,8 @@ const AdminPage = () => {
                                                 'paid': 'Pago',
                                                 'completed': 'Concluído',
                                                 'cancelled_by_patient': 'Cancelado pelo Paciente',
-                                                'cancelled_by_professional': 'Cancelado pelo Profissional'
+                                                'cancelled_by_professional': 'Cancelado pelo Profissional',
+                                                'no_show_unjustified': 'Falta injustificada'
                                             };
                                             
                                             // Usa valor histórico se disponível, senão usa preço atual do serviço
@@ -2806,7 +2856,8 @@ const AdminPage = () => {
                 { value: 'confirmed', label: statusLabels['confirmed'] },
                 { value: 'completed', label: statusLabels['completed'] },
                 { value: 'cancelled_by_patient', label: statusLabels['cancelled_by_patient'] },
-                { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] }
+                { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] },
+                { value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'] }
             ]
             : (() => {
                 const options = [
@@ -2819,6 +2870,10 @@ const AdminPage = () => {
 
                 if (b.status !== 'cancelled_by_professional') {
                     options.push({ value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'], disabled: false });
+                }
+
+                if (b.status !== 'no_show_unjustified') {
+                    options.push({ value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'], disabled: false });
                 }
 
                 return options;
@@ -3134,6 +3189,7 @@ const AdminPage = () => {
                                                                                     <option value="completed">Concluído</option>
                                                                                     <option value="cancelled_by_patient">Cancelado (Paciente)</option>
                                                                                     <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                                    <option value="no_show_unjustified">Falta injustificada</option>
                                                                                 </select>
                                                                             </div>
                                                                         )}
@@ -3259,6 +3315,20 @@ const AdminPage = () => {
                                                                     </DialogFooter>
                                                                 </DialogContent>
                                                             </Dialog>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                disabled={isAnyItemLoading()}
+                                                                onClick={() => handleDeleteBooking(b)}
+                                                                className={`flex items-center ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            >
+                                                                {isItemLoading('delete', b.id) ? (
+                                                                    <LoadingSpinner size="sm" className="mr-1" />
+                                                                ) : (
+                                                                    <Trash2 className="w-4 h-4 mr-1" />
+                                                                )}
+                                                                Excluir
+                                                            </Button>
                                                             </div>
                                                         </div>
                                                     </div>
