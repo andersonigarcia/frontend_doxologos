@@ -61,10 +61,10 @@ const faqs = [
 ];
 
 const atendimentoSteps = [
-  { icon: Calendar, title: '1. Agende', description: 'Escolha o profissional, serviço e horário ideal' },
-  { icon: MessageCircle, title: '2. Pagamento', description: 'Realize o pagamento de forma segura' },
-  { icon: Mail, title: '3. Confirmação', description: 'Receba o link da sala virtual por email' },
-  { icon: Phone, title: '4. Atendimento', description: 'Participe da sessão online com total privacidade' }
+  { icon: Calendar, title: '1. Agende', description: 'Escolha o profissional, serviço e horário ideal', target: '/agendamento' },
+  { icon: MessageCircle, title: '2. Pagamento', description: 'Realize o pagamento de forma segura', target: '/area-do-paciente' },
+  { icon: Mail, title: '3. Confirmação', description: 'Link da sala virtual será disponibilizado na área do cliente', target: '/area-do-paciente' },
+  { icon: Phone, title: '4. Atendimento', description: 'Participe da sessão online com total privacidade e segurança', target: '/area-do-paciente' }
 ];
 
 const HomePage = () => {
@@ -100,6 +100,13 @@ const HomePage = () => {
     trackFieldChange(field, value);
     markFormStarted();
   }, [markFormStarted, trackFieldChange]);
+
+  const handleAtendimentoStepClick = useCallback((target) => {
+    if (!target) {
+      return;
+    }
+    navigate(target);
+  }, [navigate]);
 
   const formatPhoneNumber = (value) => {
     const numbers = value.replace(/\D/g, '');
@@ -296,20 +303,23 @@ const HomePage = () => {
             </motion.div>
             <div className="grid md:grid-cols-4 gap-8">
               {atendimentoSteps.map((step, index) => (
-                <motion.div
+                <motion.button
                   key={step.title}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className="text-center p-6 rounded-xl hover:shadow-lg transition-shadow bg-white"
+                  type="button"
+                  onClick={() => handleAtendimentoStepClick(step.target)}
+                  className="text-center p-6 rounded-xl hover:shadow-lg transition-shadow bg-white w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                  aria-label={`Ir para ${step.title}`}
                 >
                   <div className="w-16 h-16 bg-[#2d8659]/10 rounded-full flex items-center justify-center mx-auto mb-4">
                     <step.icon className="w-8 h-8 text-[#2d8659]" />
                   </div>
                   <h3 className="text-xl font-bold mb-2">{step.title}</h3>
                   <p className="text-gray-600">{step.description}</p>
-                </motion.div>
+                </motion.button>
               ))}
             </div>
           </div>
