@@ -240,11 +240,10 @@
         <ul>
           <li>Entre na sala <strong>5 minutos antes</strong> do horário agendado</li>
           <li>Esteja em um local <strong>tranquilo e com boa iluminação</strong></li>
-          <li>Tenha em mãos <strong>documentos e exames relevantes</strong></li>
+          <li>Tenha <strong>fones de ouvido</strong> se possível (melhora o áudio)</li>                    
           <li>Verifique sua <strong>conexão de internet</strong> e o funcionamento de câmera/microfone</li>
-          <li>Você receberá um <strong>lembrete 24h antes</strong> da consulta</li>
-          <li>Tenha <strong>fones de ouvido</strong> se possível (melhora o áudio)</li>
-          <li>Certifique-se de que seu dispositivo está <strong>carregado</strong></li>
+          <li>Tenha sempre um <strong>lenço </strong> por perto</li>
+          <li>Lembre-se:<strong>não é permitido gravar e ou tirar print das sessões</strong></li>                    
         </ul>
       </div>
 
@@ -389,12 +388,12 @@
       <div class="tips-box">
         <h3>📋 Checklist antes da consulta:</h3>
         <ul>
-          <li>✓ Acesse sua área do paciente e tenha o link do Zoom pronto</li>
-          <li>✓ Verifique sua conexão de internet</li>
-          <li>✓ Teste câmera e microfone com antecedência</li>
-          <li>✓ Separe documentos e exames relevantes</li>
-          <li>✓ Esteja em um local tranquilo e privado</li>
-          <li>✓ Entre na sala 5 minutos antes do horário</li>
+          <li>✓ Entre na sala <strong>5 minutos antes</strong> do horário agendado</li>
+          <li>✓ Esteja em um local <strong>tranquilo e com boa iluminação</strong></li>
+          <li>✓ Tenha <strong>fones de ouvido</strong> se possível (melhora o áudio)</li>                    
+          <li>✓ Verifique sua <strong>conexão de internet</strong> e o funcionamento de câmera/microfone</li>
+          <li>✓ Tenha sempre um <strong>lenço </strong> por perto</li>
+          <li>✓ Lembre-se:<strong>não é permitido gravar e ou tirar print das sessões</strong></li>           
         </ul>
       </div>
 
