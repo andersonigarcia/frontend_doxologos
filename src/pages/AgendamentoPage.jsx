@@ -958,9 +958,26 @@ const AgendamentoPage = () => {
                 onSelectProfessional={handleProfessionalSelect}
                 onNext={() => setStep(2)}
                 availability={availability}
+                displayMode="service-only"
               />
             );
           case 2:
+            return (
+              <ProfessionalStep
+                services={services}
+                professionals={professionals}
+                servicePriceRange={servicePriceRange}
+                selectedService={selectedService}
+                selectedProfessional={selectedProfessional}
+                onSelectService={handleServiceSelect}
+                onSelectProfessional={handleProfessionalSelect}
+                onBack={() => setStep(1)}
+                onNext={() => setStep(3)}
+                availability={availability}
+                displayMode="professional-only"
+              />
+            );
+          case 3:
             return (
               <DateTimeStep
                 professionals={professionals}
@@ -981,11 +998,11 @@ const AgendamentoPage = () => {
                 bookedSlots={bookedSlots}
                 isLoadingTimes={isLoadingSlots}
                 topTestimonials={topTestimonials}
-                onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
+                onBack={() => setStep(2)}
+                onNext={() => setStep(4)}
               />
             );
-          case 3:
+          case 4:
             return (
               <>
                 <PatientAccountStep
@@ -1008,11 +1025,11 @@ const AgendamentoPage = () => {
                   onSelectMeetingPlatform={setMeetingPlatform}
                 />
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                  <Button onClick={() => setStep(2)} variant="outline">
+                  <Button onClick={() => setStep(3)} variant="outline">
                     Voltar
                   </Button>
                   <Button
-                    onClick={() => setStep(4)}
+                    onClick={() => setStep(5)}
                     disabled={!canProceedToSummary}
                     className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1021,7 +1038,7 @@ const AgendamentoPage = () => {
                 </div>
               </>
             );
-          case 4:
+          case 5:
             return (
               <PaymentSummaryStep
                 professionals={professionals}
@@ -1033,7 +1050,7 @@ const AgendamentoPage = () => {
                 paymentSecurityHighlights={paymentSecurityHighlights}
                 acceptTermsField={register('acceptTerms')}
                 acceptTermsError={formErrors.acceptTerms?.message}
-                onBack={() => setStep(3)}
+                onBack={() => setStep(4)}
                 onSubmit={handleBooking}
                 onSupport={handleSupportWhatsappClick}
                 isSubmitting={isSubmitting}
@@ -1041,7 +1058,7 @@ const AgendamentoPage = () => {
                 submitButtonTitle={submitButtonTitle}
               />
             );
-          case 5:
+          case 6:
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-12 text-center">
                 <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1100,10 +1117,11 @@ const AgendamentoPage = () => {
       };
 
       const progressSteps = [
-        { id: 1, label: 'Serviço & Profissional' },
-        { id: 2, label: 'Data/Hora' },
-        { id: 3, label: 'Dados do Paciente' },
-        { id: 4, label: 'Pagamento' },
+        { id: 1, label: 'Serviço' },
+        { id: 2, label: 'Profissional' },
+        { id: 3, label: 'Data/Hora' },
+        { id: 4, label: 'Dados do Paciente' },
+        { id: 5, label: 'Pagamento' },
       ];
 
       const selectionLabels = useMemo(() => {
@@ -1143,9 +1161,10 @@ const AgendamentoPage = () => {
       
       const canAccessStep = (stepNumber) => {
         if (stepNumber === 1) return true;
-        if (stepNumber === 2) return Boolean(selectedService && selectedProfessional);
-        if (stepNumber === 3) return hasScheduleSelection;
-        if (stepNumber === 4) return canProceedToSummary;
+        if (stepNumber === 2) return Boolean(selectedService);
+        if (stepNumber === 3) return Boolean(selectedService && selectedProfessional);
+        if (stepNumber === 4) return hasScheduleSelection;
+        if (stepNumber === 5) return canProceedToSummary;
         return false;
       };
 
@@ -1172,7 +1191,7 @@ const AgendamentoPage = () => {
           </header>
           <div className="min-h-screen bg-gray-50 py-12 pt-24">
             <div className="container mx-auto px-4 max-w-4xl">
-              {step < 5 && (
+              {step <= progressSteps.length && (
                 <BookingStepper
                   steps={progressSteps}
                   currentStep={step}

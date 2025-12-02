@@ -15,6 +15,7 @@ const ProfessionalStep = ({
   onNext,
   onBack,
   availability = {},
+  displayMode = 'combined',
 }) => {
   const [isMobile, setIsMobile] = useState(false);
   const [mobileStage, setMobileStage] = useState('service');
@@ -171,13 +172,33 @@ const ProfessionalStep = ({
     }
   }, [isMobile, mobileStage, selectedService]);
 
-  const showServiceSelection = !isMobile || mobileStage === 'service';
-  const showProfessionalSelection = selectedService && (!isMobile || mobileStage === 'professional');
-  const reserveMobileCtaSpace = isMobile && selectedService && mobileStage === 'service';
-  const stageIndicator = isMobile ? mobileStage : selectedProfessional ? 'professional' : 'service';
+  const isServiceOnly = displayMode === 'service-only';
+  const isProfessionalOnly = displayMode === 'professional-only';
+  const showServiceSelection =
+    !isProfessionalOnly && (isServiceOnly || !isMobile || mobileStage === 'service');
+  const showProfessionalSelection =
+    !isServiceOnly &&
+    selectedService &&
+    (isProfessionalOnly || !isMobile || mobileStage === 'professional');
+  const reserveMobileCtaSpace =
+    displayMode === 'combined' && isMobile && selectedService && mobileStage === 'service';
+  const stageIndicator = (() => {
+    if (isServiceOnly) {
+      return 'service';
+    }
+    if (isProfessionalOnly) {
+      return 'professional';
+    }
+    return isMobile ? mobileStage : selectedProfessional ? 'professional' : 'service';
+  })();
+  const canContinue = isServiceOnly
+    ? Boolean(selectedService)
+    : isProfessionalOnly
+    ? Boolean(selectedProfessional)
+    : Boolean(selectedService && selectedProfessional);
 
   const handleMoveToProfessionals = () => {
-    if (!selectedService) {
+    if (displayMode !== 'combined' || !selectedService) {
       return;
     }
     setMobileStage('professional');
@@ -190,7 +211,13 @@ const ProfessionalStep = ({
   };
 
   const handleContinue = () => {
-    trackBookingEvent('open_calendar');
+    if (isServiceOnly) {
+      trackBookingEvent('continue_to_professionals');
+    } else if (isProfessionalOnly) {
+      trackBookingEvent('open_calendar');
+    } else {
+      trackBookingEvent('open_calendar');
+    }
     onNext?.();
   };
 
@@ -228,10 +255,11 @@ const ProfessionalStep = ({
       animate={{ opacity: 1, y: 0 }}
       className={`bg-white rounded-xl shadow-lg p-8 ${reserveMobileCtaSpace ? 'pb-24' : ''}`}
     >
-      <div className="text-center mb-8">
+        {stageIndicator === 'service' ? <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3">Escolha o Serviço e Profissional</h2>
         <p className="text-gray-600 text-lg">Comece selecionando o serviço ideal e depois escolha quem irá atendê-lo.</p>
-      </div>
+      </div> : ''}
+      
 
       {servicePriceRange && (
         <div className="mb-8 p-5 bg-gradient-to-r from-[#2d8659]/10 via-white to-blue-50 border border-[#2d8659]/20 rounded-xl">
@@ -256,7 +284,7 @@ const ProfessionalStep = ({
         </div>
       )}
 
-      <motion.div
+      {/* <motion.div
         key={stageIndicator}
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -265,7 +293,7 @@ const ProfessionalStep = ({
       >
         <span className="inline-block h-2 w-2 rounded-full bg-[#2d8659]" aria-hidden />
         {stageIndicator === 'service' ? 'Etapa 1 de 2 · Serviço' : 'Etapa 2 de 2 · Profissional'}
-      </motion.div>
+      </motion.div> */}
 
       <AnimatePresence mode="wait">
         {showServiceSelection && (
@@ -585,7 +613,7 @@ const ProfessionalStep = ({
           </Button>
         )}
         <Button
-          disabled={!selectedService || !selectedProfessional}
+          disabled={!canContinue}
           className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleContinue}
         >
