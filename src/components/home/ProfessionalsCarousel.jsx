@@ -1,8 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import HorizontalCarousel from '@/components/common/HorizontalCarousel';
 
 const ProfessionalsCarousel = ({ professionals = [] }) => {
+  const navigate = useNavigate();
+
+  const handleProfessionalClick = (professional) => {
+    if (!professional) {
+      return;
+    }
+    navigate('/agendamento');
+  };
+
   if (!professionals.length) {
     return (
       <section id="profissionais" className="py-20 bg-white">
@@ -47,12 +57,15 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
           dotAriaLabel={(prof) => `Ir para o profissional ${prof?.name || ''}`}
           gradientEdges
           itemRenderer={({ item: prof, index }) => (
-            <motion.article
+            <motion.button
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.08 }}
-              className="group relative bg-white border border-transparent hover:border-[#2d8659]/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col h-full"
+              type="button"
+              onClick={() => handleProfessionalClick(prof)}
+              aria-label={`Agendar com ${prof?.name || 'profissional'}`}
+              className="group relative bg-white border border-transparent hover:border-[#2d8659]/40 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 flex flex-col h-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
             >
               <div className="relative h-64 overflow-hidden">
                 <img
@@ -85,7 +98,7 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
                   <span className="text-gray-400">Psicologia </span>
                 </div>
               </div>
-            </motion.article>
+            </motion.button>
           )}
         />
       </div>
