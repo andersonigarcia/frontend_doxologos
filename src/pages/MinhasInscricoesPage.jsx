@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -6,6 +6,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, ExternalLink, Heart, ArrowLeft, Video, Lock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { fetchEventMeeting } from '@/services/eventAccessService';
 
 export default function MinhasInscricoesPage() {
   const { user } = useAuth();
@@ -13,6 +14,9 @@ export default function MinhasInscricoesPage() {
   const [inscricoes, setInscricoes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [meetingAccess, setMeetingAccess] = useState({});
+  const [meetingLoading, setMeetingLoading] = useState({});
+  const [meetingErrors, setMeetingErrors] = useState({});
 
   useEffect(() => {
     if (user) {
@@ -39,9 +43,6 @@ export default function MinhasInscricoesPage() {
             data_inicio,
             data_fim,
             valor,
-            meeting_link,
-            meeting_password,
-            meeting_id,
             link_slug,
             tipo_evento
           )
@@ -129,6 +130,45 @@ export default function MinhasInscricoesPage() {
 
     navigate(`/checkout?${queryParams.toString()}`);
   };
+
+  const requestMeetingAccess = useCallback((eventoId) => {
+    if (!eventoId) return;
+
+    setMeetingLoading((prev) => ({ ...prev, [eventoId]: true }));
+    setMeetingErrors((prev) => ({ ...prev, [eventoId]: null }));
+
+    fetchEventMeeting(eventoId)
+      .then((data) => {
+        setMeetingAccess((prev) => ({ ...prev, [eventoId]: data }));
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : 'Erro ao carregar link do evento';
+        setMeetingErrors((prev) => ({ ...prev, [eventoId]: message }));
+      })
+      .finally(() => {
+        setMeetingLoading((prev) => ({ ...prev, [eventoId]: false }));
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!user || inscricoes.length === 0) return;
+
+    const eligible = inscricoes.filter((inscricao) => {
+      const evento = inscricao.eventos;
+      if (!evento?.id) return false;
+      if (meetingAccess[evento.id]) return false;
+      if (meetingLoading[evento.id]) return false;
+      const isGratuito = evento.valor === 0;
+      const isConfirmadoPago = evento.valor > 0 && inscricao.status === 'confirmed';
+      return isGratuito || isConfirmadoPago;
+    });
+
+    if (eligible.length === 0) return;
+
+    eligible.forEach((inscricao) => {
+      requestMeetingAccess(inscricao.eventos.id);
+    });
+  }, [user, inscricoes, meetingAccess, meetingLoading, requestMeetingAccess]);
 
   if (loading) {
     return (
@@ -236,10 +276,12 @@ export default function MinhasInscricoesPage() {
                 // - Eventos PAGOS: mostra Zoom apenas se status='confirmed'
                 const isEventoGratuito = evento.valor === 0;
                 const isEventoPago = evento.valor > 0;
-                const showZoomLink = evento.meeting_link && (
-                  isEventoGratuito || // Gratuito sempre mostra
-                  (isEventoPago && inscricao.status === 'confirmed') // Pago só se confirmado
-                );
+                const eventoId = evento.id;
+                const meetingInfo = eventoId ? meetingAccess[eventoId] : null;
+                const meetingError = eventoId ? meetingErrors[eventoId] : null;
+                const isLoadingMeeting = eventoId ? meetingLoading[eventoId] : false;
+                const shouldHaveMeeting = !!eventoId && (isEventoGratuito || (isEventoPago && inscricao.status === 'confirmed'));
+                const showZoomLink = shouldHaveMeeting && meetingInfo?.meetingLink;
                 const showPaymentButton = isEventoPago && inscricao.status === 'pending';
 
                 // Debug: Ver dados da inscrição
@@ -250,7 +292,7 @@ export default function MinhasInscricoesPage() {
                   evento: evento.titulo,
                   valor: evento.valor,
                   tipo: isEventoPago ? 'PAGO' : 'GRATUITO',
-                  meeting_link: evento.meeting_link ? 'EXISTE' : 'NULL',
+                  meeting_link: meetingInfo?.meetingLink ? 'EDGE' : 'N/A',
                   showZoomLink,
                   showPaymentButton
                 });
@@ -378,7 +420,7 @@ export default function MinhasInscricoesPage() {
                                 Acesse a sala Zoom no dia e horário do evento:
                               </p>
                               <a
-                                href={evento.meeting_link}
+                                href={meetingInfo.meetingLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
@@ -386,14 +428,50 @@ export default function MinhasInscricoesPage() {
                                 <ExternalLink className="w-4 h-4" />
                                 Acessar Sala Zoom
                               </a>
-                              {evento.meeting_password && (
+                              {meetingInfo.meetingPassword && (
                                 <div className="mt-3 flex items-center gap-2 text-sm">
                                   <Lock className="w-4 h-4 text-green-700" />
                                   <span className="text-green-800">
-                                    Senha: <code className="px-2 py-1 bg-white rounded border border-green-300 font-mono">{evento.meeting_password}</code>
+                                    Senha: <code className="px-2 py-1 bg-white rounded border border-green-300 font-mono">{meetingInfo.meetingPassword}</code>
                                   </span>
                                 </div>
                               )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {shouldHaveMeeting && !showZoomLink && !meetingError && (
+                        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-blue-900">
+                                {isLoadingMeeting
+                                  ? 'Carregando link seguro do evento...'
+                                  : 'O link será disponibilizado assim que confirmado.'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {meetingError && (
+                        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm text-red-900">
+                                {meetingError}
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-3"
+                                onClick={() => eventoId && requestMeetingAccess(eventoId)}
+                              >
+                                Tentar novamente
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -426,18 +504,6 @@ export default function MinhasInscricoesPage() {
                       )}
 
                       {/* Mensagem se Zoom não disponível mas confirmado */}
-                      {inscricao.status === 'confirmed' && !evento.meeting_link && (
-                        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-sm text-blue-900">
-                                O link da sala Zoom será disponibilizado em breve. Você receberá um email com as informações de acesso.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </motion.div>
                 );

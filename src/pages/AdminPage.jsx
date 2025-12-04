@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +16,7 @@ import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 import UserBadge from '@/components/UserBadge';
+import EventRegistrationsDashboard from '@/components/admin/EventRegistrationsDashboard';
 
 const ROLE_DISPLAY = {
     admin: { label: 'Administrador', classes: 'bg-purple-100 text-purple-800 border-purple-200', Icon: ShieldCheck },
@@ -108,6 +109,10 @@ const AdminPage = () => {
         data_inicio_exibicao: '',
         data_fim_exibicao: '',
         vagas_disponiveis: 0,
+        meeting_link: '',
+        meeting_password: '',
+        meeting_id: '',
+        meeting_start_url: '',
         ativo: true
     });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
@@ -136,6 +141,12 @@ const AdminPage = () => {
     const normalizeDateTime = (value) => {
         if (!value) return null;
         return value.length === 16 ? `${value}:00` : value;
+    };
+
+    const sanitizeNullableText = (value) => {
+        if (value === null || value === undefined) return null;
+        const trimmed = String(value).trim();
+        return trimmed.length > 0 ? trimmed : null;
     };
 
     const clearEventError = (field) => {
@@ -670,6 +681,7 @@ const AdminPage = () => {
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
             { value: 'services', label: 'Serviços', icon: Briefcase },
             { value: 'events', label: 'Eventos', icon: Calendar },
+            { value: 'event-registrations', label: 'Inscrições', icon: Ticket },
             // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
         ],
         professional: [
@@ -2047,6 +2059,13 @@ const AdminPage = () => {
             }
         }
 
+        const sanitizedMeetingFields = {
+            meeting_link: sanitizeNullableText(eventFormData.meeting_link),
+            meeting_password: sanitizeNullableText(eventFormData.meeting_password),
+            meeting_id: sanitizeNullableText(eventFormData.meeting_id),
+            meeting_start_url: sanitizeNullableText(eventFormData.meeting_start_url)
+        };
+
         const sanitizedEventData = {
             titulo: trimmedTitle,
             descricao: trimmedDescription || null,
@@ -2061,7 +2080,8 @@ const AdminPage = () => {
             data_inicio_exibicao: eventFormData.data_inicio_exibicao ? normalizeDateTime(eventFormData.data_inicio_exibicao) : null,
             data_fim_exibicao: eventFormData.data_fim_exibicao ? normalizeDateTime(eventFormData.data_fim_exibicao) : null,
             ativo: eventFormData.ativo === undefined ? true : !!eventFormData.ativo,
-            link_slug: finalLinkSlug
+            link_slug: finalLinkSlug,
+            ...sanitizedMeetingFields
         };
 
         let result;
@@ -2102,17 +2122,18 @@ const AdminPage = () => {
                 // Não bloquear criação do evento se Zoom falhar
             }
 
+            const zoomMeetingFields = zoomData
+                ? {
+                      meeting_link: zoomData.join_url,
+                      meeting_password: zoomData.password,
+                      meeting_id: zoomData.id?.toString(),
+                      meeting_start_url: zoomData.start_url
+                  }
+                : null;
+
             result = await supabase
                 .from('eventos')
-                .insert([{
-                    ...sanitizedEventData,
-                    ...(zoomData ? {
-                        meeting_link: zoomData.join_url,
-                        meeting_password: zoomData.password,
-                        meeting_id: zoomData.id?.toString(),
-                        meeting_start_url: zoomData.start_url
-                    } : {})
-                }])
+                .insert([{ ...sanitizedEventData, ...(zoomMeetingFields || {}) }])
                 .select();
         }
 
@@ -2150,6 +2171,10 @@ const AdminPage = () => {
             link_slug: '',
             data_inicio_exibicao: '',
             data_fim_exibicao: '',
+            meeting_link: '',
+            meeting_password: '',
+            meeting_id: '',
+            meeting_start_url: '',
             ativo: true
         }); 
     };
@@ -2174,6 +2199,10 @@ const AdminPage = () => {
             vagas_disponiveis: event.vagas_disponiveis != null ? Number(event.vagas_disponiveis) : 0,
             valor: event.valor != null ? Number(event.valor) : 0,
             link_slug: event.link_slug || '',
+            meeting_link: event.meeting_link || '',
+            meeting_password: event.meeting_password || '',
+            meeting_id: event.meeting_id || '',
+            meeting_start_url: event.meeting_start_url || '',
             ativo: event.ativo !== undefined ? event.ativo : true
         }); 
     };
@@ -4684,6 +4713,58 @@ const AdminPage = () => {
                                             </p>
                                         </div>
 
+                                        <div className="border-t pt-4 mt-4">
+                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">🎥 Informações da sala (Zoom ou manual)</h4>
+                                            <p className="text-xs text-gray-500 mb-4">
+                                                Caso não esteja usando a criação automática pelo Zoom, informe manualmente os links abaixo.
+                                                Assim que o pagamento é confirmado, os participantes receberão esse link via área logada.
+                                            </p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1">Link para participantes</label>
+                                                    <input
+                                                        type="url"
+                                                        value={eventFormData.meeting_link || ''}
+                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_link: e.target.value }))}
+                                                        placeholder="https://zoom.us/j/123456"
+                                                        className="w-full input"
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Será exibido apenas para inscritos confirmados.</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1">Senha da reunião</label>
+                                                    <input
+                                                        type="text"
+                                                        value={eventFormData.meeting_password || ''}
+                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_password: e.target.value }))}
+                                                        placeholder="Opcional"
+                                                        className="w-full input"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1">ID da reunião</label>
+                                                    <input
+                                                        type="text"
+                                                        value={eventFormData.meeting_id || ''}
+                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_id: e.target.value }))}
+                                                        placeholder="Ex: 123 456 789"
+                                                        className="w-full input"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1">Link para o anfitrião</label>
+                                                    <input
+                                                        type="url"
+                                                        value={eventFormData.meeting_start_url || ''}
+                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_start_url: e.target.value }))}
+                                                        placeholder="https://zoom.us/s/host"
+                                                        className="w-full input"
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Visível apenas para administradores.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div>
                                             <label className="block text-sm font-medium mb-1">Link do Evento (Slug)</label>
                                             <div className="flex gap-2">
@@ -4728,6 +4809,12 @@ const AdminPage = () => {
                                     </form>
                                 </div>
                             </div>
+                        </TabsContent>
+                        )}
+
+                        {userRole === 'admin' && (
+                        <TabsContent value="event-registrations" className="mt-6">
+                            <EventRegistrationsDashboard events={events} userRole={userRole} />
                         </TabsContent>
                         )}
 

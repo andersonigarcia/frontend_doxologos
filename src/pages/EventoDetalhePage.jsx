@@ -411,42 +411,38 @@ const EventoDetalhePage = () => {
                 // ========================================
                 try {
                     console.log('💳 Gerando pagamento PIX para evento...');
-                    
-                    // Chamar Edge Function para gerar PIX
-                    const { data: pixData, error: pixError } = await supabase.functions.invoke('mp-create-payment', {
-                        body: {
-                            transaction_amount: parseFloat(event.valor),
-                            description: `Inscrição - ${event.titulo}`,
-                            payment_method_id: 'pix',
-                            payer: {
-                                email: trimmedEmail,
-                                first_name: patientData.name.split(' ')[0],
-                                last_name: patientData.name.split(' ').slice(1).join(' ') || patientData.name.split(' ')[0]
-                            },
-                            external_reference: `EVENTO_${inscricao.id}`, // CRÍTICO: Prefixo EVENTO_
-                            notification_url: `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/mp-webhook`
+
+                    const pixPayload = {
+                        inscricao_id: inscricao.id,
+                        amount: Number(event.valor),
+                        description: `Inscrição - ${event.titulo}`,
+                        payment_method_id: 'pix',
+                        payer: {
+                            name: patientData.name.trim(),
+                            email: trimmedEmail,
+                            phone: patientData.phone ? patientData.phone.replace(/\D/g, '') : undefined
                         }
+                    };
+
+                    const { data: pixData, error: pixError } = await supabase.functions.invoke('mp-create-payment', {
+                        body: pixPayload
                     });
 
-                    if (pixError || !pixData) {
-                        throw new Error('Erro ao gerar pagamento PIX');
+                    if (pixError || !pixData?.success) {
+                        const message = pixError?.message || pixData?.error || 'Erro ao gerar pagamento PIX';
+                        throw new Error(message);
                     }
 
-                    console.log('✅ PIX gerado com sucesso:', pixData.id);
+                    console.log('✅ PIX gerado com sucesso:', pixData.payment_id);
 
-                    // Atualizar inscrição com payment_id
                     await supabase
                         .from('inscricoes_eventos')
-                        .update({ payment_id: pixData.id })
+                        .update({ payment_id: pixData.payment_id })
                         .eq('id', inscricao.id);
 
-                    // Enviar email com QR Code PIX
-                    const pixQrCode = pixData.point_of_interaction.transaction_data.qr_code_base64;
-                    const pixCode = pixData.point_of_interaction.transaction_data.qr_code;
-
                     const emailHtml = emailTemplates.eventoPagoAguardandoPagamento(inscricao, event, {
-                        qr_code_base64: pixQrCode,
-                        qr_code: pixCode
+                        qr_code_base64: pixData.qr_code_base64,
+                        qr_code: pixData.qr_code
                     });
 
                     await emailService.sendEmail({

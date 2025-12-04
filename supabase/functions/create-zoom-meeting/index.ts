@@ -3,9 +3,9 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-const ZOOM_CLIENT_ID = Deno.env.get('ZOOM_CLIENT_ID')
-const ZOOM_CLIENT_SECRET = Deno.env.get('ZOOM_CLIENT_SECRET')
-const ZOOM_ACCOUNT_ID = Deno.env.get('ZOOM_ACCOUNT_ID')
+const ZOOM_CLIENT_ID = Deno.env.get('VITE_ZOOM_CLIENT_ID')
+const ZOOM_CLIENT_SECRET = Deno.env.get('VITE_ZOOM_CLIENT_SECRET')
+const ZOOM_ACCOUNT_ID = Deno.env.get('VITE_ZOOM_ACCOUNT_ID')
 
 interface ZoomMeetingRequest {
   booking_date: string
