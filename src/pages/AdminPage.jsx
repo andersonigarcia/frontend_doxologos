@@ -117,6 +117,9 @@ const AdminPage = () => {
     });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
     const [eventFormErrors, setEventFormErrors] = useState({});
+    const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+    const [showManualZoomFields, setShowManualZoomFields] = useState(false);
+    const [isFreeEvent, setIsFreeEvent] = useState(true);
 
     const generateUniqueSlug = (title) => {
         const baseSlug = title
@@ -130,6 +133,19 @@ const AdminPage = () => {
 
         const timestamp = Date.now().toString().slice(-6);
         return `${baseSlug}-${timestamp}`;
+    };
+
+    const slugifyTitle = (title) => {
+        if (!title) return '';
+        return title
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
     };
 
     const parseDateTime = (value) => {
@@ -219,6 +235,9 @@ const AdminPage = () => {
             platformFee: Math.max(safePatientValue - safePayoutValue, 0)
         };
     }, [serviceFormData.price, serviceFormData.professional_payout]);
+
+    const priceNumber = Number(eventFormData.valor);
+    const hasPaidValue = Number.isFinite(priceNumber) && priceNumber > 0;
     
     // Sistema de Loading Global
     const { isLoading, withLoading, isAnyLoading } = useLoadingState();
@@ -1929,7 +1948,7 @@ const AdminPage = () => {
             : Number.parseInt(rawVagas, 10);
         const rawValor = eventFormData.valor;
         const valor = rawValor === '' || rawValor === null || rawValor === undefined
-            ? 0
+            ? (isFreeEvent ? 0 : Number.NaN)
             : Number.parseFloat(rawValor);
 
         if (!trimmedTitle) {
@@ -1960,8 +1979,10 @@ const AdminPage = () => {
             errors.vagas_disponiveis = 'Informe as vagas disponíveis na sala (zero para ilimitado).';
         }
 
-        if (!Number.isFinite(valor) || valor < 0) {
-            errors.valor = 'Defina um valor válido (use 0 para evento gratuito).';
+        if (!Number.isFinite(valor) || valor < 0 || (!isFreeEvent && valor === 0)) {
+            errors.valor = isFreeEvent
+                ? 'Defina um valor válido (use 0 para evento gratuito).'
+                : 'Informe o valor cobrado (maior que zero).';
         }
 
         if (!signupDeadlineDate) {
@@ -2156,6 +2177,9 @@ const AdminPage = () => {
     const resetEventForm = () => { 
         setIsEditingEvent(false); 
         setEventFormErrors({});
+        setSlugManuallyEdited(false);
+        setShowManualZoomFields(false);
+        setIsFreeEvent(true);
         setEventFormData({ 
             id: null, 
             titulo: '', 
@@ -2205,6 +2229,9 @@ const AdminPage = () => {
             meeting_start_url: event.meeting_start_url || '',
             ativo: event.ativo !== undefined ? event.ativo : true
         }); 
+        setSlugManuallyEdited(Boolean(event.link_slug));
+        setShowManualZoomFields(Boolean(event.meeting_link || event.meeting_start_url));
+        setIsFreeEvent(!(Number(event.valor) > 0));
     };
     const handleDeleteEvent = async (eventId) => {
         const event = events.find(e => e.id === eventId);
@@ -4477,306 +4504,395 @@ const AdminPage = () => {
                                 </div>
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
-                                    <form onSubmit={handleEventSubmit} className="space-y-4 text-sm">
-                                        <div>
-                                            <input 
-                                                name="titulo" 
-                                                value={eventFormData.titulo || ''} 
-                                                onChange={e => {
-                                                    setEventFormData({...eventFormData, titulo: e.target.value});
-                                                    clearEventError('titulo');
-                                                }} 
-                                                placeholder="Título do Evento" 
-                                                className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
-                                                required 
-                                            />
-                                            {eventFormErrors.titulo && (
-                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.titulo}</p>
-                                            )}
-                                        </div>
-                                        <textarea name="descricao" value={eventFormData.descricao || ''} onChange={e => setEventFormData({...eventFormData, descricao: e.target.value})} placeholder="Descrição" className="w-full input" rows="3"></textarea>
-                                        <select name="tipo_evento" value={eventFormData.tipo_evento || 'Workshop'} onChange={e => setEventFormData({...eventFormData, tipo_evento: e.target.value})} className="w-full input"><option>Workshop</option><option>Palestra</option></select>
-                                        <div>
-                                            <select 
-                                                name="professional_id" 
-                                                value={eventFormData.professional_id || ''} 
-                                                onChange={e => {
-                                                    setEventFormData({...eventFormData, professional_id: e.target.value});
-                                                    clearEventError('professional_id');
-                                                }} 
-                                                className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
-                                                required
-                                            >
-                                                <option value="">Selecione o Profissional</option>
-                                                {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                            </select>
-                                            {eventFormErrors.professional_id && (
-                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
-                                            )}
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                    <form onSubmit={handleEventSubmit} className="space-y-6 text-sm">
+                                        <section className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
                                             <div>
-                                                <label className="block text-xs font-medium mb-1">Data/Hora Início</label>
-                                                <input 
-                                                    type="datetime-local" 
-                                                    name="data_inicio" 
-                                                    value={eventFormData.data_inicio || ''} 
-                                                    onChange={e => {
-                                                        setEventFormData({...eventFormData, data_inicio: e.target.value});
-                                                        clearEventError('data_inicio');
-                                                        clearEventError('data_fim');
-                                                    }} 
-                                                    className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
-                                                    required
-                                                />
-                                                {eventFormErrors.data_inicio && (
-                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
-                                                )}
+                                                <h3 className="text-base font-semibold text-gray-800">Informações principais</h3>
+                                                <p className="text-xs text-gray-500">Título, descrição e quem conduz o evento.</p>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1">Data/Hora Fim</label>
+                                            <div className="space-y-3">
                                                 <input 
-                                                    type="datetime-local" 
-                                                    name="data_fim" 
-                                                    value={eventFormData.data_fim || ''} 
+                                                    name="titulo" 
+                                                    value={eventFormData.titulo || ''} 
                                                     onChange={e => {
-                                                        setEventFormData({...eventFormData, data_fim: e.target.value});
-                                                        clearEventError('data_fim');
+                                                        const value = e.target.value;
+                                                        setEventFormData(prev => {
+                                                            const next = { ...prev, titulo: value };
+                                                            if (!slugManuallyEdited) {
+                                                                next.link_slug = slugifyTitle(value);
+                                                            }
+                                                            return next;
+                                                        });
+                                                        clearEventError('titulo');
                                                     }} 
-                                                    className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
-                                                    required
+                                                    placeholder="Título do Evento" 
+                                                    className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                    aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
+                                                    required 
                                                 />
-                                                {eventFormErrors.data_fim && (
-                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
+                                                {eventFormErrors.titulo && (
+                                                    <p className="text-xs text-red-500">{eventFormErrors.titulo}</p>
                                                 )}
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1">Limite de Vagas</label>
-                                                <input 
-                                                    type="number" 
-                                                    name="limite_participantes" 
-                                                    value={eventFormData.limite_participantes || ''} 
-                                                    onChange={e => {
-                                                        setEventFormData({...eventFormData, limite_participantes: e.target.value});
-                                                        clearEventError('limite_participantes');
-                                                    }} 
-                                                    placeholder="Ex: 20" 
-                                                    className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
-                                                    min="1" 
-                                                    max="500" 
-                                                    required
+                                                <textarea
+                                                    name="descricao"
+                                                    value={eventFormData.descricao || ''}
+                                                    onChange={e => setEventFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                                                    placeholder="Descrição do conteúdo, público e diferenciais"
+                                                    className="w-full input"
+                                                    rows="3"
                                                 />
-                                                {eventFormErrors.limite_participantes && (
-                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
-                                                )}
+                                                <div className="grid gap-3 md:grid-cols-2">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Formato</label>
+                                                        <select
+                                                            name="tipo_evento"
+                                                            value={eventFormData.tipo_evento || 'Workshop'}
+                                                            onChange={e => setEventFormData(prev => ({ ...prev, tipo_evento: e.target.value }))}
+                                                            className="w-full input"
+                                                        >
+                                                            <option value="Workshop">Workshop</option>
+                                                            <option value="Palestra">Palestra</option>
+                                                            <option value="Masterclass">Masterclass</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Profissional responsável</label>
+                                                        <select 
+                                                            name="professional_id" 
+                                                            value={eventFormData.professional_id || ''} 
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, professional_id: e.target.value }));
+                                                                clearEventError('professional_id');
+                                                            }} 
+                                                            className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                            aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
+                                                            required
+                                                        >
+                                                            <option value="">Selecione o profissional</option>
+                                                            {professionals.map(p => (
+                                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                                            ))}
+                                                        </select>
+                                                        {eventFormErrors.professional_id && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1">🎫 Vagas Disponíveis na Sala Zoom</label>
-                                                <input 
-                                                    type="number" 
-                                                    name="vagas_disponiveis" 
-                                                    value={eventFormData.vagas_disponiveis || 0} 
-                                                    onChange={e => {
-                                                        const parsedValue = parseInt(e.target.value, 10);
-                                                        setEventFormData({...eventFormData, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue});
-                                                        clearEventError('vagas_disponiveis');
-                                                    }} 
-                                                    placeholder="0 = ilimitado" 
-                                                    className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
-                                                    min="0" 
-                                                    max="1000"
-                                                />
-                                                {eventFormErrors.vagas_disponiveis && (
-                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
-                                                )}
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    {eventFormData.vagas_disponiveis > 0 
-                                                        ? `Limite: ${eventFormData.vagas_disponiveis} participantes` 
-                                                        : 'Vagas ilimitadas'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1">Valor do Evento (R$)</label>
-                                                <input 
-                                                    type="number" 
-                                                    name="valor" 
-                                                    value={eventFormData.valor || 0} 
-                                                    onChange={e => {
-                                                        const parsedValue = parseFloat(e.target.value);
-                                                        setEventFormData({...eventFormData, valor: Number.isNaN(parsedValue) ? 0 : parsedValue});
-                                                        clearEventError('valor');
-                                                    }} 
-                                                    placeholder="0.00" 
-                                                    className={`w-full input ${eventFormErrors.valor ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.valor ? 'true' : 'false'}
-                                                    min="0" 
-                                                    step="0.01"
-                                                />
-                                                {eventFormErrors.valor && (
-                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
-                                                )}
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    {eventFormData.valor > 0 
-                                                        ? `Evento pago - R$ ${parseFloat(eventFormData.valor).toFixed(2)}` 
-                                                        : 'Evento gratuito'}
-                                                </p>
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1">Limite para Inscrição</label>
-                                                <input 
-                                                    type="datetime-local" 
-                                                    name="data_limite_inscricao" 
-                                                    value={eventFormData.data_limite_inscricao || ''} 
-                                                    onChange={e => {
-                                                        setEventFormData({...eventFormData, data_limite_inscricao: e.target.value});
-                                                        clearEventError('data_limite_inscricao');
-                                                    }} 
-                                                    className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
-                                                    required
-                                                />
-                                                {eventFormErrors.data_limite_inscricao && (
-                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
-                                                )}
-                                            </div>
-                                        </div>
+                                        </section>
 
-                                        {/* Nova seção: Período de Exibição */}
-                                        <div className="border-t pt-4 mt-4">
-                                            <h4 className="text-sm font-semibold text-gray-700 mb-3">📅 Período de Exibição na Página Principal</h4>
-                                            <div className="grid grid-cols-2 gap-4">
+                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-5">
+                                            <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Início da Exibição</label>
+                                                    <h3 className="text-base font-semibold text-gray-800">Agenda e inscrições</h3>
+                                                    <p className="text-xs text-gray-500">Defina datas, limite de vagas e valor do evento.</p>
+                                                </div>
+                                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-4 w-4 text-[#2d8659]"
+                                                        checked={isFreeEvent}
+                                                        onChange={(e) => {
+                                                            setIsFreeEvent(e.target.checked);
+                                                            setEventFormData(prev => ({ ...prev, valor: e.target.checked ? 0 : '' }));
+                                                            clearEventError('valor');
+                                                        }}
+                                                    />
+                                                    Evento gratuito
+                                                </label>
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
+                                                    <input 
+                                                        type="datetime-local" 
+                                                        name="data_inicio" 
+                                                        value={eventFormData.data_inicio || ''} 
+                                                        onChange={e => {
+                                                            setEventFormData(prev => ({ ...prev, data_inicio: e.target.value }));
+                                                            clearEventError('data_inicio');
+                                                            clearEventError('data_fim');
+                                                        }} 
+                                                        className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                        aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                        required
+                                                    />
+                                                    {eventFormErrors.data_inicio && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
+                                                    <input 
+                                                        type="datetime-local" 
+                                                        name="data_fim" 
+                                                        value={eventFormData.data_fim || ''} 
+                                                        onChange={e => {
+                                                            setEventFormData(prev => ({ ...prev, data_fim: e.target.value }));
+                                                            clearEventError('data_fim');
+                                                        }} 
+                                                        className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                        aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
+                                                        required
+                                                    />
+                                                    {eventFormErrors.data_fim && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Limite de participantes</label>
+                                                    <input 
+                                                        type="number" 
+                                                        name="limite_participantes" 
+                                                        value={eventFormData.limite_participantes || ''} 
+                                                        onChange={e => {
+                                                            setEventFormData(prev => ({ ...prev, limite_participantes: e.target.value }));
+                                                            clearEventError('limite_participantes');
+                                                        }} 
+                                                        placeholder="Ex: 25" 
+                                                        className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                        aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
+                                                        min="1" 
+                                                        max="500" 
+                                                        required
+                                                    />
+                                                    {eventFormErrors.limite_participantes && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
+                                                    )}
+                                                    <p className="text-[11px] text-gray-500 mt-1">Ajuste conforme a lotação máxima do evento.</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Vagas simultâneas na sala</label>
+                                                    <input 
+                                                        type="number" 
+                                                        name="vagas_disponiveis" 
+                                                        value={eventFormData.vagas_disponiveis || 0} 
+                                                        onChange={e => {
+                                                            const parsedValue = parseInt(e.target.value, 10);
+                                                            setEventFormData(prev => ({ ...prev, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue }));
+                                                            clearEventError('vagas_disponiveis');
+                                                        }} 
+                                                        placeholder="0 = ilimitado" 
+                                                        className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                        aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
+                                                        min="0" 
+                                                        max="1000"
+                                                    />
+                                                    {eventFormErrors.vagas_disponiveis && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
+                                                    )}
+                                                    <p className="text-[11px] text-gray-500 mt-1">Use zero para manter o acesso ilimitado.</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Valor do evento</label>
+                                                    <div className={`input flex items-center ${isFreeEvent ? 'bg-gray-100 text-gray-400' : ''}`}>
+                                                        <span className="text-xs text-gray-500 mr-2">R$</span>
+                                                        <input
+                                                            type="number"
+                                                            name="valor"
+                                                            value={isFreeEvent ? 0 : eventFormData.valor || ''}
+                                                            onChange={e => {
+                                                                const parsedValue = parseFloat(e.target.value);
+                                                                setEventFormData(prev => ({ ...prev, valor: Number.isNaN(parsedValue) ? '' : parsedValue }));
+                                                                clearEventError('valor');
+                                                            }}
+                                                            placeholder="Ex: 97,00"
+                                                            className="flex-1 bg-transparent outline-none"
+                                                            disabled={isFreeEvent}
+                                                            min="0"
+                                                            step="0.01"
+                                                        />
+                                                    </div>
+                                                    {eventFormErrors.valor && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
+                                                    )}
+                                                    <p className="text-[11px] text-gray-500 mt-1">
+                                                        {isFreeEvent ? 'Marque como pago para definir o valor.' : 'Será cobrado no checkout após a inscrição.'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
+                                                    <input 
+                                                        type="datetime-local" 
+                                                        name="data_limite_inscricao" 
+                                                        value={eventFormData.data_limite_inscricao || ''} 
+                                                        onChange={e => {
+                                                            setEventFormData(prev => ({ ...prev, data_limite_inscricao: e.target.value }));
+                                                            clearEventError('data_limite_inscricao');
+                                                        }} 
+                                                        className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`} 
+                                                        aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
+                                                        required
+                                                    />
+                                                    {eventFormErrors.data_limite_inscricao && (
+                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
+                                                    )}
+                                                    <p className="text-[11px] text-gray-500 mt-1">Após essa data o botão “Inscrever” é ocultado.</p>
+                                                </div>
+                                            </div>
+                                        </section>
+
+                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                            <div>
+                                                <h3 className="text-base font-semibold text-gray-800">Visibilidade no site</h3>
+                                                <p className="text-xs text-gray-500">Controle quando o card aparece e se está ativo.</p>
+                                            </div>
+                                            <div className="grid gap-4 md:grid-cols-2">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Início da exibição</label>
                                                     <input 
                                                         type="datetime-local" 
                                                         name="data_inicio_exibicao" 
                                                         value={eventFormData.data_inicio_exibicao || ''} 
                                                         onChange={e => {
-                                                            setEventFormData({...eventFormData, data_inicio_exibicao: e.target.value});
+                                                            setEventFormData(prev => ({ ...prev, data_inicio_exibicao: e.target.value }));
                                                             clearEventError('data_inicio_exibicao');
                                                             clearEventError('data_fim_exibicao');
                                                         }} 
                                                         className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
                                                         aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
-                                                        title="Data e hora que o evento começará a aparecer na página principal"
                                                     />
-                                                    <p className="text-xs text-gray-500 mt-1">Quando começar a mostrar o evento</p>
                                                     {eventFormErrors.data_inicio_exibicao && (
                                                         <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
                                                     )}
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Fim da Exibição</label>
+                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Fim da exibição</label>
                                                     <input 
                                                         type="datetime-local" 
                                                         name="data_fim_exibicao" 
                                                         value={eventFormData.data_fim_exibicao || ''} 
                                                         onChange={e => {
-                                                            setEventFormData({...eventFormData, data_fim_exibicao: e.target.value});
+                                                            setEventFormData(prev => ({ ...prev, data_fim_exibicao: e.target.value }));
                                                             clearEventError('data_fim_exibicao');
                                                         }} 
                                                         className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
                                                         aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
-                                                        title="Data e hora que o evento deixará de aparecer na página principal"
                                                     />
-                                                    <p className="text-xs text-gray-500 mt-1">Quando parar de mostrar o evento</p>
                                                     {eventFormErrors.data_fim_exibicao && (
                                                         <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
                                                     )}
                                                 </div>
                                             </div>
-                                        </div>
-
-                                        {/* Nova seção: Status Ativo */}
-                                        <div className="border-t pt-4 mt-4">
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
                                                 <input 
                                                     type="checkbox" 
                                                     id="evento_ativo"
                                                     name="ativo" 
                                                     checked={eventFormData.ativo === true} 
-                                                    onChange={e => setEventFormData({...eventFormData, ativo: e.target.checked})} 
+                                                    onChange={e => setEventFormData(prev => ({ ...prev, ativo: e.target.checked }))} 
                                                     className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
                                                 />
                                                 <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                                    ✅ Evento Ativo (visível na página principal)
+                                                    Evento ativo e visível para pacientes
                                                 </label>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-2 ml-7">
-                                                Desmarque para ocultar o evento temporariamente, mesmo dentro do período de exibição
-                                            </p>
-                                        </div>
+                                        </section>
 
-                                        <div className="border-t pt-4 mt-4">
-                                            <h4 className="text-sm font-semibold text-gray-700 mb-2">🎥 Informações da sala (Zoom ou manual)</h4>
-                                            <p className="text-xs text-gray-500 mb-4">
-                                                Caso não esteja usando a criação automática pelo Zoom, informe manualmente os links abaixo.
-                                                Assim que o pagamento é confirmado, os participantes receberão esse link via área logada.
-                                            </p>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                            <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <label className="block text-xs font-medium mb-1">Link para participantes</label>
-                                                    <input
-                                                        type="url"
-                                                        value={eventFormData.meeting_link || ''}
-                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_link: e.target.value }))}
-                                                        placeholder="https://zoom.us/j/123456"
-                                                        className="w-full input"
-                                                    />
-                                                    <p className="text-xs text-gray-500 mt-1">Será exibido apenas para inscritos confirmados.</p>
+                                                    <h3 className="text-base font-semibold text-gray-800">Sala Zoom e links</h3>
+                                                    <p className="text-xs text-gray-500">Usamos criação automática, mas você pode informar manualmente.</p>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1">Senha da reunião</label>
+                                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                                                     <input
-                                                        type="text"
-                                                        value={eventFormData.meeting_password || ''}
-                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_password: e.target.value }))}
-                                                        placeholder="Opcional"
-                                                        className="w-full input"
+                                                        type="checkbox"
+                                                        className="h-4 w-4 text-[#2d8659]"
+                                                        checked={showManualZoomFields}
+                                                        onChange={(e) => {
+                                                            setShowManualZoomFields(e.target.checked);
+                                                            if (!e.target.checked) {
+                                                                setEventFormData(prev => ({
+                                                                    ...prev,
+                                                                    meeting_link: '',
+                                                                    meeting_password: '',
+                                                                    meeting_id: '',
+                                                                    meeting_start_url: ''
+                                                                }));
+                                                            }
+                                                        }}
                                                     />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1">ID da reunião</label>
-                                                    <input
-                                                        type="text"
-                                                        value={eventFormData.meeting_id || ''}
-                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_id: e.target.value }))}
-                                                        placeholder="Ex: 123 456 789"
-                                                        className="w-full input"
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1">Link para o anfitrião</label>
-                                                    <input
-                                                        type="url"
-                                                        value={eventFormData.meeting_start_url || ''}
-                                                        onChange={(e) => setEventFormData((prev) => ({ ...prev, meeting_start_url: e.target.value }))}
-                                                        placeholder="https://zoom.us/s/host"
-                                                        className="w-full input"
-                                                    />
-                                                    <p className="text-xs text-gray-500 mt-1">Visível apenas para administradores.</p>
-                                                </div>
+                                                    Preencher manualmente
+                                                </label>
                                             </div>
-                                        </div>
+                                            {!showManualZoomFields && (
+                                                <div className="rounded-lg border border-dashed border-[#2d8659]/50 bg-[#2d8659]/5 p-4 text-xs text-gray-600">
+                                                    <p className="font-medium text-gray-800">Criação automática habilitada</p>
+                                                    <p>
+                                                        Ao salvar um novo evento, tentaremos criar a sala Zoom com os dados acima.
+                                                        Caso prefira informar o link manualmente, ative a opção “Preencher manualmente”.
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {showManualZoomFields && (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1">Link para participantes</label>
+                                                        <input
+                                                            type="url"
+                                                            value={eventFormData.meeting_link || ''}
+                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
+                                                            placeholder="https://zoom.us/j/123456"
+                                                            className="w-full input"
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">Mostrado apenas para inscritos confirmados.</p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1">Senha da reunião</label>
+                                                        <input
+                                                            type="text"
+                                                            value={eventFormData.meeting_password || ''}
+                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_password: e.target.value }))}
+                                                            placeholder="Opcional"
+                                                            className="w-full input"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1">ID da reunião</label>
+                                                        <input
+                                                            type="text"
+                                                            value={eventFormData.meeting_id || ''}
+                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_id: e.target.value }))}
+                                                            placeholder="Ex: 123 456 789"
+                                                            className="w-full input"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1">Link do anfitrião</label>
+                                                        <input
+                                                            type="url"
+                                                            value={eventFormData.meeting_start_url || ''}
+                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_start_url: e.target.value }))}
+                                                            placeholder="https://zoom.us/s/host"
+                                                            className="w-full input"
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">Visível apenas no painel administrativo.</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </section>
 
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Link do Evento (Slug)</label>
+                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                            <div>
+                                                <h3 className="text-base font-semibold text-gray-800">Link do evento e publicação</h3>
+                                                <p className="text-xs text-gray-500">Use um slug amigável. Deixe vazio para gerar automaticamente.</p>
+                                            </div>
                                             <div className="flex gap-2">
                                                 <input 
                                                     name="link_slug" 
                                                     value={eventFormData.link_slug || ''} 
                                                     onChange={e => {
                                                         const value = e.target.value.toLowerCase();
-                                                        setEventFormData({...eventFormData, link_slug: value});
+                                                        setSlugManuallyEdited(true);
+                                                        setEventFormData(prev => ({ ...prev, link_slug: value }));
                                                         clearEventError('link_slug');
                                                     }} 
-                                                    placeholder="workshop-meditacao-123456" 
+                                                    placeholder="workshop-ansiedade"
                                                     className={`flex-1 input ${eventFormErrors.link_slug ? 'border-red-500 focus:ring-red-300' : ''}`}
                                                     aria-invalid={eventFormErrors.link_slug ? 'true' : 'false'}
                                                     pattern="[a-z0-9-]+"
@@ -4787,25 +4903,45 @@ const AdminPage = () => {
                                                     variant="outline"
                                                     onClick={() => {
                                                         const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
-                                                        setEventFormData({...eventFormData, link_slug: slug});
+                                                        setSlugManuallyEdited(true);
+                                                        setEventFormData(prev => ({ ...prev, link_slug: slug }));
                                                         clearEventError('link_slug');
-                                                        toast({ title: "Slug gerado!", description: slug });
+                                                        toast({ title: 'Slug gerado!', description: slug });
                                                     }}
                                                     disabled={!eventFormData.titulo}
                                                 >
                                                     Gerar
                                                 </Button>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                {eventFormData.link_slug 
-                                                    ? `URL: /evento/${eventFormData.link_slug}` 
-                                                    : 'Deixe vazio para gerar automaticamente'}
-                                            </p>
                                             {eventFormErrors.link_slug && (
-                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.link_slug}</p>
+                                                <p className="text-xs text-red-500">{eventFormErrors.link_slug}</p>
                                             )}
-                                        </div>
-                                        <div className="flex gap-2"><Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">{isEditingEvent ? 'Salvar' : 'Criar'}</Button>{isEditingEvent && <Button type="button" variant="outline" onClick={resetEventForm}>Cancelar</Button>}</div>
+                                            <p className="text-xs text-gray-500">
+                                                {eventFormData.link_slug ? `URL pública: /evento/${eventFormData.link_slug}` : 'Slug será sugerido com base no título.'}
+                                            </p>
+
+                                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-xl bg-gray-50 p-4 text-xs text-gray-600">
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">Resumo rápido</p>
+                                                    <p>{eventFormData.data_inicio ? 'Início em ' + new Date(eventFormData.data_inicio).toLocaleString('pt-BR') : 'Defina a data de início.'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p>{isFreeEvent ? 'Evento gratuito' : hasPaidValue ? `Valor previsto: R$ ${priceNumber.toFixed(2)}` : 'Informe o valor cobrado antes de publicar.'}</p>
+                                                    <p>{eventFormData.professional_id ? 'Profissional selecionado' : 'Selecione um profissional'}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-end">
+                                                {isEditingEvent && (
+                                                    <Button type="button" variant="outline" onClick={resetEventForm}>
+                                                        Cancelar edição
+                                                    </Button>
+                                                )}
+                                                <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]">
+                                                    {isEditingEvent ? 'Salvar alterações' : 'Criar evento'}
+                                                </Button>
+                                            </div>
+                                        </section>
                                     </form>
                                 </div>
                             </div>
