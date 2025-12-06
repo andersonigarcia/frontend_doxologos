@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import MercadoPagoService from '@/lib/mercadoPagoService';
+import { logger } from '@/lib/logger.js';
 import { QRCodeSVG } from 'qrcode.react';
 import { safeRedirect } from '@/lib/securityUtils';
 
@@ -35,6 +36,38 @@ const CheckoutPage = () => {
     const [usingCredit, setUsingCredit] = useState(false);
     const [selectedCreditId, setSelectedCreditId] = useState(null);
     const [creditError, setCreditError] = useState(null);
+
+    const buildLogContext = (extra = {}) => ({
+        bookingId: bookingId || null,
+        inscricaoId: inscricaoId || null,
+        type: type || 'booking',
+        selectedMethod,
+        ...extra
+    });
+
+    const getFreshSession = async () => {
+        const { data: sessionData } = await supabase.auth.getSession();
+        let session = sessionData?.session || null;
+
+        if (!session) {
+            return null;
+        }
+
+        const expiresAt = session.expires_at ? Number(session.expires_at) : null;
+        const needsRefresh = expiresAt && expiresAt <= Math.floor(Date.now() / 1000) + 30;
+
+        if (!needsRefresh) {
+            return session;
+        }
+
+        const { data: refreshed, error } = await supabase.auth.refreshSession();
+        if (error) {
+            logger.error('CheckoutPage.refreshSession:error', error, buildLogContext());
+            return session;
+        }
+
+        return refreshed.session ?? session;
+    };
 
     const paymentMethods = [
         {
@@ -108,6 +141,7 @@ const CheckoutPage = () => {
 
     const fetchBooking = async () => {
         try {
+            logger.info('CheckoutPage.fetchBooking:start', buildLogContext({ bookingId }));
             const { data, error } = await supabase
                 .from('bookings')
                 .select(`
@@ -126,13 +160,15 @@ const CheckoutPage = () => {
 
             // Verificar se já foi pago
             if (data.status === 'confirmed' || data.status === 'paid') {
+                logger.info('CheckoutPage.fetchBooking:already-paid', buildLogContext({ bookingId, status: data.status }));
                 navigate(`/paciente`);
                 return;
             }
 
             setBooking(data);
+            logger.success('CheckoutPage.fetchBooking:success', buildLogContext({ bookingId, status: data.status }));
         } catch (error) {
-            console.error('Erro ao buscar agendamento:', error);
+            logger.error('CheckoutPage.fetchBooking:error', error, buildLogContext({ bookingId }));
             toast({
                 variant: 'destructive',
                 title: 'Erro',
@@ -149,11 +185,11 @@ const CheckoutPage = () => {
         setCreditLoading(true);
         setCreditError(null);
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const session = sessionData?.session;
+            logger.info('CheckoutPage.loadCreditData:start', buildLogContext());
+            const session = await getFreshSession();
 
             if (!session) {
-                console.warn('⚠️ Nenhuma sessão ativa encontrada. Créditos só estão disponíveis após login.');
+                logger.warn('CheckoutPage.loadCreditData:no-session', buildLogContext());
                 setCreditError('Faça login na sua conta para utilizar créditos disponíveis.');
                 setCreditState({ credits: [], balance: null });
                 return;
@@ -169,6 +205,13 @@ const CheckoutPage = () => {
             });
 
             if (error) {
+                if (error.status === 401) {
+                    logger.warn('CheckoutPage.loadCreditData:session-expired', buildLogContext());
+                    await supabase.auth.signOut();
+                    setCreditError('Sua sessão expirou. Faça login novamente para consultar créditos.');
+                    setCreditState({ credits: [], balance: null });
+                    return;
+                }
                 throw new Error(error.message || 'Erro ao consultar créditos');
             }
 
@@ -180,8 +223,12 @@ const CheckoutPage = () => {
                 credits: Array.isArray(data?.credits) ? data.credits : [],
                 balance: data?.balance ?? null,
             });
+            logger.success('CheckoutPage.loadCreditData:success', buildLogContext({
+                credits: Array.isArray(data?.credits) ? data.credits.length : 0,
+                hasBalance: Boolean(data?.balance)
+            }));
         } catch (error) {
-            console.error('Erro ao carregar créditos disponíveis:', error);
+            logger.error('CheckoutPage.loadCreditData:error', error, buildLogContext());
             const message = error instanceof Error ? error.message : 'Erro ao carregar créditos';
             setCreditError(message.includes('Authentication required') ? 'Faça login novamente para consultar seus créditos.' : message);
         } finally {
@@ -191,6 +238,7 @@ const CheckoutPage = () => {
 
     const fetchInscricao = async () => {
         try {
+            logger.info('CheckoutPage.fetchInscricao:start', buildLogContext({ inscricaoId }));
             const { data, error } = await supabase
                 .from('inscricoes_eventos')
                 .select(`
@@ -217,8 +265,9 @@ const CheckoutPage = () => {
             }
 
             setInscricao(data);
+            logger.success('CheckoutPage.fetchInscricao:success', buildLogContext({ inscricaoId, status_pagamento: data.status_pagamento }));
         } catch (error) {
-            console.error('Erro ao buscar inscrição:', error);
+            logger.error('CheckoutPage.fetchInscricao:error', error, buildLogContext({ inscricaoId }));
             toast({
                 variant: 'destructive',
                 title: 'Erro',
@@ -251,6 +300,12 @@ const CheckoutPage = () => {
         let reserved = false;
 
         try {
+            logger.info('CheckoutPage.processCreditCheckout:start', buildLogContext({
+                bookingId,
+                creditId: selectedCredit.id,
+                bookingTotal,
+                creditAmount
+            }));
             const reserveResponse = await supabase.functions.invoke('financial-credit-manager', {
                 body: {
                     action: 'reserve',
@@ -269,6 +324,11 @@ const CheckoutPage = () => {
             }
 
             reserved = true;
+            logger.info('CheckoutPage.processCreditCheckout:credit-reserved', buildLogContext({
+                bookingId,
+                creditId: selectedCredit.id,
+                reservationToken
+            }));
 
             const consumeResponse = await supabase.functions.invoke('financial-credit-manager', {
                 body: {
@@ -289,6 +349,11 @@ const CheckoutPage = () => {
             }
 
             const creditCurrency = consumeResponse.data?.credit?.currency || 'BRL';
+            logger.success('CheckoutPage.processCreditCheckout:credit-consumed', buildLogContext({
+                bookingId,
+                creditId: selectedCredit.id,
+                reservationToken
+            }));
 
             const { error: bookingError } = await supabase
                 .from('bookings')
@@ -317,13 +382,21 @@ const CheckoutPage = () => {
                 });
 
             if (paymentRecordError) {
-                console.warn('Falha ao registrar pagamento com crédito', paymentRecordError);
+                logger.warn('CheckoutPage.processCreditCheckout:payment-record-warning', {
+                    bookingId,
+                    paymentRecordError
+                });
             }
 
             toast({
                 title: 'Crédito aplicado com sucesso!',
                 description: 'Seu agendamento foi confirmado utilizando o crédito disponível.',
             });
+
+            logger.success('CheckoutPage.processCreditCheckout:success', buildLogContext({
+                bookingId,
+                creditId: selectedCredit.id
+            }));
 
             navigate('/checkout/success', {
                 state: {
@@ -343,7 +416,11 @@ const CheckoutPage = () => {
                         },
                     });
                 } catch (releaseError) {
-                    console.error('Falha ao liberar crédito após erro:', releaseError);
+                    logger.error('CheckoutPage.processCreditCheckout:release-error', releaseError, buildLogContext({
+                        bookingId,
+                        creditId: selectedCredit.id,
+                        reservationToken
+                    }));
                 }
             }
 
@@ -357,6 +434,12 @@ const CheckoutPage = () => {
         setPaymentStatus(null);
 
         try {
+            logger.info('CheckoutPage.handlePayment:start', buildLogContext({
+                creditCoversTotal,
+                bookingTotal,
+                selectedMethod,
+                type
+            }));
             if (creditCoversTotal && bookingId) {
                 await processCreditCheckout();
                 return;
@@ -405,11 +488,15 @@ const CheckoutPage = () => {
 
             // Se for PIX, usar pagamento direto (sem redirecionamento)
             if (selectedMethod === 'pix') {
-                console.log('🔵 Criando pagamento PIX direto...');
+                logger.info('CheckoutPage.handlePayment:create-pix', buildLogContext({ referenceId, amount }));
                 const result = await MercadoPagoService.createPixPayment(requestPayload);
 
                 if (result.success) {
-                    console.log('✅ Pagamento PIX criado:', result);
+                    logger.success('CheckoutPage.handlePayment:pix-created', buildLogContext({
+                        referenceId,
+                        paymentId: result.payment_id,
+                        amount
+                    }));
                     setPixPayment(result);
                     
                     // Iniciar polling do status do pagamento
@@ -424,7 +511,11 @@ const CheckoutPage = () => {
                 }
             } else {
                 // Para outros métodos, usar preferência (redirecionamento)
-                console.log('💳 Criando preferência para', selectedMethod);
+                logger.info('CheckoutPage.handlePayment:create-preference', buildLogContext({
+                    referenceId,
+                    amount,
+                    selectedMethod
+                }));
 
                 // Configurar payment_methods baseado no método selecionado
                 let paymentMethodConfig = {
@@ -456,6 +547,11 @@ const CheckoutPage = () => {
 
                 if (result.success) {
                     setPreference(result);
+                    logger.success('CheckoutPage.handlePayment:preference-created', buildLogContext({
+                        referenceId,
+                        amount,
+                        init_point: result.init_point
+                    }));
                     
                     // Redirecionamento seguro - valida URL antes de redirecionar
                     safeRedirect(result.init_point, '/');
@@ -465,7 +561,7 @@ const CheckoutPage = () => {
             }
 
         } catch (error) {
-            console.error('Erro ao processar pagamento:', error);
+            logger.error('CheckoutPage.handlePayment:error', error, buildLogContext());
             toast({
                 variant: 'destructive',
                 title: 'Erro ao processar pagamento',
@@ -478,7 +574,7 @@ const CheckoutPage = () => {
 
     // Inicia polling para verificar status do pagamento
     const startPaymentPolling = (paymentId) => {
-        console.log('🔄 Iniciando polling do pagamento:', paymentId);
+        logger.info('CheckoutPage.startPaymentPolling:start', buildLogContext({ paymentId }));
         
         // Limpar interval anterior se existir
         if (pollingInterval) {
@@ -491,10 +587,14 @@ const CheckoutPage = () => {
                 const statusResult = await MercadoPagoService.checkPaymentStatus(paymentId);
                 
                 if (statusResult.success) {
-                    console.log('📊 Status atual:', statusResult.status);
+                    logger.info('CheckoutPage.startPaymentPolling:status', buildLogContext({
+                        paymentId,
+                        status: statusResult.status,
+                        status_detail: statusResult.status_detail
+                    }));
                     
                     if (statusResult.status === 'approved') {
-                        console.log('✅ Pagamento aprovado!');
+                        logger.success('CheckoutPage.startPaymentPolling:approved', buildLogContext({ paymentId }));
                         clearInterval(intervalId);
                         setPollingInterval(null);
                         
@@ -511,7 +611,11 @@ const CheckoutPage = () => {
                         });
                         
                     } else if (statusResult.status === 'rejected' || statusResult.status === 'cancelled') {
-                        console.log('❌ Pagamento rejeitado/cancelado');
+                        logger.warn('CheckoutPage.startPaymentPolling:rejected', buildLogContext({
+                            paymentId,
+                            status: statusResult.status,
+                            status_detail: statusResult.status_detail
+                        }));
                         clearInterval(intervalId);
                         setPollingInterval(null);
 
@@ -533,7 +637,7 @@ const CheckoutPage = () => {
                     }
                 }
             } catch (error) {
-                console.error('Erro ao verificar status:', error);
+                logger.error('CheckoutPage.startPaymentPolling:error', error, buildLogContext({ paymentId }));
             }
         }, 3000); // 3 segundos
 
@@ -543,7 +647,7 @@ const CheckoutPage = () => {
     // Atualiza status do pagamento no booking ou inscrição
     const updateBookingPaymentStatus = async (paymentId) => {
         try {
-            console.log('💾 Atualizando status do pagamento...', paymentId);
+            logger.info('CheckoutPage.updateBookingPaymentStatus:start', buildLogContext({ paymentId }));
             
             // 1. Atualizar status do pagamento na tabela payments
             const { error: paymentError } = await supabase
@@ -555,9 +659,9 @@ const CheckoutPage = () => {
                 .eq('mp_payment_id', paymentId.toString());
 
             if (paymentError) {
-                console.error('❌ Erro ao atualizar pagamento:', paymentError);
+                logger.error('CheckoutPage.updateBookingPaymentStatus:payment-error', paymentError, buildLogContext({ paymentId }));
             } else {
-                console.log('✅ Status do pagamento atualizado para approved');
+                logger.success('CheckoutPage.updateBookingPaymentStatus:payment-updated', buildLogContext({ paymentId }));
             }
             
             if (type === 'evento') {
@@ -570,9 +674,9 @@ const CheckoutPage = () => {
                     .eq('id', inscricaoId);
 
                 if (inscricaoError) {
-                    console.error('❌ Erro ao atualizar inscrição:', inscricaoError);
+                    logger.error('CheckoutPage.updateBookingPaymentStatus:inscricao-error', inscricaoError, buildLogContext({ paymentId, inscricaoId }));
                 } else {
-                    console.log('✅ Status da inscrição atualizado para confirmado');
+                    logger.success('CheckoutPage.updateBookingPaymentStatus:inscricao-updated', buildLogContext({ paymentId, inscricaoId }));
                 }
             } else {
                 // 2. Atualizar status do booking para 'confirmed'
@@ -584,13 +688,13 @@ const CheckoutPage = () => {
                     .eq('id', bookingId);
 
                 if (bookingError) {
-                    console.error('❌ Erro ao atualizar booking:', bookingError);
+                    logger.error('CheckoutPage.updateBookingPaymentStatus:booking-error', bookingError, buildLogContext({ paymentId, bookingId }));
                 } else {
-                    console.log('✅ Status do booking atualizado para confirmed');
+                    logger.success('CheckoutPage.updateBookingPaymentStatus:booking-updated', buildLogContext({ paymentId, bookingId }));
                 }
             }
         } catch (error) {
-            console.error('Erro ao atualizar status:', error);
+            logger.error('CheckoutPage.updateBookingPaymentStatus:error', error, buildLogContext({ paymentId }));
         }
     };
 

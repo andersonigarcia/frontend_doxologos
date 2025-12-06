@@ -4,9 +4,18 @@
  */
 
 import { supabase } from './customSupabaseClient';
+import { logger } from './logger.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+const buildPaymentLogContext = ({ booking_id, inscricao_id, amount, description, payment_method_id }) => ({
+    bookingId: booking_id || null,
+    inscricaoId: inscricao_id || null,
+    amount,
+    description,
+    paymentMethod: payment_method_id || 'pix'
+});
 
 export class MercadoPagoService {
     /**
@@ -21,8 +30,6 @@ export class MercadoPagoService {
      */
     static async createPixPayment(paymentData) {
         try {
-            console.log('🔵 [MP] Criando pagamento PIX direto...', paymentData);
-
             const { booking_id, inscricao_id, amount, description, payer } = paymentData;
 
             if ((!booking_id && !inscricao_id) || !amount) {
@@ -43,7 +50,8 @@ export class MercadoPagoService {
                 payment_method_id: 'pix'
             };
 
-            console.log('📤 [MP Service] Criando pagamento PIX:', payload);
+            const logContext = buildPaymentLogContext(payload);
+            logger.info('MercadoPagoService.createPixPayment:start', { ...logContext, referenceId });
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-payment`, {
                 method: 'POST',
@@ -56,12 +64,22 @@ export class MercadoPagoService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ [MP] Erro ao criar pagamento PIX:', errorText);
+                logger.error('MercadoPagoService.createPixPayment:http-error', null, {
+                    ...logContext,
+                    referenceId,
+                    status: response.status,
+                    body: errorText
+                });
                 throw new Error(`Erro ao criar pagamento PIX: ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('✅ [MP] Pagamento PIX criado com sucesso:', result);
+            logger.success('MercadoPagoService.createPixPayment:success', {
+                ...logContext,
+                referenceId,
+                paymentId: result.payment_id,
+                status: result.status
+            });
 
             return {
                 success: true,
@@ -73,7 +91,7 @@ export class MercadoPagoService {
             };
 
         } catch (error) {
-            console.error('❌ [MP] Erro no createPixPayment:', error);
+            logger.error('MercadoPagoService.createPixPayment:error', error, buildPaymentLogContext(paymentData));
             return {
                 success: false,
                 error: error.message
@@ -87,8 +105,10 @@ export class MercadoPagoService {
      * @returns {Promise<Object>} - Status atual do pagamento
      */
     static async checkPaymentStatus(paymentId) {
+        const context = { paymentId };
+
         try {
-            console.log('🔍 [MP] Verificando status do pagamento:', paymentId);
+            logger.info('MercadoPagoService.checkPaymentStatus:start', context);
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-check-payment`, {
                 method: 'POST',
@@ -101,12 +121,20 @@ export class MercadoPagoService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ [MP] Erro ao verificar status:', errorText);
+                logger.error('MercadoPagoService.checkPaymentStatus:http-error', null, {
+                    ...context,
+                    status: response.status,
+                    body: errorText
+                });
                 throw new Error(`Erro ao verificar status: ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('✅ [MP] Status do pagamento:', result);
+            logger.info('MercadoPagoService.checkPaymentStatus:success', {
+                ...context,
+                status: result.status,
+                status_detail: result.status_detail
+            });
 
             return {
                 success: true,
@@ -115,7 +143,7 @@ export class MercadoPagoService {
             };
 
         } catch (error) {
-            console.error('❌ [MP] Erro no checkPaymentStatus:', error);
+            logger.error('MercadoPagoService.checkPaymentStatus:error', error, context);
             return {
                 success: false,
                 error: error.message
@@ -134,18 +162,29 @@ export class MercadoPagoService {
      * @returns {Promise<Object>} - Dados da preferência criada
      */
     static async createPreference(paymentData) {
+        const {
+            booking_id,
+            inscricao_id,
+            amount,
+            description,
+            payer,
+            payment_methods
+        } = paymentData || {};
+
+        const referenceId = booking_id || inscricao_id;
+        const logContext = {
+            referenceId,
+            amount,
+            description: description || null,
+            payerEmail: payer?.email || null,
+            customPaymentMethods: Boolean(payment_methods)
+        };
+
         try {
-            console.log('💳 [MP] Criando preferência de pagamento...', paymentData);
-
-            const { booking_id, inscricao_id, amount, description, payer, payment_methods } = paymentData;
-
             if ((!booking_id && !inscricao_id) || !amount) {
                 throw new Error('booking_id ou inscricao_id e amount são obrigatórios');
             }
 
-            const referenceId = booking_id || inscricao_id;
-
-            // Chamar Edge Function para criar preferência
             const payload = {
                 ...(booking_id ? { booking_id } : {}),
                 ...(inscricao_id ? { inscricao_id } : {}),
@@ -161,16 +200,7 @@ export class MercadoPagoService {
                 }
             };
 
-            console.log('📤 [MP Service] Payload ANTES de JSON.stringify:', payload);
-            console.log('📤 [MP Service] payment_methods.excluded_payment_types tipo:', typeof payload.payment_methods.excluded_payment_types);
-            console.log('📤 [MP Service] payment_methods.excluded_payment_types é array?:', Array.isArray(payload.payment_methods.excluded_payment_types));
-            
-            const stringifiedPayload = JSON.stringify(payload);
-            console.log('📤 [MP Service] Payload APÓS JSON.stringify:', stringifiedPayload);
-            
-            // Verificar se o parse mantém o array
-            const parsedBack = JSON.parse(stringifiedPayload);
-            console.log('📤 [MP Service] Após parse - excluded_payment_types é array?:', Array.isArray(parsedBack.payment_methods.excluded_payment_types));
+            logger.info('MercadoPagoService.createPreference:start', logContext);
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-preference`, {
                 method: 'POST',
@@ -178,17 +208,25 @@ export class MercadoPagoService {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                 },
-                body: stringifiedPayload
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ [MP] Erro ao criar preferência:', errorText);
+                logger.error('MercadoPagoService.createPreference:http-error', null, {
+                    ...logContext,
+                    status: response.status,
+                    body: errorText
+                });
                 throw new Error(`Erro ao criar preferência: ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('✅ [MP] Preferência criada com sucesso:', result);
+            logger.success('MercadoPagoService.createPreference:success', {
+                ...logContext,
+                preference_id: result.preference_id,
+                init_point: result.init_point
+            });
 
             return {
                 success: true,
@@ -198,7 +236,7 @@ export class MercadoPagoService {
             };
 
         } catch (error) {
-            console.error('❌ [MP] Erro no createPreference:', error);
+            logger.error('MercadoPagoService.createPreference:error', error, logContext);
             return {
                 success: false,
                 error: error.message
@@ -212,7 +250,11 @@ export class MercadoPagoService {
      * @returns {Promise<Object>} - Dados do pagamento
      */
     static async getPayment(paymentId) {
+        const context = { paymentId };
+
         try {
+            logger.info('MercadoPagoService.getPayment:start', context);
+
             const { data, error } = await supabase
                 .from('payments')
                 .select('*')
@@ -221,9 +263,14 @@ export class MercadoPagoService {
 
             if (error) throw error;
 
+            logger.success('MercadoPagoService.getPayment:success', {
+                ...context,
+                found: Boolean(data)
+            });
+
             return { success: true, data };
         } catch (error) {
-            console.error('❌ [MP] Erro ao buscar pagamento:', error);
+            logger.error('MercadoPagoService.getPayment:error', error, context);
             return { success: false, error: error.message };
         }
     }
@@ -234,7 +281,11 @@ export class MercadoPagoService {
      * @returns {Promise<Array>} - Lista de pagamentos
      */
     static async getBookingPayments(bookingId) {
+        const context = { bookingId };
+
         try {
+            logger.info('MercadoPagoService.getBookingPayments:start', context);
+
             const { data, error } = await supabase
                 .from('payments')
                 .select('*')
@@ -243,9 +294,14 @@ export class MercadoPagoService {
 
             if (error) throw error;
 
+            logger.success('MercadoPagoService.getBookingPayments:success', {
+                ...context,
+                count: data?.length || 0
+            });
+
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ [MP] Erro ao buscar pagamentos:', error);
+            logger.error('MercadoPagoService.getBookingPayments:error', error, context);
             return { success: false, error: error.message, data: [] };
         }
     }
@@ -256,7 +312,18 @@ export class MercadoPagoService {
      * @returns {Promise<Array>} - Lista de pagamentos
      */
     static async listPayments(filters = {}) {
+        const context = {
+            status: filters.status,
+            payment_method: filters.payment_method,
+            date_from: filters.date_from,
+            date_to: filters.date_to,
+            payer_email: filters.payer_email,
+            limit: filters.limit
+        };
+
         try {
+            logger.info('MercadoPagoService.listPayments:start', context);
+
             let query = supabase
                 .from('payments')
                 .select('*, booking:bookings(patient_name, patient_email, booking_date, booking_time)');
@@ -292,9 +359,14 @@ export class MercadoPagoService {
 
             if (error) throw error;
 
+            logger.success('MercadoPagoService.listPayments:success', {
+                ...context,
+                count: data?.length || 0
+            });
+
             return { success: true, data: data || [] };
         } catch (error) {
-            console.error('❌ [MP] Erro ao listar pagamentos:', error);
+            logger.error('MercadoPagoService.listPayments:error', error, context);
             return { success: false, error: error.message, data: [] };
         }
     }
@@ -306,8 +378,10 @@ export class MercadoPagoService {
      * @returns {Promise<Object>} - Resultado do reembolso
      */
     static async refundPayment(paymentId, amount = null) {
+        const context = { paymentId, amount };
+
         try {
-            console.log('💰 [MP] Solicitando reembolso...', { paymentId, amount });
+            logger.info('MercadoPagoService.refundPayment:start', context);
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-refund`, {
                 method: 'POST',
@@ -317,23 +391,30 @@ export class MercadoPagoService {
                 },
                 body: JSON.stringify({
                     payment_id: paymentId,
-                    amount: amount
+                    amount
                 })
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ [MP] Erro ao processar reembolso:', errorText);
+                logger.error('MercadoPagoService.refundPayment:http-error', null, {
+                    ...context,
+                    status: response.status,
+                    body: errorText
+                });
                 throw new Error(`Erro ao processar reembolso: ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('✅ [MP] Reembolso processado:', result);
+            logger.success('MercadoPagoService.refundPayment:success', {
+                ...context,
+                status: result?.status || result?.refund_status || 'unknown'
+            });
 
             return { success: true, data: result };
 
         } catch (error) {
-            console.error('❌ [MP] Erro no refundPayment:', error);
+            logger.error('MercadoPagoService.refundPayment:error', error, context);
             return { success: false, error: error.message };
         }
     }
@@ -344,7 +425,11 @@ export class MercadoPagoService {
      * @returns {Promise<Object>} - Resultado do cancelamento
      */
     static async cancelPayment(paymentId) {
+        const context = { paymentId };
+
         try {
+            logger.info('MercadoPagoService.cancelPayment:start', context);
+
             const { error } = await supabase
                 .from('payments')
                 .update({ 
@@ -355,9 +440,11 @@ export class MercadoPagoService {
 
             if (error) throw error;
 
+            logger.success('MercadoPagoService.cancelPayment:success', context);
+
             return { success: true };
         } catch (error) {
-            console.error('❌ [MP] Erro ao cancelar pagamento:', error);
+            logger.error('MercadoPagoService.cancelPayment:error', error, context);
             return { success: false, error: error.message };
         }
     }
@@ -470,8 +557,16 @@ export class MercadoPagoService {
      * @returns {Promise<Object>} - Resultado do pagamento
      */
     static async processCardPayment(paymentData) {
+        const logContext = {
+            bookingId: paymentData?.booking_id || paymentData?.reference_id || null,
+            amount: paymentData?.transaction_amount || paymentData?.amount || null,
+            installments: paymentData?.installments || null,
+            paymentMethod: paymentData?.payment_method_id || 'card',
+            hasToken: Boolean(paymentData?.token)
+        };
+
         try {
-            console.log('💳 [MP] Processando pagamento com cartão...', paymentData);
+            logger.info('MercadoPagoService.processCardPayment:start', logContext);
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-process-card-payment`, {
                 method: 'POST',
@@ -484,12 +579,15 @@ export class MercadoPagoService {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('❌ [MP] Erro ao processar pagamento:', errorText);
+                logger.error('MercadoPagoService.processCardPayment:http-error', null, {
+                    ...logContext,
+                    status: response.status,
+                    body: errorText
+                });
                 throw new Error(`Erro ao processar pagamento: ${errorText}`);
             }
 
             const result = await response.json();
-            console.log('✅ [MP] Pagamento processado:', result);
 
             const status = result?.status;
             const statusDetail = result?.status_detail;
@@ -497,6 +595,13 @@ export class MercadoPagoService {
                 ? status.toLowerCase()
                 : undefined;
             const friendlyMessage = this.getFriendlyStatusMessage(statusDetail, status);
+
+            logger.info('MercadoPagoService.processCardPayment:response', {
+                ...logContext,
+                status,
+                status_detail: statusDetail,
+                success: result?.success !== false && normalizedStatus === 'approved'
+            });
 
             if (normalizedStatus && normalizedStatus !== 'approved') {
                 const fallbackMessage = friendlyMessage
@@ -544,7 +649,7 @@ export class MercadoPagoService {
             };
 
         } catch (error) {
-            console.error('❌ [MP] Erro no processCardPayment:', error);
+            logger.error('MercadoPagoService.processCardPayment:error', error, logContext);
             return {
                 success: false,
                 error: error.message

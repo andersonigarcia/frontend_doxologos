@@ -34,6 +34,31 @@ const jsonResponse = (status: number, body: unknown) =>
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 
+type LogLevel = 'info' | 'warn' | 'error';
+
+const log = (level: LogLevel, message: string, context: Record<string, unknown> = {}) => {
+  const payload = {
+    ts: new Date().toISOString(),
+    source: 'financial-credit-manager',
+    level,
+    message,
+    ...context,
+  };
+
+  const serialized = JSON.stringify(payload);
+  if (level === 'error') {
+    console.error(serialized);
+  } else if (level === 'warn') {
+    console.warn(serialized);
+  } else {
+    console.log(serialized);
+  }
+};
+
+const logInfo = (message: string, context?: Record<string, unknown>) => log('info', message, context);
+const logWarn = (message: string, context?: Record<string, unknown>) => log('warn', message, context);
+const logError = (message: string, context?: Record<string, unknown>) => log('error', message, context);
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -50,7 +75,7 @@ serve(async (req: Request) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
 
   if (!supabaseUrl || !serviceRoleKey) {
-    console.error('Supabase credentials not configured');
+    logError('supabase-credentials-missing');
     return jsonResponse(500, {
       error: 'Supabase credentials not configured',
     });
@@ -69,7 +94,7 @@ serve(async (req: Request) => {
     if (token.length > 0) {
       const { data, error } = await supabaseAdmin.auth.getUser(token);
       if (error) {
-        console.warn('Failed to validate auth token', error.message);
+        logWarn('auth-token-validation-failed', { message: error.message });
       } else {
         authUser = data.user;
       }
@@ -80,7 +105,7 @@ serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch (error) {
-    console.error('Invalid JSON payload', error);
+    logError('invalid-json-payload', { message: (error as Error)?.message });
     return jsonResponse(400, { error: 'Invalid JSON payload' });
   }
 
@@ -110,7 +135,7 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching credit', error);
+      logError('fetch-credit-error', { creditId, message: error.message });
       throw jsonResponse(500, { error: 'Error fetching credit', details: error.message });
     }
 
@@ -126,6 +151,7 @@ serve(async (req: Request) => {
       case 'list': {
         const user = ensureAuthenticated();
         const statusFilter = body.status as string | undefined;
+        logInfo('financial-credit-manager:list:start', { userId: user.id, statusFilter });
         const query = supabaseAdmin
           .from('financial_credits')
           .select('*')
@@ -138,7 +164,7 @@ serve(async (req: Request) => {
 
         const { data: credits, error } = await query;
         if (error) {
-          console.error('Error listing credits', error);
+          logError('financial-credit-manager:list:error', { userId: user.id, message: error.message });
           return jsonResponse(500, { error: 'Error listing credits', details: error.message });
         }
 
@@ -149,7 +175,7 @@ serve(async (req: Request) => {
           .maybeSingle();
 
         if (balanceError) {
-          console.error('Error loading balances', balanceError);
+          logWarn('financial-credit-manager:list:balance-error', { userId: user.id, message: balanceError.message });
         }
 
         const balance = balanceRow ?? {
@@ -159,6 +185,11 @@ serve(async (req: Request) => {
           used_amount: 0,
           expired_amount: 0,
         };
+
+        logInfo('financial-credit-manager:list:success', {
+          userId: user.id,
+          creditCount: credits?.length ?? 0,
+        });
 
         return jsonResponse(200, { credits: credits ?? [], balance });
       }
@@ -173,6 +204,12 @@ serve(async (req: Request) => {
         const userId = body.user_id as string | undefined;
         const amountRaw = body.amount as number | string | undefined;
         const sourceType = body.source_type as string | undefined;
+
+        logInfo('financial-credit-manager:create:start', {
+          requestedUserId: userId,
+          sourceType,
+          isPrivileged,
+        });
 
         if (!userId || !amountRaw || !sourceType) {
           return jsonResponse(400, {
@@ -219,10 +256,10 @@ serve(async (req: Request) => {
           .single();
 
         if (error) {
-          console.error('Error creating credit', error);
+          logError('financial-credit-manager:create:error', { requestedUserId: userId, message: error.message });
           return jsonResponse(500, { error: 'Error creating credit', details: error.message });
         }
-
+        logInfo('financial-credit-manager:create:success', { creditId: data.id, requestedUserId: userId });
         return jsonResponse(201, { credit: data });
       }
 
@@ -232,6 +269,11 @@ serve(async (req: Request) => {
         const reservationToken = body.reservation_token as string | undefined;
         const reservationNote = body.reservation_note as string | undefined;
         const reservationExpiresAt = body.reservation_expires_at as string | undefined;
+
+        logInfo('financial-credit-manager:reserve:start', {
+          creditId,
+          userId: user.id,
+        });
 
         if (!creditId) {
           return jsonResponse(400, { error: 'credit_id is required' });
@@ -278,10 +320,11 @@ serve(async (req: Request) => {
           .single();
 
         if (error) {
-          console.error('Error reserving credit', error);
+          logError('financial-credit-manager:reserve:error', { creditId, userId: user.id, message: error.message });
           return jsonResponse(500, { error: 'Error reserving credit', details: error.message });
         }
 
+        logInfo('financial-credit-manager:reserve:success', { creditId, userId: user.id });
         return jsonResponse(200, { credit: data });
       }
 
@@ -289,6 +332,8 @@ serve(async (req: Request) => {
         const user = ensureAuthenticated();
         const creditId = body.credit_id as string | undefined;
         const reservationToken = body.reservation_token as string | undefined;
+
+        logInfo('financial-credit-manager:release:start', { creditId, userId: user.id });
 
         if (!creditId) {
           return jsonResponse(400, { error: 'credit_id is required' });
@@ -331,10 +376,11 @@ serve(async (req: Request) => {
           .single();
 
         if (error) {
-          console.error('Error releasing credit', error);
+          logError('financial-credit-manager:release:error', { creditId, userId: user.id, message: error.message });
           return jsonResponse(500, { error: 'Error releasing credit', details: error.message });
         }
 
+        logInfo('financial-credit-manager:release:success', { creditId, userId: user.id });
         return jsonResponse(200, { credit: data });
       }
 
@@ -344,6 +390,13 @@ serve(async (req: Request) => {
         const usedPaymentId = body.used_payment_id as string | undefined;
         const consumptionNote = body.consumption_note as string | undefined;
         const reservationToken = body.reservation_token as string | undefined;
+
+        logInfo('financial-credit-manager:consume:start', {
+          creditId,
+          usedBookingId,
+          usedPaymentId,
+          isPrivileged,
+        });
 
         if (!creditId) {
           return jsonResponse(400, { error: 'credit_id is required' });
@@ -413,10 +466,11 @@ serve(async (req: Request) => {
           .single();
 
         if (error) {
-          console.error('Error consuming credit', error);
+          logError('financial-credit-manager:consume:error', { creditId, message: error.message });
           return jsonResponse(500, { error: 'Error consuming credit', details: error.message });
         }
 
+        logInfo('financial-credit-manager:consume:success', { creditId, usedBookingId, usedPaymentId });
         return jsonResponse(200, { credit: data });
       }
 
@@ -429,7 +483,7 @@ serve(async (req: Request) => {
     }
 
     const error = responseOrError as Error;
-    console.error('Unhandled error financial-credit-manager', error);
+    logError('financial-credit-manager:unhandled-error', { message: error.message, stack: error.stack });
     return jsonResponse(500, { error: 'Unhandled error', details: error.message });
   }
 });

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, AlertTriangle, Heart, Lock } from 'lucide-react';
 import emailService from '@/lib/emailService';
 import emailTemplates from '@/lib/emailTemplates'; // NOVO: Templates para eventos
+import { logger } from '@/lib/logger.js';
 
 const EventoDetalhePage = () => {
     const { slug } = useParams();
@@ -28,6 +29,13 @@ const EventoDetalhePage = () => {
     const [emailError, setEmailError] = useState('');
     const [emailStatus, setEmailStatus] = useState(null); // 'new' | 'existing' | null
     const [isProcessing, setIsProcessing] = useState(false);
+
+    const buildLogContext = (extra = {}) => ({
+        slug,
+        eventId: event?.id || null,
+        userId: user?.id || null,
+        ...extra
+    });
 
     // Função para aplicar máscara no telefone
     const formatPhone = (value) => {
@@ -70,7 +78,9 @@ const EventoDetalhePage = () => {
             });
 
             if (error) {
-                console.warn('Não foi possível verificar email via RPC, usando fallback:', error);
+                logger.warn('EventoDetalhePage.checkEmailExists:rpc-fallback', buildLogContext({
+                    message: error?.message
+                }));
                 const { data: inscricao } = await supabase
                     .from('inscricoes_eventos')
                     .select('user_id')
@@ -84,7 +94,7 @@ const EventoDetalhePage = () => {
 
             setEmailStatus(userId ? 'existing' : 'new');
         } catch (error) {
-            console.error('Erro ao verificar email existente:', error);
+            logger.error('EventoDetalhePage.checkEmailExists:error', error, buildLogContext());
             setEmailStatus(null);
         }
     };
@@ -103,7 +113,7 @@ const EventoDetalhePage = () => {
     useEffect(() => {
         const fetchEvent = async () => {
             setLoading(true);
-            console.log('🔍 Buscando evento com slug:', slug);
+            logger.info('EventoDetalhePage.fetchEvent:start', buildLogContext({ slug }));
             
             const { data, error } = await supabase
                 .from('eventos')
@@ -111,10 +121,8 @@ const EventoDetalhePage = () => {
                 .eq('link_slug', slug)
                 .single();
 
-            console.log('📦 Resposta do Supabase:', { data, error });
-
             if (error || !data) {
-                console.error('❌ Erro ao buscar evento:', error);
+                logger.error('EventoDetalhePage.fetchEvent:error', error, buildLogContext({ slug }));
                 setError(error?.message || 'Evento não encontrado.');
                 toast({ variant: 'destructive', title: 'Erro', description: 'Este evento não existe ou não está mais disponível.' });
             } else {
@@ -137,11 +145,12 @@ const EventoDetalhePage = () => {
                     .in('status', ['pending', 'confirmed']);
 
                 if (inscricoesError) {
-                    console.error('Erro ao contar inscrições do evento:', inscricoesError);
+                    logger.error('EventoDetalhePage.fetchEvent:count-error', inscricoesError, buildLogContext({ eventId: data.id }));
                 }
 
                 setEvent(data);
                 setInscricoesCount(count || 0);
+                logger.success('EventoDetalhePage.fetchEvent:success', buildLogContext({ eventId: data.id }));
             }
             setLoading(false);
         };
@@ -171,6 +180,10 @@ const EventoDetalhePage = () => {
     
     const handleRegistration = async () => {
         setIsProcessing(true);
+        logger.info('EventoDetalhePage.handleRegistration:start', buildLogContext({
+            emailStatus,
+            isUserRegistered
+        }));
 
         const trimmedEmail = patientData.email.trim();
         const normalizedEmail = trimmedEmail.toLowerCase();
@@ -218,12 +231,12 @@ const EventoDetalhePage = () => {
                 });
 
                 if (rpcError) {
-                    console.warn('Não foi possível consultar usuário via RPC:', rpcError);
+                    logger.warn('EventoDetalhePage.handleRegistration:rpc-lookup-fallback', buildLogContext({ message: rpcError.message }));
                 } else {
                     existingUserId = rpcUserId ?? null;
                 }
             } catch (lookupError) {
-                console.error('Erro inesperado ao consultar usuário via RPC:', lookupError);
+                logger.error('EventoDetalhePage.handleRegistration:rpc-lookup-error', lookupError, buildLogContext());
             }
 
             if (!existingUserId) {
@@ -235,7 +248,7 @@ const EventoDetalhePage = () => {
                     .maybeSingle();
 
                 if (inscricaoLookupError) {
-                    console.warn('Falha ao verificar inscrições existentes:', inscricaoLookupError);
+                    logger.warn('EventoDetalhePage.handleRegistration:inscricao-lookup-warning', buildLogContext({ message: inscricaoLookupError.message }));
                 }
 
                 existingUserId = existingInscricao?.user_id ?? null;
@@ -311,7 +324,7 @@ const EventoDetalhePage = () => {
                 });
 
                 if (autoSignInError) {
-                    console.error('Erro ao fazer login automático:', autoSignInError);
+                    logger.error('EventoDetalhePage.handleRegistration:auto-sign-in-error', autoSignInError, buildLogContext({ userId }));
                 }
 
                 toast({ 
@@ -331,7 +344,7 @@ const EventoDetalhePage = () => {
                     .eq('status', 'confirmed');
 
                 if (countError) {
-                    console.error('Erro ao contar vagas:', countError);
+                    logger.error('EventoDetalhePage.handleRegistration:vagas-count-error', countError, buildLogContext({ eventId: event.id }));
                 }
 
                 if (vagasOcupadas >= event.vagas_disponiveis) {
@@ -344,7 +357,10 @@ const EventoDetalhePage = () => {
                     return;
                 }
 
-                console.log(`✅ Vagas disponíveis: ${event.vagas_disponiveis - vagasOcupadas} de ${event.vagas_disponiveis}`);
+                logger.info('EventoDetalhePage.handleRegistration:vagas', buildLogContext({
+                    vagasRestantes: event.vagas_disponiveis - vagasOcupadas,
+                    totalVagas: event.vagas_disponiveis
+                }));
             }
 
             // ========================================
@@ -372,7 +388,7 @@ const EventoDetalhePage = () => {
             }
 
             const inscricao = inscricaoData[0];
-            console.log('✅ Inscrição registrada:', inscricao);
+            logger.success('EventoDetalhePage.handleRegistration:inscricao-created', buildLogContext({ inscricaoId: inscricao.id }));
 
             // ========================================
             // ENVIAR EMAIL BASEADO NO TIPO DE EVENTO
@@ -401,16 +417,16 @@ const EventoDetalhePage = () => {
                         })
                         .eq('id', inscricao.id);
 
-                    console.log('✅ Email gratuito com link Zoom enviado');
+                    logger.success('EventoDetalhePage.handleRegistration:email-gratuito-sent', buildLogContext({ inscricaoId: inscricao.id }));
                 } catch (emailError) {
-                    console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
+                    logger.error('EventoDetalhePage.handleRegistration:email-gratuito-error', emailError, buildLogContext({ inscricaoId: inscricao.id }));
                 }
             } else {
                 // ========================================
                 // EVENTO PAGO: Gerar PIX e enviar QR Code
                 // ========================================
                 try {
-                    console.log('💳 Gerando pagamento PIX para evento...');
+                    logger.info('EventoDetalhePage.handleRegistration:pix-start', buildLogContext({ inscricaoId: inscricao.id }));
 
                     const pixPayload = {
                         inscricao_id: inscricao.id,
@@ -433,7 +449,10 @@ const EventoDetalhePage = () => {
                         throw new Error(message);
                     }
 
-                    console.log('✅ PIX gerado com sucesso:', pixData.payment_id);
+                    logger.success('EventoDetalhePage.handleRegistration:pix-created', buildLogContext({
+                        inscricaoId: inscricao.id,
+                        paymentId: pixData.payment_id
+                    }));
 
                     await supabase
                         .from('inscricoes_eventos')
@@ -452,9 +471,9 @@ const EventoDetalhePage = () => {
                         type: 'eventPayment'
                     });
 
-                    console.log('✅ Email com QR Code PIX enviado');
+                    logger.success('EventoDetalhePage.handleRegistration:pix-email-sent', buildLogContext({ inscricaoId: inscricao.id }));
                 } catch (pixOrEmailError) {
-                    console.error('❌ Erro ao processar pagamento PIX:', pixOrEmailError);
+                    logger.error('EventoDetalhePage.handleRegistration:pix-error', pixOrEmailError, buildLogContext({ inscricaoId: inscricao.id }));
                     toast({
                         variant: "destructive",
                         title: "Erro ao gerar pagamento",
@@ -483,7 +502,7 @@ const EventoDetalhePage = () => {
             }
 
         } catch (error) {
-            console.error('Erro no processo de inscrição:', error);
+            logger.error('EventoDetalhePage.handleRegistration:error', error, buildLogContext());
             toast({ 
                 variant: "destructive", 
                 title: "Erro ao processar inscrição", 
