@@ -51,9 +51,8 @@ const PatientAccountStep = ({
               {...register('email', {
                 setValueAs: (value) => (value ?? '').trim(),
               })}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
-                emailError ? 'border-red-500' : 'border-gray-300'
-              }`}
+              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : 'border-gray-300'
+                }`}
               placeholder="seu@email.com"
             />
             {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
@@ -178,7 +177,7 @@ const PatientAccountStep = ({
           Como prefere acessar a consulta?
         </h3>
         <p className="text-sm text-gray-600 mt-1">
-          A Doxologos oferece Zoom e Google Meet. Escolha a plataforma que for mais confortável para você.
+          A Doxologos utiliza o Google Meet para as consultas online.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 mt-4">
           {meetingOptions.map((option) => {
@@ -190,16 +189,14 @@ const PatientAccountStep = ({
                 key={option.id}
                 onClick={() => onSelectMeetingPlatform?.(option.id)}
                 aria-pressed={isActive}
-                className={`w-full text-left border rounded-xl p-5 transition-all ${
-                  isActive
+                className={`w-full text-left border rounded-xl p-5 transition-all ${isActive
                     ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
                     : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    isActive ? 'bg-[#2d8659] text-white' : 'bg-gray-100 text-[#2d8659]'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-[#2d8659] text-white' : 'bg-gray-100 text-[#2d8659]'
+                    }`}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
@@ -216,9 +213,8 @@ const PatientAccountStep = ({
                   ))}
                 </ul>
                 <div
-                  className={`mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
-                    isActive ? 'text-[#2d8659]' : 'text-gray-400'
-                  }`}
+                  className={`mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${isActive ? 'text-[#2d8659]' : 'text-gray-400'
+                    }`}
                 >
                   {isActive ? 'Selecionado' : 'Selecionar'}
                 </div>

@@ -23,12 +23,12 @@ const PaymentSummaryStep = ({
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
   const formattedDate = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        timeZone: 'UTC',
-      })
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    })
     : 'Selecione a data';
 
   const serviceDuration = (() => {
@@ -81,7 +81,7 @@ const PaymentSummaryStep = ({
                 {serviceDuration && <p className="text-sm text-gray-600">Duração: {serviceDuration}</p>}
                 {meetingPlatform && (
                   <p className="text-sm text-gray-600">
-                    Plataforma: {meetingPlatform === 'zoom' ? 'Zoom' : 'Google Meet'}
+                    Plataforma: Google Meet
                   </p>
                 )}
               </div>
@@ -128,8 +128,7 @@ const PaymentSummaryStep = ({
             <div>
               <h4 className="font-semibold text-blue-900 mb-1">Próximos passos</h4>
               <p className="text-sm text-blue-800">
-                Após o pagamento, você receberá por email e WhatsApp o link da sala{' '}
-                {meetingPlatform === 'zoom' ? 'Zoom gerada automaticamente' : 'Google Meet selecionada no agendamento'}. A sessão começa pontualmente no horário escolhido.
+                Após o pagamento, você receberá por email e WhatsApp o link da sala Google Meet. A sessão começa pontualmente no horário escolhido.
               </p>
             </div>
           </div>
@@ -184,9 +183,8 @@ const PaymentSummaryStep = ({
           <Button
             onClick={onSubmit}
             disabled={!canSubmit || isSubmitting}
-            className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${
-              isSubmitting ? 'cursor-not-allowed opacity-75' : ''
-            }`}
+            className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${isSubmitting ? 'cursor-not-allowed opacity-75' : ''
+              }`}
             title={submitButtonTitle}
           >
             {isSubmitting ? (

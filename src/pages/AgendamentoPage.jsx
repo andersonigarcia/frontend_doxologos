@@ -41,17 +41,6 @@ const MIN_PASSWORD_LENGTH = 8;
 const generateGoogleMeetLink = () => 'https://meet.google.com/new';
 const MEETING_OPTIONS = [
   {
-    id: 'zoom',
-    label: 'Zoom',
-    icon: Video,
-    description: 'Sala criada automaticamente e disponibilizada após o pagamento.',
-    highlights: [
-      'Link enviado imediatamente quando o pagamento é confirmado',
-      'Sala com senha e sala de espera ativada',
-      'Compatível em computador e celular sem instalações adicionais'
-    ]
-  },
-  {
     id: 'google_meet',
     label: 'Google Meet',
     icon: Globe,
@@ -65,17 +54,17 @@ const MEETING_OPTIONS = [
 ];
 
 const AgendamentoPage = () => {
-    const { toast } = useToast();
-    const navigate = useNavigate();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const { user: authUser, resetPassword } = useAuth();
-    const [step, setStep] = useState(1);
-    const [selectedProfessional, setSelectedProfessional] = useState('');
-    const [selectedService, setSelectedService] = useState('');
-    const [selectedDate, setSelectedDate] = useState('');
-    const [selectedTime, setSelectedTime] = useState('');
-  const [meetingPlatform, setMeetingPlatform] = useState('zoom');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [step, setStep] = useState(1);
+  const [selectedProfessional, setSelectedProfessional] = useState('');
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [selectedTime, setSelectedTime] = useState('');
+  const [meetingPlatform, setMeetingPlatform] = useState('google_meet');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
 
   const { bookedSlots, isLoadingSlots } = useBookedSlots({
@@ -195,10 +184,10 @@ const AgendamentoPage = () => {
     };
   }, []);
 
-    // Analytics and Error Tracking Hooks
-    const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
-    const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
-    const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
+  // Analytics and Error Tracking Hooks
+  const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
+  const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
+  const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
 
   const handleSupportWhatsappClick = () => {
     analytics.trackEvent('whatsapp_click', {
@@ -350,148 +339,148 @@ const AgendamentoPage = () => {
     return null;
   };
 
-    const getAvailableTimesForDate = () => {
-        if (!selectedDate || !selectedProfessional || !availability[selectedProfessional]) return [];
-        
-        const dayOfWeek = new Date(selectedDate + 'T00:00:00').getUTCDay();
-        const dayMapping = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayKey = dayMapping[dayOfWeek];
-        let times = availability[selectedProfessional]?.[dayKey] || [];
+  const getAvailableTimesForDate = () => {
+    if (!selectedDate || !selectedProfessional || !availability[selectedProfessional]) return [];
 
-        // Aplicar bloqueios de data
-        const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === selectedDate);
-        if (professionalBlockedDates.length > 0) {
-            professionalBlockedDates.forEach(block => {
-                if (!block.start_time || !block.end_time) { // Dia todo
-                    times = [];
-                } else { // Intervalo
-                    times = times.filter(time => time < block.start_time || time >= block.end_time);
-                }
-            });
+    const dayOfWeek = new Date(selectedDate + 'T00:00:00').getUTCDay();
+    const dayMapping = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayKey = dayMapping[dayOfWeek];
+    let times = availability[selectedProfessional]?.[dayKey] || [];
+
+    // Aplicar bloqueios de data
+    const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === selectedDate);
+    if (professionalBlockedDates.length > 0) {
+      professionalBlockedDates.forEach(block => {
+        if (!block.start_time || !block.end_time) { // Dia todo
+          times = [];
+        } else { // Intervalo
+          times = times.filter(time => time < block.start_time || time >= block.end_time);
         }
-        
-        // Filtrar horários baseado na duração do serviço
-        if (selectedService) {
-            const service = services.find(s => s.id === selectedService);
-            if (service && service.duration_minutes) {
-                const serviceDurationMinutes = service.duration_minutes;
-                
-                // Função para converter horário "HH:MM" em minutos desde meia-noite
-                const timeToMinutes = (timeStr) => {
-                    const [hours, minutes] = timeStr.split(':').map(Number);
-                    return hours * 60 + minutes;
-                };
-                
-                // Função para adicionar minutos a um horário
-                const addMinutesToTime = (timeStr, minutes) => {
-                    const totalMinutes = timeToMinutes(timeStr) + minutes;
-                    const hours = Math.floor(totalMinutes / 60);
-                    const mins = totalMinutes % 60;
-                    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-                };
-                
-                // Filtrar horários que têm espaço suficiente para o serviço
-                times = times.filter(time => {
-                    const startMinutes = timeToMinutes(time);
-                    const endMinutes = startMinutes + serviceDurationMinutes;
-                    
-                    // Verificar se há conflito com agendamentos existentes
-                    // Um conflito ocorre se qualquer horário reservado está no intervalo [start, end)
-                    const hasConflict = bookedSlots.some(bookedTime => {
-                        const bookedMinutes = timeToMinutes(bookedTime);
-                        // O horário reservado conflita se está dentro do período do novo serviço
-                        return bookedMinutes >= startMinutes && bookedMinutes < endMinutes;
-                    });
-                    
-                    if (hasConflict) return false;
-                    
-                    // Verificar se o término do serviço não ultrapassa horários disponíveis
-                    // que já estão ocupados
-                    const sortedTimes = [...times].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
-                    const currentIndex = sortedTimes.indexOf(time);
-                    
-                    // Para cada slot de tempo entre o início e o fim do serviço,
-                    // verificar se está ocupado
-                    for (let i = currentIndex + 1; i < sortedTimes.length; i++) {
-                        const nextTime = sortedTimes[i];
-                        const nextMinutes = timeToMinutes(nextTime);
-                        
-                        // Se o próximo slot está depois do fim do serviço, não há problema
-                        if (nextMinutes >= endMinutes) break;
-                        
-                        // Se o próximo slot está ocupado e dentro do período do serviço, há conflito
-                        if (bookedSlots.includes(nextTime)) {
-                            return false;
-                        }
-                    }
-                    
-                    return true;
-                });
+      });
+    }
+
+    // Filtrar horários baseado na duração do serviço
+    if (selectedService) {
+      const service = services.find(s => s.id === selectedService);
+      if (service && service.duration_minutes) {
+        const serviceDurationMinutes = service.duration_minutes;
+
+        // Função para converter horário "HH:MM" em minutos desde meia-noite
+        const timeToMinutes = (timeStr) => {
+          const [hours, minutes] = timeStr.split(':').map(Number);
+          return hours * 60 + minutes;
+        };
+
+        // Função para adicionar minutos a um horário
+        const addMinutesToTime = (timeStr, minutes) => {
+          const totalMinutes = timeToMinutes(timeStr) + minutes;
+          const hours = Math.floor(totalMinutes / 60);
+          const mins = totalMinutes % 60;
+          return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        };
+
+        // Filtrar horários que têm espaço suficiente para o serviço
+        times = times.filter(time => {
+          const startMinutes = timeToMinutes(time);
+          const endMinutes = startMinutes + serviceDurationMinutes;
+
+          // Verificar se há conflito com agendamentos existentes
+          // Um conflito ocorre se qualquer horário reservado está no intervalo [start, end)
+          const hasConflict = bookedSlots.some(bookedTime => {
+            const bookedMinutes = timeToMinutes(bookedTime);
+            // O horário reservado conflita se está dentro do período do novo serviço
+            return bookedMinutes >= startMinutes && bookedMinutes < endMinutes;
+          });
+
+          if (hasConflict) return false;
+
+          // Verificar se o término do serviço não ultrapassa horários disponíveis
+          // que já estão ocupados
+          const sortedTimes = [...times].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+          const currentIndex = sortedTimes.indexOf(time);
+
+          // Para cada slot de tempo entre o início e o fim do serviço,
+          // verificar se está ocupado
+          for (let i = currentIndex + 1; i < sortedTimes.length; i++) {
+            const nextTime = sortedTimes[i];
+            const nextMinutes = timeToMinutes(nextTime);
+
+            // Se o próximo slot está depois do fim do serviço, não há problema
+            if (nextMinutes >= endMinutes) break;
+
+            // Se o próximo slot está ocupado e dentro do período do serviço, há conflito
+            if (bookedSlots.includes(nextTime)) {
+              return false;
             }
-        }
-        
-        return times;
-    };
+          }
+
+          return true;
+        });
+      }
+    }
+
+    return times;
+  };
 
   const availableTimes = useMemo(
     () => getAvailableTimesForDate(),
     [selectedDate, selectedProfessional, availability, selectedService, services, bookedSlots, blockedDates]
   );
 
-    // Funções do calendário
-    const getDaysInMonth = (date) => {
-        const year = date.getFullYear();
-        const month = date.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
-        
-        const days = [];
-        
-        // Adicionar dias vazios do mês anterior
-        for (let i = 0; i < startingDayOfWeek; i++) {
-            days.push(null);
-        }
-        
-        // Adicionar dias do mês atual
-        for (let day = 1; day <= daysInMonth; day++) {
-            days.push(new Date(year, month, day));
-        }
-        
-        return days;
-    };
+  // Funções do calendário
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
 
-    const isDateDisabled = (date) => {
-        if (!date) return true;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return date < today;
-    };
+    const days = [];
 
-    const formatDateToString = (date) => {
-        if (!date) return '';
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    };
+    // Adicionar dias vazios do mês anterior
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
 
-    const nextMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-    };
+    // Adicionar dias do mês atual
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
 
-    const prevMonth = () => {
-        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
-    };
+    return days;
+  };
 
-    const isPrevMonthDisabled = () => {
-        const today = new Date();
-        const currentYear = currentMonth.getFullYear();
-        const currentMonthNum = currentMonth.getMonth();
-        return currentYear < today.getFullYear() || 
-               (currentYear === today.getFullYear() && currentMonthNum <= today.getMonth());
-    };
+  const isDateDisabled = (date) => {
+    if (!date) return true;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const formatDateToString = (date) => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const nextMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  };
+
+  const prevMonth = () => {
+    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  };
+
+  const isPrevMonthDisabled = () => {
+    const today = new Date();
+    const currentYear = currentMonth.getFullYear();
+    const currentMonthNum = currentMonth.getMonth();
+    return currentYear < today.getFullYear() ||
+      (currentYear === today.getFullYear() && currentMonthNum <= today.getMonth());
+  };
 
 
   const handleBooking = async () => {
@@ -509,10 +498,10 @@ const AgendamentoPage = () => {
       authUser: !!authUser,
       isExistingPatient
     });
-        
-  setIsSubmitting(true);
-  setPasswordError('');
-        
+
+    setIsSubmitting(true);
+    setPasswordError('');
+
     // Validar aceitação dos termos
     if (!patientData.acceptTerms) {
       toast({
@@ -556,7 +545,7 @@ const AgendamentoPage = () => {
       setIsSubmitting(false);
       return;
     }
-        
+
     try {
       if (!authUser) {
         if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
@@ -583,7 +572,7 @@ const AgendamentoPage = () => {
       let userId;
 
       console.log('👤 [handleBooking] Verificando autenticação...');
-            
+
       if (authUser) {
         userId = authUser.id;
         console.log('✅ [handleBooking] Usuário autenticado:', userId);
@@ -705,7 +694,7 @@ const AgendamentoPage = () => {
       }
 
       console.log('💰 [handleBooking] Buscando detalhes do serviço...');
-            
+
       // 3. Get service details to capture current price
       const serviceDetails = services.find(s => s.id === selectedService);
       const professionalDetails = professionals.find(p => p.id === selectedProfessional);
@@ -716,16 +705,16 @@ const AgendamentoPage = () => {
       const valorRepasseProfissional = Number.isFinite(valorRepasseProfissionalRaw)
         ? valorRepasseProfissionalRaw
         : valorConsulta;
-            
-      console.log('💰 [handleBooking] Serviço encontrado:', { 
-        serviceName: serviceDetails?.name, 
+
+      console.log('💰 [handleBooking] Serviço encontrado:', {
+        serviceName: serviceDetails?.name,
         price: valorConsulta,
         professionalPayout: valorRepasseProfissional,
         platformFee: Math.max(valorConsulta - valorRepasseProfissional, 0)
       });
 
       console.log('📝 [handleBooking] Preparando dados do agendamento...');
-            
+
       const authMetadata = authUser?.user_metadata || {};
       const normalizedPatientEmail = (patientData.email || authUser?.email || '').trim();
       const normalizedPatientName = (patientData.name || authMetadata.full_name || authMetadata.name || '').trim();
@@ -745,14 +734,14 @@ const AgendamentoPage = () => {
       }
 
       // 4. Preparar dados do agendamento
-      const bookingData = { 
-        professional_id: selectedProfessional, 
-        service_id: selectedService, 
-        booking_date: selectedDate, 
-        booking_time: selectedTime, 
-        status: 'pending_payment', 
-        patient_name: safePatientName, 
-        patient_email: normalizedPatientEmail, 
+      const bookingData = {
+        professional_id: selectedProfessional,
+        service_id: selectedService,
+        booking_date: selectedDate,
+        booking_time: selectedTime,
+        status: 'pending_payment',
+        patient_name: safePatientName,
+        patient_email: normalizedPatientEmail,
         patient_phone: safePatientPhone,
         valor_consulta: valorConsulta,
         valor_repasse_profissional: valorRepasseProfissional
@@ -770,21 +759,21 @@ const AgendamentoPage = () => {
         bookingData.meeting_start_url = generatedMeetLink;
         console.log('🎥 Link Google Meet gerado para o agendamento:', generatedMeetLink);
       }
-            
+
       // Adicionar user_id se disponível
       if (userId) {
         bookingData.user_id = userId;
       }
-            
+
       console.log('✅ [handleBooking] bookingData preparado:', {
         ...bookingData,
         user_id: bookingData.user_id ? '***' : null
       });
-  console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
+      console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
 
-  // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
-  let zoomMeetingData = null;
-  if (meetingPlatform === 'zoom') {
+      // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
+      let zoomMeetingData = null;
+      if (meetingPlatform === 'zoom') {
         try {
           console.log('🎥 Criando sala do Zoom...', {
             booking_date: selectedDate,
@@ -827,7 +816,7 @@ const AgendamentoPage = () => {
             message: zoomError.message,
             stack: zoomError.stack
           });
-                  
+
           // Mostrar aviso ao usuário mas não bloquear o fluxo
           toast({
             title: 'Link do encontro em validação',
@@ -848,7 +837,7 @@ const AgendamentoPage = () => {
         has_meeting_start_url: !!bookingData.meeting_start_url
       });
 
-  let insertPayload = { ...bookingData };
+      let insertPayload = { ...bookingData };
       let bookingInsertData = null;
       let bookingError = null;
 
@@ -888,11 +877,11 @@ const AgendamentoPage = () => {
 
       if (bookingError) {
         console.error('Erro ao criar agendamento:', bookingError);
-    toast({ 
-      variant: 'destructive', 
-      title: 'Não conseguimos concluir o agendamento', 
-      description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.' 
-    });
+        toast({
+          variant: 'destructive',
+          title: 'Não conseguimos concluir o agendamento',
+          description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.'
+        });
         return;
       }
 
@@ -902,7 +891,7 @@ const AgendamentoPage = () => {
       try {
         console.log('📧 Preparando envio de email de confirmação...');
         const emailManager = new BookingEmailManager();
-                
+
         const bookingDetails = {
           id: bookingId,
           patient_name: safePatientName,
@@ -928,10 +917,10 @@ const AgendamentoPage = () => {
 
       // 6. Redirecionar para checkout
       console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
-            
+
       // Redirecionar para página de checkout
       navigate(`/checkout?booking_id=${bookingId}`);
-            
+
     } catch (error) {
       console.error('Erro geral no processo de agendamento:', error);
       toast({
@@ -943,270 +932,270 @@ const AgendamentoPage = () => {
       setIsSubmitting(false);
     }
   };
-      
-    const renderStepContent = () => {
-        switch (step) {
-          case 1:
-            return (
-              <ProfessionalStep
-                services={services}
-                professionals={professionals}
-                servicePriceRange={servicePriceRange}
-                selectedService={selectedService}
-                selectedProfessional={selectedProfessional}
-                onSelectService={handleServiceSelect}
-                onSelectProfessional={handleProfessionalSelect}
-                onNext={() => setStep(2)}
-                availability={availability}
-                displayMode="service-only"
-              />
-            );
-          case 2:
-            return (
-              <ProfessionalStep
-                services={services}
-                professionals={professionals}
-                servicePriceRange={servicePriceRange}
-                selectedService={selectedService}
-                selectedProfessional={selectedProfessional}
-                onSelectService={handleServiceSelect}
-                onSelectProfessional={handleProfessionalSelect}
-                onBack={() => setStep(1)}
-                onNext={() => setStep(3)}
-                availability={availability}
-                displayMode="professional-only"
-              />
-            );
-          case 3:
-            return (
-              <DateTimeStep
-                professionals={professionals}
-                selectedProfessional={selectedProfessional}
-                selectedServiceDetails={selectedServiceDetails}
-                selectedDate={selectedDate}
-                selectedTime={selectedTime}
-                onSelectDate={handleDateSelect}
-                onSelectTime={setSelectedTime}
-                currentMonth={currentMonth}
-                onPrevMonth={prevMonth}
-                onNextMonth={nextMonth}
-                isPrevMonthDisabled={isPrevMonthDisabled}
-                isDateDisabled={isDateDisabled}
-                getDaysInMonth={getDaysInMonth}
-                formatDateToString={formatDateToString}
-                availableTimes={availableTimes}
-                bookedSlots={bookedSlots}
-                isLoadingTimes={isLoadingSlots}
-                topTestimonials={topTestimonials}
-                onBack={() => setStep(2)}
-                onNext={() => setStep(4)}
-              />
-            );
-          case 4:
-            return (
-              <>
-                <PatientAccountStep
-                  authUser={authUser}
-                  patientData={patientData}
-                  register={register}
-                  errors={formErrors}
-                  emailError={emailError}
-                  passwordError={passwordError}
-                  isExistingPatient={isExistingPatient}
-                  minPasswordLength={MIN_PASSWORD_LENGTH}
-                  showPassword={showPassword}
-                  showConfirmPassword={showConfirmPassword}
-                  meetingPlatform={meetingPlatform}
-                  meetingOptions={MEETING_OPTIONS}
-                  onToggleExistingPatient={toggleExistingPatient}
-                  onToggleShowPassword={() => setShowPassword((prev) => !prev)}
-                  onToggleShowConfirmPassword={() => setShowConfirmPassword((prev) => !prev)}
-                  onPasswordResetRequest={handlePasswordResetRequest}
-                  onSelectMeetingPlatform={setMeetingPlatform}
-                />
-                <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                  <Button onClick={() => setStep(3)} variant="outline">
-                    Voltar
-                  </Button>
-                  <Button
-                    onClick={() => setStep(5)}
-                    disabled={!canProceedToSummary}
-                    className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Continuar
-                  </Button>
-                </div>
-              </>
-            );
-          case 5:
-            return (
-              <PaymentSummaryStep
-                professionals={professionals}
-                selectedProfessional={selectedProfessional}
-                serviceDetails={selectedServiceDetails}
-                selectedDate={selectedDate}
-                selectedTime={selectedTime}
-                meetingPlatform={meetingPlatform}
-                paymentSecurityHighlights={paymentSecurityHighlights}
-                acceptTermsField={register('acceptTerms')}
-                acceptTermsError={formErrors.acceptTerms?.message}
-                onBack={() => setStep(4)}
-                onSubmit={handleBooking}
-                onSupport={handleSupportWhatsappClick}
-                isSubmitting={isSubmitting}
-                canSubmit={canSubmitBooking}
-                submitButtonTitle={submitButtonTitle}
-              />
-            );
-          case 6:
-            return (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-12 text-center">
-                <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Check className="w-12 h-12 text-white" />
-                </div>
-                <h2 className="text-4xl font-bold mb-4 text-gray-900">Agendamento Confirmado!</h2>
-                <p className="text-xl text-gray-600 mb-8">Seu agendamento foi registrado com sucesso</p>
-                
-                <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-xl border border-blue-200 mb-8">
-                  <div className="grid md:grid-cols-3 gap-4 text-sm">
-                    <div className="flex items-center gap-2 justify-center">
-                      <Calendar className="w-5 h-5 text-blue-600" />
-                      <span className="font-medium">Agendamento salvo</span>
-                    </div>
-                    <div className="flex items-center gap-2 justify-center">
-                      <CreditCard className="w-5 h-5 text-green-600" />
-                      <span className="font-medium">Pagamento processando</span>
-                    </div>
-                    <div className="flex items-center gap-2 justify-center">
-                      <CheckCircle className="w-5 h-5 text-purple-600" />
-                      <span className="font-medium">Email será enviado</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
-                  <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <div className="w-2 h-2 bg-yellow-600 rounded-full"></div>
-                    </div>
-                    <div className="text-left">
-                      <h4 className="font-semibold text-yellow-900 mb-2">Próximos passos:</h4>
-                      <ul className="text-sm text-yellow-800 space-y-1">
-                        <li>• Você será redirecionado para o pagamento</li>
-                        <li>• Após confirmação, receberá email com detalhes</li>
-                        <li>• Link da consulta será enviado por email e WhatsApp</li>
-                        <li>• Lembre-se: a sessão começa pontualmente no horário marcado</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-4 justify-center">
-                  <Button onClick={() => navigate('/')} variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                    <ArrowLeft className="w-4 h-4 mr-2" />Voltar ao Início
-                  </Button>
-                  <Button onClick={() => navigate('/area-do-paciente')} className="bg-[#2d8659] hover:bg-[#236b47]">
-                    Acessar Área do Paciente
-                  </Button>
-                </div>
-              </motion.div>
-            );
-          default:
-            return null;
-        }
-      };
 
-      const progressSteps = [
-        { id: 1, label: 'Serviço' },
-        { id: 2, label: 'Profissional' },
-        { id: 3, label: 'Data/Hora' },
-        { id: 4, label: 'Dados do Paciente' },
-        { id: 5, label: 'Pagamento' },
-      ];
+  const renderStepContent = () => {
+    switch (step) {
+      case 1:
+        return (
+          <ProfessionalStep
+            services={services}
+            professionals={professionals}
+            servicePriceRange={servicePriceRange}
+            selectedService={selectedService}
+            selectedProfessional={selectedProfessional}
+            onSelectService={handleServiceSelect}
+            onSelectProfessional={handleProfessionalSelect}
+            onNext={() => setStep(2)}
+            availability={availability}
+            displayMode="service-only"
+          />
+        );
+      case 2:
+        return (
+          <ProfessionalStep
+            services={services}
+            professionals={professionals}
+            servicePriceRange={servicePriceRange}
+            selectedService={selectedService}
+            selectedProfessional={selectedProfessional}
+            onSelectService={handleServiceSelect}
+            onSelectProfessional={handleProfessionalSelect}
+            onBack={() => setStep(1)}
+            onNext={() => setStep(3)}
+            availability={availability}
+            displayMode="professional-only"
+          />
+        );
+      case 3:
+        return (
+          <DateTimeStep
+            professionals={professionals}
+            selectedProfessional={selectedProfessional}
+            selectedServiceDetails={selectedServiceDetails}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            onSelectDate={handleDateSelect}
+            onSelectTime={setSelectedTime}
+            currentMonth={currentMonth}
+            onPrevMonth={prevMonth}
+            onNextMonth={nextMonth}
+            isPrevMonthDisabled={isPrevMonthDisabled}
+            isDateDisabled={isDateDisabled}
+            getDaysInMonth={getDaysInMonth}
+            formatDateToString={formatDateToString}
+            availableTimes={availableTimes}
+            bookedSlots={bookedSlots}
+            isLoadingTimes={isLoadingSlots}
+            topTestimonials={topTestimonials}
+            onBack={() => setStep(2)}
+            onNext={() => setStep(4)}
+          />
+        );
+      case 4:
+        return (
+          <>
+            <PatientAccountStep
+              authUser={authUser}
+              patientData={patientData}
+              register={register}
+              errors={formErrors}
+              emailError={emailError}
+              passwordError={passwordError}
+              isExistingPatient={isExistingPatient}
+              minPasswordLength={MIN_PASSWORD_LENGTH}
+              showPassword={showPassword}
+              showConfirmPassword={showConfirmPassword}
+              meetingPlatform={meetingPlatform}
+              meetingOptions={MEETING_OPTIONS}
+              onToggleExistingPatient={toggleExistingPatient}
+              onToggleShowPassword={() => setShowPassword((prev) => !prev)}
+              onToggleShowConfirmPassword={() => setShowConfirmPassword((prev) => !prev)}
+              onPasswordResetRequest={handlePasswordResetRequest}
+              onSelectMeetingPlatform={setMeetingPlatform}
+            />
+            <div className="flex flex-col sm:flex-row gap-4 mt-6">
+              <Button onClick={() => setStep(3)} variant="outline">
+                Voltar
+              </Button>
+              <Button
+                onClick={() => setStep(5)}
+                disabled={!canProceedToSummary}
+                className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continuar
+              </Button>
+            </div>
+          </>
+        );
+      case 5:
+        return (
+          <PaymentSummaryStep
+            professionals={professionals}
+            selectedProfessional={selectedProfessional}
+            serviceDetails={selectedServiceDetails}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            meetingPlatform={meetingPlatform}
+            paymentSecurityHighlights={paymentSecurityHighlights}
+            acceptTermsField={register('acceptTerms')}
+            acceptTermsError={formErrors.acceptTerms?.message}
+            onBack={() => setStep(4)}
+            onSubmit={handleBooking}
+            onSupport={handleSupportWhatsappClick}
+            isSubmitting={isSubmitting}
+            canSubmit={canSubmitBooking}
+            submitButtonTitle={submitButtonTitle}
+          />
+        );
+      case 6:
+        return (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-12 text-center">
+            <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check className="w-12 h-12 text-white" />
+            </div>
+            <h2 className="text-4xl font-bold mb-4 text-gray-900">Agendamento Confirmado!</h2>
+            <p className="text-xl text-gray-600 mb-8">Seu agendamento foi registrado com sucesso</p>
 
-      const selectionLabels = useMemo(() => {
-        const serviceList = Array.isArray(services) ? services : [];
-        const professionalList = Array.isArray(professionals) ? professionals : [];
-        const serviceLabel = selectedService ? serviceList.find((service) => service.id === selectedService)?.name : null;
-        const professionalLabel = selectedProfessional
-          ? professionalList.find((professional) => professional.id === selectedProfessional)?.name
-          : null;
-        const dateLabel = selectedDate
-          ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
-              day: 'numeric',
-              month: 'short',
-              timeZone: 'UTC',
-            })
-          : null;
-
-        return {
-          serviceLabel,
-          professionalLabel,
-          dateLabel,
-          timeLabel: selectedTime || null,
-        };
-      }, [selectedDate, selectedProfessional, selectedService, selectedTime, services, professionals]);
-
-      const handleStepClick = (clickedStep) => {
-        if (clickedStep <= step) {
-          if (clickedStep === 1) {
-            setSelectedService('');
-            setSelectedProfessional('');
-            setSelectedDate('');
-            setSelectedTime('');
-          }
-          setStep(clickedStep);
-        }
-      };
-      
-      const canAccessStep = (stepNumber) => {
-        if (stepNumber === 1) return true;
-        if (stepNumber === 2) return Boolean(selectedService);
-        if (stepNumber === 3) return Boolean(selectedService && selectedProfessional);
-        if (stepNumber === 4) return hasScheduleSelection;
-        if (stepNumber === 5) return canProceedToSummary;
-        return false;
-      };
-
-      return (
-        <>
-          <Helmet>
-            <title>Agendamento - Doxologos Clínica Online</title>
-            <meta name="description" content="Agende sua consulta online com nossos profissionais qualificados." />
-          </Helmet>
-          <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-            <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
-              <div className="flex items-center justify-between">
-                <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-                  <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
-                  <span className="text-2xl font-bold gradient-text">Doxologos</span>
-                </Link>
-                <div className="flex items-center space-x-4">
-                  <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
-                    ← Voltar ao Site
-                  </Link>
+            <div className="bg-gradient-to-r from-blue-50 to-green-50 p-6 rounded-xl border border-blue-200 mb-8">
+              <div className="grid md:grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center gap-2 justify-center">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium">Agendamento salvo</span>
+                </div>
+                <div className="flex items-center gap-2 justify-center">
+                  <CreditCard className="w-5 h-5 text-green-600" />
+                  <span className="font-medium">Pagamento processando</span>
+                </div>
+                <div className="flex items-center gap-2 justify-center">
+                  <CheckCircle className="w-5 h-5 text-purple-600" />
+                  <span className="font-medium">Email será enviado</span>
                 </div>
               </div>
-            </nav>
-          </header>
-          <div className="min-h-screen bg-gray-50 py-12 pt-24">
-            <div className="container mx-auto px-4 max-w-4xl">
-              {step <= progressSteps.length && (
-                <BookingStepper
-                  steps={progressSteps}
-                  currentStep={step}
-                  onStepClick={handleStepClick}
-                  canAccessStep={canAccessStep}
-                  selections={selectionLabels}
-                />
-              )}
-              
-              {/* Conteúdo da etapa atual */}
-              {renderStepContent()}
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <div className="w-2 h-2 bg-yellow-600 rounded-full"></div>
+                </div>
+                <div className="text-left">
+                  <h4 className="font-semibold text-yellow-900 mb-2">Próximos passos:</h4>
+                  <ul className="text-sm text-yellow-800 space-y-1">
+                    <li>• Você será redirecionado para o pagamento</li>
+                    <li>• Após confirmação, receberá email com detalhes</li>
+                    <li>• Link da consulta será enviado por email e WhatsApp</li>
+                    <li>• Lembre-se: a sessão começa pontualmente no horário marcado</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4 justify-center">
+              <Button onClick={() => navigate('/')} variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                <ArrowLeft className="w-4 h-4 mr-2" />Voltar ao Início
+              </Button>
+              <Button onClick={() => navigate('/area-do-paciente')} className="bg-[#2d8659] hover:bg-[#236b47]">
+                Acessar Área do Paciente
+              </Button>
+            </div>
+          </motion.div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const progressSteps = [
+    { id: 1, label: 'Serviço' },
+    { id: 2, label: 'Profissional' },
+    { id: 3, label: 'Data/Hora' },
+    { id: 4, label: 'Dados do Paciente' },
+    { id: 5, label: 'Pagamento' },
+  ];
+
+  const selectionLabels = useMemo(() => {
+    const serviceList = Array.isArray(services) ? services : [];
+    const professionalList = Array.isArray(professionals) ? professionals : [];
+    const serviceLabel = selectedService ? serviceList.find((service) => service.id === selectedService)?.name : null;
+    const professionalLabel = selectedProfessional
+      ? professionalList.find((professional) => professional.id === selectedProfessional)?.name
+      : null;
+    const dateLabel = selectedDate
+      ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
+        day: 'numeric',
+        month: 'short',
+        timeZone: 'UTC',
+      })
+      : null;
+
+    return {
+      serviceLabel,
+      professionalLabel,
+      dateLabel,
+      timeLabel: selectedTime || null,
+    };
+  }, [selectedDate, selectedProfessional, selectedService, selectedTime, services, professionals]);
+
+  const handleStepClick = (clickedStep) => {
+    if (clickedStep <= step) {
+      if (clickedStep === 1) {
+        setSelectedService('');
+        setSelectedProfessional('');
+        setSelectedDate('');
+        setSelectedTime('');
+      }
+      setStep(clickedStep);
+    }
+  };
+
+  const canAccessStep = (stepNumber) => {
+    if (stepNumber === 1) return true;
+    if (stepNumber === 2) return Boolean(selectedService);
+    if (stepNumber === 3) return Boolean(selectedService && selectedProfessional);
+    if (stepNumber === 4) return hasScheduleSelection;
+    if (stepNumber === 5) return canProceedToSummary;
+    return false;
+  };
+
+  return (
+    <>
+      <Helmet>
+        <title>Agendamento - Doxologos Clínica Online</title>
+        <meta name="description" content="Agende sua consulta online com nossos profissionais qualificados." />
+      </Helmet>
+      <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
+        <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
+              <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
+              <span className="text-2xl font-bold gradient-text">Doxologos</span>
+            </Link>
+            <div className="flex items-center space-x-4">
+              <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
+                ← Voltar ao Site
+              </Link>
             </div>
           </div>
-        </>
-      );
-    };
+        </nav>
+      </header>
+      <div className="min-h-screen bg-gray-50 py-12 pt-24">
+        <div className="container mx-auto px-4 max-w-4xl">
+          {step <= progressSteps.length && (
+            <BookingStepper
+              steps={progressSteps}
+              currentStep={step}
+              onStepClick={handleStepClick}
+              canAccessStep={canAccessStep}
+              selections={selectionLabels}
+            />
+          )}
 
-    export default AgendamentoPage;
+          {/* Conteúdo da etapa atual */}
+          {renderStepContent()}
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default AgendamentoPage;
