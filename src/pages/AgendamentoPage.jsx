@@ -204,6 +204,59 @@ const AgendamentoPage = () => {
     }
   };
 
+  const handleProceedToSummary = async () => {
+    // Se for paciente existente, validar senha antes de prosseguir
+    if (!authUser && isExistingPatient) {
+      if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+        setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+        toast({
+          variant: 'destructive',
+          title: 'Senha muito curta',
+          description: `Informe uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+        });
+        return;
+      }
+
+      // Tentar autenticar para validar a senha
+      try {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: patientData.email,
+          password: patientData.password
+        });
+
+        if (signInError) {
+          console.error('Erro ao validar senha do paciente existente:', signInError);
+          setPasswordError('Senha incorreta. Verifique sua senha ou utilize a opção de recuperação.');
+          toast({
+            variant: 'destructive',
+            title: 'Senha incorreta',
+            description: 'A senha informada não está correta. Tente novamente ou clique em "Esqueci minha senha".'
+          });
+          return;
+        }
+
+        // Senha validada com sucesso
+        setPasswordError('');
+        toast({
+          title: 'Senha validada!',
+          description: 'Suas credenciais foram confirmadas. Prosseguindo para o resumo.'
+        });
+      } catch (error) {
+        console.error('Erro ao validar senha:', error);
+        setPasswordError('Erro ao validar senha. Tente novamente.');
+        toast({
+          variant: 'destructive',
+          title: 'Erro na validação',
+          description: 'Não foi possível validar sua senha. Tente novamente.'
+        });
+        return;
+      }
+    }
+
+    // Se chegou aqui, pode prosseguir
+    setStep(5);
+  };
+
   const topTestimonials = useMemo(() => testimonials.slice(0, 3), [testimonials]);
 
   const paymentSecurityHighlights = useMemo(() => ([
@@ -1026,7 +1079,7 @@ const AgendamentoPage = () => {
                 Voltar
               </Button>
               <Button
-                onClick={() => setStep(5)}
+                onClick={handleProceedToSummary}
                 disabled={!canProceedToSummary}
                 className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
               >

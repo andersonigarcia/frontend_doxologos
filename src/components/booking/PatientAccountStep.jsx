@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Check, Eye, EyeOff, KeyRound, Video, Loader2, CheckCircle, Sparkles, UserCheck, UserPlus, Info, CheckCircle2 } from 'lucide-react';
+import { Check, Eye, EyeOff, KeyRound, Video, Loader2, CheckCircle, Sparkles, UserCheck, UserPlus, Info, CheckCircle2, Mail, Send, X, AlertCircle } from 'lucide-react';
 import { formatPhoneNumber } from '@/hooks/booking/usePatientForm';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 import Tooltip from '@/components/ui/Tooltip';
@@ -29,6 +29,33 @@ const PatientAccountStep = ({
   emailExists = null,
   emailCheckError = null,
 }) => {
+  // Estado para modal de recuperação de senha
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetPasswordSuccess, setResetPasswordSuccess] = useState(false);
+  const [resetPasswordError, setResetPasswordError] = useState(null);
+
+  // Handler para enviar email de recuperação
+  const handleSendPasswordReset = async () => {
+    setIsResettingPassword(true);
+    setResetPasswordError(null);
+
+    try {
+      await onPasswordResetRequest();
+      setResetPasswordSuccess(true);
+
+      // Fechar modal após 3 segundos
+      setTimeout(() => {
+        setShowPasswordRecovery(false);
+        setResetPasswordSuccess(false);
+      }, 3000);
+    } catch (error) {
+      setResetPasswordError('Não foi possível enviar o email. Tente novamente.');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
       <div className="text-center mb-8">
