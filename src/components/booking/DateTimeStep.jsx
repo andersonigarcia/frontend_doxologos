@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,6 +11,10 @@ import {
   Quote,
   Star,
   User,
+  Zap,
+  Sun,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 
 const DateTimeStep = ({
@@ -36,6 +40,107 @@ const DateTimeStep = ({
   onNext,
 }) => {
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
+
+  // Swipe gesture state
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+  const calendarRef = useRef(null);
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      onNextMonth();
+    } else if (isRightSwipe && !isPrevMonthDisabled()) {
+      onPrevMonth();
+    }
+  };
+
+  // Quick pick handlers
+  const handleQuickPick = (quickPickType) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Define search parameters based on quick pick type
+    let startDate = new Date(today);
+    let maxDaysToCheck;
+
+    if (quickPickType === 0) {
+      // "Hoje" - only check today
+      maxDaysToCheck = 1;
+    } else if (quickPickType === 1) {
+      // "Amanhã" - start from tomorrow, check up to 2 days ahead
+      startDate.setDate(startDate.getDate() + 1);
+      maxDaysToCheck = 2;
+    } else {
+      // "Esta Semana" - start from TODAY, check next 7 days
+      // This searches: today, tomorrow, +2, +3, +4, +5, +6
+      maxDaysToCheck = 7;
+    }
+
+    // Find the first available date within range
+    let checkDate = new Date(startDate);
+
+    for (let i = 0; i < maxDaysToCheck; i++) {
+      if (!isDateDisabled(checkDate)) {
+        const dateString = formatDateToString(checkDate);
+        onSelectDate?.(dateString);
+
+        // Scroll to time slots after a brief delay
+        setTimeout(() => {
+          const timeSlotsElement = document.getElementById('available-times-label');
+          if (timeSlotsElement) {
+            timeSlotsElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 300);
+        return;
+      }
+      checkDate.setDate(checkDate.getDate() + 1);
+    }
+
+    // If no available date found in range, log for debugging
+    const pickName = quickPickType === 0 ? 'Hoje' : quickPickType === 1 ? 'Amanhã' : 'Esta Semana';
+    console.log(`Nenhuma data disponível encontrada para "${pickName}" nos próximos ${maxDaysToCheck} dias`);
+  };
+
+  // Group times by period
+  const groupTimesByPeriod = (times) => {
+    const periods = {
+      manha: [],
+      tarde: [],
+      noite: [],
+    };
+
+    times.forEach((time) => {
+      const hour = parseInt(time.split(':')[0]);
+      if (hour < 12) {
+        periods.manha.push(time);
+      } else if (hour < 18) {
+        periods.tarde.push(time);
+      } else {
+        periods.noite.push(time);
+      }
+    });
+
+    return periods;
+  };
+
+  const timePeriods = groupTimesByPeriod(availableTimes);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
@@ -71,11 +176,10 @@ const DateTimeStep = ({
                 <p className="font-bold text-blue-600">{selectedServiceDetails.name}</p>
                 <p className="text-sm text-gray-600">
                   {selectedServiceDetails.duration_minutes >= 60
-                    ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${
-                        selectedServiceDetails.duration_minutes % 60 > 0
-                          ? ` ${selectedServiceDetails.duration_minutes % 60}min`
-                          : ''
-                      }`
+                    ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${selectedServiceDetails.duration_minutes % 60 > 0
+                      ? ` ${selectedServiceDetails.duration_minutes % 60}min`
+                      : ''
+                    }`
                     : `${selectedServiceDetails.duration_minutes}min`}
                   {' '}
                   • R$ {parseFloat(selectedServiceDetails.price || 0).toLocaleString('pt-BR', {
@@ -149,18 +253,63 @@ const DateTimeStep = ({
         </div>
       )}
 
+      {/* Quick Pick Buttons */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-5 h-5 text-[#2d8659]" />
+          <p className="text-sm font-semibold text-gray-700">Atalhos Rápidos</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
+          <motion.button
+            type="button"
+            onClick={() => handleQuickPick(0)}
+            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-[#2d8659]/30 bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 hover:border-[#2d8659] hover:shadow-md transition-all group"
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Sun className="w-5 h-5 md:w-6 md:h-6 text-[#2d8659] mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs md:text-sm font-semibold text-gray-700">Hoje</span>
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => handleQuickPick(1)}
+            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-blue-100 hover:border-blue-500 hover:shadow-md transition-all group"
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Sunset className="w-5 h-5 md:w-6 md:h-6 text-blue-600 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs md:text-sm font-semibold text-gray-700">Amanhã</span>
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => handleQuickPick(7)}
+            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-purple-500/30 bg-gradient-to-br from-purple-50 to-purple-100 hover:border-purple-500 hover:shadow-md transition-all group"
+            whileHover={{ scale: 1.02, y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Calendar className="w-5 h-5 md:w-6 md:h-6 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
+            <span className="text-xs md:text-sm font-semibold text-gray-700">Esta Semana</span>
+          </motion.button>
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         <div>
-          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+          <div
+            ref={calendarRef}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            className="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200"
+          >
             <div className="bg-gradient-to-r from-[#2d8659] to-[#236b47] text-white px-4 py-3">
               <div className="flex items-center justify-between">
                 <button
                   type="button"
                   onClick={onPrevMonth}
                   disabled={isPrevMonthDisabled()}
-                  className={`p-1.5 rounded-lg transition-all ${
-                    isPrevMonthDisabled() ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/20 active:scale-95'
-                  }`}
+                  className={`p-1.5 rounded-lg transition-all ${isPrevMonthDisabled() ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/20 active:scale-95'
+                    }`}
                   aria-label="Mês anterior"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -172,6 +321,7 @@ const DateTimeStep = ({
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
+              <p className="text-center text-xs text-white/70 mt-1">Deslize para mudar de mês</p>
             </div>
 
             <div className="grid grid-cols-7 gap-1 px-3 py-2 bg-gray-50">
@@ -198,15 +348,14 @@ const DateTimeStep = ({
                     type="button"
                     onClick={() => !disabled && onSelectDate?.(dateString)}
                     disabled={disabled}
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all ${
-                      disabled
-                        ? 'text-gray-300 cursor-not-allowed bg-gray-50'
-                        : isSelected
-                          ? 'bg-[#2d8659] text-white shadow-lg scale-105'
-                          : isToday
-                            ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200'
-                            : 'text-gray-700 hover:bg-[#2d8659]/10 hover:scale-105 border border-gray-200'
-                    }`}
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all ${disabled
+                      ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                      : isSelected
+                        ? 'bg-[#2d8659] text-white shadow-lg scale-105'
+                        : isToday
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200'
+                          : 'text-gray-700 hover:bg-[#2d8659]/10 hover:scale-105 border border-gray-200'
+                      }`}
                     whileHover={!disabled ? { scale: 1.05 } : {}}
                     whileTap={!disabled ? { scale: 0.95 } : {}}
                   >
@@ -263,11 +412,10 @@ const DateTimeStep = ({
                         Duração do serviço:
                         <span className="font-semibold text-blue-600 ml-1">
                           {selectedServiceDetails.duration_minutes >= 60
-                            ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${
-                                selectedServiceDetails.duration_minutes % 60 > 0
-                                  ? ` ${selectedServiceDetails.duration_minutes % 60}min`
-                                  : ''
-                              }`
+                            ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${selectedServiceDetails.duration_minutes % 60 > 0
+                              ? ` ${selectedServiceDetails.duration_minutes % 60}min`
+                              : ''
+                            }`
                             : `${selectedServiceDetails.duration_minutes} minutos`}
                         </span>
                       </span>
@@ -286,36 +434,129 @@ const DateTimeStep = ({
                     <span className="mt-3 text-gray-600">Carregando horários...</span>
                   </div>
                 ) : availableTimes.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
-                    {availableTimes.map((time) => {
-                      const disabled = bookedSlots.includes(time);
-                      return (
-                        <motion.button
-                          key={time}
-                          type="button"
-                          onClick={() => !disabled && onSelectTime?.(time)}
-                          disabled={disabled}
-                          className={`p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${
-                            disabled
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                              : selectedTime === time
-                                ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
-                                : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
-                          }`}
-                          whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
-                          whileTap={!disabled ? { scale: 0.98 } : {}}
-                          title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
-                        >
-                          <div className="text-base">{time}</div>
-                          {!disabled && selectedTime !== time && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                              <Clock className="w-4 h-4" />
-                            </div>
-                          )}
-                          {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
-                        </motion.button>
-                      );
-                    })}
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
+                    {/* Manhã */}
+                    {timePeriods.manha.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
+                          <Sun className="w-4 h-4 text-amber-500" />
+                          <h4 className="text-sm font-semibold text-gray-700">Manhã</h4>
+                          <span className="text-xs text-gray-500">({timePeriods.manha.length} {timePeriods.manha.length === 1 ? 'horário' : 'horários'})</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {timePeriods.manha.map((time) => {
+                            const disabled = bookedSlots.includes(time);
+                            return (
+                              <motion.button
+                                key={time}
+                                type="button"
+                                onClick={() => !disabled && onSelectTime?.(time)}
+                                disabled={disabled}
+                                className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
+                                  : selectedTime === time
+                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                  }`}
+                                whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
+                                whileTap={!disabled ? { scale: 0.98 } : {}}
+                                title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                              >
+                                <div className="text-base">{time}</div>
+                                {!disabled && selectedTime !== time && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                    <Clock className="w-4 h-4" />
+                                  </div>
+                                )}
+                                {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tarde */}
+                    {timePeriods.tarde.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
+                          <Sunset className="w-4 h-4 text-orange-500" />
+                          <h4 className="text-sm font-semibold text-gray-700">Tarde</h4>
+                          <span className="text-xs text-gray-500">({timePeriods.tarde.length} {timePeriods.tarde.length === 1 ? 'horário' : 'horários'})</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {timePeriods.tarde.map((time) => {
+                            const disabled = bookedSlots.includes(time);
+                            return (
+                              <motion.button
+                                key={time}
+                                type="button"
+                                onClick={() => !disabled && onSelectTime?.(time)}
+                                disabled={disabled}
+                                className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
+                                  : selectedTime === time
+                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                  }`}
+                                whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
+                                whileTap={!disabled ? { scale: 0.98 } : {}}
+                                title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                              >
+                                <div className="text-base">{time}</div>
+                                {!disabled && selectedTime !== time && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                    <Clock className="w-4 h-4" />
+                                  </div>
+                                )}
+                                {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Noite */}
+                    {timePeriods.noite.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
+                          <Moon className="w-4 h-4 text-indigo-500" />
+                          <h4 className="text-sm font-semibold text-gray-700">Noite</h4>
+                          <span className="text-xs text-gray-500">({timePeriods.noite.length} {timePeriods.noite.length === 1 ? 'horário' : 'horários'})</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {timePeriods.noite.map((time) => {
+                            const disabled = bookedSlots.includes(time);
+                            return (
+                              <motion.button
+                                key={time}
+                                type="button"
+                                onClick={() => !disabled && onSelectTime?.(time)}
+                                disabled={disabled}
+                                className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
+                                  : selectedTime === time
+                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                  }`}
+                                whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
+                                whileTap={!disabled ? { scale: 0.98 } : {}}
+                                title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                              >
+                                <div className="text-base">{time}</div>
+                                {!disabled && selectedTime !== time && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                    <Clock className="w-4 h-4" />
+                                  </div>
+                                )}
+                                {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12">
