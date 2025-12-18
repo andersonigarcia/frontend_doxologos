@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, PlayCircle, X } from 'lucide-react';
 
@@ -14,13 +14,44 @@ const VideoShowcase = ({
   openVideoInNewTab,
 }) => {
   const safeCurrentVideo = currentVideo || videos[0];
+  const [isVisible, setIsVisible] = useState(false);
+  const videoRef = useRef(null);
+
+  // Intersection Observer para lazy loading
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            // Uma vez visível, não precisa mais observar
+            observer.disconnect();
+          }
+        });
+      },
+      {
+        rootMargin: '50px', // Carregar 50px antes de aparecer
+        threshold: 0.1,
+      }
+    );
+
+    if (videoRef.current) {
+      observer.observe(videoRef.current);
+    }
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, []);
 
   if (!safeCurrentVideo) {
     return null;
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={videoRef}>
       <div
         className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group"
         role="region"
@@ -47,15 +78,18 @@ const VideoShowcase = ({
                 allowFullScreen
                 title={safeCurrentVideo.title}
                 onError={handleIframeError}
+                loading="lazy"
               />
             ) : (
               <>
-                <img
-                  src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
-                  alt={safeCurrentVideo.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                {isVisible && (
+                  <img
+                    src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
+                    alt={safeCurrentVideo.title}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                )}
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-center p-6">
                   <div className="bg-red-500 rounded-full p-4 mb-4">
                     <Play className="w-8 h-8" fill="currentColor" />
@@ -82,14 +116,17 @@ const VideoShowcase = ({
           </>
         ) : (
           <>
-            <img
-              src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
-              alt={safeCurrentVideo.title}
-              className={`w-full h-full object-cover transition-opacity duration-300 pointer-events-none ${
-                isVideoLoading ? 'opacity-50' : 'opacity-100'
-              }`}
-              loading="lazy"
-            />
+            {isVisible ? (
+              <img
+                src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
+                alt={safeCurrentVideo.title}
+                className={`w-full h-full object-cover transition-opacity duration-300 pointer-events-none ${isVideoLoading ? 'opacity-50' : 'opacity-100'
+                  }`}
+                loading="lazy"
+              />
+            ) : (
+              <div className="w-full h-full bg-gray-200 animate-pulse" />
+            )}
             <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition-colors pointer-events-none" />
             <button
               onClick={(e) => {
@@ -130,11 +167,10 @@ const VideoShowcase = ({
         {videos.map((video) => (
           <motion.div
             key={video.id}
-            className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-500 cursor-pointer ${
-              safeCurrentVideo.id === video.id
-                ? 'border-[#2d8659] shadow-2xl scale-105 bg-gradient-to-br from-green-50 to-green-100'
-                : 'border-transparent hover:border-green-200 hover:shadow-xl'
-            }`}
+            className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-500 cursor-pointer ${safeCurrentVideo.id === video.id
+              ? 'border-[#2d8659] shadow-2xl scale-105 bg-gradient-to-br from-green-50 to-green-100'
+              : 'border-transparent hover:border-green-200 hover:shadow-xl'
+              }`}
             onClick={() => playVideoInline(video.videoId)}
             onKeyDown={(e) => e.key === 'Enter' && playVideoInline(video.videoId)}
             whileHover={{ y: -8, transition: { duration: 0.3 } }}

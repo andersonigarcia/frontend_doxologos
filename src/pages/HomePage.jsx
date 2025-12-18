@@ -16,6 +16,7 @@ import ProfessionalsCarousel from '@/components/home/ProfessionalsCarousel';
 import TestimonialsSection from '@/components/home/TestimonialsSection';
 import FaqSection from '@/components/home/FaqSection';
 import ContactSection from '@/components/home/ContactSection';
+import StickyBottomCTA from '@/components/home/StickyBottomCTA';
 
 const videos = [
   {
@@ -345,6 +346,13 @@ const HomePage = () => {
           onFieldChange={handleFieldChange}
         />
       </main>
+
+      {/* Sticky Bottom CTA - Mobile First */}
+      <StickyBottomCTA
+        ctaText="Agendar Consulta"
+        ctaLink="/agendamento"
+        showAfterScroll={300}
+      />
 
       <footer className="bg-gray-900 text-white py-12">
         <div className="container mx-auto px-4">
