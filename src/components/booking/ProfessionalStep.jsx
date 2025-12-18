@@ -315,8 +315,8 @@ const ProfessionalStep = ({
                   <div
                     key={index}
                     className={`h-1.5 rounded-full transition-all ${services.findIndex(s => s.id === selectedService) === index
-                        ? 'w-6 bg-[#2d8659]'
-                        : 'w-1.5 bg-gray-300'
+                      ? 'w-6 bg-[#2d8659]'
+                      : 'w-1.5 bg-gray-300'
                       }`}
                   />
                 ))}
@@ -371,8 +371,8 @@ const ProfessionalStep = ({
                           R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
                         <div className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${isSelected
-                            ? 'bg-[#2d8659] text-white'
-                            : 'bg-gray-100 text-gray-700'
+                          ? 'bg-[#2d8659] text-white'
+                          : 'bg-gray-100 text-gray-700'
                           }`}>
                           {isSelected ? '✓ Selecionado' : 'Escolher'}
                         </div>
@@ -409,8 +409,8 @@ const ProfessionalStep = ({
                           R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className={`px-3 py-1 rounded-full text-sm font-medium transition-opacity ${isSelected
-                            ? 'bg-[#2d8659] text-white opacity-100'
-                            : 'bg-[#2d8659] text-white opacity-0 group-hover:opacity-100'
+                          ? 'bg-[#2d8659] text-white opacity-100'
+                          : 'bg-[#2d8659] text-white opacity-0 group-hover:opacity-100'
                           }`}>
                           {isSelected ? '✓ Selecionado' : 'Selecionar'}
                         </div>
@@ -547,7 +547,7 @@ const ProfessionalStep = ({
                 </div>
                 <div
                   ref={professionalCarouselRef}
-                  className="grid gap-4 grid-flow-col auto-cols-[minmax(280px,_85%)] overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scroll-smooth focus:outline-none no-scrollbar md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2"
+                  className="flex flex-col gap-4 md:grid md:gap-4 md:grid-flow-col md:auto-cols-[minmax(280px,_85%)] md:overflow-x-auto md:pb-4 md:-mx-4 md:px-4 md:snap-x md:snap-mandatory md:scroll-smooth md:focus:outline-none md:no-scrollbar lg:mx-0 lg:px-0 lg:overflow-visible lg:grid-flow-row lg:auto-cols-auto lg:grid-cols-2"
                   role="listbox"
                   aria-label="Lista de profissionais disponíveis"
                 >
@@ -564,8 +564,8 @@ const ProfessionalStep = ({
                         aria-selected={selectedProfessional === professional.id}
                         aria-disabled={!isSelectable}
                         className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${selectedProfessional === professional.id && isSelectable
-                            ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
-                            : 'border-gray-200 bg-white'
+                          ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
+                          : 'border-gray-200 bg-white'
                           } ${isSelectable
                             ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
                             : 'opacity-60 cursor-not-allowed'
@@ -622,24 +622,6 @@ const ProfessionalStep = ({
                       </button>
                     );
                   })}
-                </div>
-                <div className="md:hidden flex justify-center gap-4 mt-2" aria-label="Controles do carrossel">
-                  <button
-                    type="button"
-                    onClick={() => scrollProfessionalCarousel('prev')}
-                    className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                    aria-label="Ver profissional anterior"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollProfessionalCarousel('next')}
-                    className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                    aria-label="Ver próximo profissional"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             )}
