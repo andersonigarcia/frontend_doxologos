@@ -96,6 +96,10 @@ const AgendamentoPage = () => {
     setShowConfirmPassword,
     toggleExistingPatient,
     handlePasswordResetRequest,
+    // Novos estados de validação de email
+    isCheckingEmail,
+    emailExists,
+    emailCheckError,
   } = usePatientForm({ authUser, resetPassword, toast });
   const formErrors = patientFormState?.errors || {};
 
@@ -1012,6 +1016,10 @@ const AgendamentoPage = () => {
               onToggleShowConfirmPassword={() => setShowConfirmPassword((prev) => !prev)}
               onPasswordResetRequest={handlePasswordResetRequest}
               onSelectMeetingPlatform={setMeetingPlatform}
+              // Novos props de validação de email
+              isCheckingEmail={isCheckingEmail}
+              emailExists={emailExists}
+              emailCheckError={emailCheckError}
             />
             <div className="flex flex-col sm:flex-row gap-4 mt-6">
               <Button onClick={() => setStep(3)} variant="outline">

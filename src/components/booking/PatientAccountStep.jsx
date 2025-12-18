@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Check, Eye, EyeOff, KeyRound, Video } from 'lucide-react';
+import { Check, Eye, EyeOff, KeyRound, Video, Loader2, CheckCircle, Sparkles, UserCheck, UserPlus } from 'lucide-react';
 import { formatPhoneNumber } from '@/hooks/booking/usePatientForm';
 
 const PatientAccountStep = ({
@@ -22,6 +22,10 @@ const PatientAccountStep = ({
   onToggleShowConfirmPassword,
   onPasswordResetRequest,
   onSelectMeetingPlatform,
+  // Novos props para validação de email
+  isCheckingEmail = false,
+  emailExists = null,
+  emailCheckError = null,
 }) => {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
@@ -33,7 +37,7 @@ const PatientAccountStep = ({
       {!authUser && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Nome completo</label>
+            <label className="block text-sm font-medium mb-2">Nome completo*</label>
             <input
               type="text"
               {...register('name', {
@@ -45,20 +49,68 @@ const PatientAccountStep = ({
             {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
-            <input
-              type="email"
-              {...register('email', {
-                setValueAs: (value) => (value ?? '').trim(),
-              })}
-              className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : 'border-gray-300'
-                }`}
-              placeholder="seu@email.com"
-            />
+            <label className="block text-sm font-medium mb-2">Email*</label>
+            <div className="relative">
+              <input
+                type="email"
+                {...register('email', {
+                  setValueAs: (value) => (value ?? '').trim(),
+                })}
+                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-300'
+                  }`}
+                placeholder="seu@email.com"
+              />
+              {isCheckingEmail && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Feedback de validação de email */}
+            {isCheckingEmail && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 text-sm text-gray-600 mt-2"
+              >
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Verificando email...</span>
+              </motion.div>
+            )}
+
+            {!isCheckingEmail && emailExists === true && !emailError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 text-sm text-green-600 mt-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200"
+              >
+                <CheckCircle className="w-4 h-4" />
+                <span className="font-medium">✓ Email encontrado - Bem-vindo de volta!</span>
+              </motion.div>
+            )}
+
+            {!isCheckingEmail && emailExists === false && !emailError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 text-sm text-blue-600 mt-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="font-medium">✓ Novo por aqui? Vamos criar sua conta!</span>
+              </motion.div>
+            )}
+
+            {emailCheckError && (
+              <p className="text-amber-600 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                {emailCheckError}
+              </p>
+            )}
+
             {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Telefone</label>
+            <label className="block text-sm font-medium mb-2">Telefone*</label>
             <input
               type="tel"
               {...register('phone', {
@@ -190,8 +242,8 @@ const PatientAccountStep = ({
                 onClick={() => onSelectMeetingPlatform?.(option.id)}
                 aria-pressed={isActive}
                 className={`w-full text-left border rounded-xl p-5 transition-all ${isActive
-                    ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
-                    : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
+                  ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
+                  : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
                   }`}
               >
                 <div className="flex items-center gap-3 mb-3">

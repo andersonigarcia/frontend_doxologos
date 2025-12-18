@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useEmailValidation } from './useEmailValidation';
 
 export const INITIAL_PATIENT_DATA = {
   name: '',
@@ -110,6 +111,10 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
   const [isExistingPatient, setIsExistingPatient] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [autoToggleEnabled, setAutoToggleEnabled] = useState(true); // Controla se auto-toggle está ativo
+
+  // Hook de validação de email
+  const { checkEmail, isChecking, emailExists, error: emailCheckError, clearEmailCheck } = useEmailValidation();
 
   const schema = useMemo(
     () =>
@@ -148,6 +153,9 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
     setShowConfirmPassword(false);
     setValue('password', '', { shouldDirty: false, shouldValidate: false });
     setValue('confirmPassword', '', { shouldDirty: false, shouldValidate: false });
+
+    // Desabilitar auto-toggle quando usuário faz override manual
+    setAutoToggleEnabled(false);
   }, [setValue]);
 
   const handlePasswordResetRequest = useCallback(async () => {
@@ -165,6 +173,39 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
 
     await resetPassword?.(email);
   }, [getValues, resetPassword, toast, trigger]);
+
+  // Efeito para validação automática de email
+  useEffect(() => {
+    // Não fazer nada se usuário já está autenticado
+    if (authUser) {
+      return;
+    }
+
+    const email = patientData.email;
+
+    // Limpar estado se email estiver vazio ou inválido
+    if (!email || !validateEmail(email)) {
+      clearEmailCheck();
+      return;
+    }
+
+    // Verificar email automaticamente
+    const verifyEmail = async () => {
+      const exists = await checkEmail(email);
+
+      // Se auto-toggle está habilitado, atualizar estado automaticamente
+      if (autoToggleEnabled && exists !== null) {
+        setIsExistingPatient(exists);
+
+        // Limpar campos de senha quando muda o modo
+        setValue('password', '', { shouldDirty: false, shouldValidate: false });
+        setValue('confirmPassword', '', { shouldDirty: false, shouldValidate: false });
+        setPasswordError('');
+      }
+    };
+
+    verifyEmail();
+  }, [patientData.email, authUser, checkEmail, clearEmailCheck, autoToggleEnabled, setValue]);
 
   useEffect(() => {
     if (!authUser) {
@@ -213,5 +254,11 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
     trigger,
     formatPhoneNumber,
     validateEmail,
+    // Novos estados de validação de email
+    isCheckingEmail: isChecking,
+    emailExists,
+    emailCheckError,
+    autoToggleEnabled,
+    setAutoToggleEnabled,
   };
 }
