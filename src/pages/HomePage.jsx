@@ -18,6 +18,7 @@ import FaqSection from '@/components/home/FaqSection';
 import ContactSection from '@/components/home/ContactSection';
 import StickyBottomCTA from '@/components/home/StickyBottomCTA';
 import ComoFuncionaSection from '@/components/home/ComoFuncionaSection';
+import TrustIndicatorsSection from '@/components/home/TrustIndicatorsSection';
 
 const videos = [
   {
@@ -291,6 +292,8 @@ const HomePage = () => {
         {activeEvents.length > 0 && (
           <EventsHighlight events={activeEvents} />
         )}
+
+        <TrustIndicatorsSection />
 
         <ComoFuncionaSection />
 
