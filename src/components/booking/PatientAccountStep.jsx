@@ -1,8 +1,10 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Check, Eye, EyeOff, KeyRound, Video, Loader2, CheckCircle, Sparkles, UserCheck, UserPlus } from 'lucide-react';
+import { Check, Eye, EyeOff, KeyRound, Video, Loader2, CheckCircle, Sparkles, UserCheck, UserPlus, Info, CheckCircle2 } from 'lucide-react';
 import { formatPhoneNumber } from '@/hooks/booking/usePatientForm';
+import PasswordStrengthIndicator from './PasswordStrengthIndicator';
+import Tooltip from '@/components/ui/Tooltip';
 
 const PatientAccountStep = ({
   authUser,
@@ -36,16 +38,28 @@ const PatientAccountStep = ({
 
       {!authUser && (
         <div className="space-y-4">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium mb-2">Nome completo*</label>
-            <input
-              type="text"
-              {...register('name', {
-                setValueAs: (value) => (value ?? '').trim(),
-              })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-              placeholder="Seu nome completo"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                {...register('name', {
+                  setValueAs: (value) => (value ?? '').trim(),
+                })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                placeholder="Seu nome completo"
+              />
+              {/* Checkmark de validação */}
+              {patientData.name && !errors.name && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                </motion.div>
+              )}
+            </div>
             {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
           <div>
@@ -109,20 +123,32 @@ const PatientAccountStep = ({
 
             {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
           </div>
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium mb-2">Telefone*</label>
-            <input
-              type="tel"
-              {...register('phone', {
-                onChange: (event) => {
-                  const formatted = formatPhoneNumber(event.target.value);
-                  event.target.value = formatted;
-                },
-              })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-              placeholder="(00) 00000-0000"
-              maxLength={15}
-            />
+            <div className="relative">
+              <input
+                type="tel"
+                {...register('phone', {
+                  onChange: (event) => {
+                    const formatted = formatPhoneNumber(event.target.value);
+                    event.target.value = formatted;
+                  },
+                })}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                placeholder="(00) 00000-0000"
+                maxLength={15}
+              />
+              {/* Checkmark de validação */}
+              {patientData.phone && !errors.phone && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                >
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                </motion.div>
+              )}
+            </div>
             {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
           </div>
         </div>
@@ -137,16 +163,16 @@ const PatientAccountStep = ({
         >
           {/* Card Visual com Gradiente */}
           <div className={`relative rounded-2xl p-6 border-2 transition-all duration-300 ${isExistingPatient
-              ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200'
-              : 'bg-gradient-to-br from-blue-50 via-sky-50 to-blue-50 border-blue-200'
+            ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200'
+            : 'bg-gradient-to-br from-blue-50 via-sky-50 to-blue-50 border-blue-200'
             }`}>
             {/* Header do Card com Ícone */}
             <div className="flex items-start justify-between mb-6">
               <div className="flex items-start gap-4">
                 {/* Ícone Grande */}
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${isExistingPatient
-                    ? 'bg-green-500 shadow-lg shadow-green-200'
-                    : 'bg-blue-500 shadow-lg shadow-blue-200'
+                  ? 'bg-green-500 shadow-lg shadow-green-200'
+                  : 'bg-blue-500 shadow-lg shadow-blue-200'
                   }`}>
                   {isExistingPatient ? (
                     <UserCheck className="w-7 h-7 text-white" />
@@ -175,8 +201,8 @@ const PatientAccountStep = ({
                 type="button"
                 onClick={onToggleExistingPatient}
                 className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${isExistingPatient
-                    ? 'text-green-700 hover:bg-green-100 border border-green-300'
-                    : 'text-blue-700 hover:bg-blue-100 border border-blue-300'
+                  ? 'text-green-700 hover:bg-green-100 border border-green-300'
+                  : 'text-blue-700 hover:bg-blue-100 border border-blue-300'
                   }`}
               >
                 {isExistingPatient ? 'Sou novo' : 'Já tenho conta'}
@@ -201,8 +227,8 @@ const PatientAccountStep = ({
                   type={showPassword ? 'text' : 'password'}
                   {...register('password')}
                   className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
-                      ? 'border-green-200 focus:ring-green-500 focus:border-green-500'
-                      : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500'
+                    ? 'border-green-200 focus:ring-green-500 focus:border-green-500'
+                    : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500'
                     }`}
                   placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
                   autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
@@ -216,6 +242,16 @@ const PatientAccountStep = ({
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+
+              {/* Indicador de Força de Senha - Apenas para Novos */}
+              <AnimatePresence>
+                {!isExistingPatient && (
+                  <PasswordStrengthIndicator
+                    password={patientData.password || ''}
+                    isExistingPatient={isExistingPatient}
+                  />
+                )}
+              </AnimatePresence>
 
               {/* Campo de Confirmar Senha - Apenas para Novos */}
               {!isExistingPatient && (
@@ -261,8 +297,8 @@ const PatientAccountStep = ({
                     type="button"
                     onClick={onPasswordResetRequest}
                     className={`text-sm font-medium transition-colors ${isExistingPatient
-                        ? 'text-green-600 hover:text-green-700'
-                        : 'text-blue-600 hover:text-blue-700'
+                      ? 'text-green-600 hover:text-green-700'
+                      : 'text-blue-600 hover:text-blue-700'
                       } disabled:text-gray-400 disabled:hover:text-gray-400`}
                     disabled={!patientData.email || !!emailError}
                   >
@@ -271,8 +307,8 @@ const PatientAccountStep = ({
                   <Link
                     to="/recuperar-senha"
                     className={`text-sm font-medium transition-colors ${isExistingPatient
-                        ? 'text-green-600 hover:text-green-700'
-                        : 'text-blue-600 hover:text-blue-700'
+                      ? 'text-green-600 hover:text-green-700'
+                      : 'text-blue-600 hover:text-blue-700'
                       }`}
                   >
                     Recuperar agora
