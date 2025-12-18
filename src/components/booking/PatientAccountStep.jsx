@@ -129,94 +129,179 @@ const PatientAccountStep = ({
       )}
 
       {!authUser ? (
-        <div className="mt-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <KeyRound className="w-5 h-5 text-[#2d8659]" />
-                {isExistingPatient ? 'Confirme seu acesso' : 'Crie sua senha de acesso'}
-              </h3>
-              <p className="text-sm text-gray-600 mt-1">
-                {isExistingPatient
-                  ? 'Informe sua senha atual para vincular este agendamento à sua conta.'
-                  : `Defina uma senha com pelo menos ${minPasswordLength} caracteres para acessar a Área do Paciente.`}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onToggleExistingPatient}
-              className="text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors self-start"
-            >
-              {isExistingPatient ? 'Sou um novo paciente' : 'Já sou paciente'}
-            </button>
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="relative">
-              <label className="block text-sm font-medium mb-2">{isExistingPatient ? 'Senha do paciente' : 'Crie uma senha'}</label>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                {...register('password')}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
-                placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
-                autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
-              />
+        <motion.div
+          className="mt-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Card Visual com Gradiente */}
+          <div className={`relative rounded-2xl p-6 border-2 transition-all duration-300 ${isExistingPatient
+              ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200'
+              : 'bg-gradient-to-br from-blue-50 via-sky-50 to-blue-50 border-blue-200'
+            }`}>
+            {/* Header do Card com Ícone */}
+            <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start gap-4">
+                {/* Ícone Grande */}
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${isExistingPatient
+                    ? 'bg-green-500 shadow-lg shadow-green-200'
+                    : 'bg-blue-500 shadow-lg shadow-blue-200'
+                  }`}>
+                  {isExistingPatient ? (
+                    <UserCheck className="w-7 h-7 text-white" />
+                  ) : (
+                    <UserPlus className="w-7 h-7 text-white" />
+                  )}
+                </div>
+
+                {/* Título e Subtítulo */}
+                <div>
+                  <h3 className={`text-xl font-bold mb-1 transition-colors duration-300 ${isExistingPatient ? 'text-green-900' : 'text-blue-900'
+                    }`}>
+                    {isExistingPatient ? 'Bem-vindo de volta!' : 'Novo por aqui?'}
+                  </h3>
+                  <p className={`text-sm transition-colors duration-300 ${isExistingPatient ? 'text-green-700' : 'text-blue-700'
+                    }`}>
+                    {isExistingPatient
+                      ? 'Encontramos seu cadastro'
+                      : 'Vamos criar sua conta'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botão de Override - Discreto mas Visível */}
               <button
                 type="button"
-                onClick={onToggleShowPassword}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                onClick={onToggleExistingPatient}
+                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${isExistingPatient
+                    ? 'text-green-700 hover:bg-green-100 border border-green-300'
+                    : 'text-blue-700 hover:bg-blue-100 border border-blue-300'
+                  }`}
               >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                {isExistingPatient ? 'Sou novo' : 'Já tenho conta'}
               </button>
             </div>
-            {!isExistingPatient && (
+
+            {/* Descrição */}
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              {isExistingPatient
+                ? 'Informe sua senha atual para vincular este agendamento à sua conta.'
+                : `Defina uma senha com pelo menos ${minPasswordLength} caracteres para acessar a Área do Paciente.`}
+            </p>
+
+            {/* Campos de Senha */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Campo de Senha */}
               <div className="relative">
-                <label className="block text-sm font-medium mb-2">Confirme a senha</label>
+                <label className="block text-sm font-medium mb-2 text-gray-700">
+                  {isExistingPatient ? 'Senha do paciente*' : 'Crie uma senha*'}
+                </label>
                 <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  {...register('confirmPassword')}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-12"
-                  placeholder="Repita a senha"
-                  autoComplete="new-password"
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password')}
+                  className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
+                      ? 'border-green-200 focus:ring-green-500 focus:border-green-500'
+                      : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
+                  placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
+                  autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
                 />
                 <button
                   type="button"
-                  onClick={onToggleShowConfirmPassword}
-                  className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
-                  aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                  onClick={onToggleShowPassword}
+                  className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+
+              {/* Campo de Confirmar Senha - Apenas para Novos */}
+              {!isExistingPatient && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.2 }}
+                  className="relative"
+                >
+                  <label className="block text-sm font-medium mb-2 text-gray-700">
+                    Confirme a senha*
+                  </label>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    {...register('confirmPassword')}
+                    className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
+                    placeholder="Repita a senha"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={onToggleShowConfirmPassword}
+                    className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
+                    aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Footer com Links e Dicas */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <p className="text-sm text-gray-600">
+                  {isExistingPatient
+                    ? 'Caso não lembre sua senha, solicite um link de redefinição.'
+                    : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={onPasswordResetRequest}
+                    className={`text-sm font-medium transition-colors ${isExistingPatient
+                        ? 'text-green-600 hover:text-green-700'
+                        : 'text-blue-600 hover:text-blue-700'
+                      } disabled:text-gray-400 disabled:hover:text-gray-400`}
+                    disabled={!patientData.email || !!emailError}
+                  >
+                    Esqueci minha senha
+                  </button>
+                  <Link
+                    to="/recuperar-senha"
+                    className={`text-sm font-medium transition-colors ${isExistingPatient
+                        ? 'text-green-600 hover:text-green-700'
+                        : 'text-blue-600 hover:text-blue-700'
+                      }`}
+                  >
+                    Recuperar agora
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Erros */}
+            {(passwordError || errors.password) && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-600 text-sm mt-4 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
+              >
+                {passwordError || errors.password?.message}
+              </motion.p>
+            )}
+            {!isExistingPatient && errors.confirmPassword && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-600 text-sm mt-2 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
+              >
+                {errors.confirmPassword.message}
+              </motion.p>
             )}
           </div>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-gray-500">
-              {isExistingPatient
-                ? 'Caso não lembre sua senha, solicite um link de redefinição abaixo.'
-                : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
-            </p>
-            <div className="flex items-center gap-4">
-              <button
-                type="button"
-                onClick={onPasswordResetRequest}
-                className="text-sm font-medium text-[#2d8659] hover:text-[#236b47] disabled:text-gray-400 disabled:hover:text-gray-400"
-                disabled={!patientData.email || !!emailError}
-              >
-                Esqueci minha senha
-              </button>
-              <Link to="/recuperar-senha" className="text-sm text-[#2d8659] hover:text-[#236b47] font-medium">
-                Recuperar agora
-              </Link>
-            </div>
-          </div>
-          {(passwordError || errors.password) && (
-            <p className="text-red-500 text-sm mt-3">{passwordError || errors.password?.message}</p>
-          )}
-          {!isExistingPatient && errors.confirmPassword && (
-            <p className="text-red-500 text-sm mt-2">{errors.confirmPassword.message}</p>
-          )}
-        </div>
+        </motion.div>
       ) : (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
           Você está acessando como <span className="font-semibold">{authUser?.email}</span>. Usaremos seu cadastro atual para concluir o agendamento.
