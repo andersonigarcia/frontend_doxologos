@@ -15,6 +15,8 @@ import {
   Sun,
   Sunset,
   Moon,
+  Lightbulb,
+  MessageCircle,
 } from 'lucide-react';
 
 const DateTimeStep = ({
@@ -141,6 +143,15 @@ const DateTimeStep = ({
   };
 
   const timePeriods = groupTimesByPeriod(availableTimes);
+
+  // Support contact handler
+  const handleContactSupport = () => {
+    const whatsappNumber = '5511999999999'; // Replace with actual number
+    const message = encodeURIComponent(
+      `Olá! Estou tentando agendar ${selectedServiceDetails?.name || 'uma consulta'} mas não encontrei horários disponíveis para ${selectedDate ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : 'a data selecionada'}. Podem me ajudar?`
+    );
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
@@ -434,137 +445,196 @@ const DateTimeStep = ({
                     <span className="mt-3 text-gray-600">Carregando horários...</span>
                   </div>
                 ) : availableTimes.length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
-                    {/* Manhã */}
-                    {timePeriods.manha.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
-                          <Sun className="w-4 h-4 text-amber-500" />
-                          <h4 className="text-sm font-semibold text-gray-700">Manhã</h4>
-                          <span className="text-xs text-gray-500">({timePeriods.manha.length} {timePeriods.manha.length === 1 ? 'horário' : 'horários'})</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {timePeriods.manha.map((time) => {
-                            const disabled = bookedSlots.includes(time);
-                            return (
-                              <motion.button
-                                key={time}
-                                type="button"
-                                onClick={() => !disabled && onSelectTime?.(time)}
-                                disabled={disabled}
-                                className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                                  : selectedTime === time
-                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
-                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
-                                  }`}
-                                whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
-                                whileTap={!disabled ? { scale: 0.98 } : {}}
-                                title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
-                              >
-                                <div className="text-base">{time}</div>
-                                {!disabled && selectedTime !== time && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                    <Clock className="w-4 h-4" />
-                                  </div>
-                                )}
-                                {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
-                              </motion.button>
-                            );
-                          })}
-                        </div>
+                  <>
+                    {/* Contextual Tip */}
+                    <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                      <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="text-blue-900">
+                          <strong>Dica:</strong> Manhãs (9h-11h) e tardes (14h-16h) geralmente têm mais disponibilidade!
+                        </p>
                       </div>
-                    )}
-
-                    {/* Tarde */}
-                    {timePeriods.tarde.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
-                          <Sunset className="w-4 h-4 text-orange-500" />
-                          <h4 className="text-sm font-semibold text-gray-700">Tarde</h4>
-                          <span className="text-xs text-gray-500">({timePeriods.tarde.length} {timePeriods.tarde.length === 1 ? 'horário' : 'horários'})</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {timePeriods.tarde.map((time) => {
-                            const disabled = bookedSlots.includes(time);
-                            return (
-                              <motion.button
-                                key={time}
-                                type="button"
-                                onClick={() => !disabled && onSelectTime?.(time)}
-                                disabled={disabled}
-                                className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                                  : selectedTime === time
-                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
-                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
-                                  }`}
-                                whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
-                                whileTap={!disabled ? { scale: 0.98 } : {}}
-                                title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
-                              >
-                                <div className="text-base">{time}</div>
-                                {!disabled && selectedTime !== time && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                    <Clock className="w-4 h-4" />
-                                  </div>
-                                )}
-                                {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
-                              </motion.button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Noite */}
-                    {timePeriods.noite.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
-                          <Moon className="w-4 h-4 text-indigo-500" />
-                          <h4 className="text-sm font-semibold text-gray-700">Noite</h4>
-                          <span className="text-xs text-gray-500">({timePeriods.noite.length} {timePeriods.noite.length === 1 ? 'horário' : 'horários'})</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                          {timePeriods.noite.map((time) => {
-                            const disabled = bookedSlots.includes(time);
-                            return (
-                              <motion.button
-                                key={time}
-                                type="button"
-                                onClick={() => !disabled && onSelectTime?.(time)}
-                                disabled={disabled}
-                                className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                                  : selectedTime === time
-                                    ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
-                                    : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
-                                  }`}
-                                whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
-                                whileTap={!disabled ? { scale: 0.98 } : {}}
-                                title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
-                              >
-                                <div className="text-base">{time}</div>
-                                {!disabled && selectedTime !== time && (
-                                  <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                    <Clock className="w-4 h-4" />
-                                  </div>
-                                )}
-                                {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
-                              </motion.button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CalendarX className="w-8 h-8 text-gray-400" />
                     </div>
-                    <p className="text-gray-500 font-medium mb-2">Nenhum horário disponível</p>
-                    <p className="text-sm text-gray-400">Selecione outra data</p>
+
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
+                      {/* Manhã */}
+                      {timePeriods.manha.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
+                            <Sun className="w-4 h-4 text-amber-500" />
+                            <h4 className="text-sm font-semibold text-gray-700">Manhã</h4>
+                            <span className="text-xs text-gray-500">({timePeriods.manha.length} {timePeriods.manha.length === 1 ? 'horário' : 'horários'})</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {timePeriods.manha.map((time) => {
+                              const disabled = bookedSlots.includes(time);
+                              return (
+                                <motion.button
+                                  key={time}
+                                  type="button"
+                                  onClick={() => !disabled && onSelectTime?.(time)}
+                                  disabled={disabled}
+                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
+                                    : selectedTime === time
+                                      ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                      : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                    }`}
+                                  whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
+                                  whileTap={!disabled ? { scale: 0.98 } : {}}
+                                  title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                                >
+                                  <div className="text-base">{time}</div>
+                                  {!disabled && selectedTime !== time && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                      <Clock className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tarde */}
+                      {timePeriods.tarde.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
+                            <Sunset className="w-4 h-4 text-orange-500" />
+                            <h4 className="text-sm font-semibold text-gray-700">Tarde</h4>
+                            <span className="text-xs text-gray-500">({timePeriods.tarde.length} {timePeriods.tarde.length === 1 ? 'horário' : 'horários'})</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {timePeriods.tarde.map((time) => {
+                              const disabled = bookedSlots.includes(time);
+                              return (
+                                <motion.button
+                                  key={time}
+                                  type="button"
+                                  onClick={() => !disabled && onSelectTime?.(time)}
+                                  disabled={disabled}
+                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
+                                    : selectedTime === time
+                                      ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                      : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                    }`}
+                                  whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
+                                  whileTap={!disabled ? { scale: 0.98 } : {}}
+                                  title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                                >
+                                  <div className="text-base">{time}</div>
+                                  {!disabled && selectedTime !== time && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                      <Clock className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Noite */}
+                      {timePeriods.noite.length > 0 && (
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
+                            <Moon className="w-4 h-4 text-indigo-500" />
+                            <h4 className="text-sm font-semibold text-gray-700">Noite</h4>
+                            <span className="text-xs text-gray-500">({timePeriods.noite.length} {timePeriods.noite.length === 1 ? 'horário' : 'horários'})</span>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {timePeriods.noite.map((time) => {
+                              const disabled = bookedSlots.includes(time);
+                              return (
+                                <motion.button
+                                  key={time}
+                                  type="button"
+                                  onClick={() => !disabled && onSelectTime?.(time)}
+                                  disabled={disabled}
+                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
+                                    : selectedTime === time
+                                      ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                      : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                    }`}
+                                  whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
+                                  whileTap={!disabled ? { scale: 0.98 } : {}}
+                                  title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                                >
+                                  <div className="text-base">{time}</div>
+                                  {!disabled && selectedTime !== time && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
+                                      <Clock className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
+                                </motion.button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  /* Empty State - No Times Available */
+                  <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
+                    <CalendarX className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      Nenhum horário disponível
+                    </h3>
+                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                      Não encontramos horários livres para{' '}
+                      {selectedDate && (
+                        <strong>
+                          {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
+                            day: 'numeric',
+                            month: 'long',
+                            timeZone: 'UTC',
+                          })}
+                        </strong>
+                      )}.
+                      Tente selecionar outra data ou entre em contato conosco.
+                    </p>
+
+                    {/* Suggestions */}
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg max-w-md mx-auto text-left">
+                      <div className="flex items-start gap-2">
+                        <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-blue-900">
+                          <p className="font-semibold mb-1">Sugestões:</p>
+                          <ul className="list-disc list-inside space-y-1 text-blue-800">
+                            <li>Tente datas nos próximos 7-14 dias</li>
+                            <li>Manhãs e tardes têm mais opções</li>
+                            <li>Terças e quintas são populares</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => onSelectDate?.('')}
+                        className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/10"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Escolher outra data
+                      </Button>
+                      <Button
+                        onClick={handleContactSupport}
+                        className="bg-[#2d8659] hover:bg-[#236b47]"
+                      >
+                        <MessageCircle className="w-4 h-4 mr-2" />
+                        Falar com suporte
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
