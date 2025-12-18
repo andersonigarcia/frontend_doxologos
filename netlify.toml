@@ -1,0 +1,38 @@
+# Netlify Configuration
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "functions"
+
+# Configuração de Scheduled Functions (Nativo do Netlify)
+# Não precisa de plugin! O Netlify suporta nativamente desde 2023
+# Documentação: https://docs.netlify.com/functions/scheduled-functions/
+
+# A função será executada automaticamente baseado no schedule definido
+# no próprio arquivo da função usando a sintaxe:
+# export const config = { schedule: "@hourly" }
+
+# Configurações de ambiente (definir no Netlify UI)
+# VITE_SUPABASE_URL
+# SUPABASE_SERVICE_ROLE_KEY
+# SMTP_HOST
+# SMTP_PORT
+# SMTP_USER
+# SMTP_PASS
+# SMTP_FROM_NAME
+# SMTP_FROM_EMAIL
+
+# Redirects e Headers
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

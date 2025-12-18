@@ -93,7 +93,7 @@ export default async function handler(req: Request) {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     const sendgridKey = Deno.env.get('SENDGRID_API_KEY');
     const sendgridFrom = Deno.env.get('SENDGRID_FROM_EMAIL') || 'doxologos@doxologos.com.br';
-    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://appsite.doxologos.com.br';
+    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://doxologos.com.br';
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('❌ Supabase credentials missing');
@@ -111,7 +111,7 @@ export default async function handler(req: Request) {
     // BUSCAR AGENDAMENTOS COM PAGAMENTO PENDENTE
     // ========================================
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     // Busca agendamentos futuros que não têm zoom_link ainda
     // (indica que pagamento ainda não foi confirmado e reunião não foi criada)
     // Ou agendamentos com status = 'pending'

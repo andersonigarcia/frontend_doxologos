@@ -5,18 +5,18 @@
     // Prioridade: 1) VITE_APP_URL, 2) window.location.origin (se não for localhost), 3) URL de produção
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
     const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
-    
-    this.baseUrl = import.meta.env.VITE_APP_URL || 
-                   (!isLocalhost && currentOrigin) || 
-                   'https://appsite.doxologos.com.br';
-    
+
+    this.baseUrl = import.meta.env.VITE_APP_URL ||
+      (!isLocalhost && currentOrigin) ||
+      'https://doxologos.com.br';
+
     this.supportEmail = "doxologos@doxologos.com.br";
   }
-  
+
   // Função para sanitizar dados antes de inserir no HTML
   sanitizeForHtml(text) {
     if (!text || typeof text !== 'string') return '';
-    
+
     // Escapa caracteres especiais que podem causar problemas de codificação
     return text
       .replace(/&/g, '&amp;')
@@ -28,7 +28,7 @@
       .replace(/\s+/g, ' ') // Remove espaços extras que podem causar =20
       .trim();
   }
-  
+
   baseTemplate(content, title = "Doxologos") {
     return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -75,7 +75,7 @@
 </body>
 </html>`;
   }
-  
+
   formatDate(dateString) {
     try {
       const date = new Date(dateString + 'T00:00:00');
@@ -84,7 +84,7 @@
       return dateString;
     }
   }
-  
+
   // EMAIL 1: Confirmação de Agendamento (para o PACIENTE)
   bookingConfirmation(booking) {
     const content = `
@@ -117,7 +117,7 @@
         <h3>📋 O que você irá encontrar na sua área:</h3>
         <ul>
           <li><strong>Status do Pagamento:</strong> Acompanhe a confirmação em tempo real</li>
-          <li><strong>Link da Consulta:</strong> Após pagamento, o link da sala Zoom aparecerá aqui</li>
+          <li><strong>Link da Consulta:</strong> Após pagamento, o link da sala Google Meet aparecerá aqui</li>
           <li><strong>Histórico:</strong> Visualize todos seus agendamentos passados e futuros</li>
           <li><strong>Reagendamento:</strong> Altere a data/hora se necessário</li>
         </ul>
@@ -125,11 +125,11 @@
 
       <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6; text-align: center;">
         <p style="margin: 0 0 15px 0; color: #1e40af; font-size: 15px;">
-          <strong>🔐 Segurança</strong>
+          <strong>🔐 Segurança e Praticidade</strong>
         </p>
         <p style="margin: 0; color: #1e3a8a; font-size: 14px;">
-          O link e a senha do Zoom serão exibidos com segurança na sua área, 
-          apenas após a confirmação do pagamento.
+          O link do Google Meet será exibido com segurança na sua área, 
+          apenas após a confirmação do pagamento. Funciona direto no navegador, sem instalações!
         </p>
       </div>
 
@@ -159,7 +159,7 @@
         <p><strong>👤 Paciente:</strong> ${this.sanitizeForHtml(booking.patient_name)}</p>
         ${booking.patient_phone ? `<p><strong>📱 Telefone:</strong> ${this.sanitizeForHtml(booking.patient_phone)}</p>` : ''}
         ${booking.patient_email ? `<p><strong>📧 E-mail:</strong> ${this.sanitizeForHtml(booking.patient_email)}</p>` : ''}
-        <p><strong>🖥️ Atendimento:</strong> ${this.sanitizeForHtml(booking.service_name)} (via Zoom)</p>
+        <p><strong>🖥️ Atendimento:</strong> ${this.sanitizeForHtml(booking.service_name)} (via Google Meet)</p>
       </div>
 
       ${booking.meeting_link ? `
@@ -212,7 +212,7 @@
       <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
         <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🎥 Link da Reunião Pronto!</h3>
         <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
-          O link e a senha da sala Zoom estão aguardando você na sua área do cliente. 
+          O link da sala Google Meet está aguardando você na sua área do cliente. 
           Clique no botão abaixo para acessar agora:
         </p>
         <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px; padding: 14px 30px; text-decoration: none;">🔐 Acessar Minha Área - Link da Reunião</a>
@@ -222,17 +222,18 @@
       </div>
 
       <div style="background: #fef3c7; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
-        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">📱 Primeira vez no Zoom?</h3>
+        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">📱 Como Acessar o Google Meet</h3>
         <ol style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.8;">
           <li>Acesse sua <strong>área do paciente</strong> e clique no link da consulta</li>
-          <li>Se for a primeira vez, o Zoom pedirá para <strong>baixar o aplicativo</strong></li>
-          <li>Se não baixar automaticamente, acesse: <a href="https://zoom.us/download" style="color: #92400e; text-decoration: underline;">zoom.us/download</a></li>
-          <li>Após instalar, <strong>clique novamente no link</strong> da consulta</li>
+          <li>O Google Meet abrirá <strong>direto no navegador</strong> (Chrome, Edge, Firefox ou Safari)</li>
+          <li>Clique em <strong>"Pedir para participar"</strong></li>
           <li>Digite seu <strong>nome</strong> quando solicitado</li>
-          <li>Use a <strong>senha</strong> mostrada na sua área do paciente se solicitado</li>
           <li>Aguarde na <strong>sala de espera</strong> - o profissional irá admiti-lo(a)</li>
-          <li>Teste seu <strong>áudio e vídeo</strong> quando entrar na sala</li>
+          <li>Permita o acesso à <strong>câmera e microfone</strong> quando solicitado</li>
         </ol>
+        <p style="margin: 15px 0 0 0; color: #92400e; font-size: 14px;">
+          💡 <strong>Dica:</strong> Não precisa instalar nada! Funciona direto no navegador.
+        </p>
       </div>
 
       <div class="tips-box">
@@ -380,7 +381,7 @@
       <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6; text-align: center;">
         <p style="margin: 0 0 15px 0; color: #1e40af; font-weight: 600; font-size: 16px;">🔗 Link da Consulta</p>
         <p style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 14px;">
-          Acesse sua área do paciente para visualizar o link e senha do Zoom
+          Acesse sua área do paciente para visualizar o link do Google Meet
         </p>
         <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 15px;">Acessar Minha Área</a>
       </div>
@@ -413,7 +414,134 @@
     return this.baseTemplate(content, "Lembrete de Consulta - Doxologos");
   }
 
-  // EMAIL 7: Agradecimento
+  // EMAIL 7: Lembrete 2h Antes (para PACIENTE)
+  bookingReminder2Hours(booking) {
+    const content = `
+      <h2 style="color: #f59e0b; font-size: 24px; margin: 0 0 10px 0;">⏰ Sua Consulta Começa em 2 Horas!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Este é um lembrete de que sua consulta está próxima. Prepare-se para um momento de acolhimento e cuidado!
+      </p>
+      
+      <div style="background: #fef3c7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
+        <p style="margin: 8px 0; color: #78350f; font-size: 16px;"><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p style="margin: 8px 0; color: #78350f; font-size: 16px;"><strong>📅 Hoje:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p style="margin: 8px 0; color: #78350f; font-size: 16px;"><strong>👨‍⚕️ Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
+      </div>
+
+      ${booking.meeting_link ? `
+        <div style="background: #dbeafe; padding: 30px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
+          <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 20px;">🎥 Acesse a Sala da Consulta</h3>
+          <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
+            Clique no botão abaixo para entrar na sala Google Meet:
+          </p>
+          <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 18px; padding: 16px 40px;">
+            🔗 Entrar na Consulta Agora
+          </a>
+          <p style="margin: 20px 0 0 0; font-size: 14px; color: #1e3a8a;">
+            💡 Recomendamos entrar <strong>5 minutos antes</strong> do horário
+          </p>
+        </div>
+      ` : `
+        <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
+          <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🔗 Link da Consulta</h3>
+          <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
+            Acesse sua área do paciente para visualizar o link do Google Meet
+          </p>
+          <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px;">Acessar Minha Área</a>
+        </div>
+      `}
+
+      <div style="background: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #10b981;">
+        <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 16px;">✅ Checklist Rápido:</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #065f46; line-height: 1.8;">
+          <li>✓ Local tranquilo e privado</li>
+          <li>✓ Boa iluminação</li>
+          <li>✓ Fones de ouvido (se possível)</li>
+          <li>✓ Conexão de internet estável</li>
+          <li>✓ Câmera e microfone funcionando</li>
+          <li>✓ Tenha um lenço por perto</li>
+        </ul>
+      </div>
+
+      <div style="background: #fee2e2; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #ef4444; text-align: center;">
+        <p style="margin: 0 0 10px 0; color: #991b1b; font-weight: 600; font-size: 16px;">⚠️ Problemas Técnicos?</p>
+        <p style="margin: 0; color: #7f1d1d; font-size: 14px;">
+          <strong>WhatsApp:</strong> <a href="https://wa.me/5531971982947" style="color: #991b1b; text-decoration: underline;">+55 31 97198-2947</a><br>
+          <strong>Email:</strong> <a href="mailto:${this.supportEmail}" style="color: #991b1b; text-decoration: underline;">${this.supportEmail}</a>
+        </p>
+      </div>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Estamos aqui para você!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, "⏰ Sua Consulta é Daqui a 2 Horas - Doxologos");
+  }
+
+  // EMAIL 8: Lembrete 2h Antes (para PROFISSIONAL)
+  professionalReminder2Hours(booking) {
+    const content = `
+      <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">⏰ Consulta em 2 Horas</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${this.sanitizeForHtml(booking.professional_name)}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Lembrete da sua próxima consulta:
+      </p>
+      
+      <div class="info-box">
+        <p><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(booking.appointment_time)}</p>
+        <p><strong>📅 Hoje:</strong> ${this.formatDate(booking.appointment_date)}</p>
+        <p><strong>👤 Paciente:</strong> ${this.sanitizeForHtml(booking.patient_name)}</p>
+        <p><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(booking.service_name || 'Consulta')}</p>
+        ${booking.patient_phone ? `<p><strong>📱 Telefone:</strong> ${this.sanitizeForHtml(booking.patient_phone)}</p>` : ''}
+        ${booking.patient_email ? `<p><strong>📧 Email:</strong> ${this.sanitizeForHtml(booking.patient_email)}</p>` : ''}
+      </div>
+
+      ${booking.meeting_link ? `
+        <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
+          <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🎥 Sala da Consulta</h3>
+          <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
+            Link direto para a sala Google Meet:
+          </p>
+          <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 16px;">
+            🔗 Acessar Sala Google Meet
+          </a>
+          <p style="margin: 20px 0 0 0; font-size: 13px; color: #1e40af;">
+            💡 <strong>Dica:</strong> Entre 5 minutos antes para garantir que tudo está funcionando
+          </p>
+        </div>
+      ` : ''}
+
+      <div style="background: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #10b981;">
+        <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 16px;">📋 Preparação Rápida:</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #065f46; line-height: 1.8;">
+          <li>Teste áudio e vídeo antes de iniciar</li>
+          <li>Tenha seus materiais/anotações prontos</li>
+          <li>Ambiente tranquilo e profissional</li>
+          <li>Boa iluminação e enquadramento da câmera</li>
+        </ul>
+      </div>
+
+      <div style="background: #fef3c7; padding: 15px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
+        <p style="margin: 0; color: #92400e; font-size: 14px;">
+          <strong>ℹ️ Observação:</strong> O paciente também recebeu este lembrete com o link da sala.
+        </p>
+      </div>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Boa consulta!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `⏰ Consulta em 2h - ${this.sanitizeForHtml(booking.patient_name)} - Doxologos`);
+  }
+
+  // EMAIL 9: Agradecimento
   bookingThankYou(booking) {
     const content = `
       <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">🙏 Obrigado pela Consulta!</h2>
@@ -469,7 +597,7 @@
       month: 'long',
       day: 'numeric'
     });
-    
+
     const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit'
@@ -562,7 +690,7 @@
       month: 'long',
       day: 'numeric'
     });
-    
+
     const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit'
@@ -653,7 +781,7 @@
       month: 'long',
       day: 'numeric'
     });
-    
+
     const horaFormatada = new Date(evento.data_inicio).toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit'

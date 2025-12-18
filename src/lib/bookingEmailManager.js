@@ -40,7 +40,7 @@ class BookingEmailManager {
         html,
         type: 'booking_confirmation'
       };
-      
+
       // Adiciona cópia para Doxologos se solicitado
       if (sendCopy) {
         emailConfig.cc = 'doxologos@doxologos.com.br';
@@ -79,7 +79,7 @@ class BookingEmailManager {
         html,
         type: 'payment_approved'
       };
-      
+
       if (sendCopy) {
         emailConfig.cc = 'doxologos@doxologos.com.br';
       }
@@ -120,7 +120,7 @@ class BookingEmailManager {
         html,
         type: 'booking_rescheduled'
       };
-      
+
       if (sendCopy) {
         emailConfig.cc = 'doxologos@doxologos.com.br';
       }
@@ -160,7 +160,7 @@ class BookingEmailManager {
         html,
         type: 'booking_cancelled'
       };
-      
+
       if (sendCopy) {
         emailConfig.cc = 'doxologos@doxologos.com.br';
       }
@@ -197,7 +197,7 @@ class BookingEmailManager {
         html,
         type: 'booking_reminder'
       };
-      
+
       if (sendCopy) {
         emailConfig.cc = 'doxologos@doxologos.com.br';
       }
@@ -215,7 +215,91 @@ class BookingEmailManager {
   }
 
   /**
-   * 6. Email de Agradecimento
+   * 6. Email de Lembrete 2h Antes (para PACIENTE)
+   * Enviado automaticamente 2 horas antes da consulta
+   */
+  async sendReminder2Hours(bookingData, sendCopy = false) {
+    try {
+      const html = this.templates.bookingReminder2Hours({
+        patient_name: bookingData.patient_name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        meeting_link: bookingData.meeting_link
+      });
+
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '⏰ LEMBRETE: Sua consulta é daqui a 2 horas! - Doxologos',
+        html,
+        type: 'booking_reminder_2h'
+      };
+
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
+      }
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de lembrete 2h enviado para paciente', { to: bookingData.patient_email });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar lembrete 2h para paciente', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 7. Email de Lembrete 2h Antes (para PROFISSIONAL)
+   * Enviado automaticamente 2 horas antes da consulta
+   */
+  async sendProfessionalReminder2Hours(bookingData, sendCopy = false) {
+    try {
+      const professionalEmail = bookingData.professional_email || bookingData.professional?.email;
+
+      if (!professionalEmail) {
+        logger.error('❌ Email do profissional ausente para lembrete 2h', { bookingId: bookingData.id });
+        return { success: false, error: 'missing_professional_email' };
+      }
+
+      const html = this.templates.professionalReminder2Hours({
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        patient_name: bookingData.patient_name,
+        patient_email: bookingData.patient_email,
+        patient_phone: bookingData.patient_phone,
+        service_name: bookingData.service_name || bookingData.service?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        meeting_link: bookingData.meeting_link
+      });
+
+      const emailConfig = {
+        to: professionalEmail,
+        subject: `⏰ LEMBRETE: Consulta em 2 horas - ${bookingData.patient_name} - Doxologos`,
+        html,
+        type: 'professional_reminder_2h'
+      };
+
+      if (sendCopy) {
+        emailConfig.cc = 'doxologos@doxologos.com.br';
+      }
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de lembrete 2h enviado para profissional', { to: professionalEmail });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar lembrete 2h para profissional', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 8. Email de Agradecimento
    * Enviado após a conclusão da consulta
    */
   async sendThankYou(bookingData, sendCopy = false) {
@@ -231,7 +315,7 @@ class BookingEmailManager {
         html,
         type: 'booking_thankyou'
       };
-      
+
       if (sendCopy) {
         emailConfig.cc = 'doxologos@doxologos.com.br';
       }

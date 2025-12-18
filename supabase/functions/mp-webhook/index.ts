@@ -165,7 +165,7 @@ export default async function handler(req: Request) {
       <div style="background: #dbeafe; border: 2px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
         <h3 style="color: #1e40af; margin-top: 0;">📱 Acesso Rápido à Sua Área</h3>
         <p style="margin: 0 0 15px 0;">Salve o link do evento e acompanhe outros na sua área de inscrições:</p>
-        <a href="https://appsite.doxologos.com.br/minhas-inscricoes" class="btn" style="background: #3b82f6; display: inline-block;">🔐 Acessar Minhas Inscrições</a>
+        <a href="https://doxologos.com.br/minhas-inscricoes" class="btn" style="background: #3b82f6; display: inline-block;">🔐 Acessar Minhas Inscrições</a>
       </div>
       
       <div class="checklist">
@@ -245,7 +245,7 @@ export default async function handler(req: Request) {
     }
 
     // insert payment record
-  await fetch(`${SUPABASE_URL}/rest/v1/payments`, { method: 'POST', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_id: booking?.id || null, mp_payment_id: mpPayment.id?.toString(), status: mpPayment.status || 'unknown', amount: mpPayment.transaction_amount || null, raw_payload: mpPayment, created_at: new Date().toISOString() }) });
+    await fetch(`${SUPABASE_URL}/rest/v1/payments`, { method: 'POST', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_id: booking?.id || null, mp_payment_id: mpPayment.id?.toString(), status: mpPayment.status || 'unknown', amount: mpPayment.transaction_amount || null, raw_payload: mpPayment, created_at: new Date().toISOString() }) });
 
     if (mpPayment.status === 'approved' || mpPayment.status === 'paid') {
       if (booking && booking.id) {
