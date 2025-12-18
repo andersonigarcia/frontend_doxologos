@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Lock,
   RefreshCcw,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -1255,6 +1256,79 @@ const AgendamentoPage = () => {
           {renderStepContent()}
         </div>
       </div>
+
+      {/* Floating Summary Card - Mobile Only */}
+      {(selectedService || selectedProfessional || selectedDate || selectedTime) && step < 5 && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          transition={{ duration: 0.3, ease: 'easeOut' }}
+          className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl p-4 z-50 md:hidden"
+        >
+          <div className="container mx-auto max-w-md">
+            {/* Selection Summary */}
+            <div className="text-sm space-y-1.5 mb-3">
+              {selectedServiceDetails && (
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-[#2d8659] flex-shrink-0" />
+                  <span className="font-semibold text-gray-900 truncate">{selectedServiceDetails.name}</span>
+                  {selectedServiceDetails.price && (
+                    <span className="ml-auto font-bold text-[#2d8659] whitespace-nowrap">
+                      R$ {parseFloat(selectedServiceDetails.price).toLocaleString('pt-BR', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}
+                    </span>
+                  )}
+                </div>
+              )}
+              {selectedProfessional && (
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <span className="text-gray-700 truncate">
+                    {professionals.find((p) => p.id === selectedProfessional)?.name || 'Profissional'}
+                  </span>
+                </div>
+              )}
+              {selectedDate && selectedTime && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                  <span className="text-gray-700">
+                    {new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
+                      day: 'numeric',
+                      month: 'short',
+                      timeZone: 'UTC',
+                    })}{' '}
+                    às {selectedTime}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Continue Button */}
+            <Button
+              onClick={() => {
+                if (step === 1 && selectedService) {
+                  setStep(2);
+                } else if (step === 2 && selectedProfessional) {
+                  setStep(3);
+                } else if (step === 3 && selectedDate && selectedTime) {
+                  setStep(4);
+                }
+              }}
+              disabled={(
+                (step === 1 && !selectedService) ||
+                (step === 2 && !selectedProfessional) ||
+                (step === 3 && (!selectedDate || !selectedTime))
+              )}
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold"
+            >
+              Continuar <ChevronRight className="w-5 h-5 ml-1" />
+            </Button>
+          </div>
+        </motion.div>
+      )}
     </>
   );
 };
