@@ -48,10 +48,10 @@ const buildPatientSchema = ({ requireIdentityFields, requirePassword, requireCon
         .optional()
         .transform((value) => (value ?? '').trim()),
       email: z
-        .string({ required_error: 'Informe seu email' })
+        .string({ required_error: '📧 Por favor, informe seu email' })
         .trim()
-        .min(1, 'Informe seu email')
-        .email('Por favor, insira um email válido'),
+        .min(1, '📧 Por favor, informe seu email')
+        .email('📧 Este email não parece válido. Verifique se digitou corretamente'),
       phone: z
         .string()
         .optional()
@@ -69,28 +69,44 @@ const buildPatientSchema = ({ requireIdentityFields, requirePassword, requireCon
     .superRefine((data, ctx) => {
       if (requireIdentityFields) {
         if (!data.name) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe seu nome completo', path: ['name'] });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '👤 Por favor, informe seu nome completo',
+            path: ['name']
+          });
         }
 
         if (!data.phone) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe um telefone com DDD', path: ['phone'] });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '📱 Por favor, informe seu telefone com DDD',
+            path: ['phone']
+          });
         }
       }
 
       if (data.phone) {
         const digits = phoneDigits(data.phone);
         if (digits.length < 10) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe um telefone válido', path: ['phone'] });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '📱 Telefone incompleto. Use o formato (00) 00000-0000',
+            path: ['phone']
+          });
         }
       }
 
       if (requirePassword) {
         if (!data.password) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Informe sua senha de acesso', path: ['password'] });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '🔐 Por favor, informe sua senha de acesso',
+            path: ['password']
+          });
         } else if (data.password.length < MIN_PASSWORD_LENGTH) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`,
+            message: `🔐 Sua senha precisa ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres para proteger sua conta`,
             path: ['password'],
           });
         }
@@ -98,9 +114,17 @@ const buildPatientSchema = ({ requireIdentityFields, requirePassword, requireCon
 
       if (requireConfirmation) {
         if (!data.confirmPassword) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Confirme a senha', path: ['confirmPassword'] });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '🔄 Por favor, confirme sua senha',
+            path: ['confirmPassword']
+          });
         } else if (data.password !== data.confirmPassword) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'As senhas precisam ser iguais', path: ['confirmPassword'] });
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: '🔄 As senhas não conferem. Digite a mesma senha nos dois campos',
+            path: ['confirmPassword']
+          });
         }
       }
     });
