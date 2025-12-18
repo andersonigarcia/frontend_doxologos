@@ -17,6 +17,7 @@ import TestimonialsSection from '@/components/home/TestimonialsSection';
 import FaqSection from '@/components/home/FaqSection';
 import ContactSection from '@/components/home/ContactSection';
 import StickyBottomCTA from '@/components/home/StickyBottomCTA';
+import ComoFuncionaSection from '@/components/home/ComoFuncionaSection';
 
 const videos = [
   {
@@ -291,40 +292,7 @@ const HomePage = () => {
           <EventsHighlight events={activeEvents} />
         )}
 
-        <section id="como-funciona" className="py-20 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-center mb-16"
-            >
-              <h2 className="text-4xl font-bold mb-4">Como Funciona o Atendimento</h2>
-              <p className="text-xl text-gray-600">Simples, rápido e seguro</p>
-            </motion.div>
-            <div className="grid md:grid-cols-4 gap-8">
-              {atendimentoSteps.map((step, index) => (
-                <motion.button
-                  key={step.title}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  type="button"
-                  onClick={() => handleAtendimentoStepClick(step.target)}
-                  className="text-center p-6 rounded-xl hover:shadow-lg transition-shadow bg-white w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                  aria-label={`Ir para ${step.title}`}
-                >
-                  <div className="w-16 h-16 bg-[#2d8659]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <step.icon className="w-8 h-8 text-[#2d8659]" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                  <p className="text-gray-600">{step.description}</p>
-                </motion.button>
-              ))}
-            </div>
-          </div>
-        </section>
+        <ComoFuncionaSection />
 
         <ProfessionalsCarousel professionals={professionals} />
 
