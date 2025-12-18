@@ -194,8 +194,8 @@ const ProfessionalStep = ({
   const canContinue = isServiceOnly
     ? Boolean(selectedService)
     : isProfessionalOnly
-    ? Boolean(selectedProfessional)
-    : Boolean(selectedService && selectedProfessional);
+      ? Boolean(selectedProfessional)
+      : Boolean(selectedService && selectedProfessional);
 
   const handleMoveToProfessionals = () => {
     if (displayMode !== 'combined' || !selectedService) {
@@ -255,11 +255,11 @@ const ProfessionalStep = ({
       animate={{ opacity: 1, y: 0 }}
       className={`bg-white rounded-xl shadow-lg p-8 ${reserveMobileCtaSpace ? 'pb-24' : ''}`}
     >
-        {stageIndicator === 'service' ? <div className="text-center mb-8">
+      {stageIndicator === 'service' ? <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3">Escolha o Serviço e Profissional</h2>
         <p className="text-gray-600 text-lg">Comece selecionando o serviço ideal e depois escolha quem irá atendê-lo.</p>
       </div> : ''}
-      
+
 
       {servicePriceRange && (
         <div className="mb-8 p-5 bg-gradient-to-r from-[#2d8659]/10 via-white to-blue-50 border border-[#2d8659]/20 rounded-xl">
@@ -304,64 +304,122 @@ const ProfessionalStep = ({
             exit={{ opacity: 0, x: isMobile ? 20 : 0 }}
             transition={{ duration: 0.25 }}
           >
-          <div className="md:hidden mb-4 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
-            <ChevronRight className="w-4 h-4 text-[#2d8659]" />
-            Arraste para ver todos os serviços disponíveis
-          </div>
+            {/* Progress Indicator Mobile */}
+            <div className="md:hidden mb-4 flex items-center justify-between">
+              <div className="text-xs text-gray-500 flex items-center gap-2">
+                <ChevronRight className="w-4 h-4 text-[#2d8659]" />
+                Arraste para ver todos
+              </div>
+              <div className="flex gap-1.5">
+                {services.map((_, index) => (
+                  <div
+                    key={index}
+                    className={`h-1.5 rounded-full transition-all ${services.findIndex(s => s.id === selectedService) === index
+                        ? 'w-6 bg-[#2d8659]'
+                        : 'w-1.5 bg-gray-300'
+                      }`}
+                  />
+                ))}
+              </div>
+            </div>
 
-          <div className="grid gap-4 grid-flow-col auto-cols-[minmax(260px,_80%)] overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scroll-smooth md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-3">
-            {services.map((service) => {
-              const professionalCount = professionals.filter(
-                (professional) => professional.services_ids && professional.services_ids.includes(service.id)
-              ).length;
+            <div className="grid gap-3 grid-flow-col auto-cols-[minmax(220px,_75%)] overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scroll-smooth md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-3">
+              {services.map((service, index) => {
+                const professionalCount = professionals.filter(
+                  (professional) => professional.services_ids && professional.services_ids.includes(service.id)
+                ).length;
+                const isSelected = selectedService === service.id;
 
-              return (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => handleSelectService(service.id)}
-                  className={`p-5 md:p-6 rounded-lg border-2 transition-all hover:shadow-lg text-left group hover:scale-[1.02] snap-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659] ${
-                    selectedService === service.id
-                      ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
-                      : 'border-gray-200 hover:border-[#2d8659] bg-white'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => handleSelectService(service.id)}
+                    className={`p-4 md:p-6 rounded-xl border-2 transition-all text-left group snap-center
+                    active:scale-95 touch-manipulation
+                    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]
+                    ${isSelected
+                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-lg'
+                        : 'border-gray-200 hover:border-[#2d8659] bg-white hover:shadow-md'
+                      }`}
+                  >
+                    {/* Mobile Compact Layout */}
+                    <div className="md:hidden">
+                      {/* Title */}
+                      <h3 className="font-bold text-lg mb-2 text-gray-900 leading-tight">
                         {service.name}
                       </h3>
-                      <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+
+                      {/* Info Row - Compact */}
+                      <div className="flex items-center gap-3 text-xs text-gray-600 mb-3">
                         <span className="flex items-center gap-1">
-                          <Clock className="w-4 h-4" />
+                          <Clock className="w-3.5 h-3.5" />
                           {service.duration_minutes >= 60
-                            ? `${Math.floor(service.duration_minutes / 60)}h${
-                                service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''
-                              }`
+                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? `${service.duration_minutes % 60}m` : ''
+                            }`
                             : `${service.duration_minutes}min`}
                         </span>
                         <span className="flex items-center gap-1">
-                          <User className="w-4 h-4" />
-                          {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
+                          <User className="w-3.5 h-3.5" />
+                          {professionalCount}
                         </span>
                       </div>
-                      {service.description && (
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">{service.description}</p>
-                      )}
+
+                      {/* Price + CTA Row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xl font-bold text-[#2d8659]">
+                          R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
+                        <div className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${isSelected
+                            ? 'bg-[#2d8659] text-white'
+                            : 'bg-gray-100 text-gray-700'
+                          }`}>
+                          {isSelected ? '✓ Selecionado' : 'Escolher'}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="text-2xl font-bold text-[#2d8659]">
-                      R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+
+                    {/* Desktop Layout - Original */}
+                    <div className="hidden md:block">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                            {service.name}
+                          </h3>
+                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {service.duration_minutes >= 60
+                                ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''
+                                }`
+                                : `${service.duration_minutes}min`}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <User className="w-4 h-4" />
+                              {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
+                            </span>
+                          </div>
+                          {service.description && (
+                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{service.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="text-2xl font-bold text-[#2d8659]">
+                          R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium transition-opacity ${isSelected
+                            ? 'bg-[#2d8659] text-white opacity-100'
+                            : 'bg-[#2d8659] text-white opacity-0 group-hover:opacity-100'
+                          }`}>
+                          {isSelected ? '✓ Selecionado' : 'Selecionar'}
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                      Selecionar
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -377,217 +435,214 @@ const ProfessionalStep = ({
             className="mt-10"
             ref={professionalsSectionRef}
           >
-          <div className="text-center mb-6">
-            <h3 className="text-2xl font-bold text-gray-900">Escolha o profissional</h3>
-            <p className="text-gray-600">
-              Serviço selecionado:
-              <span className="font-semibold text-[#2d8659] ml-1">{selectedServiceData?.name}</span>
-            </p>
-            {isMobile && (
-              <button
-                type="button"
-                onClick={() => setMobileStage('service')}
-                className="mt-3 text-sm font-medium text-[#2d8659] underline"
-              >
-                Trocar serviço
-              </button>
-            )}
-          </div>
-
-          <div className="mb-6 flex flex-col gap-3">
-            <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#2d8659]/10 text-[#2d8659] text-sm font-semibold w-full justify-center">
-              <Quote className="w-4 h-4" />
-              97% dos pacientes recomendam a experiência de agendamento da Doxologos.
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">Escolha o profissional</h3>
+              <p className="text-gray-600">
+                Serviço selecionado:
+                <span className="font-semibold text-[#2d8659] ml-1">{selectedServiceData?.name}</span>
+              </p>
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setMobileStage('service')}
+                  className="mt-3 text-sm font-medium text-[#2d8659] underline"
+                >
+                  Trocar serviço
+                </button>
+              )}
             </div>
-            <div className="flex flex-wrap gap-2 justify-center text-sm">
-              <div className="px-4 py-2 bg-white border border-[#2d8659]/30 rounded-full shadow-sm flex items-center gap-2">
-                <span className="font-semibold text-[#2d8659]">{selectedServiceData?.name}</span>
-                {selectedServiceData?.price && (
-                  <span className="text-gray-600">
-                    · R$
-                    {parseFloat(selectedServiceData.price).toLocaleString('pt-BR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                )}
-                {selectedServiceData?.duration_minutes && (
-                  <span className="text-gray-500">
-                    · {selectedServiceData.duration_minutes}min
-                  </span>
-                )}
+
+            <div className="mb-6 flex flex-col gap-3">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#2d8659]/10 text-[#2d8659] text-sm font-semibold w-full justify-center">
+                <Quote className="w-4 h-4" />
+                97% dos pacientes recomendam a experiência de agendamento da Doxologos.
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center text-sm">
+                <div className="px-4 py-2 bg-white border border-[#2d8659]/30 rounded-full shadow-sm flex items-center gap-2">
+                  <span className="font-semibold text-[#2d8659]">{selectedServiceData?.name}</span>
+                  {selectedServiceData?.price && (
+                    <span className="text-gray-600">
+                      · R$
+                      {parseFloat(selectedServiceData.price).toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  )}
+                  {selectedServiceData?.duration_minutes && (
+                    <span className="text-gray-500">
+                      · {selectedServiceData.duration_minutes}min
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="mb-6">
-            <p className="text-sm text-gray-600 mb-2 font-semibold">Filtros rápidos</p>
-            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 md:m-0 md:px-0" role="toolbar" aria-label="Filtros de profissionais">
-              {quickFilterDefinitions.map((filter) => {
-                const isActive = activeFilters.includes(filter.id);
-                return (
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-2 font-semibold">Filtros rápidos</p>
+              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 md:m-0 md:px-0" role="toolbar" aria-label="Filtros de profissionais">
+                {quickFilterDefinitions.map((filter) => {
+                  const isActive = activeFilters.includes(filter.id);
+                  return (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() =>
+                        setActiveFilters((prev) =>
+                          prev.includes(filter.id)
+                            ? prev.filter((id) => id !== filter.id)
+                            : [...prev, filter.id]
+                        )
+                      }
+                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${isActive ? 'bg-[#2d8659] text-white border-[#2d8659]' : 'border-gray-300 text-gray-700'
+                        }`}
+                    >
+                      {filter.label}
+                    </button>
+                  );
+                })}
+                {activeFilters.length > 0 && (
                   <button
-                    key={filter.id}
                     type="button"
-                    onClick={() =>
-                      setActiveFilters((prev) =>
-                        prev.includes(filter.id)
-                          ? prev.filter((id) => id !== filter.id)
-                          : [...prev, filter.id]
-                      )
-                    }
-                    className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                      isActive ? 'bg-[#2d8659] text-white border-[#2d8659]' : 'border-gray-300 text-gray-700'
-                    }`}
+                    onClick={() => setActiveFilters([])}
+                    className="text-sm text-[#2d8659] underline whitespace-nowrap"
                   >
-                    {filter.label}
+                    Limpar filtros
                   </button>
-                );
-              })}
-              {activeFilters.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setActiveFilters([])}
-                  className="text-sm text-[#2d8659] underline whitespace-nowrap"
-                >
-                  Limpar filtros
-                </button>
-              )}
+                )}
+              </div>
             </div>
-          </div>
 
-          {availableProfessionals.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <User className="w-8 h-8 text-gray-400" />
+            {availableProfessionals.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <User className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
+                {onBack && (
+                  <Button onClick={onBack} variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                    <ArrowLeft className="w-4 h-4 mr-2" />Escolher outro serviço
+                  </Button>
+                )}
               </div>
-              <p className="text-gray-500 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
-              {onBack && (
-                <Button onClick={onBack} variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                  <ArrowLeft className="w-4 h-4 mr-2" />Escolher outro serviço
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="relative">
-              <div className="flex justify-end gap-2 mb-2" aria-hidden="true">
-                <button
-                  type="button"
-                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                  onClick={() => scrollProfessionalCarousel('prev')}
-                  aria-label="Ver profissionais anteriores"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                  onClick={() => scrollProfessionalCarousel('next')}
-                  aria-label="Ver mais profissionais"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-              <div
-                ref={professionalCarouselRef}
-                className="grid gap-4 grid-flow-col auto-cols-[minmax(280px,_85%)] overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scroll-smooth focus:outline-none no-scrollbar md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2"
-                role="listbox"
-                aria-label="Lista de profissionais disponíveis"
-              >
-                {filteredProfessionals.map((professional) => {
-                const isSelectable = professionalHasAvailability(professional);
-                const nextSlot = getNextAvailableSlot(professional);
-                return (
+            ) : (
+              <div className="relative">
+                <div className="flex justify-end gap-2 mb-2" aria-hidden="true">
                   <button
-                    key={professional.id}
                     type="button"
-                    onClick={() => isSelectable && onSelectProfessional?.(professional.id)}
-                    disabled={!isSelectable}
-                      role="option"
-                      aria-selected={selectedProfessional === professional.id}
-                      aria-disabled={!isSelectable}
-                      className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${
-                      selectedProfessional === professional.id && isSelectable
-                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
-                        : 'border-gray-200 bg-white'
-                    } ${
-                      isSelectable
-                        ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
-                        : 'opacity-60 cursor-not-allowed'
-                    }`}
+                    className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    onClick={() => scrollProfessionalCarousel('prev')}
+                    aria-label="Ver profissionais anteriores"
                   >
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0">
-                        {professional.image_url ? (
-                          <img
-                            src={professional.image_url}
-                            alt={professional.name}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
-                          />
-                        ) : (
-                          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl">
-                            {professional.name.charAt(0)}
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    onClick={() => scrollProfessionalCarousel('next')}
+                    aria-label="Ver mais profissionais"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div
+                  ref={professionalCarouselRef}
+                  className="grid gap-4 grid-flow-col auto-cols-[minmax(280px,_85%)] overflow-x-auto pb-4 -mx-4 px-4 snap-x snap-mandatory scroll-smooth focus:outline-none no-scrollbar md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2"
+                  role="listbox"
+                  aria-label="Lista de profissionais disponíveis"
+                >
+                  {filteredProfessionals.map((professional) => {
+                    const isSelectable = professionalHasAvailability(professional);
+                    const nextSlot = getNextAvailableSlot(professional);
+                    return (
+                      <button
+                        key={professional.id}
+                        type="button"
+                        onClick={() => isSelectable && onSelectProfessional?.(professional.id)}
+                        disabled={!isSelectable}
+                        role="option"
+                        aria-selected={selectedProfessional === professional.id}
+                        aria-disabled={!isSelectable}
+                        className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${selectedProfessional === professional.id && isSelectable
+                            ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
+                            : 'border-gray-200 bg-white'
+                          } ${isSelectable
+                            ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
+                            : 'opacity-60 cursor-not-allowed'
+                          }`}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div className="flex-shrink-0">
+                            {professional.image_url ? (
+                              <img
+                                src={professional.image_url}
+                                alt={professional.name}
+                                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl">
+                                {professional.name.charAt(0)}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
-                          {professional.name}
-                        </h4>
-                        {professional.mini_curriculum && (
-                          <p className="text-sm text-gray-600 mb-3">
-                            {professional.mini_curriculum.length > 120
-                              ? `${professional.mini_curriculum.substring(0, 120)}...`
-                              : professional.mini_curriculum}
-                          </p>
-                        )}
-                        {professional.email && (
-                          <p className="text-xs text-gray-500 mb-2">📧 {professional.email}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-gray-500">✓ Especialista em {selectedServiceData?.name}</span>
-                          <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                            Selecionar
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                              {professional.name}
+                            </h4>
+                            {professional.mini_curriculum && (
+                              <p className="text-sm text-gray-600 mb-3">
+                                {professional.mini_curriculum.length > 120
+                                  ? `${professional.mini_curriculum.substring(0, 120)}...`
+                                  : professional.mini_curriculum}
+                              </p>
+                            )}
+                            {professional.email && (
+                              <p className="text-xs text-gray-500 mb-2">📧 {professional.email}</p>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">✓ Especialista em {selectedServiceData?.name}</span>
+                              <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                Selecionar
+                              </div>
+                            </div>
+                            {nextSlot && (
+                              <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#2d8659]">
+                                Próximo horário: {formatNextSlotLabel(nextSlot.day, nextSlot.time)}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        {nextSlot && (
-                          <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#2d8659]">
-                            Próximo horário: {formatNextSlotLabel(nextSlot.day, nextSlot.time)}
+                        {!isSelectable && (
+                          <div className="absolute inset-0 rounded-lg bg-white/75 backdrop-blur-[1px] border-2 border-transparent flex items-center justify-center">
+                            <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full">
+                              Agenda indisponível no momento
+                            </span>
                           </div>
                         )}
-                      </div>
-                    </div>
-                    {!isSelectable && (
-                      <div className="absolute inset-0 rounded-lg bg-white/75 backdrop-blur-[1px] border-2 border-transparent flex items-center justify-center">
-                        <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full">
-                          Agenda indisponível no momento
-                        </span>
-                      </div>
-                    )}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="md:hidden flex justify-center gap-4 mt-2" aria-label="Controles do carrossel">
+                  <button
+                    type="button"
+                    onClick={() => scrollProfessionalCarousel('prev')}
+                    className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    aria-label="Ver profissional anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => scrollProfessionalCarousel('next')}
+                    className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    aria-label="Ver próximo profissional"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="md:hidden flex justify-center gap-4 mt-2" aria-label="Controles do carrossel">
-                <button
-                  type="button"
-                  onClick={() => scrollProfessionalCarousel('prev')}
-                  className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                  aria-label="Ver profissional anterior"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollProfessionalCarousel('next')}
-                  className="h-10 w-10 rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
-                  aria-label="Ver próximo profissional"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+            )}
           </motion.div>
         )}
       </AnimatePresence>
