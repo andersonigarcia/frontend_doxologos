@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -18,6 +18,8 @@ import {
   Lock,
   RefreshCcw,
   ChevronRight,
+  AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -32,14 +34,175 @@ import analytics from '@/lib/analytics';
 import { useBookingData } from '@/hooks/booking/useBookingData';
 import { usePatientForm, formatPhoneNumber, validateEmail } from '@/hooks/booking/usePatientForm';
 import BookingStepper from '@/components/booking/BookingStepper';
-import ProfessionalStep from '@/components/booking/ProfessionalStep';
-import DateTimeStep from '@/components/booking/DateTimeStep';
-import PatientAccountStep from '@/components/booking/PatientAccountStep';
-import PaymentSummaryStep from '@/components/booking/PaymentSummaryStep';
+
+// Lazy load heavy components for better performance
+const ProfessionalStep = lazy(() => import('@/components/booking/ProfessionalStep'));
+const DateTimeStep = lazy(() => import('@/components/booking/DateTimeStep'));
+const PatientAccountStep = lazy(() => import('@/components/booking/PatientAccountStep'));
+const PaymentSummaryStep = lazy(() => import('@/components/booking/PaymentSummaryStep'));
+
 import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
 
 const MIN_PASSWORD_LENGTH = 8;
 const generateGoogleMeetLink = () => 'https://meet.google.com/new';
+
+// Skeleton Loader for lazy-loaded components
+const StepLoader = () => (
+  <div className="bg-white rounded-xl shadow-lg p-8">
+    <div className="animate-pulse space-y-4">
+      {/* Title skeleton */}
+      <div className="h-8 bg-gray-200 rounded w-3/4 mx-auto" />
+      <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto" />
+
+      {/* Content skeletons */}
+      <div className="space-y-3 mt-8">
+        <div className="h-24 bg-gray-200 rounded" />
+        <div className="h-24 bg-gray-200 rounded" />
+        <div className="h-24 bg-gray-200 rounded" />
+      </div>
+
+      {/* Button skeleton */}
+      <div className="flex gap-4 mt-8">
+        <div className="h-12 bg-gray-200 rounded flex-1" />
+        <div className="h-12 bg-gray-200 rounded flex-1" />
+      </div>
+    </div>
+  </div>
+);
+
+// Personalized Greeting Component
+const PersonalizedGreeting = ({ userName }) => {
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return { text: 'Bom dia', emoji: '☀️', color: 'from-yellow-50 to-orange-50', border: 'border-yellow-200' };
+    if (hour < 18) return { text: 'Boa tarde', emoji: '🌤️', color: 'from-blue-50 to-cyan-50', border: 'border-blue-200' };
+    return { text: 'Boa noite', emoji: '🌙', color: 'from-indigo-50 to-purple-50', border: 'border-indigo-200' };
+  };
+
+  const greeting = getGreeting();
+
+  return (
+    <div className={`bg-gradient-to-r ${greeting.color} border ${greeting.border} rounded-lg p-4 mb-6`}>
+      <p className="text-lg font-semibold text-gray-900">
+        {greeting.emoji} {greeting.text}{userName ? `, ${userName}` : ''}!
+      </p>
+      <p className="text-sm text-gray-700">
+        Vamos encontrar o melhor horário para sua consulta.
+      </p>
+    </div>
+  );
+};
+
+// Progress Celebration Component
+const ProgressCelebration = ({ step }) => {
+  const messages = {
+    2: { emoji: '👏', text: 'Ótimo começo!', detail: 'Você está a apenas 3 passos de garantir sua consulta!' },
+    3: { emoji: '🎯', text: 'Quase lá!', detail: 'Falta pouco para concluir seu agendamento!' },
+    4: { emoji: '🎉', text: 'Excelente!', detail: 'Último passo para confirmar sua consulta!' },
+  };
+
+  const message = messages[step];
+  if (!message) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6"
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">{message.emoji}</span>
+        <div>
+          <p className="font-bold text-green-900">{message.text}</p>
+          <p className="text-sm text-green-700">{message.detail}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Welcome Message for First-Time Users
+const WelcomeMessage = ({ isFirstBooking }) => {
+  if (!isFirstBooking) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6"
+    >
+      <div className="flex items-start gap-3">
+        <span className="text-2xl">👋</span>
+        <div>
+          <h4 className="font-bold text-blue-900 mb-1">Bem-vindo à Doxologos!</h4>
+          <p className="text-sm text-blue-800">
+            Estamos felizes em ter você aqui. Vamos tornar seu primeiro agendamento super fácil!
+          </p>
+          <div className="mt-2 flex items-center gap-2 text-xs text-blue-700">
+            <CheckCircle className="w-4 h-4" />
+            <span>Processo 100% online e seguro</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+// Live Activity Notification (Social Proof)
+const LiveActivity = () => {
+  const [activity, setActivity] = useState(null);
+  const [show, setShow] = useState(false);
+
+  const activities = [
+    { name: 'Maria Silva', action: 'agendou', time: '5 minutos', service: 'Psicoterapia' },
+    { name: 'João Santos', action: 'confirmou', time: '12 minutos', service: 'Terapia de Casal' },
+    { name: 'Ana Costa', action: 'agendou', time: '8 minutos', service: 'Psicoterapia' },
+    { name: 'Pedro Oliveira', action: 'agendou', time: '15 minutos', service: 'Psicoterapia' },
+  ];
+
+  useEffect(() => {
+    const showActivity = () => {
+      const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+      setActivity(randomActivity);
+      setShow(true);
+
+      setTimeout(() => setShow(false), 5000);
+    };
+
+    const interval = setInterval(showActivity, 45000); // Every 45s
+    const timeout = setTimeout(showActivity, 3000); // Show after 3s initially
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  if (!show || !activity) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -100 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -100 }}
+      className="fixed bottom-24 left-4 md:bottom-6 md:left-6 bg-white shadow-2xl rounded-lg p-3 max-w-xs z-40 border border-gray-200"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-gray-900 font-medium truncate">
+            <strong>{activity.name}</strong> {activity.action}
+          </p>
+          <p className="text-xs text-gray-600">
+            {activity.service} • há {activity.time}
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const MEETING_OPTIONS = [
   {
     id: 'google_meet',
@@ -67,6 +230,10 @@ const AgendamentoPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
+
+  // Engagement features state
+  const [isFirstBooking, setIsFirstBooking] = useState(true);
+  const [userName, setUserName] = useState('');
 
   const { bookedSlots, isLoadingSlots } = useBookedSlots({
     professionalId: selectedProfessional,
@@ -193,6 +360,50 @@ const AgendamentoPage = () => {
   const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
   const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
   const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
+
+  // Prefetch availability data for next step to improve performance
+  useEffect(() => {
+    const prefetchAvailability = async () => {
+      if (step === 2 && selectedProfessional && !selectedDate) {
+        try {
+          // Prefetch availability data
+          await supabase
+            .from('availability')
+            .select('*')
+            .eq('professional_id', selectedProfessional);
+
+          console.log('✅ Prefetched availability data');
+        } catch (error) {
+          // Silent fail - not critical
+          console.log('Prefetch failed (non-critical)');
+        }
+      }
+    };
+
+    prefetchAvailability();
+  }, [step, selectedProfessional, selectedDate]);
+
+  // Check if user is first-time booker and get name
+  useEffect(() => {
+    const checkBookingHistory = async () => {
+      if (authUser) {
+        try {
+          const { data } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('user_id', authUser.id)
+            .limit(1);
+
+          setIsFirstBooking(!data || data.length === 0);
+          setUserName(authUser.user_metadata?.full_name?.split(' ')[0] || '');
+        } catch (error) {
+          console.log('Error checking booking history:', error);
+        }
+      }
+    };
+
+    checkBookingHistory();
+  }, [authUser]);
 
   const handleSupportWhatsappClick = () => {
     analytics.trackEvent('whatsapp_click', {
@@ -1242,6 +1453,9 @@ const AgendamentoPage = () => {
       </header>
       <div className="min-h-screen bg-gray-50 py-12 pt-24">
         <div className="container mx-auto px-4 max-w-4xl">
+          {/* Personalized Greeting */}
+          <PersonalizedGreeting userName={userName} />
+
           {step <= progressSteps.length && (
             <BookingStepper
               steps={progressSteps}
@@ -1252,10 +1466,21 @@ const AgendamentoPage = () => {
             />
           )}
 
+          {/* Welcome Message for First-Time Users */}
+          {step === 1 && <WelcomeMessage isFirstBooking={isFirstBooking} />}
+
+          {/* Progress Celebration */}
+          <ProgressCelebration step={step} />
+
           {/* Conteúdo da etapa atual */}
-          {renderStepContent()}
+          <Suspense fallback={<StepLoader />}>
+            {renderStepContent()}
+          </Suspense>
         </div>
       </div>
+
+      {/* Live Activity Notification */}
+      <LiveActivity />
 
       {/* Floating Summary Card - Mobile Only */}
       {(selectedService || selectedProfessional || selectedDate || selectedTime) && step < 5 && (

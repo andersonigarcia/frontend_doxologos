@@ -17,6 +17,7 @@ import {
   Moon,
   Lightbulb,
   MessageCircle,
+  AlertCircle,
 } from 'lucide-react';
 
 const DateTimeStep = ({
@@ -446,6 +447,27 @@ const DateTimeStep = ({
                   </div>
                 ) : availableTimes.length > 0 ? (
                   <>
+                    {/* Scarcity Indicator - Few Slots Available */}
+                    {availableTimes.length <= 3 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mb-4 p-3 bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-lg shadow-sm"
+                      >
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 animate-pulse" />
+                          <div>
+                            <p className="text-sm font-bold text-orange-900">
+                              ⚠️ Últimos horários disponíveis!
+                            </p>
+                            <p className="text-xs text-orange-700">
+                              Apenas {availableTimes.length} {availableTimes.length === 1 ? 'vaga restante' : 'vagas restantes'} para esta data.
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+
                     {/* Contextual Tip */}
                     <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg flex items-start gap-2">
                       <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />

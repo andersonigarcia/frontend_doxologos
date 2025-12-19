@@ -577,13 +577,22 @@ const ProfessionalStep = ({
                               <img
                                 src={professional.image_url}
                                 alt={professional.name}
+                                loading="lazy"
+                                decoding="async"
                                 className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
+                                onError={(e) => {
+                                  // Fallback to initials if image fails to load
+                                  e.target.style.display = 'none';
+                                  e.target.nextElementSibling.style.display = 'flex';
+                                }}
                               />
-                            ) : (
-                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl">
-                                {professional.name.charAt(0)}
-                              </div>
-                            )}
+                            ) : null}
+                            <div
+                              className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl"
+                              style={{ display: professional.image_url ? 'none' : 'flex' }}
+                            >
+                              {professional.name.charAt(0)}
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
