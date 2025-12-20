@@ -28,6 +28,9 @@ import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
 import { PatientList } from '@/components/admin/PatientList';
 import { PatientDetailsModal } from '@/components/admin/PatientDetailsModal';
 import { FinancialDashboard } from '@/components/admin/FinancialDashboard';
+import { ProfessionalPaymentsList } from '@/components/admin/ProfessionalPaymentsList';
+import { PaymentFormModal } from '@/components/admin/PaymentFormModal';
+import { PaymentDetailsModal } from '@/components/admin/PaymentDetailsModal';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
@@ -752,6 +755,12 @@ const AdminPage = () => {
     // Estado para modal de detalhes do paciente
     const [selectedPatient, setSelectedPatient] = useState(null);
     const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+
+    // Estado para modais de pagamento
+    const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
+    const [isPaymentDetailsOpen, setIsPaymentDetailsOpen] = useState(false);
+    const [selectedPayment, setSelectedPayment] = useState(null);
+    const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
 
     // Handler para salvar observações do paciente
     const handleSavePatientNotes = async (patientEmail, notes) => {
@@ -3849,28 +3858,48 @@ const AdminPage = () => {
                         )}
 
                         <TabsContent value="payments" className="mt-6">
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-2xl font-bold flex items-center">
-                                        <DollarSign className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                        Pagamentos
-                                    </h2>
-                                </div>
-                                <div className="text-center py-12">
-                                    <DollarSign className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                                    <h3 className="text-xl font-semibold mb-2">Gerenciamento de Pagamentos</h3>
-                                    <p className="text-gray-600 mb-6">
-                                        Acesse o painel completo de pagamentos para visualizar transações,
-                                        processar reembolsos e gerar relatórios.
-                                    </p>
-                                    <Link to="/admin/pagamentos">
-                                        <Button className="bg-[#2d8659] hover:bg-[#236b47]">
-                                            <DollarSign className="w-4 h-4 mr-2" />
-                                            Ir para Página de Pagamentos
-                                        </Button>
-                                    </Link>
-                                </div>
-                            </div>
+                            <ProfessionalPaymentsList
+                                onCreatePayment={() => {
+                                    setSelectedPayment(null);
+                                    setIsPaymentFormOpen(true);
+                                }}
+                                onViewDetails={async (payment) => {
+                                    setSelectedPayment(payment);
+                                    setIsPaymentDetailsOpen(true);
+                                }}
+                                onMarkAsPaid={async (payment) => {
+                                    setSelectedPayment(payment);
+                                    setIsPaymentFormOpen(true);
+                                }}
+                            />
+
+                            {/* Payment Form Modal */}
+                            <PaymentFormModal
+                                open={isPaymentFormOpen}
+                                onClose={() => {
+                                    setIsPaymentFormOpen(false);
+                                    setSelectedPayment(null);
+                                }}
+                                payment={selectedPayment}
+                                professionals={professionals}
+                                onSuccess={() => {
+                                    setPaymentRefreshKey(prev => prev + 1);
+                                    toast({
+                                        title: 'Sucesso',
+                                        description: selectedPayment ? 'Pagamento atualizado' : 'Pagamento criado'
+                                    });
+                                }}
+                            />
+
+                            {/* Payment Details Modal */}
+                            <PaymentDetailsModal
+                                open={isPaymentDetailsOpen}
+                                onClose={() => {
+                                    setIsPaymentDetailsOpen(false);
+                                    setSelectedPayment(null);
+                                }}
+                                payment={selectedPayment}
+                            />
                         </TabsContent>
 
                         {(userRole === 'admin' || userRole === 'professional') && (
