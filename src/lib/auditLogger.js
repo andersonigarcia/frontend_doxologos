@@ -35,6 +35,9 @@ export const AuditAction = {
     BOOKING_CANCEL: 'booking:cancel',
     BOOKING_RESCHEDULE: 'booking:reschedule',
     BOOKING_CONFIRM: 'booking:confirm',
+    BOOKING_DELETE: 'booking:delete',
+    BOOKING_STATUS_CHANGE: 'booking:status_change',
+    BOOKING_UPDATE: 'booking:update',
 
     // Perfil
     PROFILE_UPDATE: 'profile:update',
@@ -43,6 +46,26 @@ export const AuditAction = {
     // Pagamentos
     PAYMENT_CREATE: 'payment:create',
     PAYMENT_REFUND: 'payment:refund',
+
+    // Serviços
+    SERVICE_CREATE: 'service:create',
+    SERVICE_UPDATE: 'service:update',
+    SERVICE_DELETE: 'service:delete',
+    SERVICE_PRICE_CHANGE: 'service:price_change',
+
+    // Profissionais
+    PROFESSIONAL_CREATE: 'professional:create',
+    PROFESSIONAL_UPDATE: 'professional:update',
+    PROFESSIONAL_DELETE: 'professional:delete',
+
+    // Disponibilidade
+    AVAILABILITY_UPDATE: 'availability:update',
+    AVAILABILITY_BLOCK: 'availability:block',
+    AVAILABILITY_UNBLOCK: 'availability:unblock',
+
+    // Avaliações
+    REVIEW_APPROVE: 'review:approve',
+    REVIEW_REJECT: 'review:reject',
 
     // Administrativo
     ADMIN_USER_DELETE: 'admin:user_delete',
