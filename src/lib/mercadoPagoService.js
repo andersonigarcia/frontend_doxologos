@@ -1,10 +1,6 @@
-/**
- * Serviço de integração com Mercado Pago
- * Gerencia criação de preferências e processamento de pagamentos
- */
-
 import { supabase } from './customSupabaseClient';
 import { logger } from './logger.js';
+import { isFeatureEnabled } from './paymentFeatureFlags.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -19,6 +15,60 @@ const buildPaymentLogContext = ({ booking_id, inscricao_id, amount, description,
 
 export class MercadoPagoService {
     /**
+     * Verifica se já existe um pagamento para o booking
+     * @param {string} bookingId - ID do agendamento
+     * @returns {Promise<Object|null>} - Pagamento existente ou null
+     */
+    static async checkExistingPayment(bookingId) {
+        // Apenas executar se feature flag estiver ativada
+        if (!isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK')) {
+            return null;
+        }
+
+        try {
+            logger.info('MercadoPagoService.checkExistingPayment:start', { bookingId });
+
+            const { data, error } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('booking_id', bookingId)
+                .in('status', ['pending', 'in_process', 'approved'])
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (error) {
+                logger.warn('MercadoPagoService.checkExistingPayment:error', error, { bookingId });
+                return null; // Falha silenciosa, não quebra fluxo
+            }
+
+            const existingPayment = data?.[0] || null;
+
+            if (existingPayment) {
+                logger.info('MercadoPagoService.checkExistingPayment:found', {
+                    bookingId,
+                    paymentId: existingPayment.mp_payment_id,
+                    status: existingPayment.status
+                });
+            }
+
+            return existingPayment;
+        } catch (error) {
+            logger.error('MercadoPagoService.checkExistingPayment:critical-error', error, { bookingId });
+            return null; // Sempre retornar null em caso de erro
+        }
+    }
+
+    /**
+     * Gera chave de idempotência para pagamento
+     * @param {string} bookingId - ID do agendamento
+     * @returns {string} - Chave de idempotência
+     */
+    static generateIdempotencyKey(bookingId) {
+        const today = new Date().toISOString().split('T')[0];
+        return `booking_${bookingId}_${today}`;
+    }
+
+    /**
      * Cria um pagamento PIX direto no Mercado Pago
      * Retorna QR Code para pagamento inline (sem redirecionamento)
      * @param {Object} paymentData - Dados do pagamento
@@ -26,11 +76,14 @@ export class MercadoPagoService {
      * @param {number} paymentData.amount - Valor a ser pago
      * @param {string} paymentData.description - Descrição do pagamento
      * @param {Object} paymentData.payer - Dados do pagador
+     * @param {Object} options - Opções adicionais
+     * @param {string} options.idempotencyKey - Chave de idempotência (opcional)
      * @returns {Promise<Object>} - Dados do pagamento PIX criado com QR Code
      */
-    static async createPixPayment(paymentData) {
+    static async createPixPayment(paymentData, options = {}) {
         try {
             const { booking_id, inscricao_id, amount, description, payer } = paymentData;
+            const { idempotencyKey } = options;
 
             if ((!booking_id && !inscricao_id) || !amount) {
                 throw new Error('booking_id ou inscricao_id e amount são obrigatórios');
@@ -51,14 +104,23 @@ export class MercadoPagoService {
             };
 
             const logContext = buildPaymentLogContext(payload);
-            logger.info('MercadoPagoService.createPixPayment:start', { ...logContext, referenceId });
+            logger.info('MercadoPagoService.createPixPayment:start', { ...logContext, referenceId, hasIdempotencyKey: Boolean(idempotencyKey) });
+
+            // Preparar headers
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            };
+
+            // Adicionar idempotency key apenas se fornecida
+            if (idempotencyKey) {
+                headers['Idempotency-Key'] = idempotencyKey;
+                logger.info('MercadoPagoService.createPixPayment:using-idempotency', { idempotencyKey });
+            }
 
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-create-payment`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                },
+                headers,
                 body: JSON.stringify(payload)
             });
 
@@ -432,7 +494,7 @@ export class MercadoPagoService {
 
             const { error } = await supabase
                 .from('payments')
-                .update({ 
+                .update({
                     status: 'cancelled',
                     updated_at: new Date().toISOString()
                 })

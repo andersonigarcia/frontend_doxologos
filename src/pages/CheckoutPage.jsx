@@ -10,18 +10,20 @@ import MercadoPagoService from '@/lib/mercadoPagoService';
 import { logger } from '@/lib/logger.js';
 import { QRCodeSVG } from 'qrcode.react';
 import { safeRedirect } from '@/lib/securityUtils';
+import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
+import ExistingPaymentModal from '@/components/payment/ExistingPaymentModal';
 
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { toast } = useToast();
-    
+
     const bookingId = searchParams.get('booking_id');
     const type = searchParams.get('type'); // 'booking' ou 'evento'
     const inscricaoId = searchParams.get('inscricao_id');
     const valorParam = searchParams.get('valor');
     const tituloParam = searchParams.get('titulo');
-    
+
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -36,6 +38,8 @@ const CheckoutPage = () => {
     const [usingCredit, setUsingCredit] = useState(false);
     const [selectedCreditId, setSelectedCreditId] = useState(null);
     const [creditError, setCreditError] = useState(null);
+    const [existingPayment, setExistingPayment] = useState(null);
+    const [showExistingPaymentModal, setShowExistingPaymentModal] = useState(false);
 
     const buildLogContext = (extra = {}) => ({
         bookingId: bookingId || null,
@@ -440,6 +444,35 @@ const CheckoutPage = () => {
                 selectedMethod,
                 type
             }));
+
+            // NOVA LÓGICA: Verificar pagamentos duplicados (apenas se feature flag ativada)
+            if (isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK') && bookingId && type !== 'evento') {
+                const existing = await MercadoPagoService.checkExistingPayment(bookingId);
+
+                if (existing) {
+                    // Pagamento já aprovado - redirecionar para sucesso
+                    if (existing.status === 'approved') {
+                        toast({
+                            title: 'Pagamento já aprovado',
+                            description: 'Este agendamento já foi pago com sucesso.'
+                        });
+                        navigate('/checkout/success', {
+                            state: { bookingId, paymentId: existing.mp_payment_id }
+                        });
+                        return;
+                    }
+
+                    // Pagamento pendente - mostrar modal (se feature flag ativada)
+                    if ((existing.status === 'pending' || existing.status === 'in_process') &&
+                        isFeatureEnabled('PAYMENT_DUPLICATE_MODAL')) {
+                        setExistingPayment(existing);
+                        setShowExistingPaymentModal(true);
+                        setProcessing(false);
+                        return;
+                    }
+                }
+            }
+
             if (creditCoversTotal && bookingId) {
                 await processCreditCheckout();
                 return;
@@ -489,7 +522,16 @@ const CheckoutPage = () => {
             // Se for PIX, usar pagamento direto (sem redirecionamento)
             if (selectedMethod === 'pix') {
                 logger.info('CheckoutPage.handlePayment:create-pix', buildLogContext({ referenceId, amount }));
-                const result = await MercadoPagoService.createPixPayment(requestPayload);
+
+                // Gerar idempotency key se feature flag ativada
+                const idempotencyKey = isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK') && bookingId
+                    ? MercadoPagoService.generateIdempotencyKey(bookingId)
+                    : undefined;
+
+                const result = await MercadoPagoService.createPixPayment(
+                    requestPayload,
+                    { idempotencyKey }
+                );
 
                 if (result.success) {
                     logger.success('CheckoutPage.handlePayment:pix-created', buildLogContext({
@@ -498,10 +540,10 @@ const CheckoutPage = () => {
                         amount
                     }));
                     setPixPayment(result);
-                    
+
                     // Iniciar polling do status do pagamento
                     startPaymentPolling(result.payment_id);
-                    
+
                     toast({
                         title: 'QR Code gerado!',
                         description: 'Escaneie o código para efetuar o pagamento.'
@@ -552,7 +594,7 @@ const CheckoutPage = () => {
                         amount,
                         init_point: result.init_point
                     }));
-                    
+
                     // Redirecionamento seguro - valida URL antes de redirecionar
                     safeRedirect(result.init_point, '/');
                 } else {
@@ -575,7 +617,7 @@ const CheckoutPage = () => {
     // Inicia polling para verificar status do pagamento
     const startPaymentPolling = (paymentId) => {
         logger.info('CheckoutPage.startPaymentPolling:start', buildLogContext({ paymentId }));
-        
+
         // Limpar interval anterior se existir
         if (pollingInterval) {
             clearInterval(pollingInterval);
@@ -585,31 +627,31 @@ const CheckoutPage = () => {
         const intervalId = setInterval(async () => {
             try {
                 const statusResult = await MercadoPagoService.checkPaymentStatus(paymentId);
-                
+
                 if (statusResult.success) {
                     logger.info('CheckoutPage.startPaymentPolling:status', buildLogContext({
                         paymentId,
                         status: statusResult.status,
                         status_detail: statusResult.status_detail
                     }));
-                    
+
                     if (statusResult.status === 'approved') {
                         logger.success('CheckoutPage.startPaymentPolling:approved', buildLogContext({ paymentId }));
                         clearInterval(intervalId);
                         setPollingInterval(null);
-                        
+
                         // Atualizar status no Supabase (passa o paymentId)
                         await updateBookingPaymentStatus(paymentId);
-                        
+
                         // Redirecionar para página de sucesso
-                        navigate('/checkout/success', { 
-                            state: { 
+                        navigate('/checkout/success', {
+                            state: {
                                 bookingId: booking.id,
                                 paymentId: paymentId,
                                 paymentStatus: 'approved'
-                            } 
+                            }
                         });
-                        
+
                     } else if (statusResult.status === 'rejected' || statusResult.status === 'cancelled') {
                         logger.warn('CheckoutPage.startPaymentPolling:rejected', buildLogContext({
                             paymentId,
@@ -648,11 +690,11 @@ const CheckoutPage = () => {
     const updateBookingPaymentStatus = async (paymentId) => {
         try {
             logger.info('CheckoutPage.updateBookingPaymentStatus:start', buildLogContext({ paymentId }));
-            
+
             // 1. Atualizar status do pagamento na tabela payments
             const { error: paymentError } = await supabase
                 .from('payments')
-                .update({ 
+                .update({
                     status: 'approved',
                     status_detail: 'accredited'
                 })
@@ -663,12 +705,12 @@ const CheckoutPage = () => {
             } else {
                 logger.success('CheckoutPage.updateBookingPaymentStatus:payment-updated', buildLogContext({ paymentId }));
             }
-            
+
             if (type === 'evento') {
                 // 2. Atualizar status da inscrição no evento
                 const { error: inscricaoError } = await supabase
                     .from('inscricoes_eventos')
-                    .update({ 
+                    .update({
                         status_pagamento: 'confirmado'
                     })
                     .eq('id', inscricaoId);
@@ -682,7 +724,7 @@ const CheckoutPage = () => {
                 // 2. Atualizar status do booking para 'confirmed'
                 const { error: bookingError } = await supabase
                     .from('bookings')
-                    .update({ 
+                    .update({
                         status: 'confirmed'
                     })
                     .eq('id', bookingId);
@@ -735,12 +777,12 @@ const CheckoutPage = () => {
                         <Heart className="w-8 h-8 text-[#2d8659]" />
                         <span className="text-2xl font-bold gradient-text">Doxologos</span>
                     </Link>
-                    <Button 
-                        variant="outline" 
+                    <Button
+                        variant="outline"
                         className="border-[#2d8659] text-[#2d8659]"
                         onClick={() => navigate(-1)}
                     >
-                        <ArrowLeft className="w-4 h-4 mr-2" /> 
+                        <ArrowLeft className="w-4 h-4 mr-2" />
                         Voltar
                     </Button>
                 </nav>
@@ -818,11 +860,10 @@ const CheckoutPage = () => {
                                                         <button
                                                             key={credit.id}
                                                             type="button"
-                                                            className={`w-full text-left border rounded-lg p-3 transition ${
-                                                                selectedCreditId === credit.id
+                                                            className={`w-full text-left border rounded-lg p-3 transition ${selectedCreditId === credit.id
                                                                     ? 'border-[#2d8659] bg-[#2d8659]/5'
                                                                     : 'border-gray-200 hover:border-[#2d8659]/40'
-                                                            } ${!covers ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                                                } ${!covers ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                             onClick={() => covers && setSelectedCreditId(credit.id)}
                                                             disabled={!covers || processing}
                                                         >
@@ -869,11 +910,10 @@ const CheckoutPage = () => {
                                         key={method.id}
                                         onClick={() => setSelectedMethod(method.id)}
                                         disabled={!method.available || processing || creditCoversTotal}
-                                        className={`p-4 rounded-lg border-2 transition-all ${
-                                            selectedMethod === method.id
+                                        className={`p-4 rounded-lg border-2 transition-all ${selectedMethod === method.id
                                                 ? 'border-[#2d8659] bg-[#2d8659]/5'
                                                 : 'border-gray-200 hover:border-[#2d8659]/50'
-                                        } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <div className="flex items-center gap-3 mb-2">
                                             <div className="text-[#2d8659]">{method.icon}</div>
@@ -927,10 +967,10 @@ const CheckoutPage = () => {
                                 <h3 className="text-lg font-bold mb-4 text-center">
                                     Pague com PIX
                                 </h3>
-                                
+
                                 <div className="flex flex-col items-center">
                                     <div className="bg-white p-4 rounded-lg border-2 mb-4">
-                                        <QRCodeSVG 
+                                        <QRCodeSVG
                                             value={pixPayment.qr_code}
                                             size={256}
                                             level="M"
@@ -939,7 +979,7 @@ const CheckoutPage = () => {
                                     <p className="text-sm text-gray-600 text-center mb-4">
                                         Escaneie o QR Code com o app do seu banco
                                     </p>
-                                    
+
                                     <div className="w-full bg-gray-50 p-4 rounded-lg">
                                         <p className="text-xs text-gray-600 mb-2">Ou copie o código PIX:</p>
                                         <div className="flex gap-2">
@@ -1016,11 +1056,11 @@ const CheckoutPage = () => {
                                             <CreditCard className="w-5 h-5 mr-2" />
                                             Pagar com Cartão (Formulário Direto)
                                         </Button>
-                                        
+
                                         <div className="text-center">
                                             <p className="text-xs text-gray-500 mb-2">ou</p>
                                         </div>
-                                        
+
                                         <Button
                                             onClick={handlePayment}
                                             disabled={processing}
@@ -1041,7 +1081,7 @@ const CheckoutPage = () => {
                                         </Button>
                                     </div>
                                 )}
-                                
+
                                 {/* Botão padrão para outros métodos */}
                                 {selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card' && (
                                     <Button
