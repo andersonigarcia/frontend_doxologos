@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,10 +24,13 @@ import { StatCard } from '@/components/common/StatCard';
 import { TimelineView } from '@/components/common/TimelineView';
 import { QuickActions } from '@/components/common/QuickActions';
 import { RevenueChart } from '@/components/admin/RevenueChart';
+import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
 import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
+import { cn } from '@/lib/utils';
+
 
 
 const ROLE_DISPLAY = {
@@ -211,6 +214,7 @@ const AdminPage = () => {
     const [bookingSortOrder, setBookingSortOrder] = useState('asc');
     const [activeTab, setActiveTab] = useState('bookings');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [bookingView, setBookingView] = useState('list'); // 'list' ou 'calendar'
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -2714,25 +2718,55 @@ const AdminPage = () => {
                                         <span className="ml-2 text-lg text-gray-500">({getFilteredBookings().length}/{bookings.length})</span>
                                     </h2>
 
-                                    <Button
-                                        onClick={() => setShowFilters(!showFilters)}
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex items-center"
-                                    >
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                        </svg>
-                                        {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
-                                        {(() => {
-                                            const activeFilters = Object.values(bookingFilters).filter(value => value !== '').length;
-                                            return activeFilters > 0 ? (
-                                                <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                    {activeFilters}
-                                                </span>
-                                            ) : null;
-                                        })()}
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        {/* View Toggle */}
+                                        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                                            <Button
+                                                variant={bookingView === 'list' ? 'default' : 'ghost'}
+                                                size="sm"
+                                                onClick={() => setBookingView('list')}
+                                                className={cn(
+                                                    'h-8 px-3',
+                                                    bookingView === 'list' && 'bg-white shadow-sm'
+                                                )}
+                                            >
+                                                <List className="w-4 h-4 mr-1" />
+                                                Lista
+                                            </Button>
+                                            <Button
+                                                variant={bookingView === 'calendar' ? 'default' : 'ghost'}
+                                                size="sm"
+                                                onClick={() => setBookingView('calendar')}
+                                                className={cn(
+                                                    'h-8 px-3',
+                                                    bookingView === 'calendar' && 'bg-white shadow-sm'
+                                                )}
+                                            >
+                                                <LayoutGrid className="w-4 h-4 mr-1" />
+                                                Calendário
+                                            </Button>
+                                        </div>
+
+                                        <Button
+                                            onClick={() => setShowFilters(!showFilters)}
+                                            variant="outline"
+                                            size="sm"
+                                            className="flex items-center"
+                                        >
+                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                            </svg>
+                                            {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
+                                            {(() => {
+                                                const activeFilters = Object.values(bookingFilters).filter(value => value !== '').length;
+                                                return activeFilters > 0 ? (
+                                                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                        {activeFilters}
+                                                    </span>
+                                                ) : null;
+                                            })()}
+                                        </Button>
+                                    </div>
                                 </div>
 
                                 {/* Totalizadores */}
@@ -2845,792 +2879,815 @@ const AdminPage = () => {
                                     );
                                 })()}
 
-                                {/* Ordenação de Agendamentos */}
-                                {bookings.length > 0 && (
-                                    <div className="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-200">
-                                        <h3 className="font-semibold mb-3 flex items-center text-blue-900">
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                                            </svg>
-                                            Ordenação
-                                        </h3>
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button
-                                                onClick={() => handleBookingSort('default')}
-                                                variant="outline"
-                                                size="sm"
-                                                className={bookingSortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                            >
-                                                📋 Padrão (Status + Data)
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleBookingSort('status')}
-                                                variant="outline"
-                                                size="sm"
-                                                className={bookingSortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                            >
-                                                🎯 Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleBookingSort('date')}
-                                                variant="outline"
-                                                size="sm"
-                                                className={bookingSortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                            >
-                                                📅 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                            </Button>
-                                            {userRole === 'admin' && (
-                                                <Button
-                                                    onClick={() => handleBookingSort('professional')}
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                                >
-                                                    👤 Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Seção de Filtros - Recolhível */}
-                                {showFilters && (
-                                    <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
-                                        <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
-                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                            </svg>
-                                            Filtros Avançados
-                                        </h3>                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                                            {/* Busca por nome/email */}
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Buscar Paciente</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Nome ou email..."
-                                                    value={bookingFilters.search}
-                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, search: e.target.value })}
-                                                    className="w-full input text-sm"
-                                                />
-                                            </div>
-
-                                            {/* Filtro por Serviço */}
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Serviço</label>
-                                                <select
-                                                    value={bookingFilters.service_id}
-                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, service_id: e.target.value })}
-                                                    className="w-full input text-sm"
-                                                >
-                                                    <option value="">Todos os serviços</option>
-                                                    {services.map(service => (
-                                                        <option key={service.id} value={service.id}>{service.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {/* Filtro por Profissional */}
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Profissional</label>
-                                                <select
-                                                    value={bookingFilters.professional_id}
-                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, professional_id: e.target.value })}
-                                                    className="w-full input text-sm"
-                                                >
-                                                    <option value="">Todos os profissionais</option>
-                                                    {professionals.map(prof => (
-                                                        <option key={prof.id} value={prof.id}>{prof.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            {/* Filtro por Status */}
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Status</label>
-                                                <select
-                                                    value={bookingFilters.status}
-                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, status: e.target.value })}
-                                                    className="w-full input text-sm"
-                                                >
-                                                    <option value="">Todos os status</option>
-                                                    <option value="pending_payment">Pendente Pagamento</option>
-                                                    <option value="confirmed">Confirmado</option>
-                                                    <option value="completed">Concluído</option>
-                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
-                                                    <option value="no_show_unjustified">Falta injustificada</option>
-                                                </select>
-                                            </div>
-
-                                            {/* Filtro por Período - Data Inicial */}
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">De</label>
-                                                <input
-                                                    type="date"
-                                                    value={bookingFilters.date_from}
-                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, date_from: e.target.value })}
-                                                    className="w-full input text-sm"
-                                                />
-                                            </div>
-
-                                            {/* Filtro por Período - Data Final */}
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Até</label>
-                                                <input
-                                                    type="date"
-                                                    value={bookingFilters.date_to}
-                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, date_to: e.target.value })}
-                                                    className="w-full input text-sm"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Botão para limpar filtros */}
-                                        <div className="mt-4 flex justify-end">
-                                            <Button
-                                                onClick={clearFilters}
-                                                variant="outline"
-                                                size="sm"
-                                                className="text-gray-600 hover:text-gray-800"
-                                            >
-                                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                                Limpar Filtros
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {(() => {
-                                    const filteredBookings = getFilteredBookings();
-                                    const sortedBookings = getSortedBookings(filteredBookings);
-                                    const paginatedBookings = getPaginatedBookings(sortedBookings);
-                                    const totalPages = getTotalPages(sortedBookings);
-
-                                    if (bookings.length === 0) {
-                                        return (
-                                            <div className="text-center py-12">
-                                                <Calendar className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                                                <p className="text-gray-500 text-lg">Nenhum agendamento encontrado</p>
-                                            </div>
-                                        );
-                                    }
-
-                                    if (filteredBookings.length === 0) {
-                                        return (
-                                            <div className="text-center py-12">
-                                                <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                                </svg>
-                                                <p className="text-gray-500 text-lg mb-2">Nenhum agendamento encontrado com os filtros aplicados</p>
-                                                <p className="text-gray-400 text-sm">Tente ajustar os filtros ou limpar para ver todos os agendamentos</p>
-                                                <Button onClick={clearFilters} variant="outline" className="mt-4">
-                                                    Limpar Filtros
-                                                </Button>
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <div>
-                                            {/* Info de paginação */}
-                                            <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
-                                                <span>
-                                                    Mostrando <strong>{((currentPage - 1) * itemsPerPage) + 1}</strong> a <strong>{Math.min(currentPage * itemsPerPage, sortedBookings.length)}</strong> de <strong>{sortedBookings.length}</strong> agendamento(s)
-                                                </span>
-                                                <select
-                                                    value={itemsPerPage}
-                                                    onChange={(e) => {
-                                                        setItemsPerPage(Number(e.target.value));
-                                                        setCurrentPage(1);
-                                                    }}
-                                                    className="input text-sm py-1"
-                                                >
-                                                    <option value="5">5 por página</option>
-                                                    <option value="10">10 por página</option>
-                                                    <option value="20">20 por página</option>
-                                                    <option value="50">50 por página</option>
-                                                </select>
-                                            </div>
-
-                                            <div className="space-y-2">
-                                                {paginatedBookings.map((b, index) => {
-                                                    const statusColors = {
-                                                        'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-                                                        'confirmed': 'bg-green-100 text-green-800 border-green-200',
-                                                        'paid': 'bg-green-100 text-green-800 border-green-200',
-                                                        'completed': 'bg-blue-100 text-blue-800 border-blue-200',
-                                                        'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
-                                                        'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
-                                                        'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200'
-                                                    };
-
-                                                    const statusLabels = {
-                                                        'pending_payment': 'Pendente Pagamento',
-                                                        'confirmed': 'Confirmado',
-                                                        'paid': 'Pago',
-                                                        'completed': 'Concluído',
-                                                        'cancelled_by_patient': 'Cancelado pelo Paciente',
-                                                        'cancelled_by_professional': 'Cancelado pelo Profissional',
-                                                        'no_show_unjustified': 'Falta injustificada'
-                                                    };
-
-                                                    // Usa valor histórico se disponível, senão usa preço atual do serviço
-                                                    const patientValue = Number(b.valor_consulta ?? b.service?.price ?? 0) || 0;
-                                                    const professionalValue = Number(
-                                                        b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
-                                                    ) || 0;
-                                                    const platformFeeValue = Math.max(patientValue - professionalValue, 0);
-                                                    const professionalChipLabel = isAdminView ? 'Profissional' : 'Você recebe';
-
-                                                    const bookingService = services.find(service => service.id === b.service_id) || null;
-
-                                                    let availableServices;
-                                                    if (isAdminView) {
-                                                        availableServices = services;
-                                                    } else {
-                                                        const uniqueServices = [];
-                                                        const seenServiceIds = new Set();
-                                                        const pushService = (service) => {
-                                                            if (service && service.id && !seenServiceIds.has(service.id)) {
-                                                                uniqueServices.push(service);
-                                                                seenServiceIds.add(service.id);
-                                                            }
-                                                        };
-
-                                                        pushService(bookingService);
-                                                        services.forEach((service) => {
-                                                            if (professionalServiceIdSet.has(service.id)) {
-                                                                pushService(service);
-                                                            }
-                                                        });
-
-                                                        availableServices = uniqueServices;
-                                                    }
-
-                                                    const quickStatusOptions = isAdminView
-                                                        ? [
-                                                            { value: 'pending_payment', label: statusLabels['pending_payment'] },
-                                                            { value: 'confirmed', label: statusLabels['confirmed'] },
-                                                            { value: 'completed', label: statusLabels['completed'] },
-                                                            { value: 'cancelled_by_patient', label: statusLabels['cancelled_by_patient'] },
-                                                            { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] },
-                                                            { value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'] }
-                                                        ]
-                                                        : (() => {
-                                                            const options = [
-                                                                { value: b.status, label: `${statusLabels[b.status] || b.status} (atual)`, disabled: true }
-                                                            ];
-
-                                                            if (b.status !== 'completed') {
-                                                                options.push({ value: 'completed', label: statusLabels['completed'], disabled: b.status !== 'confirmed' });
-                                                            }
-
-                                                            if (b.status !== 'cancelled_by_professional') {
-                                                                options.push({ value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'], disabled: false });
-                                                            }
-
-                                                            if (b.status !== 'no_show_unjustified') {
-                                                                options.push({ value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'], disabled: false });
-                                                            }
-
-                                                            return options;
-                                                        })();
-
-                                                    const hasEnabledQuickStatusOption = quickStatusOptions.some(option => !option.disabled && option.value !== b.status);
-                                                    const quickStatusSelectDisabled = isAnyItemLoading() || (!isAdminView && !hasEnabledQuickStatusOption);
-
-                                                    const serviceOptionLabel = (service) => {
-                                                        if (!service) return '';
-                                                        if (isAdminView) {
-                                                            const priceNumber = Number(service.price) || 0;
-                                                            return `${service.name} - R$ ${priceNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-                                                        }
-                                                        return service.name;
-                                                    };
-
-                                                    return (
-                                                        <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                            } hover:bg-blue-50 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
-
-                                                            {/* Overlay de Loading com novo componente */}
-                                                            <LoadingOverlay
-                                                                isLoading={isItemLoading('status', b.id) || isItemLoading('edit', b.id)}
-                                                                message={isItemLoading('status', b.id) ? 'Atualizando status...' : 'Salvando alterações...'}
-                                                            />
-
-                                                            <div className="flex justify-between items-start mb-4">
-                                                                <div className="flex-1">
-                                                                    <div className="flex items-center gap-3 mb-3">
-                                                                        <h3 className="font-semibold text-lg text-gray-900">
-                                                                            {b.patient_name || 'Nome não informado'}
-                                                                        </h3>
-                                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
-                                                                            {statusLabels[b.status] || b.status}
-                                                                        </span>
-                                                                        {(patientValue > 0 || professionalValue > 0) && (
-                                                                            <div className="flex flex-wrap gap-2">
-                                                                                {patientValue > 0 && userRole === 'admin' && (
-                                                                                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
-                                                                                        Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                    </span>
-                                                                                )}
-                                                                                {professionalValue > 0 && (
-                                                                                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                                                                                        {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                    </span>
-                                                                                )}
-                                                                                {userRole === 'admin' && platformFeeValue > 0 && (
-                                                                                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
-                                                                                        Taxa: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
-                                                                        <div>
-                                                                            <span className="text-gray-500 block">Profissional</span>
-                                                                            <span className="font-medium">{b.professional?.name || 'N/A'}</span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="text-gray-500 block">Serviço</span>
-                                                                            <span className="font-medium">{b.service?.name || 'N/A'}</span>
-                                                                            {b.service?.duration_minutes && (
-                                                                                <span className="text-blue-600 block text-xs">
-                                                                                    {b.service.duration_minutes >= 60
-                                                                                        ? `${Math.floor(b.service.duration_minutes / 60)}h${b.service.duration_minutes % 60 > 0 ? ` ${b.service.duration_minutes % 60}min` : ''}`
-                                                                                        : `${b.service.duration_minutes}min`
-                                                                                    }
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="text-gray-500 block">Financeiro</span>
-                                                                            {(userRole === 'admin' ? patientValue : professionalValue) > 0 ? (
-                                                                                <div className="space-y-1">
-                                                                                    {userRole === 'admin' && patientValue > 0 && (
-                                                                                        <span className="font-bold text-green-700 block">
-                                                                                            Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                        </span>
-                                                                                    )}
-                                                                                    {professionalValue > 0 && (
-                                                                                        <span className="font-semibold text-blue-700 block">
-                                                                                            {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                        </span>
-                                                                                    )}
-                                                                                    {userRole === 'admin' && (
-                                                                                        <span className="text-xs text-purple-700 block">
-                                                                                            Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <span className="text-orange-500 block text-xs">Valor não definido</span>
-                                                                            )}
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="text-gray-500 block">Data e Horário</span>
-                                                                            <span className="font-medium">
-                                                                                {new Date(b.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                                                                            </span>
-                                                                            <span className="block text-blue-600">{b.booking_time}h</span>
-                                                                        </div>
-                                                                        <div>
-                                                                            <span className="text-gray-500 block">Contato</span>
-                                                                            <span className="font-medium block text-xs">{b.patient_email || 'N/A'}</span>
-                                                                            <span className="block text-xs">{b.patient_phone || 'N/A'}</span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
-                                                                    {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
-                                                                        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
-                                                                            {/* Header clicável */}
-                                                                            <button
-                                                                                onClick={() => toggleZoomExpansion(b.id)}
-                                                                                className="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors"
-                                                                            >
-                                                                                <h4 className="font-semibold text-blue-900 flex items-center">
-                                                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                                    </svg>
-                                                                                    Acesso à sala
-                                                                                </h4>
-                                                                                {expandedZoomCards[b.id] ? (
-                                                                                    <ChevronUp className="w-5 h-5 text-blue-700" />
-                                                                                ) : (
-                                                                                    <ChevronDown className="w-5 h-5 text-blue-700" />
-                                                                                )}
-                                                                            </button>
-
-                                                                            {/* Conteúdo colapsável com animação */}
-                                                                            <div
-                                                                                className={`transition-all duration-300 ease-in-out ${expandedZoomCards[b.id]
-                                                                                    ? 'max-h-96 opacity-100'
-                                                                                    : 'max-h-0 opacity-0'
-                                                                                    } overflow-hidden`}
-                                                                            >
-                                                                                <div className="px-4 pb-4 space-y-2 text-sm border-t border-blue-200 pt-3">
-                                                                                    <div>
-                                                                                        <span className="text-gray-600 font-medium">Link da Reunião:</span>
-                                                                                        <a
-                                                                                            href={b.meeting_link}
-                                                                                            target="_blank"
-                                                                                            rel="noopener noreferrer"
-                                                                                            className="block text-blue-600 hover:text-blue-800 underline break-all"
-                                                                                        >
-                                                                                            {b.meeting_link}
-                                                                                        </a>
-                                                                                    </div>
-                                                                                    {b.meeting_password && (
-                                                                                        <div>
-                                                                                            <span className="text-gray-600 font-medium">Senha: </span>
-                                                                                            <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
-                                                                                                {b.meeting_password}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {b.meeting_start_url && (
-                                                                                        <div>
-                                                                                            <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
-                                                                                            <a
-                                                                                                href={b.meeting_start_url}
-                                                                                                target="_blank"
-                                                                                                rel="noopener noreferrer"
-                                                                                                className="block text-green-600 hover:text-green-800 underline break-all"
-                                                                                            >
-                                                                                                {b.meeting_start_url}
-                                                                                            </a>
-                                                                                            <span className="text-xs text-gray-500 italic">
-                                                                                                ⚠️ Use este link para iniciar a reunião como anfitrião
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-
-                                                                <div className="flex gap-2 ml-4 flex-col items-end">
-                                                                    {/* Mudança rápida de status */}
-                                                                    <div className="w-48 relative">
-                                                                        <label className="block text-xs text-gray-600 mb-1">
-                                                                            Status Rápido:
-                                                                            {isItemLoading('status', b.id) && (
-                                                                                <LoadingSpinner size="xs" className="inline-block ml-1 text-[#2d8659]" />
-                                                                            )}
-                                                                        </label>
-                                                                        <LoadingInput isLoading={isItemLoading('status', b.id)}>
-                                                                            <select
-                                                                                value={b.status}
-                                                                                onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
-                                                                                disabled={quickStatusSelectDisabled}
-                                                                                className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
-                                                                                    } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
-                                                                            >
-                                                                                {quickStatusOptions.map((option) => (
-                                                                                    <option
-                                                                                        key={option.value}
-                                                                                        value={option.value}
-                                                                                        disabled={option.disabled}
-                                                                                    >
-                                                                                        {option.label}
-                                                                                    </option>
-                                                                                ))}
-                                                                            </select>
-                                                                        </LoadingInput>
-                                                                    </div>
-
-                                                                    <div className="flex gap-2">
-                                                                        <Dialog>
-                                                                            <DialogTrigger asChild>
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    variant="outline"
-                                                                                    disabled={isAnyItemLoading()}
-                                                                                    onClick={() => {
-                                                                                        setEditingBooking(b);
-                                                                                        const resolvedProfessionalId = isAdminView
-                                                                                            ? (b.professional_id || '')
-                                                                                            : (currentProfessional?.id || b.professional_id || '');
-
-                                                                                        setBookingEditData({
-                                                                                            booking_date: b.booking_date,
-                                                                                            booking_time: b.booking_time,
-                                                                                            status: b.status,
-                                                                                            professional_id: resolvedProfessionalId,
-                                                                                            service_id: b.service_id || '',
-                                                                                            patient_name: b.patient_name || '',
-                                                                                            patient_email: b.patient_email || '',
-                                                                                            patient_phone: b.patient_phone || '',
-                                                                                            valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
-                                                                                            valor_repasse_profissional: formatNumberToCurrencyInput(
-                                                                                                b.valor_repasse_profissional ?? b.valor_consulta ?? ''
-                                                                                            )
-                                                                                        });
-                                                                                    }}
-                                                                                    className={`hover:bg-blue-50 transition-all ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
-                                                                                        }`}
-                                                                                >
-                                                                                    {isItemLoading('edit', b.id) ? (
-                                                                                        <LoadingSpinner size="sm" className="mr-1" />
-                                                                                    ) : (
-                                                                                        <Edit className="w-4 h-4 mr-1" />
-                                                                                    )}
-                                                                                    Editar
-                                                                                </Button>
-                                                                            </DialogTrigger>
-                                                                            <DialogContent className="max-w-2xl">
-                                                                                <DialogHeader>
-                                                                                    <DialogTitle className="flex items-center">
-                                                                                        <Edit className="w-5 h-5 mr-2" />
-                                                                                        Editar Agendamento
-                                                                                    </DialogTitle>
-                                                                                </DialogHeader>
-                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                                                                                    <div>
-                                                                                        <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
-                                                                                        <input
-                                                                                            type="text"
-                                                                                            value={bookingEditData.patient_name}
-                                                                                            onChange={e => {
-                                                                                                if (!isAdminView) return;
-                                                                                                setBookingEditData({ ...bookingEditData, patient_name: e.target.value });
-                                                                                            }}
-                                                                                            className={`w-full input ${!isAdminView ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                                                            placeholder="Nome completo"
-                                                                                            required
-                                                                                            readOnly={!isAdminView}
-                                                                                        />
-                                                                                    </div>
-                                                                                    {isAdminView && (
-                                                                                        <>
-                                                                                            <div>
-                                                                                                <label className="block text-sm font-medium mb-1">Email</label>
-                                                                                                <input
-                                                                                                    type="email"
-                                                                                                    value={bookingEditData.patient_email}
-                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, patient_email: e.target.value })}
-                                                                                                    className="w-full input"
-                                                                                                    placeholder="email@exemplo.com"
-                                                                                                />
-                                                                                            </div>
-                                                                                            <div>
-                                                                                                <label className="block text-sm font-medium mb-1">Telefone</label>
-                                                                                                <input
-                                                                                                    type="tel"
-                                                                                                    value={bookingEditData.patient_phone}
-                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, patient_phone: e.target.value })}
-                                                                                                    className="w-full input"
-                                                                                                    placeholder="(11) 99999-9999"
-                                                                                                />
-                                                                                            </div>
-                                                                                        </>
-                                                                                    )}
-                                                                                    {isAdminView && (
-                                                                                        <div>
-                                                                                            <label className="block text-sm font-medium mb-1">Status *</label>
-                                                                                            <select
-                                                                                                value={bookingEditData.status}
-                                                                                                onChange={e => setBookingEditData({ ...bookingEditData, status: e.target.value })}
-                                                                                                className="w-full input"
-                                                                                            >
-                                                                                                <option value="pending_payment">Pendente Pagamento</option>
-                                                                                                <option value="confirmed">Confirmado</option>
-                                                                                                <option value="completed">Concluído</option>
-                                                                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
-                                                                                                <option value="no_show_unjustified">Falta injustificada</option>
-                                                                                            </select>
-                                                                                        </div>
-                                                                                    )}
-                                                                                    {isAdminView && (
-                                                                                        <div>
-                                                                                            <label className="block text-sm font-medium mb-1">Profissional *</label>
-                                                                                            <select
-                                                                                                value={bookingEditData.professional_id}
-                                                                                                onChange={e => setBookingEditData({ ...bookingEditData, professional_id: e.target.value })}
-                                                                                                className="w-full input"
-                                                                                                required
-                                                                                            >
-                                                                                                <option value="">Selecione um profissional</option>
-                                                                                                {professionals.map(prof => (
-                                                                                                    <option key={prof.id} value={prof.id}>{prof.name}</option>
-                                                                                                ))}
-                                                                                            </select>
-                                                                                        </div>
-                                                                                    )}
-                                                                                    <div>
-                                                                                        <label className="block text-sm font-medium mb-1">Serviço *</label>
-                                                                                        <select
-                                                                                            value={bookingEditData.service_id}
-                                                                                            onChange={e => {
-                                                                                                const nextServiceId = e.target.value;
-                                                                                                const matchedService = services.find(service => service.id === nextServiceId);
-                                                                                                setBookingEditData(prev => ({
-                                                                                                    ...prev,
-                                                                                                    service_id: nextServiceId,
-                                                                                                    valor_consulta: matchedService
-                                                                                                        ? formatNumberToCurrencyInput(matchedService.price)
-                                                                                                        : prev.valor_consulta,
-                                                                                                    valor_repasse_profissional: matchedService
-                                                                                                        ? formatNumberToCurrencyInput(matchedService.professional_payout ?? matchedService.price)
-                                                                                                        : prev.valor_repasse_profissional
-                                                                                                }));
-                                                                                            }}
-                                                                                            className="w-full input"
-                                                                                            required
-                                                                                        >
-                                                                                            <option value="">Selecione um serviço</option>
-                                                                                            {availableServices.map(service => (
-                                                                                                <option key={service.id} value={service.id}>
-                                                                                                    {serviceOptionLabel(service)}
-                                                                                                </option>
-                                                                                            ))}
-                                                                                        </select>
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label className="block text-sm font-medium mb-1">Data *</label>
-                                                                                        <input
-                                                                                            type="date"
-                                                                                            value={bookingEditData.booking_date}
-                                                                                            onChange={e => setBookingEditData({ ...bookingEditData, booking_date: e.target.value })}
-                                                                                            className="w-full input"
-                                                                                            required
-                                                                                        />
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label className="block text-sm font-medium mb-1">Horário *</label>
-                                                                                        <input
-                                                                                            type="time"
-                                                                                            value={bookingEditData.booking_time}
-                                                                                            onChange={e => setBookingEditData({ ...bookingEditData, booking_time: e.target.value })}
-                                                                                            className="w-full input"
-                                                                                            required
-                                                                                        />
-                                                                                    </div>
-                                                                                    {isAdminView && (
-                                                                                        <>
-                                                                                            <div>
-                                                                                                <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
-                                                                                                <input
-                                                                                                    type="text"
-                                                                                                    value={bookingEditData.valor_consulta}
-                                                                                                    onChange={e => setBookingEditData(prev => ({
-                                                                                                        ...prev,
-                                                                                                        valor_consulta: sanitizeCurrencyInput(e.target.value)
-                                                                                                    }))}
-                                                                                                    className="w-full input"
-                                                                                                    placeholder="150,00"
-                                                                                                />
-                                                                                                <p className="text-xs text-gray-500 mt-1">
-                                                                                                    Valor histórico cobrado do paciente no momento do agendamento
-                                                                                                </p>
-                                                                                            </div>
-                                                                                            <div>
-                                                                                                <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
-                                                                                                <input
-                                                                                                    type="text"
-                                                                                                    value={bookingEditData.valor_repasse_profissional}
-                                                                                                    onChange={e => setBookingEditData(prev => ({
-                                                                                                        ...prev,
-                                                                                                        valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
-                                                                                                    }))}
-                                                                                                    className="w-full input"
-                                                                                                    placeholder="150,00"
-                                                                                                />
-                                                                                                <p className="text-xs text-gray-500 mt-1">
-                                                                                                    Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
-                                                                                                </p>
-                                                                                            </div>
-                                                                                        </>
-                                                                                    )}
-                                                                                </div>
-                                                                                <DialogFooter>
-                                                                                    <DialogClose asChild>
-                                                                                        <Button
-                                                                                            variant="outline"
-                                                                                            disabled={isItemLoading('edit', editingBooking?.id)}
-                                                                                        >
-                                                                                            Cancelar
-                                                                                        </Button>
-                                                                                    </DialogClose>
-                                                                                    <LoadingButton
-                                                                                        isLoading={isItemLoading('edit', editingBooking?.id)}
-                                                                                        loadingText="Salvando..."
-                                                                                        onClick={handleUpdateBooking}
-                                                                                        className="bg-[#2d8659] hover:bg-[#236b47] text-white px-4 py-2 rounded-md"
-                                                                                    >
-                                                                                        Salvar Alterações
-                                                                                    </LoadingButton>
-                                                                                </DialogFooter>
-                                                                            </DialogContent>
-                                                                        </Dialog>
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="destructive"
-                                                                            disabled={isAnyItemLoading()}
-                                                                            onClick={() => handleDeleteBooking(b)}
-                                                                            className={`flex items-center ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                                        >
-                                                                            {isItemLoading('delete', b.id) ? (
-                                                                                <LoadingSpinner size="sm" className="mr-1" />
-                                                                            ) : (
-                                                                                <Trash2 className="w-4 h-4 mr-1" />
-                                                                            )}
-                                                                            Excluir
-                                                                        </Button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-
-                                                {/* Navegação de Páginas */}
-                                                {totalPages > 1 && (
-                                                    <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t">
+                                {/* Calendar View */}
+                                {bookingView === 'calendar' ? (
+                                    <AppointmentCalendar
+                                        appointments={getFilteredBookings()}
+                                        onDateClick={(date, dayAppointments) => {
+                                            // Ao clicar em um dia, volta para lista e filtra por essa data
+                                            setBookingView('list');
+                                            const dateStr = date.toISOString().split('T')[0];
+                                            setBookingFilters(prev => ({
+                                                ...prev,
+                                                date_from: dateStr,
+                                                date_to: dateStr
+                                            }));
+                                        }}
+                                        onAppointmentClick={(appointment) => {
+                                            // Pode adicionar lógica para abrir modal de detalhes
+                                            console.log('Appointment clicked:', appointment);
+                                        }}
+                                    />
+                                ) : (
+                                    <>
+                                        {/* Ordenação de Agendamentos */}
+                                        {bookings.length > 0 && (
+                                            <div className="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-200">
+                                                <h3 className="font-semibold mb-3 flex items-center text-blue-900">
+                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+                                                    </svg>
+                                                    Ordenação
+                                                </h3>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Button
+                                                        onClick={() => handleBookingSort('default')}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={bookingSortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                                    >
+                                                        📋 Padrão (Status + Data)
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleBookingSort('status')}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={bookingSortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                                    >
+                                                        🎯 Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleBookingSort('date')}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className={bookingSortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                                    >
+                                                        📅 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                                    </Button>
+                                                    {userRole === 'admin' && (
                                                         <Button
-                                                            onClick={() => setCurrentPage(currentPage - 1)}
-                                                            disabled={currentPage === 1}
+                                                            onClick={() => handleBookingSort('professional')}
                                                             variant="outline"
                                                             size="sm"
+                                                            className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
                                                         >
-                                                            ← Anterior
+                                                            👤 Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                                                         </Button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
 
-                                                        <div className="flex gap-1">
-                                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                                                                <Button
-                                                                    key={page}
-                                                                    onClick={() => setCurrentPage(page)}
-                                                                    variant={currentPage === page ? "default" : "outline"}
-                                                                    size="sm"
-                                                                    className={currentPage === page ? "bg-[#2d8659] hover:bg-[#236b47]" : ""}
-                                                                >
-                                                                    {page}
-                                                                </Button>
-                                                            ))}
-                                                        </div>
+                                        {/* Seção de Filtros - Recolhível */}
+                                        {showFilters && (
+                                            <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
+                                                <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
+                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                                    </svg>
+                                                    Filtros Avançados
+                                                </h3>                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                                                    {/* Busca por nome/email */}
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Buscar Paciente</label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Nome ou email..."
+                                                            value={bookingFilters.search}
+                                                            onChange={(e) => setBookingFilters({ ...bookingFilters, search: e.target.value })}
+                                                            className="w-full input text-sm"
+                                                        />
+                                                    </div>
 
-                                                        <Button
-                                                            onClick={() => setCurrentPage(currentPage + 1)}
-                                                            disabled={currentPage === totalPages}
-                                                            variant="outline"
-                                                            size="sm"
+                                                    {/* Filtro por Serviço */}
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Serviço</label>
+                                                        <select
+                                                            value={bookingFilters.service_id}
+                                                            onChange={(e) => setBookingFilters({ ...bookingFilters, service_id: e.target.value })}
+                                                            className="w-full input text-sm"
                                                         >
-                                                            Próxima →
+                                                            <option value="">Todos os serviços</option>
+                                                            {services.map(service => (
+                                                                <option key={service.id} value={service.id}>{service.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Filtro por Profissional */}
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Profissional</label>
+                                                        <select
+                                                            value={bookingFilters.professional_id}
+                                                            onChange={(e) => setBookingFilters({ ...bookingFilters, professional_id: e.target.value })}
+                                                            className="w-full input text-sm"
+                                                        >
+                                                            <option value="">Todos os profissionais</option>
+                                                            {professionals.map(prof => (
+                                                                <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Filtro por Status */}
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Status</label>
+                                                        <select
+                                                            value={bookingFilters.status}
+                                                            onChange={(e) => setBookingFilters({ ...bookingFilters, status: e.target.value })}
+                                                            className="w-full input text-sm"
+                                                        >
+                                                            <option value="">Todos os status</option>
+                                                            <option value="pending_payment">Pendente Pagamento</option>
+                                                            <option value="confirmed">Confirmado</option>
+                                                            <option value="completed">Concluído</option>
+                                                            <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                            <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                            <option value="no_show_unjustified">Falta injustificada</option>
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Filtro por Período - Data Inicial */}
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">De</label>
+                                                        <input
+                                                            type="date"
+                                                            value={bookingFilters.date_from}
+                                                            onChange={(e) => setBookingFilters({ ...bookingFilters, date_from: e.target.value })}
+                                                            className="w-full input text-sm"
+                                                        />
+                                                    </div>
+
+                                                    {/* Filtro por Período - Data Final */}
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Até</label>
+                                                        <input
+                                                            type="date"
+                                                            value={bookingFilters.date_to}
+                                                            onChange={(e) => setBookingFilters({ ...bookingFilters, date_to: e.target.value })}
+                                                            className="w-full input text-sm"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Botão para limpar filtros */}
+                                                <div className="mt-4 flex justify-end">
+                                                    <Button
+                                                        onClick={clearFilters}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-gray-600 hover:text-gray-800"
+                                                    >
+                                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                        Limpar Filtros
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {(() => {
+                                            const filteredBookings = getFilteredBookings();
+                                            const sortedBookings = getSortedBookings(filteredBookings);
+                                            const paginatedBookings = getPaginatedBookings(sortedBookings);
+                                            const totalPages = getTotalPages(sortedBookings);
+
+                                            if (bookings.length === 0) {
+                                                return (
+                                                    <div className="text-center py-12">
+                                                        <Calendar className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                                                        <p className="text-gray-500 text-lg">Nenhum agendamento encontrado</p>
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (filteredBookings.length === 0) {
+                                                return (
+                                                    <div className="text-center py-12">
+                                                        <svg className="w-16 h-16 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                        </svg>
+                                                        <p className="text-gray-500 text-lg mb-2">Nenhum agendamento encontrado com os filtros aplicados</p>
+                                                        <p className="text-gray-400 text-sm">Tente ajustar os filtros ou limpar para ver todos os agendamentos</p>
+                                                        <Button onClick={clearFilters} variant="outline" className="mt-4">
+                                                            Limpar Filtros
                                                         </Button>
                                                     </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
+                                                );
+                                            }
+
+                                            return (
+                                                <div>
+                                                    {/* Info de paginação */}
+                                                    <div className="flex items-center justify-between mb-4 text-sm text-gray-600">
+                                                        <span>
+                                                            Mostrando <strong>{((currentPage - 1) * itemsPerPage) + 1}</strong> a <strong>{Math.min(currentPage * itemsPerPage, sortedBookings.length)}</strong> de <strong>{sortedBookings.length}</strong> agendamento(s)
+                                                        </span>
+                                                        <select
+                                                            value={itemsPerPage}
+                                                            onChange={(e) => {
+                                                                setItemsPerPage(Number(e.target.value));
+                                                                setCurrentPage(1);
+                                                            }}
+                                                            className="input text-sm py-1"
+                                                        >
+                                                            <option value="5">5 por página</option>
+                                                            <option value="10">10 por página</option>
+                                                            <option value="20">20 por página</option>
+                                                            <option value="50">50 por página</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        {paginatedBookings.map((b, index) => {
+                                                            const statusColors = {
+                                                                'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                'confirmed': 'bg-green-100 text-green-800 border-green-200',
+                                                                'paid': 'bg-green-100 text-green-800 border-green-200',
+                                                                'completed': 'bg-blue-100 text-blue-800 border-blue-200',
+                                                                'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
+                                                                'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
+                                                                'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200'
+                                                            };
+
+                                                            const statusLabels = {
+                                                                'pending_payment': 'Pendente Pagamento',
+                                                                'confirmed': 'Confirmado',
+                                                                'paid': 'Pago',
+                                                                'completed': 'Concluído',
+                                                                'cancelled_by_patient': 'Cancelado pelo Paciente',
+                                                                'cancelled_by_professional': 'Cancelado pelo Profissional',
+                                                                'no_show_unjustified': 'Falta injustificada'
+                                                            };
+
+                                                            // Usa valor histórico se disponível, senão usa preço atual do serviço
+                                                            const patientValue = Number(b.valor_consulta ?? b.service?.price ?? 0) || 0;
+                                                            const professionalValue = Number(
+                                                                b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
+                                                            ) || 0;
+                                                            const platformFeeValue = Math.max(patientValue - professionalValue, 0);
+                                                            const professionalChipLabel = isAdminView ? 'Profissional' : 'Você recebe';
+
+                                                            const bookingService = services.find(service => service.id === b.service_id) || null;
+
+                                                            let availableServices;
+                                                            if (isAdminView) {
+                                                                availableServices = services;
+                                                            } else {
+                                                                const uniqueServices = [];
+                                                                const seenServiceIds = new Set();
+                                                                const pushService = (service) => {
+                                                                    if (service && service.id && !seenServiceIds.has(service.id)) {
+                                                                        uniqueServices.push(service);
+                                                                        seenServiceIds.add(service.id);
+                                                                    }
+                                                                };
+
+                                                                pushService(bookingService);
+                                                                services.forEach((service) => {
+                                                                    if (professionalServiceIdSet.has(service.id)) {
+                                                                        pushService(service);
+                                                                    }
+                                                                });
+
+                                                                availableServices = uniqueServices;
+                                                            }
+
+                                                            const quickStatusOptions = isAdminView
+                                                                ? [
+                                                                    { value: 'pending_payment', label: statusLabels['pending_payment'] },
+                                                                    { value: 'confirmed', label: statusLabels['confirmed'] },
+                                                                    { value: 'completed', label: statusLabels['completed'] },
+                                                                    { value: 'cancelled_by_patient', label: statusLabels['cancelled_by_patient'] },
+                                                                    { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] },
+                                                                    { value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'] }
+                                                                ]
+                                                                : (() => {
+                                                                    const options = [
+                                                                        { value: b.status, label: `${statusLabels[b.status] || b.status} (atual)`, disabled: true }
+                                                                    ];
+
+                                                                    if (b.status !== 'completed') {
+                                                                        options.push({ value: 'completed', label: statusLabels['completed'], disabled: b.status !== 'confirmed' });
+                                                                    }
+
+                                                                    if (b.status !== 'cancelled_by_professional') {
+                                                                        options.push({ value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'], disabled: false });
+                                                                    }
+
+                                                                    if (b.status !== 'no_show_unjustified') {
+                                                                        options.push({ value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'], disabled: false });
+                                                                    }
+
+                                                                    return options;
+                                                                })();
+
+                                                            const hasEnabledQuickStatusOption = quickStatusOptions.some(option => !option.disabled && option.value !== b.status);
+                                                            const quickStatusSelectDisabled = isAnyItemLoading() || (!isAdminView && !hasEnabledQuickStatusOption);
+
+                                                            const serviceOptionLabel = (service) => {
+                                                                if (!service) return '';
+                                                                if (isAdminView) {
+                                                                    const priceNumber = Number(service.price) || 0;
+                                                                    return `${service.name} - R$ ${priceNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                                                                }
+                                                                return service.name;
+                                                            };
+
+                                                            return (
+                                                                <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                                    } hover:bg-blue-50 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
+
+                                                                    {/* Overlay de Loading com novo componente */}
+                                                                    <LoadingOverlay
+                                                                        isLoading={isItemLoading('status', b.id) || isItemLoading('edit', b.id)}
+                                                                        message={isItemLoading('status', b.id) ? 'Atualizando status...' : 'Salvando alterações...'}
+                                                                    />
+
+                                                                    <div className="flex justify-between items-start mb-4">
+                                                                        <div className="flex-1">
+                                                                            <div className="flex items-center gap-3 mb-3">
+                                                                                <h3 className="font-semibold text-lg text-gray-900">
+                                                                                    {b.patient_name || 'Nome não informado'}
+                                                                                </h3>
+                                                                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
+                                                                                    {statusLabels[b.status] || b.status}
+                                                                                </span>
+                                                                                {(patientValue > 0 || professionalValue > 0) && (
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                        {patientValue > 0 && userRole === 'admin' && (
+                                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
+                                                                                                Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                            </span>
+                                                                                        )}
+                                                                                        {professionalValue > 0 && (
+                                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                                                                                {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                            </span>
+                                                                                        )}
+                                                                                        {userRole === 'admin' && platformFeeValue > 0 && (
+                                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                                                                                Taxa: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                                                                                <div>
+                                                                                    <span className="text-gray-500 block">Profissional</span>
+                                                                                    <span className="font-medium">{b.professional?.name || 'N/A'}</span>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <span className="text-gray-500 block">Serviço</span>
+                                                                                    <span className="font-medium">{b.service?.name || 'N/A'}</span>
+                                                                                    {b.service?.duration_minutes && (
+                                                                                        <span className="text-blue-600 block text-xs">
+                                                                                            {b.service.duration_minutes >= 60
+                                                                                                ? `${Math.floor(b.service.duration_minutes / 60)}h${b.service.duration_minutes % 60 > 0 ? ` ${b.service.duration_minutes % 60}min` : ''}`
+                                                                                                : `${b.service.duration_minutes}min`
+                                                                                            }
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <span className="text-gray-500 block">Financeiro</span>
+                                                                                    {(userRole === 'admin' ? patientValue : professionalValue) > 0 ? (
+                                                                                        <div className="space-y-1">
+                                                                                            {userRole === 'admin' && patientValue > 0 && (
+                                                                                                <span className="font-bold text-green-700 block">
+                                                                                                    Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {professionalValue > 0 && (
+                                                                                                <span className="font-semibold text-blue-700 block">
+                                                                                                    {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            {userRole === 'admin' && (
+                                                                                                <span className="text-xs text-purple-700 block">
+                                                                                                    Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        <span className="text-orange-500 block text-xs">Valor não definido</span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <span className="text-gray-500 block">Data e Horário</span>
+                                                                                    <span className="font-medium">
+                                                                                        {new Date(b.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                                                                    </span>
+                                                                                    <span className="block text-blue-600">{b.booking_time}h</span>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <span className="text-gray-500 block">Contato</span>
+                                                                                    <span className="font-medium block text-xs">{b.patient_email || 'N/A'}</span>
+                                                                                    <span className="block text-xs">{b.patient_phone || 'N/A'}</span>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
+                                                                            {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
+                                                                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                                                                                    {/* Header clicável */}
+                                                                                    <button
+                                                                                        onClick={() => toggleZoomExpansion(b.id)}
+                                                                                        className="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors"
+                                                                                    >
+                                                                                        <h4 className="font-semibold text-blue-900 flex items-center">
+                                                                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                                            </svg>
+                                                                                            Acesso à sala
+                                                                                        </h4>
+                                                                                        {expandedZoomCards[b.id] ? (
+                                                                                            <ChevronUp className="w-5 h-5 text-blue-700" />
+                                                                                        ) : (
+                                                                                            <ChevronDown className="w-5 h-5 text-blue-700" />
+                                                                                        )}
+                                                                                    </button>
+
+                                                                                    {/* Conteúdo colapsável com animação */}
+                                                                                    <div
+                                                                                        className={`transition-all duration-300 ease-in-out ${expandedZoomCards[b.id]
+                                                                                            ? 'max-h-96 opacity-100'
+                                                                                            : 'max-h-0 opacity-0'
+                                                                                            } overflow-hidden`}
+                                                                                    >
+                                                                                        <div className="px-4 pb-4 space-y-2 text-sm border-t border-blue-200 pt-3">
+                                                                                            <div>
+                                                                                                <span className="text-gray-600 font-medium">Link da Reunião:</span>
+                                                                                                <a
+                                                                                                    href={b.meeting_link}
+                                                                                                    target="_blank"
+                                                                                                    rel="noopener noreferrer"
+                                                                                                    className="block text-blue-600 hover:text-blue-800 underline break-all"
+                                                                                                >
+                                                                                                    {b.meeting_link}
+                                                                                                </a>
+                                                                                            </div>
+                                                                                            {b.meeting_password && (
+                                                                                                <div>
+                                                                                                    <span className="text-gray-600 font-medium">Senha: </span>
+                                                                                                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
+                                                                                                        {b.meeting_password}
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {b.meeting_start_url && (
+                                                                                                <div>
+                                                                                                    <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
+                                                                                                    <a
+                                                                                                        href={b.meeting_start_url}
+                                                                                                        target="_blank"
+                                                                                                        rel="noopener noreferrer"
+                                                                                                        className="block text-green-600 hover:text-green-800 underline break-all"
+                                                                                                    >
+                                                                                                        {b.meeting_start_url}
+                                                                                                    </a>
+                                                                                                    <span className="text-xs text-gray-500 italic">
+                                                                                                        ⚠️ Use este link para iniciar a reunião como anfitrião
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="flex gap-2 ml-4 flex-col items-end">
+                                                                            {/* Mudança rápida de status */}
+                                                                            <div className="w-48 relative">
+                                                                                <label className="block text-xs text-gray-600 mb-1">
+                                                                                    Status Rápido:
+                                                                                    {isItemLoading('status', b.id) && (
+                                                                                        <LoadingSpinner size="xs" className="inline-block ml-1 text-[#2d8659]" />
+                                                                                    )}
+                                                                                </label>
+                                                                                <LoadingInput isLoading={isItemLoading('status', b.id)}>
+                                                                                    <select
+                                                                                        value={b.status}
+                                                                                        onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
+                                                                                        disabled={quickStatusSelectDisabled}
+                                                                                        className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
+                                                                                            } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
+                                                                                    >
+                                                                                        {quickStatusOptions.map((option) => (
+                                                                                            <option
+                                                                                                key={option.value}
+                                                                                                value={option.value}
+                                                                                                disabled={option.disabled}
+                                                                                            >
+                                                                                                {option.label}
+                                                                                            </option>
+                                                                                        ))}
+                                                                                    </select>
+                                                                                </LoadingInput>
+                                                                            </div>
+
+                                                                            <div className="flex gap-2">
+                                                                                <Dialog>
+                                                                                    <DialogTrigger asChild>
+                                                                                        <Button
+                                                                                            size="sm"
+                                                                                            variant="outline"
+                                                                                            disabled={isAnyItemLoading()}
+                                                                                            onClick={() => {
+                                                                                                setEditingBooking(b);
+                                                                                                const resolvedProfessionalId = isAdminView
+                                                                                                    ? (b.professional_id || '')
+                                                                                                    : (currentProfessional?.id || b.professional_id || '');
+
+                                                                                                setBookingEditData({
+                                                                                                    booking_date: b.booking_date,
+                                                                                                    booking_time: b.booking_time,
+                                                                                                    status: b.status,
+                                                                                                    professional_id: resolvedProfessionalId,
+                                                                                                    service_id: b.service_id || '',
+                                                                                                    patient_name: b.patient_name || '',
+                                                                                                    patient_email: b.patient_email || '',
+                                                                                                    patient_phone: b.patient_phone || '',
+                                                                                                    valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
+                                                                                                    valor_repasse_profissional: formatNumberToCurrencyInput(
+                                                                                                        b.valor_repasse_profissional ?? b.valor_consulta ?? ''
+                                                                                                    )
+                                                                                                });
+                                                                                            }}
+                                                                                            className={`hover:bg-blue-50 transition-all ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
+                                                                                                }`}
+                                                                                        >
+                                                                                            {isItemLoading('edit', b.id) ? (
+                                                                                                <LoadingSpinner size="sm" className="mr-1" />
+                                                                                            ) : (
+                                                                                                <Edit className="w-4 h-4 mr-1" />
+                                                                                            )}
+                                                                                            Editar
+                                                                                        </Button>
+                                                                                    </DialogTrigger>
+                                                                                    <DialogContent className="max-w-2xl">
+                                                                                        <DialogHeader>
+                                                                                            <DialogTitle className="flex items-center">
+                                                                                                <Edit className="w-5 h-5 mr-2" />
+                                                                                                Editar Agendamento
+                                                                                            </DialogTitle>
+                                                                                        </DialogHeader>
+                                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
+                                                                                                <input
+                                                                                                    type="text"
+                                                                                                    value={bookingEditData.patient_name}
+                                                                                                    onChange={e => {
+                                                                                                        if (!isAdminView) return;
+                                                                                                        setBookingEditData({ ...bookingEditData, patient_name: e.target.value });
+                                                                                                    }}
+                                                                                                    className={`w-full input ${!isAdminView ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                                                                    placeholder="Nome completo"
+                                                                                                    required
+                                                                                                    readOnly={!isAdminView}
+                                                                                                />
+                                                                                            </div>
+                                                                                            {isAdminView && (
+                                                                                                <>
+                                                                                                    <div>
+                                                                                                        <label className="block text-sm font-medium mb-1">Email</label>
+                                                                                                        <input
+                                                                                                            type="email"
+                                                                                                            value={bookingEditData.patient_email}
+                                                                                                            onChange={e => setBookingEditData({ ...bookingEditData, patient_email: e.target.value })}
+                                                                                                            className="w-full input"
+                                                                                                            placeholder="email@exemplo.com"
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                    <div>
+                                                                                                        <label className="block text-sm font-medium mb-1">Telefone</label>
+                                                                                                        <input
+                                                                                                            type="tel"
+                                                                                                            value={bookingEditData.patient_phone}
+                                                                                                            onChange={e => setBookingEditData({ ...bookingEditData, patient_phone: e.target.value })}
+                                                                                                            className="w-full input"
+                                                                                                            placeholder="(11) 99999-9999"
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                </>
+                                                                                            )}
+                                                                                            {isAdminView && (
+                                                                                                <div>
+                                                                                                    <label className="block text-sm font-medium mb-1">Status *</label>
+                                                                                                    <select
+                                                                                                        value={bookingEditData.status}
+                                                                                                        onChange={e => setBookingEditData({ ...bookingEditData, status: e.target.value })}
+                                                                                                        className="w-full input"
+                                                                                                    >
+                                                                                                        <option value="pending_payment">Pendente Pagamento</option>
+                                                                                                        <option value="confirmed">Confirmado</option>
+                                                                                                        <option value="completed">Concluído</option>
+                                                                                                        <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                                                        <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                                                        <option value="no_show_unjustified">Falta injustificada</option>
+                                                                                                    </select>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {isAdminView && (
+                                                                                                <div>
+                                                                                                    <label className="block text-sm font-medium mb-1">Profissional *</label>
+                                                                                                    <select
+                                                                                                        value={bookingEditData.professional_id}
+                                                                                                        onChange={e => setBookingEditData({ ...bookingEditData, professional_id: e.target.value })}
+                                                                                                        className="w-full input"
+                                                                                                        required
+                                                                                                    >
+                                                                                                        <option value="">Selecione um profissional</option>
+                                                                                                        {professionals.map(prof => (
+                                                                                                            <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                                                                        ))}
+                                                                                                    </select>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Serviço *</label>
+                                                                                                <select
+                                                                                                    value={bookingEditData.service_id}
+                                                                                                    onChange={e => {
+                                                                                                        const nextServiceId = e.target.value;
+                                                                                                        const matchedService = services.find(service => service.id === nextServiceId);
+                                                                                                        setBookingEditData(prev => ({
+                                                                                                            ...prev,
+                                                                                                            service_id: nextServiceId,
+                                                                                                            valor_consulta: matchedService
+                                                                                                                ? formatNumberToCurrencyInput(matchedService.price)
+                                                                                                                : prev.valor_consulta,
+                                                                                                            valor_repasse_profissional: matchedService
+                                                                                                                ? formatNumberToCurrencyInput(matchedService.professional_payout ?? matchedService.price)
+                                                                                                                : prev.valor_repasse_profissional
+                                                                                                        }));
+                                                                                                    }}
+                                                                                                    className="w-full input"
+                                                                                                    required
+                                                                                                >
+                                                                                                    <option value="">Selecione um serviço</option>
+                                                                                                    {availableServices.map(service => (
+                                                                                                        <option key={service.id} value={service.id}>
+                                                                                                            {serviceOptionLabel(service)}
+                                                                                                        </option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Data *</label>
+                                                                                                <input
+                                                                                                    type="date"
+                                                                                                    value={bookingEditData.booking_date}
+                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, booking_date: e.target.value })}
+                                                                                                    className="w-full input"
+                                                                                                    required
+                                                                                                />
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Horário *</label>
+                                                                                                <input
+                                                                                                    type="time"
+                                                                                                    value={bookingEditData.booking_time}
+                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, booking_time: e.target.value })}
+                                                                                                    className="w-full input"
+                                                                                                    required
+                                                                                                />
+                                                                                            </div>
+                                                                                            {isAdminView && (
+                                                                                                <>
+                                                                                                    <div>
+                                                                                                        <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
+                                                                                                        <input
+                                                                                                            type="text"
+                                                                                                            value={bookingEditData.valor_consulta}
+                                                                                                            onChange={e => setBookingEditData(prev => ({
+                                                                                                                ...prev,
+                                                                                                                valor_consulta: sanitizeCurrencyInput(e.target.value)
+                                                                                                            }))}
+                                                                                                            className="w-full input"
+                                                                                                            placeholder="150,00"
+                                                                                                        />
+                                                                                                        <p className="text-xs text-gray-500 mt-1">
+                                                                                                            Valor histórico cobrado do paciente no momento do agendamento
+                                                                                                        </p>
+                                                                                                    </div>
+                                                                                                    <div>
+                                                                                                        <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
+                                                                                                        <input
+                                                                                                            type="text"
+                                                                                                            value={bookingEditData.valor_repasse_profissional}
+                                                                                                            onChange={e => setBookingEditData(prev => ({
+                                                                                                                ...prev,
+                                                                                                                valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
+                                                                                                            }))}
+                                                                                                            className="w-full input"
+                                                                                                            placeholder="150,00"
+                                                                                                        />
+                                                                                                        <p className="text-xs text-gray-500 mt-1">
+                                                                                                            Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
+                                                                                                        </p>
+                                                                                                    </div>
+                                                                                                </>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <DialogFooter>
+                                                                                            <DialogClose asChild>
+                                                                                                <Button
+                                                                                                    variant="outline"
+                                                                                                    disabled={isItemLoading('edit', editingBooking?.id)}
+                                                                                                >
+                                                                                                    Cancelar
+                                                                                                </Button>
+                                                                                            </DialogClose>
+                                                                                            <LoadingButton
+                                                                                                isLoading={isItemLoading('edit', editingBooking?.id)}
+                                                                                                loadingText="Salvando..."
+                                                                                                onClick={handleUpdateBooking}
+                                                                                                className="bg-[#2d8659] hover:bg-[#236b47] text-white px-4 py-2 rounded-md"
+                                                                                            >
+                                                                                                Salvar Alterações
+                                                                                            </LoadingButton>
+                                                                                        </DialogFooter>
+                                                                                    </DialogContent>
+                                                                                </Dialog>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="destructive"
+                                                                                    disabled={isAnyItemLoading()}
+                                                                                    onClick={() => handleDeleteBooking(b)}
+                                                                                    className={`flex items-center ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                                >
+                                                                                    {isItemLoading('delete', b.id) ? (
+                                                                                        <LoadingSpinner size="sm" className="mr-1" />
+                                                                                    ) : (
+                                                                                        <Trash2 className="w-4 h-4 mr-1" />
+                                                                                    )}
+                                                                                    Excluir
+                                                                                </Button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+
+                                                        {/* Navegação de Páginas */}
+                                                        {totalPages > 1 && (
+                                                            <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t">
+                                                                <Button
+                                                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                                                    disabled={currentPage === 1}
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                >
+                                                                    ← Anterior
+                                                                </Button>
+
+                                                                <div className="flex gap-1">
+                                                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                                        <Button
+                                                                            key={page}
+                                                                            onClick={() => setCurrentPage(page)}
+                                                                            variant={currentPage === page ? "default" : "outline"}
+                                                                            size="sm"
+                                                                            className={currentPage === page ? "bg-[#2d8659] hover:bg-[#236b47]" : ""}
+                                                                        >
+                                                                            {page}
+                                                                        </Button>
+                                                                    ))}
+                                                                </div>
+
+                                                                <Button
+                                                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                                                    disabled={currentPage === totalPages}
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                >
+                                                                    Próxima →
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </>
+                                )}
                             </div>
                         </TabsContent>
 
@@ -5228,7 +5285,7 @@ const AdminPage = () => {
                         )}
                     </Tabs>
                 </div>
-            </div>
+            </div >
 
             <ConfirmDialog
                 isOpen={confirmDialog.isOpen}
