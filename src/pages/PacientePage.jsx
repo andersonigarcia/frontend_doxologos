@@ -13,6 +13,13 @@ import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { QRCodeSVG } from 'qrcode.react';
 import UserBadge from '@/components/UserBadge';
+// Novos imports - Fase 4
+import { NotificationCenter } from '@/components/NotificationCenter';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { SessionValidator } from '@/components/auth/SessionValidator';
+import { ProtectedAction } from '@/components/auth/ProtectedAction';
+import { DashboardCard } from '@/components/shared/DashboardCard';
+import { auditLogger, AuditAction } from '@/lib/auditLogger';
 
 const MAX_RESCHEDULE_ATTEMPTS = 2;
 const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
@@ -28,18 +35,18 @@ const PacientePage = () => {
 
     const [reviewingBooking, setReviewingBooking] = useState(null);
     const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
-    
+
     // Estados de paginação
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(5);
-    
+
     // Estado para controlar visibilidade dos detalhes do Zoom
     const [expandedZoom, setExpandedZoom] = useState({});
-    
+
     // Estados de ordenação
     const [sortField, setSortField] = useState('default'); // 'default', 'date', 'status'
     const [sortOrder, setSortOrder] = useState('asc'); // 'asc' ou 'desc'
-    
+
     // Estado para reagendamento
     const [reschedulingBooking, setReschedulingBooking] = useState(null);
     const [availableSlots, setAvailableSlots] = useState([]);
@@ -108,7 +115,7 @@ const PacientePage = () => {
         }
         return booking.payment || null;
     };
-    
+
     // Função para ordenar bookings
     const getSortedBookings = (bookingsToSort) => {
         const statusPriority = {
@@ -119,7 +126,7 @@ const PacientePage = () => {
             'cancelled_by_patient': 4,
             'cancelled_by_professional': 4
         };
-        
+
         const sorted = [...bookingsToSort].sort((a, b) => {
             if (sortField === 'status') {
                 const priorityA = statusPriority[a.status] || 5;
@@ -127,7 +134,7 @@ const PacientePage = () => {
                 const statusCompare = priorityA - priorityB;
                 if (statusCompare !== 0) return sortOrder === 'asc' ? statusCompare : -statusCompare;
             }
-            
+
             if (sortField === 'date' || sortField === 'default') {
                 const dateA = new Date(a.booking_date + 'T' + a.booking_time);
                 const dateB = new Date(b.booking_date + 'T' + b.booking_time);
@@ -136,17 +143,17 @@ const PacientePage = () => {
                     return sortField === 'default' || sortOrder === 'desc' ? -dateCompare : dateCompare;
                 }
             }
-            
+
             // Ordenação secundária por status se estiver ordenando por data
             if (sortField === 'date') {
                 const priorityA = statusPriority[a.status] || 5;
                 const priorityB = statusPriority[b.status] || 5;
                 return priorityA - priorityB;
             }
-            
+
             return 0;
         });
-        
+
         // Aplica ordenação default: confirmados > pendentes > cancelados, depois por data decrescente
         if (sortField === 'default') {
             return sorted.sort((a, b) => {
@@ -154,17 +161,17 @@ const PacientePage = () => {
                 const priorityB = statusPriority[b.status] || 5;
                 const statusCompare = priorityA - priorityB;
                 if (statusCompare !== 0) return statusCompare;
-                
+
                 // Mesma prioridade, ordena por data decrescente (mais recente primeiro)
                 const dateA = new Date(a.booking_date + 'T' + a.booking_time);
                 const dateB = new Date(b.booking_date + 'T' + b.booking_time);
                 return dateB - dateA;
             });
         }
-        
+
         return sorted;
     };
-    
+
     const handleSort = (field) => {
         if (sortField === field) {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -221,7 +228,7 @@ const PacientePage = () => {
             .from('reviews')
             .select('booking_id')
             .eq('patient_id', user.id);
-        
+
         if (reviewsError) {
             logger.apiError('fetchReviews', reviewsError, { userId: user.id });
         } else {
@@ -262,6 +269,13 @@ const PacientePage = () => {
             if (!accessToken) {
                 throw new Error('Sessão expirada. Faça login novamente.');
             }
+
+            // Registrar no audit log
+            await auditLogger.info(AuditAction.BOOKING_CANCEL, {
+                resourceType: 'booking',
+                resourceId: bookingId,
+                details: { triggered_by: 'patient_portal' }
+            });
 
             const { data, error } = await supabase.functions.invoke('patient-cancel-booking', {
                 body: { booking_id: bookingId },
@@ -734,7 +748,7 @@ const PacientePage = () => {
                         <h2 className="text-3xl font-bold mb-6 text-center">Área do Paciente</h2>
                         <p className="text-center text-gray-600 mb-6">Acesse para ver seus agendamentos.</p>
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <div><label className="block text-sm font-medium mb-2">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"/></div>
+                            <div><label className="block text-sm font-medium mb-2">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({ ...loginData, email: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" /></div>
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block text-sm font-medium">Senha</label>
@@ -742,7 +756,7 @@ const PacientePage = () => {
                                         Esqueci minha senha
                                     </Link>
                                 </div>
-                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"/>
+                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent" />
                             </div>
                             <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Entrar</Button>
                         </form>
@@ -751,10 +765,11 @@ const PacientePage = () => {
             </>
         );
     }
-    
+
     return (
         <>
             <Helmet><title>Meus Agendamentos - Doxologos</title></Helmet>
+            <SessionValidator autoRefresh={true} />
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
                 <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
                     {/* Desktop Header */}
@@ -764,6 +779,9 @@ const PacientePage = () => {
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center gap-4 flex-wrap justify-end">
+                            <ThemeToggle />
+                            {/* NotificationCenter desabilitado - requer Supabase Realtime */}
+                            {/* <NotificationCenter /> */}
                             <Link to="/minhas-inscricoes">
                                 <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
                                     <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
@@ -786,7 +804,7 @@ const PacientePage = () => {
                             <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 h-7" />
                             <span className="text-xl font-bold gradient-text">Doxologos</span>
                         </Link>
-                        <button 
+                        <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
@@ -800,7 +818,7 @@ const PacientePage = () => {
 
                     {/* Mobile Menu */}
                     {mobileMenuOpen && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
@@ -818,7 +836,7 @@ const PacientePage = () => {
                                 compact={true}
                             />
                             <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
-                                <Link 
+                                <Link
                                     to="/minhas-inscricoes"
                                     className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
                                     onClick={() => setMobileMenuOpen(false)}
@@ -834,6 +852,37 @@ const PacientePage = () => {
                 <div className="container mx-auto px-3 md:px-4 max-w-4xl">
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
                     <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
+
+                    {/* Dashboard com Métricas */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <DashboardCard
+                            title="Total de Consultas"
+                            value={bookings.length}
+                            icon={<Calendar className="h-5 w-5" />}
+                            description="Agendamentos realizados"
+                        />
+                        <DashboardCard
+                            title="Próxima Consulta"
+                            value={(() => {
+                                const upcoming = bookings
+                                    .filter(b => ['confirmed', 'paid'].includes(b.status))
+                                    .filter(b => new Date(`${b.booking_date}T${b.booking_time}`) > new Date())
+                                    .sort((a, b) => new Date(`${a.booking_date}T${a.booking_time}`) - new Date(`${b.booking_date}T${b.booking_time}`))[0];
+                                if (!upcoming) return 'Nenhuma';
+                                const date = new Date(upcoming.booking_date);
+                                return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+                            })()}
+                            icon={<Clock className="h-5 w-5" />}
+                            description="Agendamento confirmado"
+                        />
+                        <DashboardCard
+                            title="Créditos Disponíveis"
+                            value={formatCurrency(availableCreditAmount)}
+                            icon={<CreditCard className="h-5 w-5" />}
+                            description="Para novas consultas"
+                        />
+                    </div>
+
                     {creditError && (
                         <div className="mb-6">
                             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
@@ -902,38 +951,38 @@ const PacientePage = () => {
                     <div className="bg-white rounded-xl shadow-lg p-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                             <h2 className="text-2xl font-bold flex items-center">
-                                <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" />
                                 Meus Agendamentos ({bookings.length})
                             </h2>
                             {bookings.length > 0 && (
                                 <div className="flex flex-wrap gap-2 items-center">
                                     <div className="flex gap-2">
-                                        <Button 
-                                            onClick={() => handleSort('default')} 
-                                            variant="outline" 
+                                        <Button
+                                            onClick={() => handleSort('default')}
+                                            variant="outline"
                                             size="sm"
                                             className={sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
                                         >
                                             Padrão
                                         </Button>
-                                        <Button 
-                                            onClick={() => handleSort('status')} 
-                                            variant="outline" 
+                                        <Button
+                                            onClick={() => handleSort('status')}
+                                            variant="outline"
                                             size="sm"
                                             className={sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
                                         >
                                             Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                                         </Button>
-                                        <Button 
-                                            onClick={() => handleSort('date')} 
-                                            variant="outline" 
+                                        <Button
+                                            onClick={() => handleSort('date')}
+                                            variant="outline"
                                             size="sm"
                                             className={sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
                                         >
                                             Data {sortField === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
                                         </Button>
                                     </div>
-                                    
+
                                     {/* Seletor de itens por página */}
                                     <div className="flex items-center gap-2 border-l pl-2">
                                         <label className="text-sm text-gray-600">Itens:</label>
@@ -975,339 +1024,346 @@ const PacientePage = () => {
 
                                     return (
                                         <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
-                                        <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
-                                            <div>
-                                                <h3 className="font-bold text-lg">{booking.service.name}</h3>
-                                                <p className="text-sm text-gray-600">com {booking.professional.name}</p>
-                                            </div>
-                                            <span className={`mt-2 sm:mt-0 px-3 py-1 rounded-full text-sm font-medium ${
-                                                booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                                booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                                booking.status.includes('cancelled') ? 'bg-red-100 text-red-800' :
-                                                'bg-yellow-100 text-yellow-800'
-                                            }`}>
-                                                {booking.status === 'confirmed' ? 'Confirmado' :
-                                                booking.status === 'completed' ? 'Concluído' :
-                                                booking.status.includes('cancelled') ? 'Cancelado' : 'Pendente'}
-                                            </span>
-                                        </div>
-                                        <div className="grid md:grid-cols-2 gap-2 text-sm mb-4">
-                                            <p className="flex items-center"><Calendar className="w-4 h-4 mr-2" /> {new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                            <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {booking.booking_time}</p>
-                                        </div>
-
-                                        {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO MINIMIZADA */}
-                                        {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
-                                            <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg mb-4 overflow-hidden">
-                                                {/* Cabeçalho sempre visível */}
-                                                <div className="p-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <h4 className="font-semibold text-blue-900 flex items-center">
-                                                            🎥 Consulta Online
-                                                        </h4>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => toggleZoomDetails(booking.id)}
-                                                            className="text-blue-700 hover:text-blue-900"
-                                                        >
-                                                            {expandedZoom[booking.id] ? (
-                                                                <>
-                                                                    <ChevronUp className="w-4 h-4 mr-1" />
-                                                                    Ocultar
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <ChevronDown className="w-4 h-4 mr-1" />
-                                                                    Ver detalhes
-                                                                </>
-                                                            )}
-                                                        </Button>
-                                                    </div>
-                                                    
-                                                    {/* Botão principal sempre visível */}
-                                                    <div className="mt-3">
-                                                        <a 
-                                                            href={booking.meeting_link} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-                                                        >
-                                                            🔗 Entrar na Sala Zoom
-                                                        </a>
-                                                    </div>
+                                            <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
+                                                <div>
+                                                    <h3 className="font-bold text-lg">{booking.service.name}</h3>
+                                                    <p className="text-sm text-gray-600">com {booking.professional.name}</p>
                                                 </div>
-
-                                                {/* Detalhes expandíveis */}
-                                                {expandedZoom[booking.id] && (
-                                                    <motion.div
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        transition={{ duration: 0.3 }}
-                                                        className="px-4 pb-4 space-y-3"
-                                                    >
-                                                        {booking.meeting_password && (
-                                                            <div className="bg-white p-3 rounded border border-blue-200">
-                                                                <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
-                                                                <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
-                                                                    {booking.meeting_password}
-                                                                </code>
-                                                            </div>
-                                                        )}
-                                                        <div className="text-xs text-blue-800 space-y-1 bg-white p-3 rounded border border-blue-200">
-                                                            <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
-                                                            <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
+                                                <span className={`mt-2 sm:mt-0 px-3 py-1 rounded-full text-sm font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                                    booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                                        booking.status.includes('cancelled') ? 'bg-red-100 text-red-800' :
+                                                            'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    {booking.status === 'confirmed' ? 'Confirmado' :
+                                                        booking.status === 'completed' ? 'Concluído' :
+                                                            booking.status.includes('cancelled') ? 'Cancelado' : 'Pendente'}
+                                                </span>
                                             </div>
-                                        )}
-
-                                        {booking.status === 'pending_payment' && (
-                                            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-r-lg p-4 mb-4">
-                                                <div className="flex items-start gap-3 mb-3">
-                                                    <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1"/>
-                                                    <div className="flex-1">
-                                                        <h4 className="font-semibold text-amber-900 mb-1">
-                                                            Pagamento Pendente
-                                                        </h4>
-                                                        <p className="text-sm text-amber-800 mb-3">
-                                                            {latestPaymentMessage || 'Complete o pagamento para confirmar seu agendamento.'}
-                                                        </p>
-                                                        
-                                                        {/* Exibir QR Code PIX se disponível */}
-                                                        {booking.payment?.[0]?.qr_code && (
-                                                            <div className="bg-white rounded-lg p-4 border-2 border-amber-200">
-                                                                <div className="flex flex-col md:flex-row gap-4 items-start">
-                                                                    {/* QR Code */}
-                                                                    <div className="flex flex-col items-center">
-                                                                        <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
-                                                                            <QRCodeSVG 
-                                                                                value={booking.payment[0].qr_code} 
-                                                                                size={160}
-                                                                                level="H"
-                                                                            />
-                                                                        </div>
-                                                                        <p className="text-xs text-gray-600 mt-2 text-center">
-                                                                            Escaneie com seu app bancário
-                                                                        </p>
-                                                                    </div>
-                                                                    
-                                                                    {/* Informações do Pagamento */}
-                                                                    <div className="flex-1 space-y-3">
-                                                                        <div>
-                                                                            <p className="text-sm font-medium text-gray-700 mb-1">
-                                                                                💰 Valor
-                                                                            </p>
-                                                                            <p className="text-2xl font-bold text-green-600">
-                                                                                R$ {(booking.payment[0].amount || 0).toFixed(2)}
-                                                                            </p>
-                                                                        </div>
-                                                                        
-                                                                        <div>
-                                                                            <p className="text-sm font-medium text-gray-700 mb-2">
-                                                                                📱 Código PIX Copia e Cola
-                                                                            </p>
-                                                                            <div className="flex gap-2">
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    value={booking.payment[0].qr_code}
-                                                                                    readOnly
-                                                                                    className="flex-1 text-xs font-mono p-2 bg-gray-50 border rounded truncate"
-                                                                                />
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    variant="outline"
-                                                                                    onClick={() => {
-                                                                                        navigator.clipboard.writeText(booking.payment[0].qr_code);
-                                                                                        toast({
-                                                                                            title: "Código copiado!",
-                                                                                            description: "Cole no seu app bancário para pagar"
-                                                                                        });
-                                                                                    }}
-                                                                                >
-                                                                                    <Copy className="w-4 h-4" />
-                                                                                </Button>
-                                                                            </div>
-                                                                        </div>
-                                                                        
-                                                                        {booking.payment[0].ticket_url && (
-                                                                            <div>
-                                                                                <a
-                                                                                    href={booking.payment[0].ticket_url}
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                                                                >
-                                                                                    <ExternalLink className="w-4 h-4 mr-1" />
-                                                                                    Ver comprovante no Mercado Pago
-                                                                                </a>
-                                                                            </div>
-                                                                        )}
-                                                                        
-                                                                        <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
-                                                                            <p>💡 <strong>Dica:</strong> Após pagar, a confirmação pode levar alguns segundos</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        <div className="flex items-center gap-2 mt-3">
-                                                            <Link to={`/checkout?booking_id=${booking.id}`}>
-                                                                <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                                                                    <CreditCard className="w-4 h-4 mr-2" />
-                                                                    Realizar Pagamento
-                                                                </Button>
-                                                            </Link>
-                                                            {paymentNeedsRetry && (
-                                                                <span className="text-xs text-amber-700">
-                                                                    Você pode escolher outro cartão ou alterar o método de pagamento.
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                            <div className="grid md:grid-cols-2 gap-2 text-sm mb-4">
+                                                <p className="flex items-center"><Calendar className="w-4 h-4 mr-2" /> {new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {booking.booking_time}</p>
                                             </div>
-                                        )}
-                                        {booking.status === 'confirmed' && !booking.meeting_link && (
-                                            <div className="flex items-center gap-2 bg-green-50 border-l-4 border-green-400 p-3 rounded-r-lg">
-                                                <CheckCircle className="w-5 h-5 text-green-600"/>
-                                                <p className="text-sm text-green-800">Seu agendamento está confirmado! O link da consulta será disponibilizado em breve.</p>
-                                            </div>
-                                        )}
-                                        <div className="mt-4 space-y-2">
-                                            <p className="text-xs text-gray-500">
-                                                Reagendamentos realizados: {rescheduleAttemptsUsed} de {MAX_RESCHEDULE_ATTEMPTS}
-                                            </p>
-                                            {isEligibleForReschedule && rescheduleAttemptsRemaining > 0 && (
-                                                <p className="text-xs text-green-600">
-                                                    Você ainda pode reagendar {rescheduleAttemptsRemaining} vez{rescheduleAttemptsRemaining > 1 ? 'es' : ''}.
-                                                </p>
-                                            )}
-                                            {!isEligibleForReschedule && restrictionMessage && (
-                                                <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded">
-                                                    <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                                    <span>{restrictionMessage}</span>
-                                                </div>
-                                            )}
-                                        </div>
 
-                                        <div className="mt-3 flex flex-wrap gap-2">
-                                            {booking.status === 'completed' && !reviews.includes(booking.id) && (
-                                                <Dialog>
-                                                    <DialogTrigger asChild>
-                                                        <Button size="sm" onClick={() => setReviewingBooking(booking)}><Star className="w-4 h-4 mr-1" /> Avaliar Atendimento</Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent>
-                                                        <DialogHeader><DialogTitle>Avaliar Atendimento</DialogTitle></DialogHeader>
-                                                        <div className="py-4 space-y-4">
-                                                            <div>
-                                                                <label className="font-medium">Sua nota</label>
-                                                                <div className="flex gap-1 mt-2">
-                                                                    {[...Array(5)].map((_, i) => (
-                                                                        <Star key={i} onClick={() => setReviewData({...reviewData, rating: i + 1})} className={`w-8 h-8 cursor-pointer ${i < reviewData.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            <div>
-                                                                <label className="font-medium">Seu comentário (opcional)</label>
-                                                                <textarea value={reviewData.comment} onChange={e => setReviewData({...reviewData, comment: e.target.value})} rows="4" className="w-full input mt-2" placeholder="Como foi sua experiência?"></textarea>
-                                                            </div>
-                                                        </div>
-                                                        <DialogFooter>
-                                                            <DialogClose asChild><Button variant="outline" onClick={() => setReviewData({ rating: 0, comment: '' })}>Cancelar</Button></DialogClose>
-                                                            <Button onClick={handleReviewSubmit}>Enviar Avaliação</Button>
-                                                        </DialogFooter>
-                                                    </DialogContent>
-                                                </Dialog>
-                                            )}
-                                            {booking.status !== 'cancelled_by_patient' && new Date(booking.booking_date) > new Date() && (
-                                                <Button size="sm" variant="outline" onClick={() => cancelBooking(booking.id)} className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700">
-                                                    <XCircle className="w-4 h-4 mr-1" /> Cancelar
-                                                </Button>
-                                            )}
-                                            {isEligibleForReschedule && (
-                                                <Dialog open={reschedulingBooking?.id === booking.id} onOpenChange={(open) => !open && setReschedulingBooking(null)}>
-                                                    <DialogTrigger asChild>
-                                                        <Button size="sm" variant="outline" onClick={() => startReschedule(booking)}>
-                                                            <Calendar className="w-4 h-4 mr-1" /> Reagendar
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                                                        <DialogHeader>
-                                                            <DialogTitle>Reagendar Consulta</DialogTitle>
-                                                        </DialogHeader>
-                                                        <div className="space-y-4">
-                                                            <div className="bg-gray-50 p-4 rounded-lg">
-                                                                <h4 className="font-semibold mb-2">Agendamento Atual:</h4>
-                                                                <p className="text-sm text-gray-600">
-                                                                    <strong>Data:</strong> {new Date(booking.booking_date).toLocaleDateString('pt-BR')} às {booking.booking_time.slice(0, 5)}
-                                                                </p>
-                                                                <p className="text-sm text-gray-600">
-                                                                    <strong>Profissional:</strong> {booking.professional?.name}
-                                                                </p>
-                                                            </div>
-                                                            
-                                                            <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
-                                                                <p className="text-sm text-blue-800">
-                                                                    <strong>ℹ️ Importante:</strong> Apenas horários com mais de 24h de antecedência estão disponíveis.
-                                                                </p>
-                                                            </div>
-                                                            
-                                                            <div>
-                                                                <h4 className="font-semibold mb-3">Selecione o novo horário:</h4>
-                                                                {loadingSlots ? (
-                                                                    <div className="text-center py-8">
-                                                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2d8659] mx-auto"></div>
-                                                                        <p className="text-sm text-gray-600 mt-2">Carregando horários disponíveis...</p>
-                                                                    </div>
-                                                                ) : availableSlots.length === 0 ? (
-                                                                    <div className="text-center text-gray-600 py-8">
-                                                                        <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
-                                                                        <p className="font-medium">Nenhum horário disponível</p>
-                                                                        <p className="text-sm mt-2">Não há horários disponíveis nos próximos 30 dias com a agenda deste profissional.</p>
-                                                                        <p className="text-sm mt-2">Entre em contato conosco para mais opções.</p>
-                                                                    </div>
+                                            {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO MINIMIZADA */}
+                                            {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
+                                                <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg mb-4 overflow-hidden">
+                                                    {/* Cabeçalho sempre visível */}
+                                                    <div className="p-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h4 className="font-semibold text-blue-900 flex items-center">
+                                                                🎥 Consulta Online
+                                                            </h4>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => toggleZoomDetails(booking.id)}
+                                                                className="text-blue-700 hover:text-blue-900"
+                                                            >
+                                                                {expandedZoom[booking.id] ? (
+                                                                    <>
+                                                                        <ChevronUp className="w-4 h-4 mr-1" />
+                                                                        Ocultar
+                                                                    </>
                                                                 ) : (
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-lg p-2">
-                                                                        {availableSlots.map((slot, index) => (
-                                                                            <button
-                                                                                key={index}
-                                                                                onClick={() => setSelectedNewSlot(slot)}
-                                                                                className={`p-3 text-left rounded-lg border-2 transition-all ${
-                                                                                    selectedNewSlot?.date === slot.date && selectedNewSlot?.time === slot.time
-                                                                                        ? 'border-[#2d8659] bg-green-50'
-                                                                                        : 'border-gray-200 hover:border-[#2d8659] hover:bg-gray-50'
-                                                                                }`}
-                                                                            >
-                                                                                <div className="flex items-center">
-                                                                                    <Calendar className="w-4 h-4 mr-2 text-[#2d8659]" />
-                                                                                    <span className="text-sm font-medium">{slot.display}</span>
+                                                                    <>
+                                                                        <ChevronDown className="w-4 h-4 mr-1" />
+                                                                        Ver detalhes
+                                                                    </>
+                                                                )}
+                                                            </Button>
+                                                        </div>
+
+                                                        {/* Botão principal sempre visível */}
+                                                        <div className="mt-3">
+                                                            <a
+                                                                href={booking.meeting_link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
+                                                            >
+                                                                🔗 Entrar na Sala Zoom
+                                                            </a>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Detalhes expandíveis */}
+                                                    {expandedZoom[booking.id] && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: 'auto', opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.3 }}
+                                                            className="px-4 pb-4 space-y-3"
+                                                        >
+                                                            {booking.meeting_password && (
+                                                                <div className="bg-white p-3 rounded border border-blue-200">
+                                                                    <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
+                                                                    <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
+                                                                        {booking.meeting_password}
+                                                                    </code>
+                                                                </div>
+                                                            )}
+                                                            <div className="text-xs text-blue-800 space-y-1 bg-white p-3 rounded border border-blue-200">
+                                                                <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
+                                                                <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {booking.status === 'pending_payment' && (
+                                                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 rounded-r-lg p-4 mb-4">
+                                                    <div className="flex items-start gap-3 mb-3">
+                                                        <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+                                                        <div className="flex-1">
+                                                            <h4 className="font-semibold text-amber-900 mb-1">
+                                                                Pagamento Pendente
+                                                            </h4>
+                                                            <p className="text-sm text-amber-800 mb-3">
+                                                                {latestPaymentMessage || 'Complete o pagamento para confirmar seu agendamento.'}
+                                                            </p>
+
+                                                            {/* Exibir QR Code PIX se disponível */}
+                                                            {booking.payment?.[0]?.qr_code && (
+                                                                <div className="bg-white rounded-lg p-4 border-2 border-amber-200">
+                                                                    <div className="flex flex-col md:flex-row gap-4 items-start">
+                                                                        {/* QR Code */}
+                                                                        <div className="flex flex-col items-center">
+                                                                            <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                                                                                <QRCodeSVG
+                                                                                    value={booking.payment[0].qr_code}
+                                                                                    size={160}
+                                                                                    level="H"
+                                                                                />
+                                                                            </div>
+                                                                            <p className="text-xs text-gray-600 mt-2 text-center">
+                                                                                Escaneie com seu app bancário
+                                                                            </p>
+                                                                        </div>
+
+                                                                        {/* Informações do Pagamento */}
+                                                                        <div className="flex-1 space-y-3">
+                                                                            <div>
+                                                                                <p className="text-sm font-medium text-gray-700 mb-1">
+                                                                                    💰 Valor
+                                                                                </p>
+                                                                                <p className="text-2xl font-bold text-green-600">
+                                                                                    R$ {(booking.payment[0].amount || 0).toFixed(2)}
+                                                                                </p>
+                                                                            </div>
+
+                                                                            <div>
+                                                                                <p className="text-sm font-medium text-gray-700 mb-2">
+                                                                                    📱 Código PIX Copia e Cola
+                                                                                </p>
+                                                                                <div className="flex gap-2">
+                                                                                    <input
+                                                                                        type="text"
+                                                                                        value={booking.payment[0].qr_code}
+                                                                                        readOnly
+                                                                                        className="flex-1 text-xs font-mono p-2 bg-gray-50 border rounded truncate"
+                                                                                    />
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        variant="outline"
+                                                                                        onClick={() => {
+                                                                                            navigator.clipboard.writeText(booking.payment[0].qr_code);
+                                                                                            toast({
+                                                                                                title: "Código copiado!",
+                                                                                                description: "Cole no seu app bancário para pagar"
+                                                                                            });
+                                                                                        }}
+                                                                                    >
+                                                                                        <Copy className="w-4 h-4" />
+                                                                                    </Button>
                                                                                 </div>
-                                                                            </button>
-                                                                        ))}
+                                                                            </div>
+
+                                                                            {booking.payment[0].ticket_url && (
+                                                                                <div>
+                                                                                    <a
+                                                                                        href={booking.payment[0].ticket_url}
+                                                                                        target="_blank"
+                                                                                        rel="noopener noreferrer"
+                                                                                        className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                                                                    >
+                                                                                        <ExternalLink className="w-4 h-4 mr-1" />
+                                                                                        Ver comprovante no Mercado Pago
+                                                                                    </a>
+                                                                                </div>
+                                                                            )}
+
+                                                                            <div className="text-xs text-gray-600 bg-blue-50 p-2 rounded">
+                                                                                <p>💡 <strong>Dica:</strong> Após pagar, a confirmação pode levar alguns segundos</p>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="flex items-center gap-2 mt-3">
+                                                                <Link to={`/checkout?booking_id=${booking.id}`}>
+                                                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
+                                                                        <CreditCard className="w-4 h-4 mr-2" />
+                                                                        Realizar Pagamento
+                                                                    </Button>
+                                                                </Link>
+                                                                {paymentNeedsRetry && (
+                                                                    <span className="text-xs text-amber-700">
+                                                                        Você pode escolher outro cartão ou alterar o método de pagamento.
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                         </div>
-                                                        <DialogFooter>
-                                                            <DialogClose asChild>
-                                                                <Button variant="outline">Cancelar</Button>
-                                                            </DialogClose>
-                                                            <Button 
-                                                                onClick={confirmReschedule} 
-                                                                disabled={!selectedNewSlot}
-                                                                className="bg-[#2d8659] hover:bg-[#236b47]"
-                                                            >
-                                                                Confirmar Reagendamento
-                                                            </Button>
-                                                        </DialogFooter>
-                                                    </DialogContent>
-                                                </Dialog>
+                                                    </div>
+                                                </div>
                                             )}
-                                        </div>
+                                            {booking.status === 'confirmed' && !booking.meeting_link && (
+                                                <div className="flex items-center gap-2 bg-green-50 border-l-4 border-green-400 p-3 rounded-r-lg">
+                                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                                    <p className="text-sm text-green-800">Seu agendamento está confirmado! O link da consulta será disponibilizado em breve.</p>
+                                                </div>
+                                            )}
+                                            <div className="mt-4 space-y-2">
+                                                <p className="text-xs text-gray-500">
+                                                    Reagendamentos realizados: {rescheduleAttemptsUsed} de {MAX_RESCHEDULE_ATTEMPTS}
+                                                </p>
+                                                {isEligibleForReschedule && rescheduleAttemptsRemaining > 0 && (
+                                                    <p className="text-xs text-green-600">
+                                                        Você ainda pode reagendar {rescheduleAttemptsRemaining} vez{rescheduleAttemptsRemaining > 1 ? 'es' : ''}.
+                                                    </p>
+                                                )}
+                                                {!isEligibleForReschedule && restrictionMessage && (
+                                                    <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+                                                        <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                                        <span>{restrictionMessage}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {booking.status === 'completed' && !reviews.includes(booking.id) && (
+                                                    <Dialog>
+                                                        <DialogTrigger asChild>
+                                                            <Button size="sm" onClick={() => setReviewingBooking(booking)}><Star className="w-4 h-4 mr-1" /> Avaliar Atendimento</Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent>
+                                                            <DialogHeader><DialogTitle>Avaliar Atendimento</DialogTitle></DialogHeader>
+                                                            <div className="py-4 space-y-4">
+                                                                <div>
+                                                                    <label className="font-medium">Sua nota</label>
+                                                                    <div className="flex gap-1 mt-2">
+                                                                        {[...Array(5)].map((_, i) => (
+                                                                            <Star key={i} onClick={() => setReviewData({ ...reviewData, rating: i + 1 })} className={`w-8 h-8 cursor-pointer ${i < reviewData.rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="font-medium">Seu comentário (opcional)</label>
+                                                                    <textarea value={reviewData.comment} onChange={e => setReviewData({ ...reviewData, comment: e.target.value })} rows="4" className="w-full input mt-2" placeholder="Como foi sua experiência?"></textarea>
+                                                                </div>
+                                                            </div>
+                                                            <DialogFooter>
+                                                                <DialogClose asChild><Button variant="outline" onClick={() => setReviewData({ rating: 0, comment: '' })}>Cancelar</Button></DialogClose>
+                                                                <Button onClick={handleReviewSubmit}>Enviar Avaliação</Button>
+                                                            </DialogFooter>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                )}
+                                                {booking.status !== 'cancelled_by_patient' && new Date(booking.booking_date) > new Date() && (
+                                                    <ProtectedAction
+                                                        action="booking:cancel_own"
+                                                        requireConfirmation
+                                                        confirmTitle="Cancelar Agendamento"
+                                                        confirmMessage={`Tem certeza que deseja cancelar este agendamento?`}
+                                                        destructive
+                                                        onConfirm={() => cancelBooking(booking.id)}
+                                                    >
+                                                        <Button size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700">
+                                                            <XCircle className="w-4 h-4 mr-1" /> Cancelar
+                                                        </Button>
+                                                    </ProtectedAction>
+                                                )}
+                                                {isEligibleForReschedule && (
+                                                    <Dialog open={reschedulingBooking?.id === booking.id} onOpenChange={(open) => !open && setReschedulingBooking(null)}>
+                                                        <DialogTrigger asChild>
+                                                            <Button size="sm" variant="outline" onClick={() => startReschedule(booking)}>
+                                                                <Calendar className="w-4 h-4 mr-1" /> Reagendar
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                                            <DialogHeader>
+                                                                <DialogTitle>Reagendar Consulta</DialogTitle>
+                                                            </DialogHeader>
+                                                            <div className="space-y-4">
+                                                                <div className="bg-gray-50 p-4 rounded-lg">
+                                                                    <h4 className="font-semibold mb-2">Agendamento Atual:</h4>
+                                                                    <p className="text-sm text-gray-600">
+                                                                        <strong>Data:</strong> {new Date(booking.booking_date).toLocaleDateString('pt-BR')} às {booking.booking_time.slice(0, 5)}
+                                                                    </p>
+                                                                    <p className="text-sm text-gray-600">
+                                                                        <strong>Profissional:</strong> {booking.professional?.name}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded-r-lg">
+                                                                    <p className="text-sm text-blue-800">
+                                                                        <strong>ℹ️ Importante:</strong> Apenas horários com mais de 24h de antecedência estão disponíveis.
+                                                                    </p>
+                                                                </div>
+
+                                                                <div>
+                                                                    <h4 className="font-semibold mb-3">Selecione o novo horário:</h4>
+                                                                    {loadingSlots ? (
+                                                                        <div className="text-center py-8">
+                                                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2d8659] mx-auto"></div>
+                                                                            <p className="text-sm text-gray-600 mt-2">Carregando horários disponíveis...</p>
+                                                                        </div>
+                                                                    ) : availableSlots.length === 0 ? (
+                                                                        <div className="text-center text-gray-600 py-8">
+                                                                            <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+                                                                            <p className="font-medium">Nenhum horário disponível</p>
+                                                                            <p className="text-sm mt-2">Não há horários disponíveis nos próximos 30 dias com a agenda deste profissional.</p>
+                                                                            <p className="text-sm mt-2">Entre em contato conosco para mais opções.</p>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded-lg p-2">
+                                                                            {availableSlots.map((slot, index) => (
+                                                                                <button
+                                                                                    key={index}
+                                                                                    onClick={() => setSelectedNewSlot(slot)}
+                                                                                    className={`p-3 text-left rounded-lg border-2 transition-all ${selectedNewSlot?.date === slot.date && selectedNewSlot?.time === slot.time
+                                                                                        ? 'border-[#2d8659] bg-green-50'
+                                                                                        : 'border-gray-200 hover:border-[#2d8659] hover:bg-gray-50'
+                                                                                        }`}
+                                                                                >
+                                                                                    <div className="flex items-center">
+                                                                                        <Calendar className="w-4 h-4 mr-2 text-[#2d8659]" />
+                                                                                        <span className="text-sm font-medium">{slot.display}</span>
+                                                                                    </div>
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <DialogFooter>
+                                                                <DialogClose asChild>
+                                                                    <Button variant="outline">Cancelar</Button>
+                                                                </DialogClose>
+                                                                <Button
+                                                                    onClick={confirmReschedule}
+                                                                    disabled={!selectedNewSlot}
+                                                                    className="bg-[#2d8659] hover:bg-[#236b47]"
+                                                                >
+                                                                    Confirmar Reagendamento
+                                                                </Button>
+                                                            </DialogFooter>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
@@ -1329,7 +1385,7 @@ const PacientePage = () => {
                                             >
                                                 <ChevronsLeft className="h-4 w-4" />
                                             </Button>
-                                            
+
                                             <Button
                                                 variant="outline"
                                                 size="sm"
@@ -1355,11 +1411,10 @@ const PacientePage = () => {
                                                                 variant={currentPage === page ? "default" : "outline"}
                                                                 size="sm"
                                                                 onClick={() => goToPage(page)}
-                                                                className={`h-8 w-8 p-0 ${
-                                                                    currentPage === page 
-                                                                        ? 'bg-[#2d8659] hover:bg-[#236b47]' 
-                                                                        : ''
-                                                                }`}
+                                                                className={`h-8 w-8 p-0 ${currentPage === page
+                                                                    ? 'bg-[#2d8659] hover:bg-[#236b47]'
+                                                                    : ''
+                                                                    }`}
                                                             >
                                                                 {page}
                                                             </Button>

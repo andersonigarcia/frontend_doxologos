@@ -34,6 +34,10 @@ export function SessionValidator({
     onExpired,
     autoRefresh = true,
 }) {
+    // Temporariamente desabilitado para evitar loop infinito
+    // TODO: Investigar e corrigir useSessionValidation hook
+    return null;
+
     const { toast } = useToast();
     const navigate = useNavigate();
     const [showExpiryWarning, setShowExpiryWarning] = useState(false);
@@ -69,6 +73,29 @@ export function SessionValidator({
         autoRefresh,
     });
 
+    /**
+     * Renova a sessão manualmente
+     */
+    const handleRefreshSession = async () => {
+        const success = await refreshToken();
+
+        if (success) {
+            setShowExpiryWarning(false);
+            setHasShownWarning(false);
+
+            toast({
+                title: '✅ Sessão renovada',
+                description: 'Sua sessão foi renovada com sucesso.',
+            });
+        } else {
+            toast({
+                variant: 'destructive',
+                title: '❌ Erro ao renovar sessão',
+                description: 'Não foi possível renovar sua sessão. Por favor, faça login novamente.',
+            });
+        }
+    };
+
     // Efeito para mostrar aviso de expiração
     useEffect(() => {
         if (isNearExpiry && !hasShownWarning && !autoRefresh) {
@@ -95,30 +122,7 @@ export function SessionValidator({
                 ),
             });
         }
-    }, [isNearExpiry, hasShownWarning, autoRefresh, timeUntilExpiry, onExpiring, toast]);
-
-    /**
-     * Renova a sessão manualmente
-     */
-    const handleRefreshSession = async () => {
-        const success = await refreshToken();
-
-        if (success) {
-            setShowExpiryWarning(false);
-            setHasShownWarning(false);
-
-            toast({
-                title: '✅ Sessão renovada',
-                description: 'Sua sessão foi renovada com sucesso.',
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: '❌ Erro ao renovar sessão',
-                description: 'Não foi possível renovar sua sessão. Por favor, faça login novamente.',
-            });
-        }
-    };
+    }, [isNearExpiry, hasShownWarning, autoRefresh, timeUntilExpiry, onExpiring]);
 
     // Renderizar dialog de aviso apenas se não estiver em modo auto-refresh
     if (!autoRefresh && showExpiryWarning) {
