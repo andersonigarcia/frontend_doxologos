@@ -25,10 +25,13 @@ import { TimelineView } from '@/components/common/TimelineView';
 import { QuickActions } from '@/components/common/QuickActions';
 import { RevenueChart } from '@/components/admin/RevenueChart';
 import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
+import { PatientList } from '@/components/admin/PatientList';
+import { PatientDetailsModal } from '@/components/admin/PatientDetailsModal';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
 import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
+import { usePatientData } from '@/hooks/usePatientData';
 import { cn } from '@/lib/utils';
 
 
@@ -722,6 +725,7 @@ const AdminPage = () => {
         professional: [
             { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
+            { value: 'patients', label: 'Pacientes', icon: Users },
             { value: 'reviews', label: 'Avaliações', icon: Star },
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
             { value: 'professionals', label: 'Meu Perfil', icon: UserCircle },
@@ -738,6 +742,89 @@ const AdminPage = () => {
         isProfessionalView ? currentProfessional?.id : null,
         6 // Últimos 6 meses
     );
+
+    // Hook de dados de pacientes (usado apenas para profissionais)
+    const patientData = usePatientData(
+        isProfessionalView ? currentProfessional?.id : null
+    );
+
+    // Estado para modal de detalhes do paciente
+    const [selectedPatient, setSelectedPatient] = useState(null);
+    const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
+
+    // Handler para salvar observações do paciente
+    const handleSavePatientNotes = async (patientEmail, notes) => {
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
+
+            if (!accessToken) {
+                throw new Error('Sessão expirada. Faça login novamente.');
+            }
+
+            const { data, error } = await supabase.functions.invoke('patient-notes-manager', {
+                body: {
+                    action: 'save',
+                    patient_email: patientEmail,
+                    patient_name: selectedPatient?.name || null,
+                    notes
+                },
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            if (error) throw error;
+            if (data?.error) throw new Error(data.error);
+
+            // Atualizar o paciente selecionado com as novas observações
+            if (selectedPatient) {
+                setSelectedPatient(prev => ({ ...prev, notes }));
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Erro ao salvar observações:', error);
+            throw error;
+        }
+    };
+
+    // Handler para abrir modal de paciente e carregar observações
+    const handlePatientClick = async (patient) => {
+        try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
+
+            if (!accessToken) {
+                throw new Error('Sessão expirada');
+            }
+
+            // Carregar observações do paciente
+            const { data } = await supabase.functions.invoke('patient-notes-manager', {
+                body: {
+                    action: 'get',
+                    patient_email: patient.email
+                },
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            setSelectedPatient({
+                ...patient,
+                notes: data?.notes || ''
+            });
+            setIsPatientModalOpen(true);
+        } catch (error) {
+            console.error('Erro ao carregar observações do paciente:', error);
+            // Abrir modal mesmo se falhar ao carregar observações
+            setSelectedPatient({
+                ...patient,
+                notes: ''
+            });
+            setIsPatientModalOpen(true);
+        }
+    };
 
 
     useEffect(() => {
@@ -3718,6 +3805,40 @@ const AdminPage = () => {
                                 </div>
                             </div>
                         </TabsContent>
+
+
+                        {/* Patients Tab - Professional View Only */}
+                        {isProfessionalView && (
+                            <TabsContent value="patients" className="mt-6">
+                                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <Users className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
+                                            <p className="text-sm text-gray-600">Visualize e gerencie seus pacientes</p>
+                                        </div>
+                                    </div>
+
+                                    <PatientList
+                                        patients={patientData.patients}
+                                        onPatientClick={handlePatientClick}
+                                        loading={patientData.loading}
+                                    />
+                                </div>
+
+                                <PatientDetailsModal
+                                    patient={selectedPatient}
+                                    isOpen={isPatientModalOpen}
+                                    onClose={() => {
+                                        setIsPatientModalOpen(false);
+                                        setSelectedPatient(null);
+                                    }}
+                                    onSaveNotes={handleSavePatientNotes}
+                                />
+                            </TabsContent>
+                        )}
 
                         <TabsContent value="payments" className="mt-6">
                             <div className="bg-white rounded-xl shadow-lg p-6">
