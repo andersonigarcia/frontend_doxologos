@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Users, TrendingUp, Calendar, DollarSign, Phone, Mail, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SkeletonTable, EmptyState } from '@/components/common';
 import { cn } from '@/lib/utils';
 
 /**
@@ -85,13 +86,11 @@ export const PatientList = ({
 
     if (loading) {
         return (
-            <div className={cn('bg-white rounded-xl border border-gray-200 shadow-sm p-6', className)}>
-                <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" />
-                <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                        <div key={i} className="h-20 bg-gray-100 rounded animate-pulse" />
-                    ))}
+            <div className={cn('bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden', className)}>
+                <div className="p-6">
+                    <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-4" />
                 </div>
+                <SkeletonTable rows={10} columns={6} />
             </div>
         );
     }
@@ -99,11 +98,11 @@ export const PatientList = ({
     if (patients.length === 0) {
         return (
             <div className={cn('bg-white rounded-xl border border-gray-200 shadow-sm p-6', className)}>
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                    <Users className="w-16 h-16 mb-4" />
-                    <p className="text-lg font-medium">Nenhum paciente encontrado</p>
-                    <p className="text-sm">Os pacientes aparecerão aqui após agendamentos</p>
-                </div>
+                <EmptyState
+                    icon={Users}
+                    title="Nenhum paciente encontrado"
+                    description="Os pacientes aparecerão aqui automaticamente após realizarem agendamentos"
+                />
             </div>
         );
     }

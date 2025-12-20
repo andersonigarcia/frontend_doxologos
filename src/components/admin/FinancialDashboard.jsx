@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/common/StatCard';
+import { SkeletonStatsGrid, SkeletonList } from '@/components/common/SkeletonLoaders';
+import { InfoTooltip, EmptyState } from '@/components/common';
 import { useFinancialData } from '@/hooks/useFinancialData';
 import { cn } from '@/lib/utils';
 
@@ -98,8 +100,34 @@ export function FinancialDashboard({ professionalId, className = '' }) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d8659]"></div>
+            <div className={cn('space-y-6', className)}>
+                {/* Header Skeleton */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+
+                {/* Revenue Cards Skeleton */}
+                <SkeletonStatsGrid cards={3} />
+
+                {/* Pending Payments Skeleton */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+                    <SkeletonList items={3} showAvatar={false} />
+                </div>
+
+                {/* Service Breakdown Skeleton */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 animate-pulse">
+                    <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+                    <div className="space-y-4">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <div className="h-4 bg-gray-200 rounded"></div>
+                                <div className="h-2 bg-gray-200 rounded"></div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -168,13 +196,20 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
                 >
-                    <StatCard
-                        title="Receita Hoje"
-                        value={`R$ ${dailyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        icon={<DollarSign className="w-5 h-5" />}
-                        iconColor="text-green-600"
-                        iconBgColor="bg-green-100"
-                    />
+                    <div className="relative">
+                        <StatCard
+                            title={
+                                <div className="flex items-center gap-2">
+                                    <span>Receita Hoje</span>
+                                    <InfoTooltip content="Soma dos valores recebidos hoje de consultas confirmadas, pagas ou completadas" />
+                                </div>
+                            }
+                            value={`R$ ${dailyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            icon={<DollarSign className="w-5 h-5" />}
+                            iconColor="text-green-600"
+                            iconBgColor="bg-green-100"
+                        />
+                    </div>
                 </motion.div>
 
                 <motion.div
@@ -182,13 +217,20 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                 >
-                    <StatCard
-                        title="Receita Semana"
-                        value={`R$ ${weeklyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        icon={<TrendingUp className="w-5 h-5" />}
-                        iconColor="text-blue-600"
-                        iconBgColor="bg-blue-100"
-                    />
+                    <div className="relative">
+                        <StatCard
+                            title={
+                                <div className="flex items-center gap-2">
+                                    <span>Receita Semana</span>
+                                    <InfoTooltip content="Receita dos últimos 7 dias (consultas confirmadas, pagas ou completadas)" />
+                                </div>
+                            }
+                            value={`R$ ${weeklyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            icon={<TrendingUp className="w-5 h-5" />}
+                            iconColor="text-blue-600"
+                            iconBgColor="bg-blue-100"
+                        />
+                    </div>
                 </motion.div>
 
                 <motion.div
@@ -196,13 +238,20 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.3 }}
                 >
-                    <StatCard
-                        title="Receita do Período"
-                        value={`R$ ${monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                        icon={<Calendar className="w-5 h-5" />}
-                        iconColor="text-purple-600"
-                        iconBgColor="bg-purple-100"
-                    />
+                    <div className="relative">
+                        <StatCard
+                            title={
+                                <div className="flex items-center gap-2">
+                                    <span>Receita do Período</span>
+                                    <InfoTooltip content="Receita total do período selecionado (consultas confirmadas, pagas ou completadas)" />
+                                </div>
+                            }
+                            value={`R$ ${monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                            icon={<Calendar className="w-5 h-5" />}
+                            iconColor="text-purple-600"
+                            iconBgColor="bg-purple-100"
+                        />
+                    </div>
                 </motion.div>
             </div>
 
@@ -249,10 +298,12 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                         ))}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Nenhum pagamento pendente</p>
-                    </div>
+                    <EmptyState
+                        icon={Clock}
+                        title="Nenhum pagamento pendente"
+                        description="Todos os pagamentos estão em dia! 🎉"
+                        compact={true}
+                    />
                 )}
             </motion.div>
 
@@ -307,10 +358,12 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                         })}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500">Nenhum dado disponível para o período selecionado</p>
-                    </div>
+                    <EmptyState
+                        icon={DollarSign}
+                        title="Nenhum dado disponível"
+                        description="Não há receita registrada para o período selecionado"
+                        compact={true}
+                    />
                 )}
             </motion.div>
         </div>
