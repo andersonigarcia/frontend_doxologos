@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { loginRateLimiter, passwordResetRateLimiter, RateLimiter } from '@/lib/rateLimiter';
+import { auditLogger, AuditAction } from '@/lib/auditLogger';
 
 const AuthContext = createContext(null);
 
@@ -16,11 +17,11 @@ export function AuthProvider({ children }) {
   // Processar sessão de forma mais simples
   const handleSession = (session) => {
     console.log('🔐 Processando sessão:', session ? 'ativa' : 'nula');
-    
+
     setSession(session);
     const currentUser = session?.user ?? null;
     setUser(currentUser);
-    
+
     if (currentUser) {
       setUserRole(currentUser.user_metadata?.role || 'user');
       console.log('👤 Usuário logado:', currentUser.email);
@@ -28,25 +29,25 @@ export function AuthProvider({ children }) {
       setUserRole(null);
       console.log('👤 Usuário deslogado');
     }
-    
+
     setLoading(false);
   };
 
   useEffect(() => {
     let mounted = true;
-    
+
     // Inicializar autenticação de forma robusta
     const initializeAuth = async () => {
       try {
         console.log('🚀 Inicializando autenticação...');
-        
+
         if (!mounted) return;
-        
+
         // Tentar obter sessão atual
         const { data, error } = await supabase.auth.getSession();
-        
+
         if (!mounted) return;
-        
+
         if (error) {
           console.error('❌ Erro ao obter sessão:', error);
           handleSession(null);
@@ -91,7 +92,7 @@ export function AuthProvider({ children }) {
       let errorMessage = "Não foi possível criar sua conta. Tente novamente.";
 
       const errorCode = error.message?.toLowerCase() || '';
-      
+
       if (errorCode.includes('already registered') || errorCode.includes('already exists')) {
         errorTitle = "Email já cadastrado";
         errorMessage = "Já existe uma conta com este email. Faça login ou use outro email.";
@@ -116,7 +117,7 @@ export function AuthProvider({ children }) {
   const signIn = useCallback(async (email, password) => {
     // Verificar rate limiting antes de tentar fazer login
     const rateLimitCheck = loginRateLimiter.canAttempt(email);
-    
+
     if (!rateLimitCheck.allowed) {
       toast({
         variant: "destructive",
@@ -141,10 +142,10 @@ export function AuthProvider({ children }) {
 
       // Identificar tipos específicos de erro
       const errorCode = error.message?.toLowerCase() || '';
-      
-      if (errorCode.includes('invalid login credentials') || 
-          errorCode.includes('invalid') || 
-          errorCode.includes('credentials')) {
+
+      if (errorCode.includes('invalid login credentials') ||
+        errorCode.includes('invalid') ||
+        errorCode.includes('credentials')) {
         errorTitle = "Credenciais inválidas";
         errorMessage = `Email ou senha incorretos. Você tem ${rateLimitCheck.remainingAttempts} tentativa${rateLimitCheck.remainingAttempts !== 1 ? 's' : ''} restante${rateLimitCheck.remainingAttempts !== 1 ? 's' : ''}.`;
       } else if (errorCode.includes('email not confirmed')) {
@@ -167,13 +168,18 @@ export function AuthProvider({ children }) {
         description: errorMessage,
       });
     } else {
-        // Login bem-sucedido - resetar rate limiter
-        loginRateLimiter.reset(email);
-        
-        toast({ 
-          title: "✅ Login realizado com sucesso!",
-          description: "Bem-vindo(a) de volta ao Doxologos."
-        });
+      // Login bem-sucedido - resetar rate limiter
+      loginRateLimiter.reset(email);
+
+      // Registrar login no audit log
+      auditLogger.info(AuditAction.LOGIN, {
+        details: { email, method: 'password' }
+      });
+
+      toast({
+        title: "✅ Login realizado com sucesso!",
+        description: "Bem-vindo(a) de volta ao Doxologos."
+      });
     }
 
     return { error };
@@ -182,15 +188,15 @@ export function AuthProvider({ children }) {
   const signInWithMagicLink = useCallback(async (email) => {
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) {
-      toast({ 
-        variant: 'destructive', 
-        title: 'Erro ao enviar link de acesso', 
-        description: 'Não foi possível enviar o link. Verifique o email e tente novamente.' 
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar link de acesso',
+        description: 'Não foi possível enviar o link. Verifique o email e tente novamente.'
       });
     } else {
-      toast({ 
-        title: '📧 Verifique seu email', 
-        description: 'Enviamos um link mágico para você fazer login sem senha.' 
+      toast({
+        title: '📧 Verifique seu email',
+        description: 'Enviamos um link mágico para você fazer login sem senha.'
       });
     }
     return { error };
@@ -221,6 +227,9 @@ export function AuthProvider({ children }) {
           });
         }
       } else {
+        // Registrar logout no audit log
+        auditLogger.info(AuditAction.LOGOUT);
+
         toast({
           title: "👋 Até logo!",
           description: "Você foi desconectado com sucesso.",
@@ -243,7 +252,7 @@ export function AuthProvider({ children }) {
   const resetPassword = useCallback(async (email) => {
     // Verificar rate limiting
     const rateLimitCheck = passwordResetRateLimiter.canAttempt(email);
-    
+
     if (!rateLimitCheck.allowed) {
       toast({
         variant: "destructive",
@@ -272,7 +281,7 @@ export function AuthProvider({ children }) {
 
       const errorCode = error.message?.toLowerCase() || '';
       const errorStatus = error.status || 0;
-      
+
       // Tratar erro 429 (Too Many Requests) do Supabase
       if (errorStatus === 429 || errorCode.includes('over_email_send_rate_limit')) {
         // Extrair tempo de espera da mensagem do erro
@@ -280,9 +289,9 @@ export function AuthProvider({ children }) {
         const waitSeconds = match ? parseInt(match[1]) : 3600; // Default 1 hora
         const waitMinutes = Math.ceil(waitSeconds / 60);
         const waitHours = Math.floor(waitMinutes / 60);
-        
+
         errorTitle = "⏰ Limite de segurança atingido";
-        
+
         if (waitHours > 0) {
           errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitHours} hora${waitHours > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado ou entre em contato com o suporte.`;
         } else {
@@ -305,6 +314,11 @@ export function AuthProvider({ children }) {
         description: errorMessage,
       });
     } else {
+      // Registrar solicitação de reset de senha
+      auditLogger.info(AuditAction.PASSWORD_RESET, {
+        details: { email }
+      });
+
       toast({
         title: "📧 Email enviado!",
         description: "Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.",
@@ -315,8 +329,8 @@ export function AuthProvider({ children }) {
   }, [toast]);
 
   const updatePassword = useCallback(async (newPassword) => {
-    const { error } = await supabase.auth.updateUser({ 
-      password: newPassword 
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
     });
 
     if (error) {
@@ -348,6 +362,9 @@ export function AuthProvider({ children }) {
         description: errorMessage,
       });
     } else {
+      // Registrar mudança de senha
+      auditLogger.info(AuditAction.PASSWORD_CHANGE);
+
       toast({
         title: "✅ Senha atualizada!",
         description: "Sua senha foi alterada com sucesso.",
@@ -356,6 +373,110 @@ export function AuthProvider({ children }) {
 
     return { error };
   }, [toast]);
+
+  // ============================================
+  // NOVOS MÉTODOS DE SEGURANÇA (Fase 2)
+  // ============================================
+
+  /**
+   * Valida a sessão atual
+   * @returns {Promise<boolean>} Se a sessão é válida
+   */
+  const validateSession = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('❌ Erro ao validar sessão:', error);
+        return false;
+      }
+
+      return !!data.session;
+    } catch (error) {
+      console.error('❌ Erro crítico ao validar sessão:', error);
+      return false;
+    }
+  }, []);
+
+  /**
+   * Faz refresh do token de autenticação
+   * @returns {Promise<{error: Error|null}>}
+   */
+  const refreshToken = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+
+      if (error) {
+        console.error('❌ Erro ao fazer refresh de token:', error);
+        return { error };
+      }
+
+      if (data.session) {
+        console.log('✅ Token renovado com sucesso');
+        handleSession(data.session);
+      }
+
+      return { error: null };
+    } catch (error) {
+      console.error('❌ Erro crítico ao fazer refresh:', error);
+      return { error };
+    }
+  }, []);
+
+  /**
+   * Verifica se usuário tem permissão específica
+   * @param {string} permission - Permissão a verificar
+   * @returns {boolean} Se usuário tem permissão
+   */
+  const checkPermission = useCallback(
+    (permission) => {
+      if (!user || !userRole) {
+        return false;
+      }
+
+      // Admin tem todas as permissões
+      if (userRole === 'admin') {
+        return true;
+      }
+
+      // Permissões base por role
+      const rolePermissions = {
+        user: [
+          'booking:create',
+          'booking:view_own',
+          'booking:cancel_own',
+          'booking:reschedule_own',
+          'profile:view_own',
+          'profile:edit_own',
+        ],
+        professional: [
+          'booking:create',
+          'booking:view_own',
+          'booking:view_assigned',
+          'booking:manage_assigned',
+          'profile:view_own',
+          'profile:edit_own',
+          'availability:manage_own',
+          'dashboard:view_professional',
+        ],
+      };
+
+      const permissions = rolePermissions[userRole] || [];
+      return permissions.includes(permission);
+    },
+    [user, userRole]
+  );
+
+  /**
+   * Obtém timestamp de expiração da sessão
+   * @returns {number|null} Timestamp de expiração ou null
+   */
+  const getSessionExpiry = useCallback(() => {
+    if (!session?.expires_at) {
+      return null;
+    }
+    return session.expires_at * 1000; // Converter para ms
+  }, [session]);
 
   const value = useMemo(() => ({
     user,
@@ -368,7 +489,12 @@ export function AuthProvider({ children }) {
     signInWithMagicLink,
     resetPassword,
     updatePassword,
-  }), [user, session, userRole, loading, signUp, signIn, signOut, signInWithMagicLink, resetPassword, updatePassword]);
+    // Novos métodos de segurança (Fase 2)
+    validateSession,
+    refreshToken,
+    checkPermission,
+    getSessionExpiry,
+  }), [user, session, userRole, loading, signUp, signIn, signOut, signInWithMagicLink, resetPassword, updatePassword, validateSession, refreshToken, checkPermission, getSessionExpiry]);
 
   // Sempre renderiza children - componentes individuais decidem se mostram loading
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
