@@ -27,6 +27,7 @@ import { RevenueChart } from '@/components/admin/RevenueChart';
 import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
 import { PatientList } from '@/components/admin/PatientList';
 import { PatientDetailsModal } from '@/components/admin/PatientDetailsModal';
+import { FinancialDashboard } from '@/components/admin/FinancialDashboard';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
@@ -3837,6 +3838,13 @@ const AdminPage = () => {
                                     }}
                                     onSaveNotes={handleSavePatientNotes}
                                 />
+                            </TabsContent>
+                        )}
+
+                        {/* Financial Dashboard Tab - Professional View Only */}
+                        {isProfessionalView && (
+                            <TabsContent value="financeiro" className="mt-6">
+                                <FinancialDashboard professionalId={currentProfessional?.id} />
                             </TabsContent>
                         )}
 
