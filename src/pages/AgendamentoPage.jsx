@@ -150,7 +150,7 @@ const WelcomeMessage = ({ isFirstBooking }) => {
 };
 
 // Live Activity Notification (Social Proof)
-const LiveActivity = () => {
+const LiveActivity = ({ currentStep }) => {
   const [activity, setActivity] = useState(null);
   const [show, setShow] = useState(false);
 
@@ -179,7 +179,8 @@ const LiveActivity = () => {
     };
   }, []);
 
-  if (!show || !activity) return null;
+  // Hide on steps 4 (patient data) and 5 (payment summary) to prevent overlap
+  if (!show || !activity || currentStep >= 4) return null;
 
   return (
     <motion.div
@@ -1480,7 +1481,7 @@ const AgendamentoPage = () => {
       </div>
 
       {/* Live Activity Notification */}
-      <LiveActivity />
+      <LiveActivity currentStep={step} />
 
       {/* Floating Summary Card - Mobile Only */}
       {(selectedService || selectedProfessional || selectedDate || selectedTime) && step < 5 && (
