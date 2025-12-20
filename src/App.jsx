@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from '@/components/ui/toaster';
 import ErrorBoundary, { PageErrorBoundary } from '@/components/ErrorBoundary';
@@ -35,10 +35,12 @@ import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 import '@/lib/webVitals';
 
 function AppContent() {
+  const location = useLocation();
+
   // Track page views and errors
   usePageTracking();
   useComprehensiveErrorTracking('App');
-  
+
   // Controle de sessão e inatividade
   useSessionTimeout({
     idleTimeout: 10 * 60 * 1000,      // 10 minutos de inatividade
@@ -46,6 +48,9 @@ function AppContent() {
     warningTime: 2 * 60 * 1000,         // Avisar 2 minutos antes
     enabled: true
   });
+
+  // Hide WhatsApp button on booking page to prevent overlap with conversion CTAs
+  const shouldHideWhatsApp = location.pathname === '/agendamento';
 
   return (
     <div className="min-h-screen">
@@ -167,7 +172,7 @@ function AppContent() {
         } />
       </Routes>
       <Toaster />
-      <FloatingWhatsAppButton />
+      <FloatingWhatsAppButton isHidden={shouldHideWhatsApp} />
     </div>
   );
 }

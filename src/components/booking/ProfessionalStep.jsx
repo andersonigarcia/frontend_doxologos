@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Clock, User, ChevronRight, ChevronLeft, ArrowLeft, Quote } from 'lucide-react';
+import { Clock, User, ChevronRight, ChevronLeft, ArrowLeft, Quote, CheckCircle } from 'lucide-react';
 import analytics from '@/lib/analytics';
 
 const ProfessionalStep = ({
@@ -305,7 +305,7 @@ const ProfessionalStep = ({
             transition={{ duration: 0.25 }}
           >
             {/* Progress Indicator Mobile */}
-            <div className="md:hidden mb-4 flex items-center justify-between">
+            {/* <div className="md:hidden mb-4 flex items-center justify-between">
               <div className="text-xs text-gray-500 flex items-center gap-2">
                 <ChevronRight className="w-4 h-4 text-[#2d8659]" />
                 Arraste para ver todos
@@ -321,9 +321,10 @@ const ProfessionalStep = ({
                   />
                 ))}
               </div>
-            </div>
+            </div> */}
 
-            <div className="grid gap-3 grid-flow-col auto-cols-[minmax(220px,_75%)] overflow-x-auto pb-4 -mx-6 px-6 snap-x snap-mandatory scroll-smooth md:mx-0 md:px-0 md:overflow-visible md:grid-flow-row md:auto-cols-auto md:grid-cols-2 lg:grid-cols-3">
+            {/* Service Cards - Vertical Stack (Mobile) / Grid (Desktop) */}
+            <div className="space-y-3 md:space-y-0 md:grid md:gap-4 md:grid-cols-2 lg:grid-cols-3">
               {services.map((service, index) => {
                 const professionalCount = professionals.filter(
                   (professional) => professional.services_ids && professional.services_ids.includes(service.id)
@@ -335,7 +336,7 @@ const ProfessionalStep = ({
                     key={service.id}
                     type="button"
                     onClick={() => handleSelectService(service.id)}
-                    className={`p-4 md:p-6 rounded-xl border-2 transition-all text-left group snap-center
+                    className={`w-full p-4 md:p-6 rounded-xl border-2 transition-all text-left group
                     active:scale-95 touch-manipulation
                     focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]
                     ${isSelected
@@ -345,38 +346,38 @@ const ProfessionalStep = ({
                   >
                     {/* Mobile Compact Layout */}
                     <div className="md:hidden">
-                      {/* Title */}
-                      <h3 className="font-bold text-lg mb-2 text-gray-900 leading-tight">
-                        {service.name}
-                      </h3>
+                      {/* Header: Title + Price */}
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <h3 className="font-bold text-base text-gray-900 leading-tight flex-1">
+                          {service.name}
+                        </h3>
+                        <div className="text-lg font-bold text-[#2d8659] whitespace-nowrap">
+                          R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                        </div>
+                      </div>
 
-                      {/* Info Row - Compact */}
-                      <div className="flex items-center gap-3 text-xs text-gray-600 mb-3">
-                        <span className="flex items-center gap-1">
+                      {/* Info Row - Duration + Professionals */}
+                      <div className="flex items-center gap-4 text-xs text-gray-600 mb-3">
+                        <span className="flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5" />
                           {service.duration_minutes >= 60
                             ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? `${service.duration_minutes % 60}m` : ''
                             }`
                             : `${service.duration_minutes}min`}
                         </span>
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <User className="w-3.5 h-3.5" />
-                          {professionalCount}
+                          {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
                         </span>
                       </div>
 
-                      {/* Price + CTA Row */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-xl font-bold text-[#2d8659]">
-                          R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {/* Selection Indicator */}
+                      {isSelected && (
+                        <div className="flex items-center gap-2 text-sm font-semibold text-[#2d8659]">
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Selecionado</span>
                         </div>
-                        <div className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${isSelected
-                          ? 'bg-[#2d8659] text-white'
-                          : 'bg-gray-100 text-gray-700'
-                          }`}>
-                          {isSelected ? '✓ Selecionado' : 'Escolher'}
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Desktop Layout - Original */}
@@ -639,7 +640,7 @@ const ProfessionalStep = ({
       </AnimatePresence>
 
       {reserveMobileCtaSpace && (
-        <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-6 w-[90%] max-w-md z-30">
+        <div className="md:hidden fixed left-1/2 -translate-x-1/2 bottom-6 w-[90%] max-w-md z-50">
           <button
             type="button"
             onClick={handleMoveToProfessionals}

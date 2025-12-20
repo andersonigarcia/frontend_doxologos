@@ -186,7 +186,7 @@ const LiveActivity = () => {
       initial={{ opacity: 0, x: -100 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -100 }}
-      className="fixed bottom-24 left-4 md:bottom-6 md:left-6 bg-white shadow-2xl rounded-lg p-3 max-w-xs z-40 border border-gray-200"
+      className="fixed bottom-32 left-4 md:bottom-6 md:left-6 bg-white shadow-2xl rounded-lg p-3 max-w-xs z-30 border border-gray-200"
     >
       <div className="flex items-center gap-3">
         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
