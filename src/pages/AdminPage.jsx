@@ -1,9 +1,10 @@
 
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +18,17 @@ import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 import UserBadge from '@/components/UserBadge';
 import EventRegistrationsDashboard from '@/components/admin/EventRegistrationsDashboard';
+// Fase 5 - Dashboard Profissional
+import { DashboardCard } from '@/components/shared/DashboardCard';
+import { StatCard } from '@/components/common/StatCard';
+import { TimelineView } from '@/components/common/TimelineView';
+import { QuickActions } from '@/components/common/QuickActions';
+import { RevenueChart } from '@/components/admin/RevenueChart';
+import { ProtectedAction } from '@/components/auth/ProtectedAction';
+import { auditLogger, AuditAction } from '@/lib/auditLogger';
+import { useProfessionalStats } from '@/hooks/useProfessionalStats';
+import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
+
 
 const ROLE_DISPLAY = {
     admin: { label: 'Administrador', classes: 'bg-purple-100 text-purple-800 border-purple-200', Icon: ShieldCheck },
@@ -238,11 +250,11 @@ const AdminPage = () => {
 
     const priceNumber = Number(eventFormData.valor);
     const hasPaidValue = Number.isFinite(priceNumber) && priceNumber > 0;
-    
+
     // Sistema de Loading Global
     const { isLoading, withLoading, isAnyLoading } = useLoadingState();
     const { isItemLoading, withItemLoading, isAnyItemLoading } = useItemLoadingState();
-    
+
     // Estados para modais de confirmação
     const [confirmDialog, setConfirmDialog] = useState({
         isOpen: false,
@@ -275,7 +287,7 @@ const AdminPage = () => {
         }
 
         const professionalFilterId = isAdmin ? null : professionalsRecordId;
-        
+
         const reviewSelect = `
             *,
             bookings:bookings!left(
@@ -385,7 +397,7 @@ const AdminPage = () => {
         ];
 
         const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
-        
+
         if (profsRes.error) {
             secureLog.error('Erro ao buscar profissionais:', profsRes.error?.message || profsRes.error);
             secureLog.debug('Detalhes do erro ao buscar profissionais', profsRes.error);
@@ -475,27 +487,27 @@ const AdminPage = () => {
         const normalizedBookings = (bookingsRes.data || []).map((booking) => {
             const joinedService = booking.service
                 ? {
-                      ...booking.service,
-                      price: Number.isFinite(parseCurrencyToNumber(booking.service.price))
-                          ? parseCurrencyToNumber(booking.service.price)
-                          : 0,
-                      professional_payout: Number.isFinite(
-                          parseCurrencyToNumber(
-                              booking.service.professional_payout === undefined || booking.service.professional_payout === null
-                                  ? booking.service.price
-                                  : booking.service.professional_payout
-                          )
-                      )
-                          ? parseCurrencyToNumber(
-                                booking.service.professional_payout === undefined || booking.service.professional_payout === null
-                                    ? booking.service.price
-                                    : booking.service.professional_payout
-                            )
-                          : 0,
-                      duration_minutes: Number.isFinite(Number.parseInt(booking.service.duration_minutes, 10))
-                          ? Number.parseInt(booking.service.duration_minutes, 10)
-                          : booking.service.duration_minutes
-                  }
+                    ...booking.service,
+                    price: Number.isFinite(parseCurrencyToNumber(booking.service.price))
+                        ? parseCurrencyToNumber(booking.service.price)
+                        : 0,
+                    professional_payout: Number.isFinite(
+                        parseCurrencyToNumber(
+                            booking.service.professional_payout === undefined || booking.service.professional_payout === null
+                                ? booking.service.price
+                                : booking.service.professional_payout
+                        )
+                    )
+                        ? parseCurrencyToNumber(
+                            booking.service.professional_payout === undefined || booking.service.professional_payout === null
+                                ? booking.service.price
+                                : booking.service.professional_payout
+                        )
+                        : 0,
+                    duration_minutes: Number.isFinite(Number.parseInt(booking.service.duration_minutes, 10))
+                        ? Number.parseInt(booking.service.duration_minutes, 10)
+                        : booking.service.duration_minutes
+                }
                 : null;
 
             const resolvedService = serviceMap.get(booking.service_id) || joinedService;
@@ -539,7 +551,7 @@ const AdminPage = () => {
         // Mapear profissionais aos eventos e carregar contagem de inscrições
         const eventsWithProfessionals = await Promise.all((eventsRes.data || []).map(async (event) => {
             const professional = enrichedProfessionals.find(p => p.id === event.professional_id);
-            
+
             // Tentar buscar contagem real de inscrições
             let inscricoesCount = 0;
             try {
@@ -555,14 +567,14 @@ const AdminPage = () => {
             } catch (error) {
 
             }
-            
+
             return {
                 ...event,
                 professional: professional ? { name: professional.name } : null,
                 inscricoes_eventos: [{ count: inscricoesCount }]
             };
         }));
-        
+
         setEvents(eventsWithProfessionals);
         setBlockedDates(blockedDatesRes.data || []);
 
@@ -573,8 +585,8 @@ const AdminPage = () => {
             const resolvedProfessional = professionalFromBooking
                 ? { id: professionalFromBooking.id, name: professionalFromBooking.name }
                 : fallbackProfessional
-                ? { id: fallbackProfessional.id, name: fallbackProfessional.name }
-                : review.professional || null;
+                    ? { id: fallbackProfessional.id, name: fallbackProfessional.name }
+                    : review.professional || null;
 
             const resolvedPatientName = review.patient_name
                 || bookingRelation?.patient_name
@@ -602,7 +614,7 @@ const AdminPage = () => {
         const availabilityMap = {};
         (availRes.data || []).forEach(avail => {
             if (!availabilityMap[avail.professional_id]) {
-              availabilityMap[avail.professional_id] = { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] };
+                availabilityMap[avail.professional_id] = { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] };
             }
             availabilityMap[avail.professional_id][avail.day_of_week] = avail.available_times;
         });
@@ -625,7 +637,7 @@ const AdminPage = () => {
 
     useEffect(() => {
         const profId = userRole === 'admin' ? selectedAvailProfessional : professionals[0]?.id;
-        
+
         if (profId) {
             // Carregar disponibilidade específica do mês/ano selecionados
             const fetchMonthlyAvailability = async () => {
@@ -636,7 +648,7 @@ const AdminPage = () => {
                         .eq('professional_id', profId)
                         .eq('month', selectedMonth)
                         .eq('year', selectedYear);
-                    
+
                     if (!error && availData) {
                         const monthlyAvailability = {
                             monday: [],
@@ -647,13 +659,13 @@ const AdminPage = () => {
                             saturday: [],
                             sunday: []
                         };
-                        
+
                         availData.forEach(item => {
                             if (item.available_times) {
                                 monthlyAvailability[item.day_of_week] = item.available_times;
                             }
                         });
-                        
+
                         setProfessionalAvailability(monthlyAvailability);
                     } else {
                         // Se não há dados para este mês/ano, inicializar vazio
@@ -672,19 +684,19 @@ const AdminPage = () => {
                     secureLog.debug('Detalhes do erro ao carregar disponibilidade mensal', error);
                 }
             };
-            
+
             fetchMonthlyAvailability();
             setProfessionalBlockedDates(blockedDates.filter(d => d.professional_id === profId));
         } else {
             // Limpar quando não há profissional selecionado
-            setProfessionalAvailability({ 
-                monday: [], 
-                tuesday: [], 
-                wednesday: [], 
-                thursday: [], 
-                friday: [], 
-                saturday: [], 
-                sunday: [] 
+            setProfessionalAvailability({
+                monday: [],
+                tuesday: [],
+                wednesday: [],
+                thursday: [],
+                friday: [],
+                saturday: [],
+                sunday: []
             });
             setProfessionalBlockedDates([]);
         }
@@ -704,12 +716,25 @@ const AdminPage = () => {
             // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
         ],
         professional: [
-            { value: 'professionals', label: 'Meu Perfil', icon: UserCircle },
+            { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { value: 'bookings', label: 'Agendamentos', icon: Calendar },
             { value: 'reviews', label: 'Avaliações', icon: Star },
             { value: 'availability', label: 'Disponibilidade', icon: Clock },
+            { value: 'professionals', label: 'Meu Perfil', icon: UserCircle },
         ]
     };
+
+    // Hook de estatísticas do profissional (usado apenas para profissionais)
+    const professionalStats = useProfessionalStats(
+        isProfessionalView ? currentProfessional?.id : null
+    );
+
+    // Hook de receita mensal (usado apenas para profissionais)
+    const monthlyRevenue = useMonthlyRevenue(
+        isProfessionalView ? currentProfessional?.id : null,
+        6 // Últimos 6 meses
+    );
+
 
     useEffect(() => {
         const currentTabs = tabsConfig[userRole] || [];
@@ -790,21 +815,21 @@ const AdminPage = () => {
             professional_payout: payoutNumber,
             duration_minutes: durationNumber
         };
-        
+
         let result;
         if (isEditingService) {
             result = await supabase.from('services').update(payload).eq('id', serviceFormData.id);
         } else {
             result = await supabase.from('services').insert([payload]);
         }
-        
+
         if (result.error) {
             secureLog.error('Erro ao salvar serviço:', result.error?.message || result.error);
             secureLog.debug('Detalhes do erro ao salvar serviço', result.error);
-            toast({ 
-                variant: "destructive", 
-                title: "Erro ao salvar serviço", 
-                description: result.error.message 
+            toast({
+                variant: "destructive",
+                title: "Erro ao salvar serviço",
+                description: result.error.message
             });
         } else {
             toast({ title: `Serviço ${isEditingService ? 'atualizado' : 'criado'} com sucesso!` });
@@ -1109,7 +1134,7 @@ const AdminPage = () => {
         const professionalId = userRole === 'admin'
             ? selectedAvailProfessional
             : selectedAvailProfessional || professionals[0]?.id;
-        
+
         if (!professionalId) {
             toast({ variant: "destructive", title: "Erro", description: "Selecione um profissional." });
             return;
@@ -1385,7 +1410,7 @@ const AdminPage = () => {
             },
         });
     };
-    
+
     // Função para mudança rápida de status
     const handleQuickStatusChange = async (bookingId, newStatus, bookingData) => {
         const isAdminUser = isAdminView;
@@ -1412,9 +1437,9 @@ const AdminPage = () => {
                     .from('bookings')
                     .update({ status: newStatus })
                     .eq('id', bookingId);
-                
+
                 if (error) throw error;
-                
+
                 // Enviar email de notificação baseado no novo status
                 try {
                     const emailData = {
@@ -1425,7 +1450,7 @@ const AdminPage = () => {
                         service_name: bookingData.service?.name || 'Consulta',
                         professional_name: bookingData.professional?.name || 'Profissional'
                     };
-                    
+
                     if (newStatus === 'confirmed' || newStatus === 'paid') {
                         await bookingEmailManager.sendPaymentApproved(emailData);
                     } else if (newStatus === 'completed') {
@@ -1440,25 +1465,25 @@ const AdminPage = () => {
                     secureLog.error('Erro ao enviar email na atualização rápida de status:', emailError?.message || emailError);
                     secureLog.debug('Detalhes do erro ao enviar email na atualização rápida de status', emailError);
                 }
-                
-                toast({ 
-                    title: 'Status atualizado!', 
-                    description: `Agendamento marcado como ${getStatusLabel(newStatus)}` 
+
+                toast({
+                    title: 'Status atualizado!',
+                    description: `Agendamento marcado como ${getStatusLabel(newStatus)}`
                 });
-                
+
                 await fetchAllData();
             } catch (error) {
                 secureLog.error('Erro ao atualizar status:', error?.message || error);
                 secureLog.debug('Detalhes do erro ao atualizar status', error);
-                toast({ 
-                    variant: 'destructive', 
-                    title: 'Erro ao atualizar status', 
-                    description: error.message 
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro ao atualizar status',
+                    description: error.message
                 });
             }
         });
     };
-    
+
     const getStatusLabel = (status) => {
         const labels = {
             'pending_payment': 'Pendente Pagamento',
@@ -1471,7 +1496,7 @@ const AdminPage = () => {
         };
         return labels[status] || status;
     };
-    
+
     // Função para toggle da expansão dos dados do Zoom
     const toggleZoomExpansion = (bookingId) => {
         setExpandedZoomCards(prev => ({
@@ -1485,7 +1510,7 @@ const AdminPage = () => {
         if (error) { toast({ variant: 'destructive', title: 'Erro ao atualizar avaliação' }); }
         else { toast({ title: `Avaliação ${isApproved ? 'aprovada' : 'reprovada'}.` }); fetchAllData(); }
     };
-    
+
     // Função para ordenar bookings
     const getSortedBookings = (bookingsToSort) => {
         const statusPriority = {
@@ -1497,9 +1522,9 @@ const AdminPage = () => {
             'cancelled_by_professional': 4,
             'no_show_unjustified': 4
         };
-        
+
         const now = new Date();
-        
+
         const sorted = [...bookingsToSort].sort((a, b) => {
             if (bookingSortField === 'status') {
                 const priorityA = statusPriority[a.status] || 5;
@@ -1507,24 +1532,24 @@ const AdminPage = () => {
                 const statusCompare = priorityA - priorityB;
                 if (statusCompare !== 0) return bookingSortOrder === 'asc' ? statusCompare : -statusCompare;
             }
-            
+
             if (bookingSortField === 'professional') {
                 const nameA = a.professional?.name || '';
                 const nameB = b.professional?.name || '';
                 const nameCompare = nameA.localeCompare(nameB);
                 if (nameCompare !== 0) return bookingSortOrder === 'asc' ? nameCompare : -nameCompare;
             }
-            
+
             if (bookingSortField === 'date' || bookingSortField === 'default') {
                 const dateA = new Date(a.booking_date + 'T' + a.booking_time);
                 const dateB = new Date(b.booking_date + 'T' + b.booking_time);
-                
+
                 // Para ordenação padrão, prioriza por status primeiro
                 if (bookingSortField === 'default') {
                     const priorityA = statusPriority[a.status] || 5;
                     const priorityB = statusPriority[b.status] || 5;
                     const statusCompare = priorityA - priorityB;
-                    
+
                     if (statusCompare !== 0) {
                         // Dentro do mesmo status, agendamentos próximos primeiro
                         if (priorityA === priorityB) {
@@ -1541,7 +1566,7 @@ const AdminPage = () => {
                         }
                         return statusCompare;
                     }
-                    
+
                     // Mesmo status: agendamentos próximos (futuros) primeiro, depois passados recentes
                     if (dateA >= now && dateB >= now) {
                         return dateA - dateB; // Futuro: mais próximo primeiro
@@ -1551,27 +1576,27 @@ const AdminPage = () => {
                     }
                     return dateA >= now ? -1 : 1; // Futuro antes de passado
                 }
-                
+
                 // Para ordenação manual por data
                 const dateCompare = dateA - dateB;
                 if (dateCompare !== 0) {
                     return bookingSortOrder === 'desc' ? -dateCompare : dateCompare;
                 }
             }
-            
+
             // Ordenação secundária por status se estiver ordenando por data ou profissional
             if (bookingSortField === 'date' || bookingSortField === 'professional') {
                 const priorityA = statusPriority[a.status] || 5;
                 const priorityB = statusPriority[b.status] || 5;
                 return priorityA - priorityB;
             }
-            
+
             return 0;
         });
-        
+
         return sorted;
     };
-    
+
     const handleBookingSort = (field) => {
         if (bookingSortField === field) {
             setBookingSortOrder(bookingSortOrder === 'asc' ? 'desc' : 'asc');
@@ -1580,7 +1605,7 @@ const AdminPage = () => {
             setBookingSortOrder(field === 'date' ? 'desc' : 'asc');
         }
     };
-    
+
     // Função para filtrar agendamentos
     const getFilteredBookings = () => {
         return bookings.filter(booking => {
@@ -1588,42 +1613,42 @@ const AdminPage = () => {
             if (bookingFilters.service_id && booking.service_id !== bookingFilters.service_id) {
                 return false;
             }
-            
+
             // Filtro por profissional
             if (bookingFilters.professional_id && booking.professional_id !== bookingFilters.professional_id) {
                 return false;
             }
-            
+
             // Filtro por status
             if (bookingFilters.status && booking.status !== bookingFilters.status) {
                 return false;
             }
-            
+
             // Filtro por período - data inicial
             if (bookingFilters.date_from && booking.booking_date < bookingFilters.date_from) {
                 return false;
             }
-            
+
             // Filtro por período - data final
             if (bookingFilters.date_to && booking.booking_date > bookingFilters.date_to) {
                 return false;
             }
-            
+
             // Filtro por busca de texto (nome do paciente ou email)
             if (bookingFilters.search) {
                 const searchTerm = bookingFilters.search.toLowerCase();
                 const patientName = (booking.patient_name || '').toLowerCase();
                 const patientEmail = (booking.patient_email || '').toLowerCase();
-                
+
                 if (!patientName.includes(searchTerm) && !patientEmail.includes(searchTerm)) {
                     return false;
                 }
             }
-            
+
             return true;
         });
     };
-    
+
     const clearFilters = () => {
         setBookingFilters({
             service_id: '',
@@ -1635,19 +1660,19 @@ const AdminPage = () => {
         });
         setCurrentPage(1); // Resetar página ao limpar filtros
     };
-    
+
     // Função para paginar resultados
     const getPaginatedBookings = (bookingsList) => {
         const startIndex = (currentPage - 1) * itemsPerPage;
         const endIndex = startIndex + itemsPerPage;
         return bookingsList.slice(startIndex, endIndex);
     };
-    
+
     // Calcular total de páginas
     const getTotalPages = (bookingsList) => {
         return Math.ceil(bookingsList.length / itemsPerPage);
     };
-    
+
     // Resetar página quando filtros mudarem
     useEffect(() => {
         setCurrentPage(1);
@@ -1658,7 +1683,7 @@ const AdminPage = () => {
             setBookingSortField('default');
         }
     }, [userRole, bookingSortField]);
-    
+
     // Funções para calcular totalizadores
     const calculateTotals = (bookingsList) => {
         const isAdminUser = userRole === 'admin';
@@ -1709,11 +1734,11 @@ const AdminPage = () => {
         return totals;
     };
 
-    const resetServiceForm = () => { 
-        setIsEditingService(false); 
-        setServiceFormData({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' }); 
+    const resetServiceForm = () => {
+        setIsEditingService(false);
+        setServiceFormData({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' });
     };
-    const resetProfessionalForm = useCallback(() => { 
+    const resetProfessionalForm = useCallback(() => {
         if (userRole === 'admin') {
             setIsEditingProfessional(false);
             setProfessionalFormData({
@@ -1738,7 +1763,7 @@ const AdminPage = () => {
             });
         }
     }, [userRole, currentProfessional]);
-    
+
     const handleEditService = (service) => {
         if (!service) return;
 
@@ -1792,14 +1817,14 @@ const AdminPage = () => {
             toast({ variant: "destructive", title: "Erro inesperado", description: "Não foi possível verificar o serviço." });
         }
     };
-    
-    const handleEditProfessional = (prof) => { 
-        setIsEditingProfessional(true); 
+
+    const handleEditProfessional = (prof) => {
+        setIsEditingProfessional(true);
         setProfessionalFormData({
-            ...prof, 
-            password: '', 
-            services_ids: prof.services_ids || [] 
-        }); 
+            ...prof,
+            password: '',
+            services_ids: prof.services_ids || []
+        });
     };
     const handleDeleteProfessional = async (profId) => {
         const professional = professionals.find(p => p.id === profId);
@@ -1846,7 +1871,7 @@ const AdminPage = () => {
                 if (hasReviews) items.push(`${reviewsData.length} avaliação(ões)`);
                 if (hasAvailability) items.push('configurações de disponibilidade');
                 if (hasBlockedDates) items.push(`${blockedDatesData.length} data(s) bloqueada(s)`);
-                
+
                 warningMessage = `Este profissional possui registros associados:\n• ${items.join('\n• ')}\n\nTodos esses registros serão removidos junto com o profissional.`;
             }
 
@@ -1871,10 +1896,10 @@ const AdminPage = () => {
         } catch (error) {
             secureLog.error('Erro ao verificar dependências antes de excluir profissional:', error?.message || error);
             secureLog.debug('Detalhes do erro ao verificar dependências do profissional', error);
-            toast({ 
-                variant: "destructive", 
-                title: "Erro", 
-                description: "Não foi possível verificar os dados do profissional." 
+            toast({
+                variant: "destructive",
+                title: "Erro",
+                description: "Não foi possível verificar os dados do profissional."
             });
         }
     };
@@ -1905,13 +1930,13 @@ const AdminPage = () => {
             if (error) {
                 secureLog.error('Erro ao excluir profissional:', error?.message || error);
                 secureLog.debug('Detalhes do erro ao excluir profissional', error);
-                toast({ 
-                    variant: "destructive", 
-                    title: "Erro ao excluir profissional", 
-                    description: error.message 
+                toast({
+                    variant: "destructive",
+                    title: "Erro ao excluir profissional",
+                    description: error.message
                 });
             } else {
-                toast({ 
+                toast({
                     title: "Profissional excluído com sucesso!",
                     description: "Todos os registros associados foram removidos."
                 });
@@ -1920,10 +1945,10 @@ const AdminPage = () => {
         } catch (error) {
             secureLog.error('Erro inesperado ao excluir profissional:', error?.message || error);
             secureLog.debug('Detalhes do erro inesperado ao excluir profissional', error);
-            toast({ 
-                variant: "destructive", 
-                title: "Erro inesperado", 
-                description: "Não foi possível excluir o profissional completamente." 
+            toast({
+                variant: "destructive",
+                title: "Erro inesperado",
+                description: "Não foi possível excluir o profissional completamente."
             });
         }
     };
@@ -2145,11 +2170,11 @@ const AdminPage = () => {
 
             const zoomMeetingFields = zoomData
                 ? {
-                      meeting_link: zoomData.join_url,
-                      meeting_password: zoomData.password,
-                      meeting_id: zoomData.id?.toString(),
-                      meeting_start_url: zoomData.start_url
-                  }
+                    meeting_link: zoomData.join_url,
+                    meeting_password: zoomData.password,
+                    meeting_id: zoomData.id?.toString(),
+                    meeting_start_url: zoomData.start_url
+                }
                 : null;
 
             result = await supabase
@@ -2174,21 +2199,21 @@ const AdminPage = () => {
         resetEventForm();
         fetchAllData();
     };
-    const resetEventForm = () => { 
-        setIsEditingEvent(false); 
+    const resetEventForm = () => {
+        setIsEditingEvent(false);
         setEventFormErrors({});
         setSlugManuallyEdited(false);
         setShowManualZoomFields(false);
         setIsFreeEvent(true);
-        setEventFormData({ 
-            id: null, 
-            titulo: '', 
-            descricao: '', 
-            tipo_evento: 'Workshop', 
-            data_inicio: '', 
-            data_fim: '', 
-            professional_id: '', 
-            limite_participantes: '', 
+        setEventFormData({
+            id: null,
+            titulo: '',
+            descricao: '',
+            tipo_evento: 'Workshop',
+            data_inicio: '',
+            data_fim: '',
+            professional_id: '',
+            limite_participantes: '',
             data_limite_inscricao: '',
             valor: 0,
             vagas_disponiveis: 0, // 0 = ilimitado
@@ -2200,9 +2225,9 @@ const AdminPage = () => {
             meeting_id: '',
             meeting_start_url: '',
             ativo: true
-        }); 
+        });
     };
-    const handleEditEvent = (event) => { 
+    const handleEditEvent = (event) => {
         const formatDateForInput = (value) => {
             if (!value) return '';
             const parsed = new Date(value);
@@ -2211,10 +2236,10 @@ const AdminPage = () => {
 
         setIsEditingEvent(true);
         setEventFormErrors({});
-        setEventFormData({ 
-            ...event, 
-            data_inicio: formatDateForInput(event.data_inicio), 
-            data_fim: formatDateForInput(event.data_fim), 
+        setEventFormData({
+            ...event,
+            data_inicio: formatDateForInput(event.data_inicio),
+            data_fim: formatDateForInput(event.data_fim),
             data_limite_inscricao: formatDateForInput(event.data_limite_inscricao),
             data_inicio_exibicao: formatDateForInput(event.data_inicio_exibicao),
             data_fim_exibicao: formatDateForInput(event.data_fim_exibicao),
@@ -2228,7 +2253,7 @@ const AdminPage = () => {
             meeting_id: event.meeting_id || '',
             meeting_start_url: event.meeting_start_url || '',
             ativo: event.ativo !== undefined ? event.ativo : true
-        }); 
+        });
         setSlugManuallyEdited(Boolean(event.link_slug));
         setShowManualZoomFields(Boolean(event.meeting_link || event.meeting_start_url));
         setIsFreeEvent(!(Number(event.valor) > 0));
@@ -2245,7 +2270,7 @@ const AdminPage = () => {
                     .from('inscricoes_eventos')
                     .select('id')
                     .eq('evento_id', eventId);
-                
+
                 if (!error) {
                     inscricoesData = data || [];
                 }
@@ -2274,7 +2299,7 @@ const AdminPage = () => {
                                 .from('inscricoes_eventos')
                                 .delete()
                                 .eq('evento_id', eventId);
-                            
+
                             if (inscricoesError) {
                                 secureLog.error('Erro ao excluir inscrições do evento:', inscricoesError?.message || inscricoesError);
                                 secureLog.debug('Detalhes do erro ao excluir inscrições do evento', inscricoesError);
@@ -2316,7 +2341,7 @@ const AdminPage = () => {
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
                         <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Acesso Restrito</h2>
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <div><label className="block text-sm font-medium mb-2 text-gray-600">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({...loginData, email: e.target.value})} className="w-full input"/></div>
+                            <div><label className="block text-sm font-medium mb-2 text-gray-600">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({ ...loginData, email: e.target.value })} className="w-full input" /></div>
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block text-sm font-medium text-gray-600">Senha</label>
@@ -2324,7 +2349,7 @@ const AdminPage = () => {
                                         Esqueci minha senha
                                     </Link>
                                 </div>
-                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({...loginData, password: e.target.value})} className="w-full input"/>
+                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="w-full input" />
                             </div>
                             <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Entrar</Button>
                         </form>
@@ -2333,8 +2358,8 @@ const AdminPage = () => {
             </>
         );
     }
-    
-    
+
+
     const currentTabs = tabsConfig[userRole] || [];
     const hasEventsTab = currentTabs.some(tab => tab.value === 'events');
 
@@ -2368,8 +2393,8 @@ const AdminPage = () => {
                                 showLogoutButton={true}
                             />
                             {hasEventsTab && (
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex"
                                     onClick={() => {
                                         setActiveTab('events');
@@ -2393,7 +2418,7 @@ const AdminPage = () => {
                             <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 h-7" />
                             <span className="text-xl font-bold gradient-text">Doxologos</span>
                         </Link>
-                        <button 
+                        <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
@@ -2407,7 +2432,7 @@ const AdminPage = () => {
 
                     {/* Mobile Menu */}
                     {mobileMenuOpen && (
-                        <motion.div 
+                        <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
@@ -2425,16 +2450,16 @@ const AdminPage = () => {
                                 compact={true}
                             />
                             <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
-                                <Link 
-                                    to="/" 
+                                <Link
+                                    to="/"
                                     className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
                                     onClick={() => setMobileMenuOpen(false)}
                                 >
                                     <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
                                 </Link>
                                 {hasEventsTab && (
-                                    <Button 
-                                        variant="outline" 
+                                    <Button
+                                        variant="outline"
                                         className="w-full border-[#2d8659] text-[#2d8659] justify-start"
                                         onClick={() => {
                                             setActiveTab('events');
@@ -2497,23 +2522,201 @@ const AdminPage = () => {
                         <TabsList className="flex flex-wrap h-auto justify-start p-1 bg-gray-100 rounded-lg">
                             {currentTabs.map(tab => (
                                 <TabsTrigger key={tab.value} value={tab.value} className="flex-1 min-w-[120px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
-                                    <tab.icon className="w-4 h-4 mr-2"/>{tab.label}
+                                    <tab.icon className="w-4 h-4 mr-2" />{tab.label}
                                 </TabsTrigger>
                             ))}
                         </TabsList>
-                        
+
+                        {/* Dashboard Tab - Profissionais */}
+                        <TabsContent value="dashboard" className="mt-6">
+                            <div className="space-y-6">
+                                {/* Header */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+                                            <LayoutDashboard className="w-8 h-8 text-[#2d8659]" />
+                                            Dashboard
+                                        </h2>
+                                        <p className="text-gray-600 mt-1">Visão geral da sua atividade profissional</p>
+                                    </div>
+                                </div>
+
+                                {/* Métricas Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                    <StatCard
+                                        label="Consultas Hoje"
+                                        value={professionalStats.totalAppointments}
+                                        format="number"
+                                        loading={professionalStats.loading}
+                                        comparison={`${professionalStats.confirmedToday} confirmadas`}
+                                    />
+
+                                    <StatCard
+                                        label="Pendentes"
+                                        value={professionalStats.pendingAppointments?.length || 0}
+                                        format="number"
+                                        loading={professionalStats.loading}
+                                        comparison="aguardando confirmação"
+                                    />
+
+                                    <StatCard
+                                        label="Receita do Mês"
+                                        value={professionalStats.monthlyRevenue}
+                                        format="currency"
+                                        loading={professionalStats.loading}
+                                        comparison="total faturado"
+                                    />
+
+                                    <StatCard
+                                        label="Avaliação Média"
+                                        value={professionalStats.averageRating}
+                                        format="number"
+                                        loading={professionalStats.loading}
+                                        comparison={professionalStats.averageRating > 0 ? `${professionalStats.averageRating.toFixed(1)} ⭐` : 'Sem avaliações'}
+                                    />
+                                </div>
+
+                                {/* Gráfico de Receita Mensal */}
+                                <RevenueChart
+                                    data={monthlyRevenue.data}
+                                    loading={monthlyRevenue.loading}
+                                    title="Receita Mensal"
+                                />
+
+                                {/* Ações Rápidas */}
+                                <QuickActions
+                                    title="Ações Rápidas"
+                                    layout="grid"
+                                    columns={3}
+                                    actions={[
+                                        {
+                                            id: 'view-bookings',
+                                            label: 'Ver Agendamentos',
+                                            description: 'Gerenciar suas consultas',
+                                            icon: Calendar,
+                                            onClick: () => setActiveTab('bookings'),
+                                            variant: 'default',
+                                        },
+                                        {
+                                            id: 'manage-availability',
+                                            label: 'Disponibilidade',
+                                            description: 'Configurar horários',
+                                            icon: Clock,
+                                            onClick: () => setActiveTab('availability'),
+                                            variant: 'outline',
+                                        },
+                                        {
+                                            id: 'view-reviews',
+                                            label: 'Avaliações',
+                                            description: 'Ver feedback dos pacientes',
+                                            icon: Star,
+                                            onClick: () => setActiveTab('reviews'),
+                                            variant: 'outline',
+                                            badge: reviews.length > 0 ? reviews.length : undefined,
+                                        },
+                                    ]}
+                                />
+
+                                {/* Próximas Consultas do Dia */}
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                        <Activity className="w-5 h-5 text-[#2d8659]" />
+                                        Consultas de Hoje
+                                    </h3>
+
+                                    {professionalStats.loading ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <LoadingSpinner />
+                                        </div>
+                                    ) : (
+                                        <TimelineView
+                                            items={professionalStats.todayAppointments.map(appointment => ({
+                                                id: appointment.id,
+                                                date: appointment.booking_date,
+                                                time: appointment.booking_time,
+                                                title: appointment.patient_name || 'Paciente',
+                                                description: appointment.service?.name || 'Consulta',
+                                                status: appointment.status === 'confirmed' || appointment.status === 'paid'
+                                                    ? 'confirmed'
+                                                    : appointment.status === 'completed'
+                                                        ? 'completed'
+                                                        : appointment.status.includes('cancelled')
+                                                            ? 'cancelled'
+                                                            : 'pending',
+                                                actions: [
+                                                    {
+                                                        label: 'Ver Detalhes',
+                                                        onClick: () => {
+                                                            setActiveTab('bookings');
+                                                            // Scroll to booking would go here
+                                                        },
+                                                        variant: 'primary'
+                                                    }
+                                                ]
+                                            }))}
+                                            groupBy="none"
+                                            emptyMessage="Nenhuma consulta agendada para hoje"
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Consultas Pendentes */}
+                                {professionalStats.pendingAppointments && professionalStats.pendingAppointments.length > 0 && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-xl shadow-sm p-6">
+                                        <h3 className="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
+                                            <Clock className="w-5 h-5 text-amber-600" />
+                                            Consultas Pendentes ({professionalStats.pendingAppointments.length})
+                                        </h3>
+
+                                        <TimelineView
+                                            items={professionalStats.pendingAppointments.slice(0, 5).map(appointment => ({
+                                                id: appointment.id,
+                                                date: appointment.booking_date,
+                                                time: appointment.booking_time,
+                                                title: appointment.patient_name || 'Paciente',
+                                                description: appointment.service?.name || 'Consulta',
+                                                status: 'pending',
+                                                actions: [
+                                                    {
+                                                        label: 'Gerenciar',
+                                                        onClick: () => setActiveTab('bookings'),
+                                                        variant: 'primary'
+                                                    }
+                                                ]
+                                            }))}
+                                            groupBy="date"
+                                            emptyMessage="Nenhuma consulta pendente"
+                                        />
+
+                                        {professionalStats.pendingAppointments.length > 5 && (
+                                            <div className="mt-4 text-center">
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setActiveTab('bookings')}
+                                                    className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                                                >
+                                                    Ver todas as {professionalStats.pendingAppointments.length} pendentes
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </TabsContent>
+
                         <TabsContent value="bookings" className="mt-6">
+
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex justify-between items-center mb-6">
                                     <h2 className="text-2xl font-bold flex items-center">
-                                        <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> 
-                                        Agendamentos 
+                                        <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                        Agendamentos
                                         <span className="ml-2 text-lg text-gray-500">({getFilteredBookings().length}/{bookings.length})</span>
                                     </h2>
-                                    
-                                    <Button 
-                                        onClick={() => setShowFilters(!showFilters)} 
-                                        variant="outline" 
+
+                                    <Button
+                                        onClick={() => setShowFilters(!showFilters)}
+                                        variant="outline"
                                         size="sm"
                                         className="flex items-center"
                                     >
@@ -2528,15 +2731,15 @@ const AdminPage = () => {
                                                     {activeFilters}
                                                 </span>
                                             ) : null;
-                                        })()} 
+                                        })()}
                                     </Button>
                                 </div>
-                                
+
                                 {/* Totalizadores */}
                                 {(() => {
                                     const filteredBookings = getFilteredBookings();
                                     const totals = calculateTotals(filteredBookings);
-                                    
+
                                     const gridColsClass = userRole === 'admin'
                                         ? 'xl:grid-cols-6'
                                         : (totals.cancelledValue > 0 ? 'xl:grid-cols-5' : 'xl:grid-cols-4');
@@ -2552,7 +2755,7 @@ const AdminPage = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             {userRole === 'admin' && (
                                                 <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
                                                     <div className="flex items-center">
@@ -2562,7 +2765,7 @@ const AdminPage = () => {
                                                         <div>
                                                             <p className="text-sm text-green-600 font-medium">Valor total cobrado</p>
                                                             <p className="text-2xl font-bold text-green-900">
-                                                                R$ {totals.totalValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                                R$ {totals.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -2594,7 +2797,7 @@ const AdminPage = () => {
                                                     </div>
                                                 </div>
                                             )}
-                                            
+
                                             <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
                                                 <div className="flex items-center">
                                                     <svg className="w-8 h-8 text-emerald-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2603,12 +2806,12 @@ const AdminPage = () => {
                                                     <div>
                                                         <p className="text-sm text-emerald-600 font-medium">Total a Receber</p>
                                                         <p className="text-2xl font-bold text-emerald-900">
-                                                            R$ {totals.completedValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                            R$ {totals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
                                                 <div className="flex items-center">
                                                     <svg className="w-8 h-8 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2617,12 +2820,12 @@ const AdminPage = () => {
                                                     <div>
                                                         <p className="text-sm text-yellow-600 font-medium">Pendentes</p>
                                                         <p className="text-2xl font-bold text-yellow-900">
-                                                            R$ {totals.pendingValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                            R$ {totals.pendingValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </p>
                                                     </div>
                                                 </div>
                                             </div>
-                                            
+
                                             {totals.cancelledValue > 0 && (
                                                 <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
                                                     <div className="flex items-center">
@@ -2632,7 +2835,7 @@ const AdminPage = () => {
                                                         <div>
                                                             <p className="text-sm text-red-600 font-medium">Cancelados</p>
                                                             <p className="text-2xl font-bold text-red-900">
-                                                                R$ {totals.cancelledValue.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                                                R$ {totals.cancelledValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -2641,7 +2844,7 @@ const AdminPage = () => {
                                         </div>
                                     );
                                 })()}
-                                
+
                                 {/* Ordenação de Agendamentos */}
                                 {bookings.length > 0 && (
                                     <div className="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-200">
@@ -2652,34 +2855,34 @@ const AdminPage = () => {
                                             Ordenação
                                         </h3>
                                         <div className="flex flex-wrap gap-2">
-                                            <Button 
-                                                onClick={() => handleBookingSort('default')} 
-                                                variant="outline" 
+                                            <Button
+                                                onClick={() => handleBookingSort('default')}
+                                                variant="outline"
                                                 size="sm"
                                                 className={bookingSortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
                                             >
                                                 📋 Padrão (Status + Data)
                                             </Button>
-                                            <Button 
-                                                onClick={() => handleBookingSort('status')} 
-                                                variant="outline" 
+                                            <Button
+                                                onClick={() => handleBookingSort('status')}
+                                                variant="outline"
                                                 size="sm"
                                                 className={bookingSortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
                                             >
                                                 🎯 Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                                             </Button>
-                                            <Button 
-                                                onClick={() => handleBookingSort('date')} 
-                                                variant="outline" 
+                                            <Button
+                                                onClick={() => handleBookingSort('date')}
+                                                variant="outline"
                                                 size="sm"
                                                 className={bookingSortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
                                             >
                                                 📅 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                                             </Button>
                                             {userRole === 'admin' && (
-                                                <Button 
-                                                    onClick={() => handleBookingSort('professional')} 
-                                                    variant="outline" 
+                                                <Button
+                                                    onClick={() => handleBookingSort('professional')}
+                                                    variant="outline"
                                                     size="sm"
                                                     className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
                                                 >
@@ -2689,7 +2892,7 @@ const AdminPage = () => {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {/* Seção de Filtros - Recolhível */}
                                 {showFilters && (
                                     <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
@@ -2699,94 +2902,94 @@ const AdminPage = () => {
                                             </svg>
                                             Filtros Avançados
                                         </h3>                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                                        {/* Busca por nome/email */}
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Buscar Paciente</label>
-                                            <input
-                                                type="text"
-                                                placeholder="Nome ou email..."
-                                                value={bookingFilters.search}
-                                                onChange={(e) => setBookingFilters({...bookingFilters, search: e.target.value})}
-                                                className="w-full input text-sm"
-                                            />
+                                            {/* Busca por nome/email */}
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Buscar Paciente</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Nome ou email..."
+                                                    value={bookingFilters.search}
+                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, search: e.target.value })}
+                                                    className="w-full input text-sm"
+                                                />
+                                            </div>
+
+                                            {/* Filtro por Serviço */}
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Serviço</label>
+                                                <select
+                                                    value={bookingFilters.service_id}
+                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, service_id: e.target.value })}
+                                                    className="w-full input text-sm"
+                                                >
+                                                    <option value="">Todos os serviços</option>
+                                                    {services.map(service => (
+                                                        <option key={service.id} value={service.id}>{service.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Filtro por Profissional */}
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Profissional</label>
+                                                <select
+                                                    value={bookingFilters.professional_id}
+                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, professional_id: e.target.value })}
+                                                    className="w-full input text-sm"
+                                                >
+                                                    <option value="">Todos os profissionais</option>
+                                                    {professionals.map(prof => (
+                                                        <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Filtro por Status */}
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Status</label>
+                                                <select
+                                                    value={bookingFilters.status}
+                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, status: e.target.value })}
+                                                    className="w-full input text-sm"
+                                                >
+                                                    <option value="">Todos os status</option>
+                                                    <option value="pending_payment">Pendente Pagamento</option>
+                                                    <option value="confirmed">Confirmado</option>
+                                                    <option value="completed">Concluído</option>
+                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                    <option value="no_show_unjustified">Falta injustificada</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Filtro por Período - Data Inicial */}
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">De</label>
+                                                <input
+                                                    type="date"
+                                                    value={bookingFilters.date_from}
+                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, date_from: e.target.value })}
+                                                    className="w-full input text-sm"
+                                                />
+                                            </div>
+
+                                            {/* Filtro por Período - Data Final */}
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Até</label>
+                                                <input
+                                                    type="date"
+                                                    value={bookingFilters.date_to}
+                                                    onChange={(e) => setBookingFilters({ ...bookingFilters, date_to: e.target.value })}
+                                                    className="w-full input text-sm"
+                                                />
+                                            </div>
                                         </div>
-                                        
-                                        {/* Filtro por Serviço */}
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Serviço</label>
-                                            <select
-                                                value={bookingFilters.service_id}
-                                                onChange={(e) => setBookingFilters({...bookingFilters, service_id: e.target.value})}
-                                                className="w-full input text-sm"
-                                            >
-                                                <option value="">Todos os serviços</option>
-                                                {services.map(service => (
-                                                    <option key={service.id} value={service.id}>{service.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        
-                                        {/* Filtro por Profissional */}
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Profissional</label>
-                                            <select
-                                                value={bookingFilters.professional_id}
-                                                onChange={(e) => setBookingFilters({...bookingFilters, professional_id: e.target.value})}
-                                                className="w-full input text-sm"
-                                            >
-                                                <option value="">Todos os profissionais</option>
-                                                {professionals.map(prof => (
-                                                    <option key={prof.id} value={prof.id}>{prof.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        
-                                        {/* Filtro por Status */}
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Status</label>
-                                            <select
-                                                value={bookingFilters.status}
-                                                onChange={(e) => setBookingFilters({...bookingFilters, status: e.target.value})}
-                                                className="w-full input text-sm"
-                                            >
-                                                <option value="">Todos os status</option>
-                                                <option value="pending_payment">Pendente Pagamento</option>
-                                                <option value="confirmed">Confirmado</option>
-                                                <option value="completed">Concluído</option>
-                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
-                                                <option value="no_show_unjustified">Falta injustificada</option>
-                                            </select>
-                                        </div>
-                                        
-                                        {/* Filtro por Período - Data Inicial */}
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">De</label>
-                                            <input
-                                                type="date"
-                                                value={bookingFilters.date_from}
-                                                onChange={(e) => setBookingFilters({...bookingFilters, date_from: e.target.value})}
-                                                className="w-full input text-sm"
-                                            />
-                                        </div>
-                                        
-                                        {/* Filtro por Período - Data Final */}
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Até</label>
-                                            <input
-                                                type="date"
-                                                value={bookingFilters.date_to}
-                                                onChange={(e) => setBookingFilters({...bookingFilters, date_to: e.target.value})}
-                                                className="w-full input text-sm"
-                                            />
-                                        </div>
-                                    </div>
-                                    
+
                                         {/* Botão para limpar filtros */}
                                         <div className="mt-4 flex justify-end">
-                                            <Button 
+                                            <Button
                                                 onClick={clearFilters}
-                                                variant="outline" 
+                                                variant="outline"
                                                 size="sm"
                                                 className="text-gray-600 hover:text-gray-800"
                                             >
@@ -2798,13 +3001,13 @@ const AdminPage = () => {
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {(() => {
                                     const filteredBookings = getFilteredBookings();
                                     const sortedBookings = getSortedBookings(filteredBookings);
                                     const paginatedBookings = getPaginatedBookings(sortedBookings);
                                     const totalPages = getTotalPages(sortedBookings);
-                                    
+
                                     if (bookings.length === 0) {
                                         return (
                                             <div className="text-center py-12">
@@ -2813,7 +3016,7 @@ const AdminPage = () => {
                                             </div>
                                         );
                                     }
-                                    
+
                                     if (filteredBookings.length === 0) {
                                         return (
                                             <div className="text-center py-12">
@@ -2828,7 +3031,7 @@ const AdminPage = () => {
                                             </div>
                                         );
                                     }
-                                    
+
                                     return (
                                         <div>
                                             {/* Info de paginação */}
@@ -2836,7 +3039,7 @@ const AdminPage = () => {
                                                 <span>
                                                     Mostrando <strong>{((currentPage - 1) * itemsPerPage) + 1}</strong> a <strong>{Math.min(currentPage * itemsPerPage, sortedBookings.length)}</strong> de <strong>{sortedBookings.length}</strong> agendamento(s)
                                                 </span>
-                                                <select 
+                                                <select
                                                     value={itemsPerPage}
                                                     onChange={(e) => {
                                                         setItemsPerPage(Number(e.target.value));
@@ -2850,585 +3053,581 @@ const AdminPage = () => {
                                                     <option value="50">50 por página</option>
                                                 </select>
                                             </div>
-                                            
+
                                             <div className="space-y-2">
-                                            {paginatedBookings.map((b, index) => {
-                                            const statusColors = {
-                                                'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-                                                'confirmed': 'bg-green-100 text-green-800 border-green-200',
-                                                'paid': 'bg-green-100 text-green-800 border-green-200',
-                                                'completed': 'bg-blue-100 text-blue-800 border-blue-200',
-                                                'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
-                                                'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
-                                                'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200'
-                                            };
-                                            
-                                            const statusLabels = {
-                                                'pending_payment': 'Pendente Pagamento',
-                                                'confirmed': 'Confirmado',
-                                                'paid': 'Pago',
-                                                'completed': 'Concluído',
-                                                'cancelled_by_patient': 'Cancelado pelo Paciente',
-                                                'cancelled_by_professional': 'Cancelado pelo Profissional',
-                                                'no_show_unjustified': 'Falta injustificada'
-                                            };
-                                            
-                                            // Usa valor histórico se disponível, senão usa preço atual do serviço
-                                            const patientValue = Number(b.valor_consulta ?? b.service?.price ?? 0) || 0;
-        const professionalValue = Number(
-            b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
-        ) || 0;
-        const platformFeeValue = Math.max(patientValue - professionalValue, 0);
-        const professionalChipLabel = isAdminView ? 'Profissional' : 'Você recebe';
+                                                {paginatedBookings.map((b, index) => {
+                                                    const statusColors = {
+                                                        'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                        'confirmed': 'bg-green-100 text-green-800 border-green-200',
+                                                        'paid': 'bg-green-100 text-green-800 border-green-200',
+                                                        'completed': 'bg-blue-100 text-blue-800 border-blue-200',
+                                                        'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
+                                                        'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
+                                                        'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200'
+                                                    };
 
-        const bookingService = services.find(service => service.id === b.service_id) || null;
+                                                    const statusLabels = {
+                                                        'pending_payment': 'Pendente Pagamento',
+                                                        'confirmed': 'Confirmado',
+                                                        'paid': 'Pago',
+                                                        'completed': 'Concluído',
+                                                        'cancelled_by_patient': 'Cancelado pelo Paciente',
+                                                        'cancelled_by_professional': 'Cancelado pelo Profissional',
+                                                        'no_show_unjustified': 'Falta injustificada'
+                                                    };
 
-        let availableServices;
-        if (isAdminView) {
-            availableServices = services;
-        } else {
-            const uniqueServices = [];
-            const seenServiceIds = new Set();
-            const pushService = (service) => {
-                if (service && service.id && !seenServiceIds.has(service.id)) {
-                    uniqueServices.push(service);
-                    seenServiceIds.add(service.id);
-                }
-            };
+                                                    // Usa valor histórico se disponível, senão usa preço atual do serviço
+                                                    const patientValue = Number(b.valor_consulta ?? b.service?.price ?? 0) || 0;
+                                                    const professionalValue = Number(
+                                                        b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
+                                                    ) || 0;
+                                                    const platformFeeValue = Math.max(patientValue - professionalValue, 0);
+                                                    const professionalChipLabel = isAdminView ? 'Profissional' : 'Você recebe';
 
-            pushService(bookingService);
-            services.forEach((service) => {
-                if (professionalServiceIdSet.has(service.id)) {
-                    pushService(service);
-                }
-            });
+                                                    const bookingService = services.find(service => service.id === b.service_id) || null;
 
-            availableServices = uniqueServices;
-        }
+                                                    let availableServices;
+                                                    if (isAdminView) {
+                                                        availableServices = services;
+                                                    } else {
+                                                        const uniqueServices = [];
+                                                        const seenServiceIds = new Set();
+                                                        const pushService = (service) => {
+                                                            if (service && service.id && !seenServiceIds.has(service.id)) {
+                                                                uniqueServices.push(service);
+                                                                seenServiceIds.add(service.id);
+                                                            }
+                                                        };
 
-        const quickStatusOptions = isAdminView
-            ? [
-                { value: 'pending_payment', label: statusLabels['pending_payment'] },
-                { value: 'confirmed', label: statusLabels['confirmed'] },
-                { value: 'completed', label: statusLabels['completed'] },
-                { value: 'cancelled_by_patient', label: statusLabels['cancelled_by_patient'] },
-                { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] },
-                { value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'] }
-            ]
-            : (() => {
-                const options = [
-                    { value: b.status, label: `${statusLabels[b.status] || b.status} (atual)`, disabled: true }
-                ];
+                                                        pushService(bookingService);
+                                                        services.forEach((service) => {
+                                                            if (professionalServiceIdSet.has(service.id)) {
+                                                                pushService(service);
+                                                            }
+                                                        });
 
-                if (b.status !== 'completed') {
-                    options.push({ value: 'completed', label: statusLabels['completed'], disabled: b.status !== 'confirmed' });
-                }
+                                                        availableServices = uniqueServices;
+                                                    }
 
-                if (b.status !== 'cancelled_by_professional') {
-                    options.push({ value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'], disabled: false });
-                }
+                                                    const quickStatusOptions = isAdminView
+                                                        ? [
+                                                            { value: 'pending_payment', label: statusLabels['pending_payment'] },
+                                                            { value: 'confirmed', label: statusLabels['confirmed'] },
+                                                            { value: 'completed', label: statusLabels['completed'] },
+                                                            { value: 'cancelled_by_patient', label: statusLabels['cancelled_by_patient'] },
+                                                            { value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'] },
+                                                            { value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'] }
+                                                        ]
+                                                        : (() => {
+                                                            const options = [
+                                                                { value: b.status, label: `${statusLabels[b.status] || b.status} (atual)`, disabled: true }
+                                                            ];
 
-                if (b.status !== 'no_show_unjustified') {
-                    options.push({ value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'], disabled: false });
-                }
+                                                            if (b.status !== 'completed') {
+                                                                options.push({ value: 'completed', label: statusLabels['completed'], disabled: b.status !== 'confirmed' });
+                                                            }
 
-                return options;
-            })();
+                                                            if (b.status !== 'cancelled_by_professional') {
+                                                                options.push({ value: 'cancelled_by_professional', label: statusLabels['cancelled_by_professional'], disabled: false });
+                                                            }
 
-        const hasEnabledQuickStatusOption = quickStatusOptions.some(option => !option.disabled && option.value !== b.status);
-        const quickStatusSelectDisabled = isAnyItemLoading() || (!isAdminView && !hasEnabledQuickStatusOption);
+                                                            if (b.status !== 'no_show_unjustified') {
+                                                                options.push({ value: 'no_show_unjustified', label: statusLabels['no_show_unjustified'], disabled: false });
+                                                            }
 
-        const serviceOptionLabel = (service) => {
-            if (!service) return '';
-            if (isAdminView) {
-                const priceNumber = Number(service.price) || 0;
-                return `${service.name} - R$ ${priceNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-            }
-            return service.name;
-        };
-                                            
-                                            return (
-                                                <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${
-                                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                } hover:bg-blue-50 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
-                                                    
-                                                    {/* Overlay de Loading com novo componente */}
-                                                    <LoadingOverlay 
-                                                        isLoading={isItemLoading('status', b.id) || isItemLoading('edit', b.id)}
-                                                        message={isItemLoading('status', b.id) ? 'Atualizando status...' : 'Salvando alterações...'}
-                                                    />
-                                                    
-                                                    <div className="flex justify-between items-start mb-4">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-3">
-                                                                <h3 className="font-semibold text-lg text-gray-900">
-                                                                    {b.patient_name || 'Nome não informado'}
-                                                                </h3>
-                                                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
-                                                                    {statusLabels[b.status] || b.status}
-                                                                </span>
-                                                                {(patientValue > 0 || professionalValue > 0) && (
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        {patientValue > 0 && userRole === 'admin' && (
-                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
-                                                                                Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                            </span>
-                                                                        )}
-                                                                        {professionalValue > 0 && (
-                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-                                                                                {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                            </span>
-                                                                        )}
-                                                                        {userRole === 'admin' && platformFeeValue > 0 && (
-                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
-                                                                                Taxa: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Profissional</span>
-                                                                    <span className="font-medium">{b.professional?.name || 'N/A'}</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Serviço</span>
-                                                                    <span className="font-medium">{b.service?.name || 'N/A'}</span>
-                                                                    {b.service?.duration_minutes && (
-                                                                        <span className="text-blue-600 block text-xs">
-                                                                            {b.service.duration_minutes >= 60 
-                                                                                ? `${Math.floor(b.service.duration_minutes / 60)}h${b.service.duration_minutes % 60 > 0 ? ` ${b.service.duration_minutes % 60}min` : ''}` 
-                                                                                : `${b.service.duration_minutes}min`
-                                                                            }
+                                                            return options;
+                                                        })();
+
+                                                    const hasEnabledQuickStatusOption = quickStatusOptions.some(option => !option.disabled && option.value !== b.status);
+                                                    const quickStatusSelectDisabled = isAnyItemLoading() || (!isAdminView && !hasEnabledQuickStatusOption);
+
+                                                    const serviceOptionLabel = (service) => {
+                                                        if (!service) return '';
+                                                        if (isAdminView) {
+                                                            const priceNumber = Number(service.price) || 0;
+                                                            return `${service.name} - R$ ${priceNumber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+                                                        }
+                                                        return service.name;
+                                                    };
+
+                                                    return (
+                                                        <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                            } hover:bg-blue-50 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
+
+                                                            {/* Overlay de Loading com novo componente */}
+                                                            <LoadingOverlay
+                                                                isLoading={isItemLoading('status', b.id) || isItemLoading('edit', b.id)}
+                                                                message={isItemLoading('status', b.id) ? 'Atualizando status...' : 'Salvando alterações...'}
+                                                            />
+
+                                                            <div className="flex justify-between items-start mb-4">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-3 mb-3">
+                                                                        <h3 className="font-semibold text-lg text-gray-900">
+                                                                            {b.patient_name || 'Nome não informado'}
+                                                                        </h3>
+                                                                        <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
+                                                                            {statusLabels[b.status] || b.status}
                                                                         </span>
-                                                                    )}
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Financeiro</span>
-                                                                    {(userRole === 'admin' ? patientValue : professionalValue) > 0 ? (
-                                                                        <div className="space-y-1">
-                                                                            {userRole === 'admin' && patientValue > 0 && (
-                                                                                <span className="font-bold text-green-700 block">
-                                                                                    Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                </span>
-                                                                            )}
-                                                                            {professionalValue > 0 && (
-                                                                                <span className="font-semibold text-blue-700 block">
-                                                                                    {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                                </span>
-                                                                            )}
-                                                                            {userRole === 'admin' && (
-                                                                                <span className="text-xs text-purple-700 block">
-                                                                                    Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        {(patientValue > 0 || professionalValue > 0) && (
+                                                                            <div className="flex flex-wrap gap-2">
+                                                                                {patientValue > 0 && userRole === 'admin' && (
+                                                                                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
+                                                                                        Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                    </span>
+                                                                                )}
+                                                                                {professionalValue > 0 && (
+                                                                                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                                                                        {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                    </span>
+                                                                                )}
+                                                                                {userRole === 'admin' && platformFeeValue > 0 && (
+                                                                                    <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                                                                        Taxa: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Profissional</span>
+                                                                            <span className="font-medium">{b.professional?.name || 'N/A'}</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Serviço</span>
+                                                                            <span className="font-medium">{b.service?.name || 'N/A'}</span>
+                                                                            {b.service?.duration_minutes && (
+                                                                                <span className="text-blue-600 block text-xs">
+                                                                                    {b.service.duration_minutes >= 60
+                                                                                        ? `${Math.floor(b.service.duration_minutes / 60)}h${b.service.duration_minutes % 60 > 0 ? ` ${b.service.duration_minutes % 60}min` : ''}`
+                                                                                        : `${b.service.duration_minutes}min`
+                                                                                    }
                                                                                 </span>
                                                                             )}
                                                                         </div>
-                                                                    ) : (
-                                                                        <span className="text-orange-500 block text-xs">Valor não definido</span>
-                                                                    )}
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Data e Horário</span>
-                                                                    <span className="font-medium">
-                                                                        {new Date(b.booking_date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}
-                                                                    </span>
-                                                                    <span className="block text-blue-600">{b.booking_time}h</span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Contato</span>
-                                                                    <span className="font-medium block text-xs">{b.patient_email || 'N/A'}</span>
-                                                                    <span className="block text-xs">{b.patient_phone || 'N/A'}</span>
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
-                                                            {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
-                                                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
-                                                                    {/* Header clicável */}
-                                                                    <button
-                                                                        onClick={() => toggleZoomExpansion(b.id)}
-                                                                        className="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors"
-                                                                    >
-                                                                        <h4 className="font-semibold text-blue-900 flex items-center">
-                                                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                            </svg>
-                                                                            Acesso à sala
-                                                                        </h4>
-                                                                        {expandedZoomCards[b.id] ? (
-                                                                            <ChevronUp className="w-5 h-5 text-blue-700" />
-                                                                        ) : (
-                                                                            <ChevronDown className="w-5 h-5 text-blue-700" />
-                                                                        )}
-                                                                    </button>
-                                                                    
-                                                                    {/* Conteúdo colapsável com animação */}
-                                                                    <div 
-                                                                        className={`transition-all duration-300 ease-in-out ${
-                                                                            expandedZoomCards[b.id] 
-                                                                                ? 'max-h-96 opacity-100' 
-                                                                                : 'max-h-0 opacity-0'
-                                                                        } overflow-hidden`}
-                                                                    >
-                                                                        <div className="px-4 pb-4 space-y-2 text-sm border-t border-blue-200 pt-3">
-                                                                            <div>
-                                                                                <span className="text-gray-600 font-medium">Link da Reunião:</span>
-                                                                                <a 
-                                                                                    href={b.meeting_link} 
-                                                                                    target="_blank" 
-                                                                                    rel="noopener noreferrer" 
-                                                                                    className="block text-blue-600 hover:text-blue-800 underline break-all"
-                                                                                >
-                                                                                    {b.meeting_link}
-                                                                                </a>
-                                                                            </div>
-                                                                            {b.meeting_password && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600 font-medium">Senha: </span>
-                                                                                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
-                                                                                        {b.meeting_password}
-                                                                                    </span>
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Financeiro</span>
+                                                                            {(userRole === 'admin' ? patientValue : professionalValue) > 0 ? (
+                                                                                <div className="space-y-1">
+                                                                                    {userRole === 'admin' && patientValue > 0 && (
+                                                                                        <span className="font-bold text-green-700 block">
+                                                                                            Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {professionalValue > 0 && (
+                                                                                        <span className="font-semibold text-blue-700 block">
+                                                                                            {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {userRole === 'admin' && (
+                                                                                        <span className="text-xs text-purple-700 block">
+                                                                                            Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                                        </span>
+                                                                                    )}
                                                                                 </div>
+                                                                            ) : (
+                                                                                <span className="text-orange-500 block text-xs">Valor não definido</span>
                                                                             )}
-                                                                            {b.meeting_start_url && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
-                                                                                    <a 
-                                                                                        href={b.meeting_start_url} 
-                                                                                        target="_blank" 
-                                                                                        rel="noopener noreferrer" 
-                                                                                        className="block text-green-600 hover:text-green-800 underline break-all"
-                                                                                    >
-                                                                                        {b.meeting_start_url}
-                                                                                    </a>
-                                                                                    <span className="text-xs text-gray-500 italic">
-                                                                                        ⚠️ Use este link para iniciar a reunião como anfitrião
-                                                                                    </span>
-                                                                                </div>
-                                                                            )}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Data e Horário</span>
+                                                                            <span className="font-medium">
+                                                                                {new Date(b.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                                                            </span>
+                                                                            <span className="block text-blue-600">{b.booking_time}h</span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Contato</span>
+                                                                            <span className="font-medium block text-xs">{b.patient_email || 'N/A'}</span>
+                                                                            <span className="block text-xs">{b.patient_phone || 'N/A'}</span>
                                                                         </div>
                                                                     </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        
-                                                        <div className="flex gap-2 ml-4 flex-col items-end">
-                                                            {/* Mudança rápida de status */}
-                                                            <div className="w-48 relative">
-                                                                <label className="block text-xs text-gray-600 mb-1">
-                                                                    Status Rápido:
-                                                                    {isItemLoading('status', b.id) && (
-                                                                        <LoadingSpinner size="xs" className="inline-block ml-1 text-[#2d8659]" />
-                                                                    )}
-                                                                </label>
-                                                                <LoadingInput isLoading={isItemLoading('status', b.id)}>
-                                                                    <select
-                                                                        value={b.status}
-                                                                        onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
-                                                                        disabled={quickStatusSelectDisabled}
-                                                                        className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${
-                                                                            quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
-                                                                        } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
-                                                                    >
-                                                                        {quickStatusOptions.map((option) => (
-                                                                            <option
-                                                                                key={option.value}
-                                                                                value={option.value}
-                                                                                disabled={option.disabled}
-                                                                            >
-                                                                                {option.label}
-                                                                            </option>
-                                                                        ))}
-                                                                    </select>
-                                                                </LoadingInput>
-                                                            </div>
-                                                            
-                                                            <div className="flex gap-2">
-                                                            <Dialog>
-                                                                <DialogTrigger asChild>
-                                                                    <Button 
-                                                                        size="sm" 
-                                                                        variant="outline"
-                                                                        disabled={isAnyItemLoading()}
-                                                                        onClick={() => {
-                                                                            setEditingBooking(b);
-                                                                            const resolvedProfessionalId = isAdminView
-                                                                                ? (b.professional_id || '')
-                                                                                : (currentProfessional?.id || b.professional_id || '');
 
-                                                                            setBookingEditData({
-                                                                                booking_date: b.booking_date,
-                                                                                booking_time: b.booking_time,
-                                                                                status: b.status,
-                                                                                professional_id: resolvedProfessionalId,
-                                                                                service_id: b.service_id || '',
-                                                                                patient_name: b.patient_name || '',
-                                                                                patient_email: b.patient_email || '',
-                                                                                patient_phone: b.patient_phone || '',
-                                                                                valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
-                                                                                valor_repasse_profissional: formatNumberToCurrencyInput(
-                                                                                    b.valor_repasse_profissional ?? b.valor_consulta ?? ''
-                                                                                )
-                                                                            });
-                                                                        }}
-                                                                        className={`hover:bg-blue-50 transition-all ${
-                                                                            isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
-                                                                        }`}
-                                                                    >
-                                                                        {isItemLoading('edit', b.id) ? (
-                                                                            <LoadingSpinner size="sm" className="mr-1" />
-                                                                        ) : (
-                                                                            <Edit className="w-4 h-4 mr-1" />
-                                                                        )}
-                                                                        Editar
-                                                                    </Button>
-                                                                </DialogTrigger>
-                                                                <DialogContent className="max-w-2xl">
-                                                                    <DialogHeader>
-                                                                        <DialogTitle className="flex items-center">
-                                                                            <Edit className="w-5 h-5 mr-2" />
-                                                                            Editar Agendamento
-                                                                        </DialogTitle>
-                                                                    </DialogHeader>
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
-                                                                            <input
-                                                                                type="text"
-                                                                                value={bookingEditData.patient_name}
-                                                                                onChange={e => {
-                                                                                    if (!isAdminView) return;
-                                                                                    setBookingEditData({ ...bookingEditData, patient_name: e.target.value });
-                                                                                }}
-                                                                                className={`w-full input ${!isAdminView ? 'bg-gray-100 cursor-not-allowed' : ''}`}
-                                                                                placeholder="Nome completo"
-                                                                                required
-                                                                                readOnly={!isAdminView}
-                                                                            />
-                                                                        </div>
-                                                                        {isAdminView && (
-                                                                            <>
-                                                                                <div>
-                                                                                    <label className="block text-sm font-medium mb-1">Email</label>
-                                                                                    <input
-                                                                                        type="email"
-                                                                                        value={bookingEditData.patient_email}
-                                                                                        onChange={e => setBookingEditData({ ...bookingEditData, patient_email: e.target.value })}
-                                                                                        className="w-full input"
-                                                                                        placeholder="email@exemplo.com"
-                                                                                    />
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label className="block text-sm font-medium mb-1">Telefone</label>
-                                                                                    <input
-                                                                                        type="tel"
-                                                                                        value={bookingEditData.patient_phone}
-                                                                                        onChange={e => setBookingEditData({ ...bookingEditData, patient_phone: e.target.value })}
-                                                                                        className="w-full input"
-                                                                                        placeholder="(11) 99999-9999"
-                                                                                    />
-                                                                                </div>
-                                                                            </>
-                                                                        )}
-                                                                        {isAdminView && (
-                                                                            <div>
-                                                                                <label className="block text-sm font-medium mb-1">Status *</label>
-                                                                                <select
-                                                                                    value={bookingEditData.status}
-                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, status: e.target.value })}
-                                                                                    className="w-full input"
-                                                                                >
-                                                                                    <option value="pending_payment">Pendente Pagamento</option>
-                                                                                    <option value="confirmed">Confirmado</option>
-                                                                                    <option value="completed">Concluído</option>
-                                                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
-                                                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
-                                                                                    <option value="no_show_unjustified">Falta injustificada</option>
-                                                                                </select>
-                                                                            </div>
-                                                                        )}
-                                                                        {isAdminView && (
-                                                                            <div>
-                                                                                <label className="block text-sm font-medium mb-1">Profissional *</label>
-                                                                                <select 
-                                                                                    value={bookingEditData.professional_id} 
-                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, professional_id: e.target.value })}
-                                                                                    className="w-full input"
-                                                                                    required
-                                                                                >
-                                                                                    <option value="">Selecione um profissional</option>
-                                                                                    {professionals.map(prof => (
-                                                                                        <option key={prof.id} value={prof.id}>{prof.name}</option>
-                                                                                    ))}
-                                                                                </select>
-                                                                            </div>
-                                                                        )}
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Serviço *</label>
-                                                                            <select 
-                                                                                value={bookingEditData.service_id} 
-                                                                                onChange={e => {
-                                                                                    const nextServiceId = e.target.value;
-                                                                                    const matchedService = services.find(service => service.id === nextServiceId);
-                                                                                    setBookingEditData(prev => ({
-                                                                                        ...prev,
-                                                                                        service_id: nextServiceId,
-                                                                                        valor_consulta: matchedService
-                                                                                            ? formatNumberToCurrencyInput(matchedService.price)
-                                                                                            : prev.valor_consulta,
-                                                                                        valor_repasse_profissional: matchedService
-                                                                                            ? formatNumberToCurrencyInput(matchedService.professional_payout ?? matchedService.price)
-                                                                                            : prev.valor_repasse_profissional
-                                                                                    }));
-                                                                                }} 
-                                                                                className="w-full input"
-                                                                                required
+                                                                    {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
+                                                                    {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
+                                                                        <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
+                                                                            {/* Header clicável */}
+                                                                            <button
+                                                                                onClick={() => toggleZoomExpansion(b.id)}
+                                                                                className="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors"
                                                                             >
-                                                                                <option value="">Selecione um serviço</option>
-                                                                                {availableServices.map(service => (
-                                                                                    <option key={service.id} value={service.id}>
-                                                                                        {serviceOptionLabel(service)}
+                                                                                <h4 className="font-semibold text-blue-900 flex items-center">
+                                                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                                    </svg>
+                                                                                    Acesso à sala
+                                                                                </h4>
+                                                                                {expandedZoomCards[b.id] ? (
+                                                                                    <ChevronUp className="w-5 h-5 text-blue-700" />
+                                                                                ) : (
+                                                                                    <ChevronDown className="w-5 h-5 text-blue-700" />
+                                                                                )}
+                                                                            </button>
+
+                                                                            {/* Conteúdo colapsável com animação */}
+                                                                            <div
+                                                                                className={`transition-all duration-300 ease-in-out ${expandedZoomCards[b.id]
+                                                                                    ? 'max-h-96 opacity-100'
+                                                                                    : 'max-h-0 opacity-0'
+                                                                                    } overflow-hidden`}
+                                                                            >
+                                                                                <div className="px-4 pb-4 space-y-2 text-sm border-t border-blue-200 pt-3">
+                                                                                    <div>
+                                                                                        <span className="text-gray-600 font-medium">Link da Reunião:</span>
+                                                                                        <a
+                                                                                            href={b.meeting_link}
+                                                                                            target="_blank"
+                                                                                            rel="noopener noreferrer"
+                                                                                            className="block text-blue-600 hover:text-blue-800 underline break-all"
+                                                                                        >
+                                                                                            {b.meeting_link}
+                                                                                        </a>
+                                                                                    </div>
+                                                                                    {b.meeting_password && (
+                                                                                        <div>
+                                                                                            <span className="text-gray-600 font-medium">Senha: </span>
+                                                                                            <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
+                                                                                                {b.meeting_password}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {b.meeting_start_url && (
+                                                                                        <div>
+                                                                                            <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
+                                                                                            <a
+                                                                                                href={b.meeting_start_url}
+                                                                                                target="_blank"
+                                                                                                rel="noopener noreferrer"
+                                                                                                className="block text-green-600 hover:text-green-800 underline break-all"
+                                                                                            >
+                                                                                                {b.meeting_start_url}
+                                                                                            </a>
+                                                                                            <span className="text-xs text-gray-500 italic">
+                                                                                                ⚠️ Use este link para iniciar a reunião como anfitrião
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex gap-2 ml-4 flex-col items-end">
+                                                                    {/* Mudança rápida de status */}
+                                                                    <div className="w-48 relative">
+                                                                        <label className="block text-xs text-gray-600 mb-1">
+                                                                            Status Rápido:
+                                                                            {isItemLoading('status', b.id) && (
+                                                                                <LoadingSpinner size="xs" className="inline-block ml-1 text-[#2d8659]" />
+                                                                            )}
+                                                                        </label>
+                                                                        <LoadingInput isLoading={isItemLoading('status', b.id)}>
+                                                                            <select
+                                                                                value={b.status}
+                                                                                onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
+                                                                                disabled={quickStatusSelectDisabled}
+                                                                                className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
+                                                                                    } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
+                                                                            >
+                                                                                {quickStatusOptions.map((option) => (
+                                                                                    <option
+                                                                                        key={option.value}
+                                                                                        value={option.value}
+                                                                                        disabled={option.disabled}
+                                                                                    >
+                                                                                        {option.label}
                                                                                     </option>
                                                                                 ))}
                                                                             </select>
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Data *</label>
-                                                                            <input 
-                                                                                type="date" 
-                                                                                value={bookingEditData.booking_date} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, booking_date: e.target.value})} 
-                                                                                className="w-full input" 
-                                                                                required
-                                                                            />
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-sm font-medium mb-1">Horário *</label>
-                                                                            <input 
-                                                                                type="time" 
-                                                                                value={bookingEditData.booking_time} 
-                                                                                onChange={e => setBookingEditData({...bookingEditData, booking_time: e.target.value})} 
-                                                                                className="w-full input" 
-                                                                                required
-                                                                            />
-                                                                        </div>
-                                                                        {isAdminView && (
-                                                                            <>
-                                                                                <div>
-                                                                                    <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        value={bookingEditData.valor_consulta}
-                                                                                        onChange={e => setBookingEditData(prev => ({
-                                                                                            ...prev,
-                                                                                            valor_consulta: sanitizeCurrencyInput(e.target.value)
-                                                                                        }))}
-                                                                                        className="w-full input"
-                                                                                        placeholder="150,00"
-                                                                                    />
-                                                                                    <p className="text-xs text-gray-500 mt-1">
-                                                                                        Valor histórico cobrado do paciente no momento do agendamento
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
-                                                                                    <input
-                                                                                        type="text"
-                                                                                        value={bookingEditData.valor_repasse_profissional}
-                                                                                        onChange={e => setBookingEditData(prev => ({
-                                                                                            ...prev,
-                                                                                            valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
-                                                                                        }))}
-                                                                                        className="w-full input"
-                                                                                        placeholder="150,00"
-                                                                                    />
-                                                                                    <p className="text-xs text-gray-500 mt-1">
-                                                                                        Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
-                                                                                    </p>
-                                                                                </div>
-                                                                            </>
-                                                                        )}
+                                                                        </LoadingInput>
                                                                     </div>
-                                                                    <DialogFooter>
-                                                                        <DialogClose asChild>
-                                                                            <Button 
-                                                                                variant="outline"
-                                                                                disabled={isItemLoading('edit', editingBooking?.id)}
-                                                                            >
-                                                                                Cancelar
-                                                                            </Button>
-                                                                        </DialogClose>
-                                                                        <LoadingButton
-                                                                            isLoading={isItemLoading('edit', editingBooking?.id)}
-                                                                            loadingText="Salvando..."
-                                                                            onClick={handleUpdateBooking}
-                                                                            className="bg-[#2d8659] hover:bg-[#236b47] text-white px-4 py-2 rounded-md"
+
+                                                                    <div className="flex gap-2">
+                                                                        <Dialog>
+                                                                            <DialogTrigger asChild>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    variant="outline"
+                                                                                    disabled={isAnyItemLoading()}
+                                                                                    onClick={() => {
+                                                                                        setEditingBooking(b);
+                                                                                        const resolvedProfessionalId = isAdminView
+                                                                                            ? (b.professional_id || '')
+                                                                                            : (currentProfessional?.id || b.professional_id || '');
+
+                                                                                        setBookingEditData({
+                                                                                            booking_date: b.booking_date,
+                                                                                            booking_time: b.booking_time,
+                                                                                            status: b.status,
+                                                                                            professional_id: resolvedProfessionalId,
+                                                                                            service_id: b.service_id || '',
+                                                                                            patient_name: b.patient_name || '',
+                                                                                            patient_email: b.patient_email || '',
+                                                                                            patient_phone: b.patient_phone || '',
+                                                                                            valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
+                                                                                            valor_repasse_profissional: formatNumberToCurrencyInput(
+                                                                                                b.valor_repasse_profissional ?? b.valor_consulta ?? ''
+                                                                                            )
+                                                                                        });
+                                                                                    }}
+                                                                                    className={`hover:bg-blue-50 transition-all ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
+                                                                                        }`}
+                                                                                >
+                                                                                    {isItemLoading('edit', b.id) ? (
+                                                                                        <LoadingSpinner size="sm" className="mr-1" />
+                                                                                    ) : (
+                                                                                        <Edit className="w-4 h-4 mr-1" />
+                                                                                    )}
+                                                                                    Editar
+                                                                                </Button>
+                                                                            </DialogTrigger>
+                                                                            <DialogContent className="max-w-2xl">
+                                                                                <DialogHeader>
+                                                                                    <DialogTitle className="flex items-center">
+                                                                                        <Edit className="w-5 h-5 mr-2" />
+                                                                                        Editar Agendamento
+                                                                                    </DialogTitle>
+                                                                                </DialogHeader>
+                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                                                                                    <div>
+                                                                                        <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
+                                                                                        <input
+                                                                                            type="text"
+                                                                                            value={bookingEditData.patient_name}
+                                                                                            onChange={e => {
+                                                                                                if (!isAdminView) return;
+                                                                                                setBookingEditData({ ...bookingEditData, patient_name: e.target.value });
+                                                                                            }}
+                                                                                            className={`w-full input ${!isAdminView ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                                                                                            placeholder="Nome completo"
+                                                                                            required
+                                                                                            readOnly={!isAdminView}
+                                                                                        />
+                                                                                    </div>
+                                                                                    {isAdminView && (
+                                                                                        <>
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Email</label>
+                                                                                                <input
+                                                                                                    type="email"
+                                                                                                    value={bookingEditData.patient_email}
+                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, patient_email: e.target.value })}
+                                                                                                    className="w-full input"
+                                                                                                    placeholder="email@exemplo.com"
+                                                                                                />
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Telefone</label>
+                                                                                                <input
+                                                                                                    type="tel"
+                                                                                                    value={bookingEditData.patient_phone}
+                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, patient_phone: e.target.value })}
+                                                                                                    className="w-full input"
+                                                                                                    placeholder="(11) 99999-9999"
+                                                                                                />
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
+                                                                                    {isAdminView && (
+                                                                                        <div>
+                                                                                            <label className="block text-sm font-medium mb-1">Status *</label>
+                                                                                            <select
+                                                                                                value={bookingEditData.status}
+                                                                                                onChange={e => setBookingEditData({ ...bookingEditData, status: e.target.value })}
+                                                                                                className="w-full input"
+                                                                                            >
+                                                                                                <option value="pending_payment">Pendente Pagamento</option>
+                                                                                                <option value="confirmed">Confirmado</option>
+                                                                                                <option value="completed">Concluído</option>
+                                                                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                                                <option value="no_show_unjustified">Falta injustificada</option>
+                                                                                            </select>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {isAdminView && (
+                                                                                        <div>
+                                                                                            <label className="block text-sm font-medium mb-1">Profissional *</label>
+                                                                                            <select
+                                                                                                value={bookingEditData.professional_id}
+                                                                                                onChange={e => setBookingEditData({ ...bookingEditData, professional_id: e.target.value })}
+                                                                                                className="w-full input"
+                                                                                                required
+                                                                                            >
+                                                                                                <option value="">Selecione um profissional</option>
+                                                                                                {professionals.map(prof => (
+                                                                                                    <option key={prof.id} value={prof.id}>{prof.name}</option>
+                                                                                                ))}
+                                                                                            </select>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    <div>
+                                                                                        <label className="block text-sm font-medium mb-1">Serviço *</label>
+                                                                                        <select
+                                                                                            value={bookingEditData.service_id}
+                                                                                            onChange={e => {
+                                                                                                const nextServiceId = e.target.value;
+                                                                                                const matchedService = services.find(service => service.id === nextServiceId);
+                                                                                                setBookingEditData(prev => ({
+                                                                                                    ...prev,
+                                                                                                    service_id: nextServiceId,
+                                                                                                    valor_consulta: matchedService
+                                                                                                        ? formatNumberToCurrencyInput(matchedService.price)
+                                                                                                        : prev.valor_consulta,
+                                                                                                    valor_repasse_profissional: matchedService
+                                                                                                        ? formatNumberToCurrencyInput(matchedService.professional_payout ?? matchedService.price)
+                                                                                                        : prev.valor_repasse_profissional
+                                                                                                }));
+                                                                                            }}
+                                                                                            className="w-full input"
+                                                                                            required
+                                                                                        >
+                                                                                            <option value="">Selecione um serviço</option>
+                                                                                            {availableServices.map(service => (
+                                                                                                <option key={service.id} value={service.id}>
+                                                                                                    {serviceOptionLabel(service)}
+                                                                                                </option>
+                                                                                            ))}
+                                                                                        </select>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="block text-sm font-medium mb-1">Data *</label>
+                                                                                        <input
+                                                                                            type="date"
+                                                                                            value={bookingEditData.booking_date}
+                                                                                            onChange={e => setBookingEditData({ ...bookingEditData, booking_date: e.target.value })}
+                                                                                            className="w-full input"
+                                                                                            required
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="block text-sm font-medium mb-1">Horário *</label>
+                                                                                        <input
+                                                                                            type="time"
+                                                                                            value={bookingEditData.booking_time}
+                                                                                            onChange={e => setBookingEditData({ ...bookingEditData, booking_time: e.target.value })}
+                                                                                            className="w-full input"
+                                                                                            required
+                                                                                        />
+                                                                                    </div>
+                                                                                    {isAdminView && (
+                                                                                        <>
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Valor da Consulta (R$)</label>
+                                                                                                <input
+                                                                                                    type="text"
+                                                                                                    value={bookingEditData.valor_consulta}
+                                                                                                    onChange={e => setBookingEditData(prev => ({
+                                                                                                        ...prev,
+                                                                                                        valor_consulta: sanitizeCurrencyInput(e.target.value)
+                                                                                                    }))}
+                                                                                                    className="w-full input"
+                                                                                                    placeholder="150,00"
+                                                                                                />
+                                                                                                <p className="text-xs text-gray-500 mt-1">
+                                                                                                    Valor histórico cobrado do paciente no momento do agendamento
+                                                                                                </p>
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label className="block text-sm font-medium mb-1">Repasse ao Profissional (R$)</label>
+                                                                                                <input
+                                                                                                    type="text"
+                                                                                                    value={bookingEditData.valor_repasse_profissional}
+                                                                                                    onChange={e => setBookingEditData(prev => ({
+                                                                                                        ...prev,
+                                                                                                        valor_repasse_profissional: sanitizeCurrencyInput(e.target.value)
+                                                                                                    }))}
+                                                                                                    className="w-full input"
+                                                                                                    placeholder="150,00"
+                                                                                                />
+                                                                                                <p className="text-xs text-gray-500 mt-1">
+                                                                                                    Utilize este campo para ajustar o valor repassado ao profissional quando necessário.
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                                <DialogFooter>
+                                                                                    <DialogClose asChild>
+                                                                                        <Button
+                                                                                            variant="outline"
+                                                                                            disabled={isItemLoading('edit', editingBooking?.id)}
+                                                                                        >
+                                                                                            Cancelar
+                                                                                        </Button>
+                                                                                    </DialogClose>
+                                                                                    <LoadingButton
+                                                                                        isLoading={isItemLoading('edit', editingBooking?.id)}
+                                                                                        loadingText="Salvando..."
+                                                                                        onClick={handleUpdateBooking}
+                                                                                        className="bg-[#2d8659] hover:bg-[#236b47] text-white px-4 py-2 rounded-md"
+                                                                                    >
+                                                                                        Salvar Alterações
+                                                                                    </LoadingButton>
+                                                                                </DialogFooter>
+                                                                            </DialogContent>
+                                                                        </Dialog>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="destructive"
+                                                                            disabled={isAnyItemLoading()}
+                                                                            onClick={() => handleDeleteBooking(b)}
+                                                                            className={`flex items-center ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                         >
-                                                                            Salvar Alterações
-                                                                        </LoadingButton>
-                                                                    </DialogFooter>
-                                                                </DialogContent>
-                                                            </Dialog>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="destructive"
-                                                                disabled={isAnyItemLoading()}
-                                                                onClick={() => handleDeleteBooking(b)}
-                                                                className={`flex items-center ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                            >
-                                                                {isItemLoading('delete', b.id) ? (
-                                                                    <LoadingSpinner size="sm" className="mr-1" />
-                                                                ) : (
-                                                                    <Trash2 className="w-4 h-4 mr-1" />
-                                                                )}
-                                                                Excluir
-                                                            </Button>
+                                                                            {isItemLoading('delete', b.id) ? (
+                                                                                <LoadingSpinner size="sm" className="mr-1" />
+                                                                            ) : (
+                                                                                <Trash2 className="w-4 h-4 mr-1" />
+                                                                            )}
+                                                                            Excluir
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
+                                                    );
+                                                })}
+
+                                                {/* Navegação de Páginas */}
+                                                {totalPages > 1 && (
+                                                    <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t">
+                                                        <Button
+                                                            onClick={() => setCurrentPage(currentPage - 1)}
+                                                            disabled={currentPage === 1}
+                                                            variant="outline"
+                                                            size="sm"
+                                                        >
+                                                            ← Anterior
+                                                        </Button>
+
+                                                        <div className="flex gap-1">
+                                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                                                <Button
+                                                                    key={page}
+                                                                    onClick={() => setCurrentPage(page)}
+                                                                    variant={currentPage === page ? "default" : "outline"}
+                                                                    size="sm"
+                                                                    className={currentPage === page ? "bg-[#2d8659] hover:bg-[#236b47]" : ""}
+                                                                >
+                                                                    {page}
+                                                                </Button>
+                                                            ))}
+                                                        </div>
+
+                                                        <Button
+                                                            onClick={() => setCurrentPage(currentPage + 1)}
+                                                            disabled={currentPage === totalPages}
+                                                            variant="outline"
+                                                            size="sm"
+                                                        >
+                                                            Próxima →
+                                                        </Button>
                                                     </div>
-                                                </div>
-                                            );
-                                            })}
-                                            
-                                            {/* Navegação de Páginas */}
-                                            {totalPages > 1 && (
-                                                <div className="flex justify-center items-center gap-2 mt-6 pt-4 border-t">
-                                                    <Button 
-                                                        onClick={() => setCurrentPage(currentPage - 1)}
-                                                        disabled={currentPage === 1}
-                                                        variant="outline"
-                                                        size="sm"
-                                                    >
-                                                        ← Anterior
-                                                    </Button>
-                                                    
-                                                    <div className="flex gap-1">
-                                                        {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
-                                                            <Button
-                                                                key={page}
-                                                                onClick={() => setCurrentPage(page)}
-                                                                variant={currentPage === page ? "default" : "outline"}
-                                                                size="sm"
-                                                                className={currentPage === page ? "bg-[#2d8659] hover:bg-[#236b47]" : ""}
-                                                            >
-                                                                {page}
-                                                            </Button>
-                                                        ))}
-                                                    </div>
-                                                    
-                                                    <Button 
-                                                        onClick={() => setCurrentPage(currentPage + 1)}
-                                                        disabled={currentPage === totalPages}
-                                                        variant="outline"
-                                                        size="sm"
-                                                    >
-                                                        Próxima →
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })()}
@@ -3467,7 +3666,7 @@ const AdminPage = () => {
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex justify-between items-center mb-6">
                                     <h2 className="text-2xl font-bold flex items-center">
-                                        <DollarSign className="w-6 h-6 mr-2 text-[#2d8659]" /> 
+                                        <DollarSign className="w-6 h-6 mr-2 text-[#2d8659]" />
                                         Pagamentos
                                     </h2>
                                 </div>
@@ -3475,7 +3674,7 @@ const AdminPage = () => {
                                     <DollarSign className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                                     <h3 className="text-xl font-semibold mb-2">Gerenciamento de Pagamentos</h3>
                                     <p className="text-gray-600 mb-6">
-                                        Acesse o painel completo de pagamentos para visualizar transações, 
+                                        Acesse o painel completo de pagamentos para visualizar transações,
                                         processar reembolsos e gerar relatórios.
                                     </p>
                                     <Link to="/admin/pagamentos">
@@ -3487,434 +3686,433 @@ const AdminPage = () => {
                                 </div>
                             </div>
                         </TabsContent>
-                        
+
                         {(userRole === 'admin' || userRole === 'professional') && (
-                        <TabsContent value="professionals" className="mt-6">
-                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                        <Users className="w-6 h-6 mr-2 text-[#2d8659]" /> 
-                                        {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
-                                    </h2>
-                                    <div className="space-y-4">
-                                        {professionals.map((prof, index) => (
-                                            <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                            } hover:bg-blue-50`}>
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3 mb-3">
-                                                            {prof.image_url && (
-                                                                <img 
-                                                                    src={prof.image_url} 
-                                                                    alt={prof.name} 
-                                                                    className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                                                                />
-                                                            )}
-                                                            <div>
-                                                                <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
-                                                                {prof.email && (
-                                                                    <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                                                                        📧 {prof.email}
-                                                                    </p>
+                            <TabsContent value="professionals" className="mt-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                            <Users className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                            {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
+                                        </h2>
+                                        <div className="space-y-4">
+                                            {professionals.map((prof, index) => (
+                                                <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                    } hover:bg-blue-50`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-3">
+                                                                {prof.image_url && (
+                                                                    <img
+                                                                        src={prof.image_url}
+                                                                        alt={prof.name}
+                                                                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                                                    />
                                                                 )}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                            <div>
-                                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
-                                                                {prof.services_ids && prof.services_ids.length > 0 ? (
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {prof.services_ids.map(serviceId => {
-                                                                            const service = services.find(s => s.id === serviceId);
-                                                                            return service ? (
-                                                                                <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                                    {service.name}
-                                                                                </span>
-                                                                            ) : null;
-                                                                        })}
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
-                                                                )}
-                                                            </div>
-                                                            
-                                                            {prof.mini_curriculum && (
                                                                 <div>
-                                                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
-                                                                    <p className="text-sm text-gray-600 line-clamp-3">
-                                                                        {prof.mini_curriculum.length > 150 
-                                                                            ? `${prof.mini_curriculum.substring(0, 150)}...` 
-                                                                            : prof.mini_curriculum
-                                                                        }
-                                                                    </p>
+                                                                    <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
+                                                                    {prof.email && (
+                                                                        <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                                                            📧 {prof.email}
+                                                                        </p>
+                                                                    )}
                                                                 </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
+                                                                    {prof.services_ids && prof.services_ids.length > 0 ? (
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {prof.services_ids.map(serviceId => {
+                                                                                const service = services.find(s => s.id === serviceId);
+                                                                                return service ? (
+                                                                                    <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                                        {service.name}
+                                                                                    </span>
+                                                                                ) : null;
+                                                                            })}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
+                                                                    )}
+                                                                </div>
+
+                                                                {prof.mini_curriculum && (
+                                                                    <div>
+                                                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
+                                                                        <p className="text-sm text-gray-600 line-clamp-3">
+                                                                            {prof.mini_curriculum.length > 150
+                                                                                ? `${prof.mini_curriculum.substring(0, 150)}...`
+                                                                                : prof.mini_curriculum
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex gap-2 ml-4">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
+                                                                <Edit className="w-4 h-4" />
+                                                            </Button>
+                                                            {userRole === 'admin' && (
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleDeleteProfessional(prof.id)}
+                                                                    className="hover:bg-red-50"
+                                                                    title="Excluir profissional"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                                                </Button>
                                                             )}
                                                         </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex gap-2 ml-4">
-                                                        <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                        {userRole === 'admin' && (
-                                                            <Button 
-                                                                size="icon" 
-                                                                variant="ghost" 
-                                                                onClick={() => handleDeleteProfessional(prof.id)} 
-                                                                className="hover:bg-red-50"
-                                                                title="Excluir profissional"
-                                                            >
-                                                                <Trash2 className="w-4 h-4 text-red-500" />
-                                                            </Button>
-                                                        )}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6">
-                                        {userRole === 'admin' 
-                                            ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
-                                            : 'Editar Meu Perfil'
-                                        }
-                                    </h2>
-                                    <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
-                                            <input 
-                                                name="name" 
-                                                value={professionalFormData.name} 
-                                                onChange={e => setProfessionalFormData({...professionalFormData, name: e.target.value})} 
-                                                placeholder="Ex: Dr. João Silva" 
-                                                className="w-full input" 
-                                                required 
-                                            />
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
-                                            <div className="border rounded-lg p-3 max-h-32 overflow-y-auto bg-gray-50">
-                                                {services.length === 0 ? (
-                                                    <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
-                                                ) : (
-                                                    services.map(service => (
-                                                        <label key={service.id} className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={professionalFormData.services_ids.includes(service.id)}
-                                                                onChange={(e) => {
-                                                                    const serviceId = service.id;
-                                                                    const currentServices = professionalFormData.services_ids;
-                                                                    
-                                                                    if (e.target.checked) {
-                                                                        setProfessionalFormData({
-                                                                            ...professionalFormData,
-                                                                            services_ids: [...currentServices, serviceId]
-                                                                        });
-                                                                    } else {
-                                                                        setProfessionalFormData({
-                                                                            ...professionalFormData,
-                                                                            services_ids: currentServices.filter(id => id !== serviceId)
-                                                                        });
-                                                                    }
-                                                                }}
-                                                                className="rounded"
-                                                            />
-                                                            <span className="text-sm">{service.name}</span>
-                                                            <span className="text-xs text-gray-500">R$ {parseFloat(service.price).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>
-                                                        </label>
-                                                    ))
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
-                                            <input 
-                                                name="email" 
-                                                value={professionalFormData.email} 
-                                                onChange={e => setProfessionalFormData({...professionalFormData, email: e.target.value})} 
-                                                type="email" 
-                                                placeholder="joao@clinica.com" 
-                                                className="w-full input" 
-                                                disabled={userRole === 'admin' && isEditingProfessional}
-                                                required 
-                                            />
-                                        </div>
-                                        
-                                        {(userRole === 'admin' || !isEditingProfessional) && (
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6">
+                                            {userRole === 'admin'
+                                                ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
+                                                : 'Editar Meu Perfil'
+                                            }
+                                        </h2>
+                                        <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
                                             <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
-                                                <input 
-                                                    name="password" 
-                                                    value={professionalFormData.password} 
-                                                    onChange={e => setProfessionalFormData({...professionalFormData, password: e.target.value})} 
-                                                    type="password" 
-                                                    placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'} 
-                                                    className="w-full input" 
-                                                    required={!isEditingProfessional} 
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
+                                                <input
+                                                    name="name"
+                                                    value={professionalFormData.name}
+                                                    onChange={e => setProfessionalFormData({ ...professionalFormData, name: e.target.value })}
+                                                    placeholder="Ex: Dr. João Silva"
+                                                    className="w-full input"
+                                                    required
                                                 />
-                                                {isEditingProfessional && userRole === 'admin' && (
-                                                    <p className="text-xs text-gray-500 mt-1">{`Deixe em branco para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
-                                                )}
                                             </div>
-                                        )}
-                                        
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
-                                            
-                                            {/* Upload de arquivo local */}
-                                            <div className="mb-3">
-                                                <input 
-                                                    type="file" 
-                                                    accept="image/*"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files[0];
-                                                        if (file) {
-                                                            // Verificar tamanho do arquivo (máximo 5MB)
-                                                            if (file.size > 5 * 1024 * 1024) {
-                                                                toast({ 
-                                                                    variant: 'destructive', 
-                                                                    title: 'Arquivo muito grande', 
-                                                                    description: 'Por favor, selecione uma imagem menor que 5MB' 
-                                                                });
-                                                                return;
-                                                            }
-                                                            
-                                                            try {
-                                                                toast({ title: 'Fazendo upload...', description: 'Processando e enviando imagem...' });
-                                                                
-                                                                // Gerar nome único para o arquivo
-                                                                const fileExt = file.name.split('.').pop();
-                                                                const fileName = `professional_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-                                                                const filePath = `professionals/${fileName}`;
-                                                                
-                                                                // Processar e comprimir imagem antes do upload
-                                                                const canvas = document.createElement('canvas');
-                                                                const ctx = canvas.getContext('2d');
-                                                                const img = new Image();
-                                                                
-                                                                img.onload = async () => {
-                                                                    // Redimensionar para alta qualidade (800px max)
-                                                                    const maxSize = 800;
-                                                                    let { width, height } = img;
-                                                                    
-                                                                    if (width > height) {
-                                                                        if (width > maxSize) {
-                                                                            height = (height * maxSize) / width;
-                                                                            width = maxSize;
-                                                                        }
-                                                                    } else {
-                                                                        if (height > maxSize) {
-                                                                            width = (width * maxSize) / height;
-                                                                            height = maxSize;
-                                                                        }
-                                                                    }
-                                                                    
-                                                                    canvas.width = width;
-                                                                    canvas.height = height;
-                                                                    
-                                                                    ctx.imageSmoothingEnabled = true;
-                                                                    ctx.imageSmoothingQuality = 'high';
-                                                                    ctx.drawImage(img, 0, 0, width, height);
-                                                                    
-                                                                    // Converter para blob com boa qualidade
-                                                                    canvas.toBlob(async (blob) => {
-                                                                        if (!blob) {
-                                                                            toast({ variant: 'destructive', title: 'Erro ao processar imagem' });
-                                                                            return;
-                                                                        }
-                                                                        
-                                                                        // Remover imagem anterior se existir
-                                                                        if (professionalFormData.image_url && professionalFormData.image_url.includes('supabase')) {
-                                                                            const oldPath = professionalFormData.image_url.split('/').slice(-2).join('/');
-                                                                            await supabase.storage.from('professional-photos').remove([oldPath]);
-                                                                        }
-                                                                        
-                                                                        // Upload para Supabase Storage
-                                                                        const { data, error } = await supabase.storage
-                                                                            .from('professional-photos')
-                                                                            .upload(filePath, blob, {
-                                                                                cacheControl: '3600',
-                                                                                upsert: false
-                                                                            });
-                                                                        
-                                                                        if (error) {
-                                                                            secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
-                                                                            secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
-                                                                            toast({ 
-                                                                                variant: 'destructive', 
-                                                                                title: 'Erro no upload', 
-                                                                                description: 'Não foi possível fazer upload da imagem: ' + error.message 
-                                                                            });
-                                                                            return;
-                                                                        }
-                                                                        
-                                                                        // Obter URL pública
-                                                                        const { data: urlData } = supabase.storage
-                                                                            .from('professional-photos')
-                                                                            .getPublicUrl(filePath);
-                                                                        
-                                                                        if (urlData?.publicUrl) {
+
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
+                                                <div className="border rounded-lg p-3 max-h-32 overflow-y-auto bg-gray-50">
+                                                    {services.length === 0 ? (
+                                                        <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
+                                                    ) : (
+                                                        services.map(service => (
+                                                            <label key={service.id} className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={professionalFormData.services_ids.includes(service.id)}
+                                                                    onChange={(e) => {
+                                                                        const serviceId = service.id;
+                                                                        const currentServices = professionalFormData.services_ids;
+
+                                                                        if (e.target.checked) {
                                                                             setProfessionalFormData({
-                                                                                ...professionalFormData, 
-                                                                                image_url: urlData.publicUrl
-                                                                            });
-                                                                            
-                                                                            toast({ 
-                                                                                title: 'Upload concluído!', 
-                                                                                description: `Imagem de alta qualidade salva (${Math.round(width)}x${Math.round(height)}px)` 
+                                                                                ...professionalFormData,
+                                                                                services_ids: [...currentServices, serviceId]
                                                                             });
                                                                         } else {
-                                                                            toast({ 
-                                                                                variant: 'destructive', 
-                                                                                title: 'Erro ao obter URL', 
-                                                                                description: 'Upload realizado mas não foi possível obter a URL' 
+                                                                            setProfessionalFormData({
+                                                                                ...professionalFormData,
+                                                                                services_ids: currentServices.filter(id => id !== serviceId)
                                                                             });
                                                                         }
-                                                                    }, 'image/jpeg', 0.85);
-                                                                };
-                                                                
-                                                                img.onerror = () => {
-                                                                    toast({ 
-                                                                        variant: 'destructive', 
-                                                                        title: 'Erro ao processar imagem', 
-                                                                        description: 'Não foi possível carregar o arquivo selecionado' 
-                                                                    });
-                                                                };
-                                                                
-                                                                img.src = URL.createObjectURL(file);
-                                                                
-                                                            } catch (error) {
-                                                                secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
-                                                                secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
-                                                                toast({ 
-                                                                    variant: 'destructive', 
-                                                                    title: 'Erro no upload', 
-                                                                    description: 'Não foi possível processar a imagem: ' + error.message 
-                                                                });
-                                                            }
-                                                        }
-                                                    }}
-                                                    className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
-                                                />
-                                                <p className="text-xs text-gray-500 mt-1">Upload seguro para Supabase Storage com alta qualidade (até 5MB)</p>
+                                                                    }}
+                                                                    className="rounded"
+                                                                />
+                                                                <span className="text-sm">{service.name}</span>
+                                                                <span className="text-xs text-gray-500">R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                            </label>
+                                                        ))
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
                                             </div>
-                                            
-                                            {/* Campo de URL alternativo */}
-                                            <div className="mb-3">
-                                                <input 
-                                                    name="image_url" 
-                                                    value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : professionalFormData.image_url} 
-                                                    onChange={e => setProfessionalFormData({...professionalFormData, image_url: e.target.value})} 
-                                                    type="url" 
-                                                    placeholder="Ou cole o link direto: https://exemplo.com/foto.jpg" 
-                                                    className="w-full input text-sm" 
+
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
+                                                <input
+                                                    name="email"
+                                                    value={professionalFormData.email}
+                                                    onChange={e => setProfessionalFormData({ ...professionalFormData, email: e.target.value })}
+                                                    type="email"
+                                                    placeholder="joao@clinica.com"
+                                                    className="w-full input"
+                                                    disabled={userRole === 'admin' && isEditingProfessional}
+                                                    required
                                                 />
-                                                <p className="text-xs text-gray-500 mt-1">Alternativa: cole um link direto para a imagem</p>
                                             </div>
-                                            
-                                            {/* Preview da imagem */}
-                                            {professionalFormData.image_url && (
-                                                <div className="flex items-center gap-3 mt-3">
-                                                    <img 
-                                                        src={professionalFormData.image_url} 
-                                                        alt="Preview" 
-                                                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
-                                                        onError={(e) => {
-                                                            e.target.style.display = 'none';
-                                                        }}
+
+                                            {(userRole === 'admin' || !isEditingProfessional) && (
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
+                                                    <input
+                                                        name="password"
+                                                        value={professionalFormData.password}
+                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, password: e.target.value })}
+                                                        type="password"
+                                                        placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'}
+                                                        className="w-full input"
+                                                        required={!isEditingProfessional}
                                                     />
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-700">Preview da foto</p>
-                                                        <Button 
-                                                            type="button" 
-                                                            variant="outline" 
-                                                            size="sm" 
-                                                            onClick={() => setProfessionalFormData({...professionalFormData, image_url: ''})}
-                                                            className="mt-1 text-xs"
-                                                        >
-                                                            Remover foto
-                                                        </Button>
-                                                    </div>
+                                                    {isEditingProfessional && userRole === 'admin' && (
+                                                        <p className="text-xs text-gray-500 mt-1">{`Deixe em branco para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
+                                                    )}
                                                 </div>
                                             )}
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Mini-currículo</label>
-                                            <textarea 
-                                                name="mini_curriculum" 
-                                                value={professionalFormData.mini_curriculum} 
-                                                onChange={e => setProfessionalFormData({...professionalFormData, mini_curriculum: e.target.value})} 
-                                                placeholder="Formação, experiências, especializações..." 
-                                                className="w-full input" 
-                                                rows="5"
-                                            ></textarea>
-                                        </div>
-                                        
-                                        <div className="flex gap-2">
-                                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingProfessionalProfile}>
-                                                {isSavingProfessionalProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                                {userRole === 'admin' 
-                                                    ? (isEditingProfessional ? 'Salvar' : 'Criar')
-                                                    : 'Salvar Alterações'
-                                                }
-                                            </Button>
-                                            {userRole === 'admin' && isEditingProfessional && (
-                                                <Button type="button" variant="outline" onClick={resetProfessionalForm}>
-                                                    Cancelar
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
 
-                            {userRole !== 'admin' && (
-                                <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-                                    <h3 className="text-xl font-semibold mb-2">Alterar senha de acesso</h3>
-                                    <p className="text-sm text-gray-600 mb-4">
-                                        Defina uma nova senha segura para acessar o painel profissional.
-                                    </p>
-                                    <form onSubmit={handleProfessionalPasswordChange} className="space-y-4 text-sm max-w-xl">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Nova senha</label>
-                                                <input
-                                                    type="password"
-                                                    value={passwordFormData.newPassword}
-                                                    onChange={(e) => setPasswordFormData(prev => ({ ...prev, newPassword: e.target.value }))}
-                                                    placeholder="Mínimo de 6 caracteres"
-                                                    className="w-full input"
-                                                    required
-                                                />
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
+
+                                                {/* Upload de arquivo local */}
+                                                <div className="mb-3">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                // Verificar tamanho do arquivo (máximo 5MB)
+                                                                if (file.size > 5 * 1024 * 1024) {
+                                                                    toast({
+                                                                        variant: 'destructive',
+                                                                        title: 'Arquivo muito grande',
+                                                                        description: 'Por favor, selecione uma imagem menor que 5MB'
+                                                                    });
+                                                                    return;
+                                                                }
+
+                                                                try {
+                                                                    toast({ title: 'Fazendo upload...', description: 'Processando e enviando imagem...' });
+
+                                                                    // Gerar nome único para o arquivo
+                                                                    const fileExt = file.name.split('.').pop();
+                                                                    const fileName = `professional_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+                                                                    const filePath = `professionals/${fileName}`;
+
+                                                                    // Processar e comprimir imagem antes do upload
+                                                                    const canvas = document.createElement('canvas');
+                                                                    const ctx = canvas.getContext('2d');
+                                                                    const img = new Image();
+
+                                                                    img.onload = async () => {
+                                                                        // Redimensionar para alta qualidade (800px max)
+                                                                        const maxSize = 800;
+                                                                        let { width, height } = img;
+
+                                                                        if (width > height) {
+                                                                            if (width > maxSize) {
+                                                                                height = (height * maxSize) / width;
+                                                                                width = maxSize;
+                                                                            }
+                                                                        } else {
+                                                                            if (height > maxSize) {
+                                                                                width = (width * maxSize) / height;
+                                                                                height = maxSize;
+                                                                            }
+                                                                        }
+
+                                                                        canvas.width = width;
+                                                                        canvas.height = height;
+
+                                                                        ctx.imageSmoothingEnabled = true;
+                                                                        ctx.imageSmoothingQuality = 'high';
+                                                                        ctx.drawImage(img, 0, 0, width, height);
+
+                                                                        // Converter para blob com boa qualidade
+                                                                        canvas.toBlob(async (blob) => {
+                                                                            if (!blob) {
+                                                                                toast({ variant: 'destructive', title: 'Erro ao processar imagem' });
+                                                                                return;
+                                                                            }
+
+                                                                            // Remover imagem anterior se existir
+                                                                            if (professionalFormData.image_url && professionalFormData.image_url.includes('supabase')) {
+                                                                                const oldPath = professionalFormData.image_url.split('/').slice(-2).join('/');
+                                                                                await supabase.storage.from('professional-photos').remove([oldPath]);
+                                                                            }
+
+                                                                            // Upload para Supabase Storage
+                                                                            const { data, error } = await supabase.storage
+                                                                                .from('professional-photos')
+                                                                                .upload(filePath, blob, {
+                                                                                    cacheControl: '3600',
+                                                                                    upsert: false
+                                                                                });
+
+                                                                            if (error) {
+                                                                                secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
+                                                                                secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
+                                                                                toast({
+                                                                                    variant: 'destructive',
+                                                                                    title: 'Erro no upload',
+                                                                                    description: 'Não foi possível fazer upload da imagem: ' + error.message
+                                                                                });
+                                                                                return;
+                                                                            }
+
+                                                                            // Obter URL pública
+                                                                            const { data: urlData } = supabase.storage
+                                                                                .from('professional-photos')
+                                                                                .getPublicUrl(filePath);
+
+                                                                            if (urlData?.publicUrl) {
+                                                                                setProfessionalFormData({
+                                                                                    ...professionalFormData,
+                                                                                    image_url: urlData.publicUrl
+                                                                                });
+
+                                                                                toast({
+                                                                                    title: 'Upload concluído!',
+                                                                                    description: `Imagem de alta qualidade salva (${Math.round(width)}x${Math.round(height)}px)`
+                                                                                });
+                                                                            } else {
+                                                                                toast({
+                                                                                    variant: 'destructive',
+                                                                                    title: 'Erro ao obter URL',
+                                                                                    description: 'Upload realizado mas não foi possível obter a URL'
+                                                                                });
+                                                                            }
+                                                                        }, 'image/jpeg', 0.85);
+                                                                    };
+
+                                                                    img.onerror = () => {
+                                                                        toast({
+                                                                            variant: 'destructive',
+                                                                            title: 'Erro ao processar imagem',
+                                                                            description: 'Não foi possível carregar o arquivo selecionado'
+                                                                        });
+                                                                    };
+
+                                                                    img.src = URL.createObjectURL(file);
+
+                                                                } catch (error) {
+                                                                    secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
+                                                                    secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
+                                                                    toast({
+                                                                        variant: 'destructive',
+                                                                        title: 'Erro no upload',
+                                                                        description: 'Não foi possível processar a imagem: ' + error.message
+                                                                    });
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Upload seguro para Supabase Storage com alta qualidade (até 5MB)</p>
+                                                </div>
+
+                                                {/* Campo de URL alternativo */}
+                                                <div className="mb-3">
+                                                    <input
+                                                        name="image_url"
+                                                        value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : professionalFormData.image_url}
+                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, image_url: e.target.value })}
+                                                        type="url"
+                                                        placeholder="Ou cole o link direto: https://exemplo.com/foto.jpg"
+                                                        className="w-full input text-sm"
+                                                    />
+                                                    <p className="text-xs text-gray-500 mt-1">Alternativa: cole um link direto para a imagem</p>
+                                                </div>
+
+                                                {/* Preview da imagem */}
+                                                {professionalFormData.image_url && (
+                                                    <div className="flex items-center gap-3 mt-3">
+                                                        <img
+                                                            src={professionalFormData.image_url}
+                                                            alt="Preview"
+                                                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+                                                            onError={(e) => {
+                                                                e.target.style.display = 'none';
+                                                            }}
+                                                        />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-700">Preview da foto</p>
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setProfessionalFormData({ ...professionalFormData, image_url: '' })}
+                                                                className="mt-1 text-xs"
+                                                            >
+                                                                Remover foto
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
+
                                             <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Confirmar nova senha</label>
-                                                <input
-                                                    type="password"
-                                                    value={passwordFormData.confirmPassword}
-                                                    onChange={(e) => setPasswordFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                                    placeholder="Repita a nova senha"
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Mini-currículo</label>
+                                                <textarea
+                                                    name="mini_curriculum"
+                                                    value={professionalFormData.mini_curriculum}
+                                                    onChange={e => setProfessionalFormData({ ...professionalFormData, mini_curriculum: e.target.value })}
+                                                    placeholder="Formação, experiências, especializações..."
                                                     className="w-full input"
-                                                    required
-                                                />
+                                                    rows="5"
+                                                ></textarea>
                                             </div>
-                                        </div>
-                                        <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingPassword}>
-                                            {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                            Atualizar senha
-                                        </Button>
-                                    </form>
+
+                                            <div className="flex gap-2">
+                                                <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingProfessionalProfile}>
+                                                    {isSavingProfessionalProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                    {userRole === 'admin'
+                                                        ? (isEditingProfessional ? 'Salvar' : 'Criar')
+                                                        : 'Salvar Alterações'
+                                                    }
+                                                </Button>
+                                                {userRole === 'admin' && isEditingProfessional && (
+                                                    <Button type="button" variant="outline" onClick={resetProfessionalForm}>
+                                                        Cancelar
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
-                            )}
-                        </TabsContent>
+
+                                {userRole !== 'admin' && (
+                                    <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
+                                        <h3 className="text-xl font-semibold mb-2">Alterar senha de acesso</h3>
+                                        <p className="text-sm text-gray-600 mb-4">
+                                            Defina uma nova senha segura para acessar o painel profissional.
+                                        </p>
+                                        <form onSubmit={handleProfessionalPasswordChange} className="space-y-4 text-sm max-w-xl">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Nova senha</label>
+                                                    <input
+                                                        type="password"
+                                                        value={passwordFormData.newPassword}
+                                                        onChange={(e) => setPasswordFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                                        placeholder="Mínimo de 6 caracteres"
+                                                        className="w-full input"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Confirmar nova senha</label>
+                                                    <input
+                                                        type="password"
+                                                        value={passwordFormData.confirmPassword}
+                                                        onChange={(e) => setPasswordFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                                        placeholder="Repita a nova senha"
+                                                        className="w-full input"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingPassword}>
+                                                {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                Atualizar senha
+                                            </Button>
+                                        </form>
+                                    </div>
+                                )}
+                            </TabsContent>
                         )}
 
                         <TabsContent value="availability" className="mt-6">
@@ -3922,11 +4120,11 @@ const AdminPage = () => {
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-2xl font-bold mb-6 flex items-center"><Clock className="w-6 h-6 mr-2 text-[#2d8659]" /> Horários Semanais</h2>
                                     {userRole === 'admin' && (
-                                    <select value={selectedAvailProfessional} onChange={(e) => setSelectedAvailProfessional(e.target.value)} className="w-full input mb-6">
-                                        {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
+                                        <select value={selectedAvailProfessional} onChange={(e) => setSelectedAvailProfessional(e.target.value)} className="w-full input mb-6">
+                                            {professionals.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
                                     )}
-                                    
+
                                     {/* Seletores de Mês e Ano */}
                                     <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                                         <h4 className="font-semibold text-sm mb-3 text-blue-800 flex items-center">
@@ -3935,8 +4133,8 @@ const AdminPage = () => {
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-xs font-medium mb-1 text-gray-600">Mês</label>
-                                                <select 
-                                                    value={selectedMonth} 
+                                                <select
+                                                    value={selectedMonth}
                                                     onChange={(e) => {
                                                         setSelectedMonth(parseInt(e.target.value));
                                                     }}
@@ -3958,14 +4156,14 @@ const AdminPage = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium mb-1 text-gray-600">Ano</label>
-                                                <select 
-                                                    value={selectedYear} 
+                                                <select
+                                                    value={selectedYear}
                                                     onChange={(e) => {
                                                         setSelectedYear(parseInt(e.target.value));
                                                     }}
                                                     className="w-full input text-sm"
                                                 >
-                                                    {Array.from({length: 3}, (_, i) => {
+                                                    {Array.from({ length: 3 }, (_, i) => {
                                                         const year = new Date().getFullYear() + i;
                                                         return <option key={year} value={year}>{year}</option>
                                                     })}
@@ -3976,19 +4174,19 @@ const AdminPage = () => {
                                             Gerenciando: {['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][selectedMonth]} de {selectedYear}
                                         </p>
                                     </div>
-                                    
+
                                     {/* Seção de Horários Comuns no topo */}
                                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
                                         <h4 className="font-medium text-sm mb-3 text-blue-800 flex items-center">
                                             <Clock className="w-4 h-4 mr-2" />
                                             Horários Comuns (clique para adicionar ao dia selecionado)
                                         </h4>
-                                        
+
                                         {/* Seletor do dia para adicionar horários */}
                                         <div className="mb-3">
                                             <label className="block text-xs font-medium mb-2 text-blue-700">Adicionar horários em:</label>
-                                            <select 
-                                                value={focusedDay} 
+                                            <select
+                                                value={focusedDay}
                                                 onChange={(e) => setFocusedDay(e.target.value)}
                                                 className="input text-sm w-full max-w-xs"
                                             >
@@ -4001,13 +4199,13 @@ const AdminPage = () => {
                                                 <option value="sunday">Domingo</option>
                                             </select>
                                         </div>
-                                        
+
                                         {/* Botões de horários comuns */}
                                         <div className="flex flex-wrap gap-2">
-                                            {['06:00','06:30','07:00','07:30','08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map(time => {
+                                            {['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'].map(time => {
                                                 const currentTimes = professionalAvailability[focusedDay] || [];
                                                 const isAlreadyAdded = currentTimes.includes(time);
-                                                
+
                                                 return (
                                                     <button
                                                         key={time}
@@ -4022,11 +4220,10 @@ const AdminPage = () => {
                                                             }
                                                         }}
                                                         disabled={isAlreadyAdded}
-                                                        className={`px-3 py-1 text-xs border rounded transition-colors ${
-                                                            isAlreadyAdded 
-                                                                ? 'bg-green-100 text-green-700 border-green-300 cursor-not-allowed' 
-                                                                : 'hover:bg-blue-100 border-blue-300 text-blue-700'
-                                                        }`}
+                                                        className={`px-3 py-1 text-xs border rounded transition-colors ${isAlreadyAdded
+                                                            ? 'bg-green-100 text-green-700 border-green-300 cursor-not-allowed'
+                                                            : 'hover:bg-blue-100 border-blue-300 text-blue-700'
+                                                            }`}
                                                         title={isAlreadyAdded ? 'Horário já adicionado' : `Adicionar ${time} na ${focusedDay === 'monday' ? 'Segunda' : focusedDay === 'tuesday' ? 'Terça' : focusedDay === 'wednesday' ? 'Quarta' : focusedDay === 'thursday' ? 'Quinta' : focusedDay === 'friday' ? 'Sexta' : focusedDay === 'saturday' ? 'Sábado' : 'Domingo'}`}
                                                     >
                                                         {time} {isAlreadyAdded && '✓'}
@@ -4039,96 +4236,93 @@ const AdminPage = () => {
                                         </p>
                                     </div>
                                     <div className="space-y-4">
-                                    {Object.keys(professionalAvailability).map(day => {
-                                        const dayName = day
-                                            .replace('monday', 'Segunda-feira')
-                                            .replace('tuesday', 'Terça-feira')
-                                            .replace('wednesday', 'Quarta-feira')
-                                            .replace('thursday', 'Quinta-feira')
-                                            .replace('friday', 'Sexta-feira')
-                                            .replace('saturday', 'Sábado')
-                                            .replace('sunday', 'Domingo');
-                                            
-                                        const currentTimes = professionalAvailability[day] || [];
-                                        
-                                        return (
-                                            <div key={day} className={`border rounded-lg p-3 transition-colors ${
-                                                focusedDay === day ? 'border-blue-500 bg-blue-50' : ''
-                                            }`}>
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <h3 className={`font-bold text-sm ${
-                                                        focusedDay === day ? 'text-blue-800' : ''
+                                        {Object.keys(professionalAvailability).map(day => {
+                                            const dayName = day
+                                                .replace('monday', 'Segunda-feira')
+                                                .replace('tuesday', 'Terça-feira')
+                                                .replace('wednesday', 'Quarta-feira')
+                                                .replace('thursday', 'Quinta-feira')
+                                                .replace('friday', 'Sexta-feira')
+                                                .replace('saturday', 'Sábado')
+                                                .replace('sunday', 'Domingo');
+
+                                            const currentTimes = professionalAvailability[day] || [];
+
+                                            return (
+                                                <div key={day} className={`border rounded-lg p-3 transition-colors ${focusedDay === day ? 'border-blue-500 bg-blue-50' : ''
                                                     }`}>
-                                                        {dayName} {focusedDay === day && '⭐'}
-                                                    </h3>
-                                                    <span className="text-xs text-gray-500">
-                                                        {currentTimes.length > 0 ? `${currentTimes.length} horário(s)` : 'Sem horários'}
-                                                    </span>
-                                                </div>
-                                                <input 
-                                                    type="text" 
-                                                    value={currentTimes.join(', ') || ''} 
-                                                    onFocus={() => setFocusedDay(day)}
-                                                    onChange={(e) => {
-                                                        const inputValue = e.target.value;
-                                                        const times = inputValue.split(',').map(t => t.trim()).filter(t => t);
-                                                        
-                                                        // Validar formato de horário (HH:MM) em tempo real
-                                                        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
-                                                        const processedTimes = times.map(time => {
-                                                            if (time && !timeRegex.test(time)) {
-                                                                // Tentar formatar automaticamente
-                                                                const numericOnly = time.replace(/[^0-9]/g, '');
-                                                                if (numericOnly.length === 3) {
-                                                                    return numericOnly.charAt(0) + ':' + numericOnly.slice(1, 3);
-                                                                } else if (numericOnly.length === 4) {
-                                                                    return numericOnly.slice(0, 2) + ':' + numericOnly.slice(2, 4);
-                                                                }
-                                                            }
-                                                            return time;
-                                                        });
-                                                        
-                                                        // Remover duplicatas e ordenar
-                                                        const uniqueTimes = [...new Set(processedTimes)]
-                                                            .filter(time => time)
-                                                            .sort();
-                                                        
-                                                        setProfessionalAvailability({
-                                                            ...professionalAvailability, 
-                                                            [day]: uniqueTimes
-                                                        });
-                                                    }} 
-                                                    placeholder="Ex: 09:00, 10:00, 14:00, 15:30" 
-                                                    className={`w-full input text-sm transition-colors ${
-                                                        focusedDay === day ? 'ring-2 ring-blue-500 border-blue-500' : ''
-                                                    }`}
-                                                    title="Digite os horários separados por vírgula no formato HH:MM"
-                                                />
-                                                {currentTimes.length > 0 && (
-                                                    <div className="mt-2 flex flex-wrap gap-1">
-                                                        {currentTimes.map((time, index) => (
-                                                            <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
-                                                                {time}
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const newTimes = currentTimes.filter((_, i) => i !== index);
-                                                                        setProfessionalAvailability({
-                                                                            ...professionalAvailability,
-                                                                            [day]: newTimes
-                                                                        });
-                                                                    }}
-                                                                    className="ml-1 text-green-600 hover:text-green-800"
-                                                                >
-                                                                    ×
-                                                                </button>
-                                                            </span>
-                                                        ))}
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <h3 className={`font-bold text-sm ${focusedDay === day ? 'text-blue-800' : ''
+                                                            }`}>
+                                                            {dayName} {focusedDay === day && '⭐'}
+                                                        </h3>
+                                                        <span className="text-xs text-gray-500">
+                                                            {currentTimes.length > 0 ? `${currentTimes.length} horário(s)` : 'Sem horários'}
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                                    <input
+                                                        type="text"
+                                                        value={currentTimes.join(', ') || ''}
+                                                        onFocus={() => setFocusedDay(day)}
+                                                        onChange={(e) => {
+                                                            const inputValue = e.target.value;
+                                                            const times = inputValue.split(',').map(t => t.trim()).filter(t => t);
+
+                                                            // Validar formato de horário (HH:MM) em tempo real
+                                                            const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+                                                            const processedTimes = times.map(time => {
+                                                                if (time && !timeRegex.test(time)) {
+                                                                    // Tentar formatar automaticamente
+                                                                    const numericOnly = time.replace(/[^0-9]/g, '');
+                                                                    if (numericOnly.length === 3) {
+                                                                        return numericOnly.charAt(0) + ':' + numericOnly.slice(1, 3);
+                                                                    } else if (numericOnly.length === 4) {
+                                                                        return numericOnly.slice(0, 2) + ':' + numericOnly.slice(2, 4);
+                                                                    }
+                                                                }
+                                                                return time;
+                                                            });
+
+                                                            // Remover duplicatas e ordenar
+                                                            const uniqueTimes = [...new Set(processedTimes)]
+                                                                .filter(time => time)
+                                                                .sort();
+
+                                                            setProfessionalAvailability({
+                                                                ...professionalAvailability,
+                                                                [day]: uniqueTimes
+                                                            });
+                                                        }}
+                                                        placeholder="Ex: 09:00, 10:00, 14:00, 15:30"
+                                                        className={`w-full input text-sm transition-colors ${focusedDay === day ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                                                            }`}
+                                                        title="Digite os horários separados por vírgula no formato HH:MM"
+                                                    />
+                                                    {currentTimes.length > 0 && (
+                                                        <div className="mt-2 flex flex-wrap gap-1">
+                                                            {currentTimes.map((time, index) => (
+                                                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                                                    {time}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const newTimes = currentTimes.filter((_, i) => i !== index);
+                                                                            setProfessionalAvailability({
+                                                                                ...professionalAvailability,
+                                                                                [day]: newTimes
+                                                                            });
+                                                                        }}
+                                                                        className="ml-1 text-green-600 hover:text-green-800"
+                                                                    >
+                                                                        ×
+                                                                    </button>
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                     <LoadingButton
                                         isLoading={isLoading('saveAvailability')}
@@ -4145,7 +4339,7 @@ const AdminPage = () => {
                                         {professionalBlockedDates.map(d => (
                                             <div key={d.id} className="border rounded-lg p-3 flex justify-between items-center text-sm">
                                                 <div>
-                                                    <p className="font-semibold">{new Date(d.blocked_date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})} {d.start_time && d.end_time ? `das ${d.start_time} às ${d.end_time}` : '(Dia todo)'}</p>
+                                                    <p className="font-semibold">{new Date(d.blocked_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} {d.start_time && d.end_time ? `das ${d.start_time} às ${d.end_time}` : '(Dia todo)'}</p>
                                                     <p className="text-gray-500">{d.reason}</p>
                                                 </div>
                                                 <Button size="icon" variant="ghost" onClick={() => handleDeleteBlockedDate(d.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
@@ -4154,12 +4348,12 @@ const AdminPage = () => {
                                     </div>
                                     <div className="space-y-3 border-t pt-6">
                                         <h3 className="font-bold">Adicionar Bloqueio</h3>
-                                        <input type="date" value={newBlockedDate.date} onChange={e => setNewBlockedDate({...newBlockedDate, date: e.target.value})} className="w-full input" />
+                                        <input type="date" value={newBlockedDate.date} onChange={e => setNewBlockedDate({ ...newBlockedDate, date: e.target.value })} className="w-full input" />
                                         <div className="grid grid-cols-2 gap-2">
-                                            <input type="time" value={newBlockedDate.start_time} onChange={e => setNewBlockedDate({...newBlockedDate, start_time: e.target.value})} className="w-full input" />
-                                            <input type="time" value={newBlockedDate.end_time} onChange={e => setNewBlockedDate({...newBlockedDate, end_time: e.target.value})} className="w-full input" />
+                                            <input type="time" value={newBlockedDate.start_time} onChange={e => setNewBlockedDate({ ...newBlockedDate, start_time: e.target.value })} className="w-full input" />
+                                            <input type="time" value={newBlockedDate.end_time} onChange={e => setNewBlockedDate({ ...newBlockedDate, end_time: e.target.value })} className="w-full input" />
                                         </div>
-                                        <input type="text" value={newBlockedDate.reason} onChange={e => setNewBlockedDate({...newBlockedDate, reason: e.target.value})} placeholder="Motivo (ex: Feriado)" className="w-full input" />
+                                        <input type="text" value={newBlockedDate.reason} onChange={e => setNewBlockedDate({ ...newBlockedDate, reason: e.target.value })} placeholder="Motivo (ex: Feriado)" className="w-full input" />
                                         <Button onClick={handleAddBlockedDate} className="w-full bg-[#2d8659] hover:bg-[#236b47]">Bloquear Período</Button>
                                     </div>
                                 </div>
@@ -4167,85 +4361,329 @@ const AdminPage = () => {
                         </TabsContent>
 
                         {userRole === 'admin' && (
-                        <TabsContent value="services" className="mt-6">
-                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6 flex items-center"><Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços</h2>
-                                    <div className="space-y-4">
-                                        {services.map((service, index) => {
-                                            // Contar quantos profissionais têm este serviço
-                                            const professionalsCount = professionals.filter(prof => 
-                                                prof.services_ids && prof.services_ids.includes(service.id)
-                                            ).length;
-                                            
-                                            return (
-                                                <div key={service.id} className={`border rounded-lg p-5 hover:shadow-md transition-all ${
-                                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                } hover:bg-blue-50`}>
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-2">
-                                                                <h3 className="font-bold text-lg text-gray-900">{service.name}</h3>
-                                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                    {professionalsCount} {professionalsCount === 1 ? 'profissional' : 'profissionais'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Valor cobrado (paciente)</span>
-                                                                    <span className="font-bold text-green-600">
-                                                                        R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            <TabsContent value="services" className="mt-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6 flex items-center"><Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços</h2>
+                                        <div className="space-y-4">
+                                            {services.map((service, index) => {
+                                                // Contar quantos profissionais têm este serviço
+                                                const professionalsCount = professionals.filter(prof =>
+                                                    prof.services_ids && prof.services_ids.includes(service.id)
+                                                ).length;
+
+                                                return (
+                                                    <div key={service.id} className={`border rounded-lg p-5 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                        } hover:bg-blue-50`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <h3 className="font-bold text-lg text-gray-900">{service.name}</h3>
+                                                                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                        {professionalsCount} {professionalsCount === 1 ? 'profissional' : 'profissionais'}
                                                                     </span>
                                                                 </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Repasse ao profissional</span>
-                                                                    <span className="font-semibold text-blue-600">
-                                                                        R$ {parseFloat(service.professional_payout ?? service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                    </span>
-                                                                    <span className="text-xs text-gray-500 block mt-1">
-                                                                        {(() => {
-                                                                            const patientAmount = parseCurrencyToNumber(service.price) ?? 0;
-                                                                            const payoutAmount = parseCurrencyToNumber(
-                                                                                service.professional_payout === undefined || service.professional_payout === null
-                                                                                    ? service.price
-                                                                                    : service.professional_payout
-                                                                            ) ?? 0;
-                                                                            const fee = Math.max(patientAmount - payoutAmount, 0);
-                                                                            return `Taxa plataforma: R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                                        })()}
-                                                                    </span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Duração</span>
-                                                                    <span className="font-medium">
-                                                                        {service.duration_minutes >= 60
-                                                                            ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}`
-                                                                            : `${service.duration_minutes}min`
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            {professionalsCount > 0 && (
-                                                                <div className="mt-3">
-                                                                    <span className="text-xs text-gray-500 block mb-1">Profissionais que atendem:</span>
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {professionals
-                                                                            .filter(prof => prof.services_ids && prof.services_ids.includes(service.id))
-                                                                            .map(prof => (
-                                                                                <span key={prof.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                                                                    {prof.name}
-                                                                                </span>
-                                                                            ))
-                                                                        }
+                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Valor cobrado (paciente)</span>
+                                                                        <span className="font-bold text-green-600">
+                                                                            R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Repasse ao profissional</span>
+                                                                        <span className="font-semibold text-blue-600">
+                                                                            R$ {parseFloat(service.professional_payout ?? service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                        </span>
+                                                                        <span className="text-xs text-gray-500 block mt-1">
+                                                                            {(() => {
+                                                                                const patientAmount = parseCurrencyToNumber(service.price) ?? 0;
+                                                                                const payoutAmount = parseCurrencyToNumber(
+                                                                                    service.professional_payout === undefined || service.professional_payout === null
+                                                                                        ? service.price
+                                                                                        : service.professional_payout
+                                                                                ) ?? 0;
+                                                                                const fee = Math.max(patientAmount - payoutAmount, 0);
+                                                                                return `Taxa plataforma: R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                            })()}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Duração</span>
+                                                                        <span className="font-medium">
+                                                                            {service.duration_minutes >= 60
+                                                                                ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}`
+                                                                                : `${service.duration_minutes}min`
+                                                                            }
+                                                                        </span>
                                                                     </div>
                                                                 </div>
+                                                                {professionalsCount > 0 && (
+                                                                    <div className="mt-3">
+                                                                        <span className="text-xs text-gray-500 block mb-1">Profissionais que atendem:</span>
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {professionals
+                                                                                .filter(prof => prof.services_ids && prof.services_ids.includes(service.id))
+                                                                                .map(prof => (
+                                                                                    <span key={prof.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                                                                        {prof.name}
+                                                                                    </span>
+                                                                                ))
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex gap-2 ml-4">
+                                                                <Button size="icon" variant="ghost" onClick={() => handleEditService(service)} title="Editar serviço">
+                                                                    <Edit className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)} className="hover:bg-red-50" title="Excluir serviço">
+                                                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6">{isEditingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
+                                        <form onSubmit={handleServiceSubmit} className="space-y-4 text-sm">
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Serviço</label>
+                                                <input
+                                                    name="name"
+                                                    value={serviceFormData.name}
+                                                    onChange={e => setServiceFormData({ ...serviceFormData, name: e.target.value })}
+                                                    placeholder="Ex: Consulta Psicológica, Terapia de Casal"
+                                                    className="w-full input"
+                                                    required
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Valor cobrado do paciente (R$)</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                                                    <input
+                                                        name="price"
+                                                        value={serviceFormData.price}
+                                                        onChange={e => {
+                                                            const value = sanitizeCurrencyInput(e.target.value);
+                                                            setServiceFormData(prev => ({ ...prev, price: value }));
+                                                        }}
+                                                        type="text"
+                                                        placeholder="150,00"
+                                                        className="w-full input pl-8"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Repasse ao profissional (R$)</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                                                    <input
+                                                        name="professional_payout"
+                                                        value={serviceFormData.professional_payout}
+                                                        onChange={e => {
+                                                            const value = sanitizeCurrencyInput(e.target.value);
+                                                            setServiceFormData(prev => ({ ...prev, professional_payout: value }));
+                                                        }}
+                                                        type="text"
+                                                        placeholder="150,00"
+                                                        className="w-full input pl-8"
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Caso deixe em branco, será usado o mesmo valor cobrado do paciente.
+                                                </p>
+                                            </div>
+
+                                            <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
+                                                <p className="flex justify-between">
+                                                    <span>Paciente paga</span>
+                                                    <span className="font-semibold text-gray-900">R$ {servicePricingPreview.patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                </p>
+                                                <p className="flex justify-between mt-1">
+                                                    <span>Profissional recebe</span>
+                                                    <span className="font-semibold text-blue-700">R$ {servicePricingPreview.professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                </p>
+                                                <p className="flex justify-between mt-1">
+                                                    <span>Taxa estimada da plataforma</span>
+                                                    <span className="font-semibold text-emerald-700">R$ {servicePricingPreview.platformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                </p>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-medium mb-1 text-gray-600">Duração</label>
+                                                <div className="relative">
+                                                    <input
+                                                        name="duration_minutes"
+                                                        value={serviceFormData.duration_minutes}
+                                                        onChange={e => {
+                                                            const value = e.target.value.replace(/[^0-9]/g, '');
+                                                            setServiceFormData(prev => ({ ...prev, duration_minutes: value }));
+                                                        }}
+                                                        type="text"
+                                                        placeholder="50"
+                                                        className="w-full input pr-12"
+                                                        required
+                                                    />
+                                                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">min</span>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">Duração em minutos (ex: 50 para 50min, 90 para 1h30min)</p>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                                    {isEditingService ? 'Salvar' : 'Criar'}
+                                                </Button>
+                                                {isEditingService && (
+                                                    <Button type="button" variant="outline" onClick={resetServiceForm}>
+                                                        Cancelar
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        )}
+
+                        {userRole === 'admin' && (
+                            <TabsContent value="events" className="mt-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                    <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
+                                        {events.map((event, index) => {
+                                            const dataInicio = new Date(event.data_inicio);
+                                            const dataFim = new Date(event.data_fim);
+                                            const dataExpiracao = new Date(event.data_limite_inscricao);
+                                            const isExpired = dataExpiracao < new Date();
+                                            const inscricoes = event.inscricoes_eventos?.[0]?.count || 0;
+
+                                            return (
+                                                <div key={event.id} className={`border rounded-lg p-6 mb-4 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                    } hover:bg-blue-50`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-3 mb-3">
+                                                                <h3 className="font-bold text-lg text-gray-900">{event.titulo}</h3>
+                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                                                    }`}>
+                                                                    {isExpired ? 'Expirado' : 'Aberto'}
+                                                                </span>
+                                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                    {event.tipo_evento}
+                                                                </span>
+
+                                                                {/* Novo badge: Status Ativo/Inativo */}
+                                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${event.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                                                                    }`}>
+                                                                    {event.ativo ? '✅ Ativo' : '⏸️ Inativo'}
+                                                                </span>
+
+                                                                {/* Novo badge: Status de Exibição */}
+                                                                {event.data_inicio_exibicao && event.data_fim_exibicao && (
+                                                                    (() => {
+                                                                        const agora = new Date();
+                                                                        const inicioExibicao = new Date(event.data_inicio_exibicao);
+                                                                        const fimExibicao = new Date(event.data_fim_exibicao);
+
+                                                                        let statusExibicao = '';
+                                                                        let corExibicao = '';
+
+                                                                        if (agora < inicioExibicao) {
+                                                                            statusExibicao = '🕒 Aguardando';
+                                                                            corExibicao = 'bg-yellow-100 text-yellow-800';
+                                                                        } else if (agora >= inicioExibicao && agora <= fimExibicao) {
+                                                                            statusExibicao = '👁️ Exibindo';
+                                                                            corExibicao = 'bg-purple-100 text-purple-800';
+                                                                        } else {
+                                                                            statusExibicao = '🚫 Oculto';
+                                                                            corExibicao = 'bg-gray-100 text-gray-600';
+                                                                        }
+
+                                                                        return (
+                                                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${corExibicao}`}>
+                                                                                {statusExibicao}
+                                                                            </span>
+                                                                        );
+                                                                    })()
+                                                                )}
+                                                            </div>
+
+                                                            {event.descricao && (
+                                                                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                                                    {event.descricao.length > 120
+                                                                        ? `${event.descricao.substring(0, 120)}...`
+                                                                        : event.descricao
+                                                                    }
+                                                                </p>
                                                             )}
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Início</span>
+                                                                    <span className="font-medium">
+                                                                        {dataInicio.toLocaleDateString('pt-BR')} às {dataInicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Fim</span>
+                                                                    <span className="font-medium">
+                                                                        {dataFim.toLocaleDateString('pt-BR')} às {dataFim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-500 block">Inscrições até</span>
+                                                                    <span className={`font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
+                                                                        {dataExpiracao.toLocaleDateString('pt-BR')} às {dataExpiracao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Novas informações de exibição */}
+                                                                {event.data_inicio_exibicao && (
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Exibe de</span>
+                                                                        <span className="font-medium text-blue-600">
+                                                                            {new Date(event.data_inicio_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_inicio_exibicao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                {event.data_fim_exibicao && (
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Exibe até</span>
+                                                                        <span className="font-medium text-blue-600">
+                                                                            {new Date(event.data_fim_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_fim_exibicao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                                                <div className="flex items-center gap-4">
+                                                                    <span className="flex items-center text-sm text-gray-600">
+                                                                        <Users className="w-4 h-4 mr-1" />
+                                                                        {inscricoes} / {event.limite_participantes} inscritos
+                                                                    </span>
+                                                                    {event.link_slug && (
+                                                                        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                                            Link: {event.link_slug}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
                                                         <div className="flex gap-2 ml-4">
-                                                            <Button size="icon" variant="ghost" onClick={() => handleEditService(service)} title="Editar serviço">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleEditEvent(event)} title="Editar evento">
                                                                 <Edit className="w-4 h-4" />
                                                             </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)} className="hover:bg-red-50" title="Excluir serviço">
+                                                            <Button size="icon" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="hover:bg-red-50" title="Excluir evento">
                                                                 <Trash2 className="w-4 h-4 text-red-500" />
                                                             </Button>
                                                         </div>
@@ -4254,792 +4692,544 @@ const AdminPage = () => {
                                             );
                                         })}
                                     </div>
-                                </div>
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6">{isEditingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
-                                    <form onSubmit={handleServiceSubmit} className="space-y-4 text-sm">
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Serviço</label>
-                                            <input 
-                                                name="name" 
-                                                value={serviceFormData.name} 
-                                                onChange={e => setServiceFormData({...serviceFormData, name: e.target.value})} 
-                                                placeholder="Ex: Consulta Psicológica, Terapia de Casal" 
-                                                className="w-full input" 
-                                                required 
-                                            />
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Valor cobrado do paciente (R$)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
-                                                <input 
-                                                    name="price" 
-                                                    value={serviceFormData.price} 
-                                                    onChange={e => {
-                                                        const value = sanitizeCurrencyInput(e.target.value);
-                                                        setServiceFormData(prev => ({ ...prev, price: value }));
-                                                    }} 
-                                                    type="text" 
-                                                    placeholder="150,00" 
-                                                    className="w-full input pl-8" 
-                                                    required 
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Repasse ao profissional (R$)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
-                                                <input 
-                                                    name="professional_payout" 
-                                                    value={serviceFormData.professional_payout} 
-                                                    onChange={e => {
-                                                        const value = sanitizeCurrencyInput(e.target.value);
-                                                        setServiceFormData(prev => ({ ...prev, professional_payout: value }));
-                                                    }} 
-                                                    type="text" 
-                                                    placeholder="150,00" 
-                                                    className="w-full input pl-8" 
-                                                />
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Caso deixe em branco, será usado o mesmo valor cobrado do paciente.
-                                            </p>
-                                        </div>
-
-                                        <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
-                                            <p className="flex justify-between">
-                                                <span>Paciente paga</span>
-                                                <span className="font-semibold text-gray-900">R$ {servicePricingPreview.patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            </p>
-                                            <p className="flex justify-between mt-1">
-                                                <span>Profissional recebe</span>
-                                                <span className="font-semibold text-blue-700">R$ {servicePricingPreview.professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            </p>
-                                            <p className="flex justify-between mt-1">
-                                                <span>Taxa estimada da plataforma</span>
-                                                <span className="font-semibold text-emerald-700">R$ {servicePricingPreview.platformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                            </p>
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-xs font-medium mb-1 text-gray-600">Duração</label>
-                                            <div className="relative">
-                                                <input 
-                                                    name="duration_minutes" 
-                                                    value={serviceFormData.duration_minutes} 
-                                                    onChange={e => {
-                                                        const value = e.target.value.replace(/[^0-9]/g, '');
-                                                        setServiceFormData(prev => ({ ...prev, duration_minutes: value }));
-                                                    }} 
-                                                    type="text" 
-                                                    placeholder="50" 
-                                                    className="w-full input pr-12" 
-                                                    required 
-                                                />
-                                                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">min</span>
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-1">Duração em minutos (ex: 50 para 50min, 90 para 1h30min)</p>
-                                        </div>
-                                        
-                                        <div className="flex gap-2">
-                                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
-                                                {isEditingService ? 'Salvar' : 'Criar'}
-                                            </Button>
-                                            {isEditingService && (
-                                                <Button type="button" variant="outline" onClick={resetServiceForm}>
-                                                    Cancelar
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </TabsContent>
-                        )}
-                        
-                        {userRole === 'admin' && (
-                        <TabsContent value="events" className="mt-6">
-                           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
-                                    {events.map((event, index) => {
-                                        const dataInicio = new Date(event.data_inicio);
-                                        const dataFim = new Date(event.data_fim);
-                                        const dataExpiracao = new Date(event.data_limite_inscricao);
-                                        const isExpired = dataExpiracao < new Date();
-                                        const inscricoes = event.inscricoes_eventos?.[0]?.count || 0;
-                                        
-                                        return (
-                                            <div key={event.id} className={`border rounded-lg p-6 mb-4 hover:shadow-md transition-all ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                            } hover:bg-blue-50`}>
-                                                <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-3 mb-3">
-                                                            <h3 className="font-bold text-lg text-gray-900">{event.titulo}</h3>
-                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                                isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                                                            }`}>
-                                                                {isExpired ? 'Expirado' : 'Aberto'}
-                                                            </span>
-                                                            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                {event.tipo_evento}
-                                                            </span>
-                                                            
-                                                            {/* Novo badge: Status Ativo/Inativo */}
-                                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                                                event.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                                                            }`}>
-                                                                {event.ativo ? '✅ Ativo' : '⏸️ Inativo'}
-                                                            </span>
-                                                            
-                                                            {/* Novo badge: Status de Exibição */}
-                                                            {event.data_inicio_exibicao && event.data_fim_exibicao && (
-                                                                (() => {
-                                                                    const agora = new Date();
-                                                                    const inicioExibicao = new Date(event.data_inicio_exibicao);
-                                                                    const fimExibicao = new Date(event.data_fim_exibicao);
-                                                                    
-                                                                    let statusExibicao = '';
-                                                                    let corExibicao = '';
-                                                                    
-                                                                    if (agora < inicioExibicao) {
-                                                                        statusExibicao = '🕒 Aguardando';
-                                                                        corExibicao = 'bg-yellow-100 text-yellow-800';
-                                                                    } else if (agora >= inicioExibicao && agora <= fimExibicao) {
-                                                                        statusExibicao = '👁️ Exibindo';
-                                                                        corExibicao = 'bg-purple-100 text-purple-800';
-                                                                    } else {
-                                                                        statusExibicao = '🚫 Oculto';
-                                                                        corExibicao = 'bg-gray-100 text-gray-600';
-                                                                    }
-                                                                    
-                                                                    return (
-                                                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${corExibicao}`}>
-                                                                            {statusExibicao}
-                                                                        </span>
-                                                                    );
-                                                                })()
-                                                            )}
-                                                        </div>
-                                                        
-                                                        {event.descricao && (
-                                                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                                                {event.descricao.length > 120 
-                                                                    ? `${event.descricao.substring(0, 120)}...` 
-                                                                    : event.descricao
-                                                                }
-                                                            </p>
-                                                        )}
-                                                        
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                                                            <div>
-                                                                <span className="text-gray-500 block">Início</span>
-                                                                <span className="font-medium">
-                                                                    {dataInicio.toLocaleDateString('pt-BR')} às {dataInicio.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                                                                </span>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-500 block">Fim</span>
-                                                                <span className="font-medium">
-                                                                    {dataFim.toLocaleDateString('pt-BR')} às {dataFim.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                                                                </span>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-gray-500 block">Inscrições até</span>
-                                                                <span className={`font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
-                                                                    {dataExpiracao.toLocaleDateString('pt-BR')} às {dataExpiracao.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                                                                </span>
-                                                            </div>
-                                                            
-                                                            {/* Novas informações de exibição */}
-                                                            {event.data_inicio_exibicao && (
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Exibe de</span>
-                                                                    <span className="font-medium text-blue-600">
-                                                                        {new Date(event.data_inicio_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_inicio_exibicao).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                            {event.data_fim_exibicao && (
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Exibe até</span>
-                                                                    <span className="font-medium text-blue-600">
-                                                                        {new Date(event.data_fim_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_fim_exibicao).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        
-                                                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
-                                                            <div className="flex items-center gap-4">
-                                                                <span className="flex items-center text-sm text-gray-600">
-                                                                    <Users className="w-4 h-4 mr-1"/>
-                                                                    {inscricoes} / {event.limite_participantes} inscritos
-                                                                </span>
-                                                                {event.link_slug && (
-                                                                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                                                        Link: {event.link_slug}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex gap-2 ml-4">
-                                                        <Button size="icon" variant="ghost" onClick={() => handleEditEvent(event)} title="Editar evento">
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button size="icon" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="hover:bg-red-50" title="Excluir evento">
-                                                            <Trash2 className="w-4 h-4 text-red-500" />
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
-                                    <form onSubmit={handleEventSubmit} className="space-y-6 text-sm">
-                                        <section className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
-                                            <div>
-                                                <h3 className="text-base font-semibold text-gray-800">Informações principais</h3>
-                                                <p className="text-xs text-gray-500">Título, descrição e quem conduz o evento.</p>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <input 
-                                                    name="titulo" 
-                                                    value={eventFormData.titulo || ''} 
-                                                    onChange={e => {
-                                                        const value = e.target.value;
-                                                        setEventFormData(prev => {
-                                                            const next = { ...prev, titulo: value };
-                                                            if (!slugManuallyEdited) {
-                                                                next.link_slug = slugifyTitle(value);
-                                                            }
-                                                            return next;
-                                                        });
-                                                        clearEventError('titulo');
-                                                    }} 
-                                                    placeholder="Título do Evento" 
-                                                    className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                    aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
-                                                    required 
-                                                />
-                                                {eventFormErrors.titulo && (
-                                                    <p className="text-xs text-red-500">{eventFormErrors.titulo}</p>
-                                                )}
-                                                <textarea
-                                                    name="descricao"
-                                                    value={eventFormData.descricao || ''}
-                                                    onChange={e => setEventFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                                                    placeholder="Descrição do conteúdo, público e diferenciais"
-                                                    className="w-full input"
-                                                    rows="3"
-                                                />
-                                                <div className="grid gap-3 md:grid-cols-2">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Formato</label>
-                                                        <select
-                                                            name="tipo_evento"
-                                                            value={eventFormData.tipo_evento || 'Workshop'}
-                                                            onChange={e => setEventFormData(prev => ({ ...prev, tipo_evento: e.target.value }))}
-                                                            className="w-full input"
-                                                        >
-                                                            <option value="Workshop">Workshop</option>
-                                                            <option value="Palestra">Palestra</option>
-                                                            <option value="Masterclass">Masterclass</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Profissional responsável</label>
-                                                        <select 
-                                                            name="professional_id" 
-                                                            value={eventFormData.professional_id || ''} 
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, professional_id: e.target.value }));
-                                                                clearEventError('professional_id');
-                                                            }} 
-                                                            className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                            aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
-                                                            required
-                                                        >
-                                                            <option value="">Selecione o profissional</option>
-                                                            {professionals.map(p => (
-                                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                                            ))}
-                                                        </select>
-                                                        {eventFormErrors.professional_id && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </section>
-
-                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-5">
-                                            <div className="flex items-start justify-between gap-3">
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
+                                        <form onSubmit={handleEventSubmit} className="space-y-6 text-sm">
+                                            <section className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
                                                 <div>
-                                                    <h3 className="text-base font-semibold text-gray-800">Agenda e inscrições</h3>
-                                                    <p className="text-xs text-gray-500">Defina datas, limite de vagas e valor do evento.</p>
+                                                    <h3 className="text-base font-semibold text-gray-800">Informações principais</h3>
+                                                    <p className="text-xs text-gray-500">Título, descrição e quem conduz o evento.</p>
                                                 </div>
-                                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                                <div className="space-y-3">
                                                     <input
-                                                        type="checkbox"
-                                                        className="h-4 w-4 text-[#2d8659]"
-                                                        checked={isFreeEvent}
-                                                        onChange={(e) => {
-                                                            setIsFreeEvent(e.target.checked);
-                                                            setEventFormData(prev => ({ ...prev, valor: e.target.checked ? 0 : '' }));
-                                                            clearEventError('valor');
+                                                        name="titulo"
+                                                        value={eventFormData.titulo || ''}
+                                                        onChange={e => {
+                                                            const value = e.target.value;
+                                                            setEventFormData(prev => {
+                                                                const next = { ...prev, titulo: value };
+                                                                if (!slugManuallyEdited) {
+                                                                    next.link_slug = slugifyTitle(value);
+                                                                }
+                                                                return next;
+                                                            });
+                                                            clearEventError('titulo');
                                                         }}
-                                                    />
-                                                    Evento gratuito
-                                                </label>
-                                            </div>
-                                            <div className="grid gap-4 md:grid-cols-2">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
-                                                    <input 
-                                                        type="datetime-local" 
-                                                        name="data_inicio" 
-                                                        value={eventFormData.data_inicio || ''} 
-                                                        onChange={e => {
-                                                            setEventFormData(prev => ({ ...prev, data_inicio: e.target.value }));
-                                                            clearEventError('data_inicio');
-                                                            clearEventError('data_fim');
-                                                        }} 
-                                                        className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                        aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                        placeholder="Título do Evento"
+                                                        className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                        aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
                                                         required
                                                     />
-                                                    {eventFormErrors.data_inicio && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
+                                                    {eventFormErrors.titulo && (
+                                                        <p className="text-xs text-red-500">{eventFormErrors.titulo}</p>
                                                     )}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
-                                                    <input 
-                                                        type="datetime-local" 
-                                                        name="data_fim" 
-                                                        value={eventFormData.data_fim || ''} 
-                                                        onChange={e => {
-                                                            setEventFormData(prev => ({ ...prev, data_fim: e.target.value }));
-                                                            clearEventError('data_fim');
-                                                        }} 
-                                                        className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                        aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
-                                                        required
+                                                    <textarea
+                                                        name="descricao"
+                                                        value={eventFormData.descricao || ''}
+                                                        onChange={e => setEventFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                                                        placeholder="Descrição do conteúdo, público e diferenciais"
+                                                        className="w-full input"
+                                                        rows="3"
                                                     />
-                                                    {eventFormErrors.data_fim && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
-                                                    )}
+                                                    <div className="grid gap-3 md:grid-cols-2">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Formato</label>
+                                                            <select
+                                                                name="tipo_evento"
+                                                                value={eventFormData.tipo_evento || 'Workshop'}
+                                                                onChange={e => setEventFormData(prev => ({ ...prev, tipo_evento: e.target.value }))}
+                                                                className="w-full input"
+                                                            >
+                                                                <option value="Workshop">Workshop</option>
+                                                                <option value="Palestra">Palestra</option>
+                                                                <option value="Masterclass">Masterclass</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Profissional responsável</label>
+                                                            <select
+                                                                name="professional_id"
+                                                                value={eventFormData.professional_id || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, professional_id: e.target.value }));
+                                                                    clearEventError('professional_id');
+                                                                }}
+                                                                className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
+                                                                required
+                                                            >
+                                                                <option value="">Selecione o profissional</option>
+                                                                {professionals.map(p => (
+                                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            {eventFormErrors.professional_id && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="grid gap-4 md:grid-cols-2">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Limite de participantes</label>
-                                                    <input 
-                                                        type="number" 
-                                                        name="limite_participantes" 
-                                                        value={eventFormData.limite_participantes || ''} 
-                                                        onChange={e => {
-                                                            setEventFormData(prev => ({ ...prev, limite_participantes: e.target.value }));
-                                                            clearEventError('limite_participantes');
-                                                        }} 
-                                                        placeholder="Ex: 25" 
-                                                        className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                        aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
-                                                        min="1" 
-                                                        max="500" 
-                                                        required
-                                                    />
-                                                    {eventFormErrors.limite_participantes && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
-                                                    )}
-                                                    <p className="text-[11px] text-gray-500 mt-1">Ajuste conforme a lotação máxima do evento.</p>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Vagas simultâneas na sala</label>
-                                                    <input 
-                                                        type="number" 
-                                                        name="vagas_disponiveis" 
-                                                        value={eventFormData.vagas_disponiveis || 0} 
-                                                        onChange={e => {
-                                                            const parsedValue = parseInt(e.target.value, 10);
-                                                            setEventFormData(prev => ({ ...prev, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue }));
-                                                            clearEventError('vagas_disponiveis');
-                                                        }} 
-                                                        placeholder="0 = ilimitado" 
-                                                        className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                        aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
-                                                        min="0" 
-                                                        max="1000"
-                                                    />
-                                                    {eventFormErrors.vagas_disponiveis && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
-                                                    )}
-                                                    <p className="text-[11px] text-gray-500 mt-1">Use zero para manter o acesso ilimitado.</p>
-                                                </div>
-                                            </div>
-                                            <div className="grid gap-4 md:grid-cols-2">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Valor do evento</label>
-                                                    <div className={`input flex items-center ${isFreeEvent ? 'bg-gray-100 text-gray-400' : ''}`}>
-                                                        <span className="text-xs text-gray-500 mr-2">R$</span>
+                                            </section>
+
+                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-5">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <h3 className="text-base font-semibold text-gray-800">Agenda e inscrições</h3>
+                                                        <p className="text-xs text-gray-500">Defina datas, limite de vagas e valor do evento.</p>
+                                                    </div>
+                                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                                                         <input
-                                                            type="number"
-                                                            name="valor"
-                                                            value={isFreeEvent ? 0 : eventFormData.valor || ''}
-                                                            onChange={e => {
-                                                                const parsedValue = parseFloat(e.target.value);
-                                                                setEventFormData(prev => ({ ...prev, valor: Number.isNaN(parsedValue) ? '' : parsedValue }));
+                                                            type="checkbox"
+                                                            className="h-4 w-4 text-[#2d8659]"
+                                                            checked={isFreeEvent}
+                                                            onChange={(e) => {
+                                                                setIsFreeEvent(e.target.checked);
+                                                                setEventFormData(prev => ({ ...prev, valor: e.target.checked ? 0 : '' }));
                                                                 clearEventError('valor');
                                                             }}
-                                                            placeholder="Ex: 97,00"
-                                                            className="flex-1 bg-transparent outline-none"
-                                                            disabled={isFreeEvent}
-                                                            min="0"
-                                                            step="0.01"
                                                         />
+                                                        Evento gratuito
+                                                    </label>
+                                                </div>
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="data_inicio"
+                                                            value={eventFormData.data_inicio || ''}
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, data_inicio: e.target.value }));
+                                                                clearEventError('data_inicio');
+                                                                clearEventError('data_fim');
+                                                            }}
+                                                            className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                            required
+                                                        />
+                                                        {eventFormErrors.data_inicio && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
+                                                        )}
                                                     </div>
-                                                    {eventFormErrors.valor && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
-                                                    )}
-                                                    <p className="text-[11px] text-gray-500 mt-1">
-                                                        {isFreeEvent ? 'Marque como pago para definir o valor.' : 'Será cobrado no checkout após a inscrição.'}
-                                                    </p>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="data_fim"
+                                                            value={eventFormData.data_fim || ''}
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, data_fim: e.target.value }));
+                                                                clearEventError('data_fim');
+                                                            }}
+                                                            className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
+                                                            required
+                                                        />
+                                                        {eventFormErrors.data_fim && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
-                                                    <input 
-                                                        type="datetime-local" 
-                                                        name="data_limite_inscricao" 
-                                                        value={eventFormData.data_limite_inscricao || ''} 
-                                                        onChange={e => {
-                                                            setEventFormData(prev => ({ ...prev, data_limite_inscricao: e.target.value }));
-                                                            clearEventError('data_limite_inscricao');
-                                                        }} 
-                                                        className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`} 
-                                                        aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
-                                                        required
-                                                    />
-                                                    {eventFormErrors.data_limite_inscricao && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
-                                                    )}
-                                                    <p className="text-[11px] text-gray-500 mt-1">Após essa data o botão “Inscrever” é ocultado.</p>
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Limite de participantes</label>
+                                                        <input
+                                                            type="number"
+                                                            name="limite_participantes"
+                                                            value={eventFormData.limite_participantes || ''}
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, limite_participantes: e.target.value }));
+                                                                clearEventError('limite_participantes');
+                                                            }}
+                                                            placeholder="Ex: 25"
+                                                            className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
+                                                            min="1"
+                                                            max="500"
+                                                            required
+                                                        />
+                                                        {eventFormErrors.limite_participantes && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
+                                                        )}
+                                                        <p className="text-[11px] text-gray-500 mt-1">Ajuste conforme a lotação máxima do evento.</p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Vagas simultâneas na sala</label>
+                                                        <input
+                                                            type="number"
+                                                            name="vagas_disponiveis"
+                                                            value={eventFormData.vagas_disponiveis || 0}
+                                                            onChange={e => {
+                                                                const parsedValue = parseInt(e.target.value, 10);
+                                                                setEventFormData(prev => ({ ...prev, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue }));
+                                                                clearEventError('vagas_disponiveis');
+                                                            }}
+                                                            placeholder="0 = ilimitado"
+                                                            className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
+                                                            min="0"
+                                                            max="1000"
+                                                        />
+                                                        {eventFormErrors.vagas_disponiveis && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
+                                                        )}
+                                                        <p className="text-[11px] text-gray-500 mt-1">Use zero para manter o acesso ilimitado.</p>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </section>
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Valor do evento</label>
+                                                        <div className={`input flex items-center ${isFreeEvent ? 'bg-gray-100 text-gray-400' : ''}`}>
+                                                            <span className="text-xs text-gray-500 mr-2">R$</span>
+                                                            <input
+                                                                type="number"
+                                                                name="valor"
+                                                                value={isFreeEvent ? 0 : eventFormData.valor || ''}
+                                                                onChange={e => {
+                                                                    const parsedValue = parseFloat(e.target.value);
+                                                                    setEventFormData(prev => ({ ...prev, valor: Number.isNaN(parsedValue) ? '' : parsedValue }));
+                                                                    clearEventError('valor');
+                                                                }}
+                                                                placeholder="Ex: 97,00"
+                                                                className="flex-1 bg-transparent outline-none"
+                                                                disabled={isFreeEvent}
+                                                                min="0"
+                                                                step="0.01"
+                                                            />
+                                                        </div>
+                                                        {eventFormErrors.valor && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
+                                                        )}
+                                                        <p className="text-[11px] text-gray-500 mt-1">
+                                                            {isFreeEvent ? 'Marque como pago para definir o valor.' : 'Será cobrado no checkout após a inscrição.'}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="data_limite_inscricao"
+                                                            value={eventFormData.data_limite_inscricao || ''}
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, data_limite_inscricao: e.target.value }));
+                                                                clearEventError('data_limite_inscricao');
+                                                            }}
+                                                            className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
+                                                            required
+                                                        />
+                                                        {eventFormErrors.data_limite_inscricao && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
+                                                        )}
+                                                        <p className="text-[11px] text-gray-500 mt-1">Após essa data o botão “Inscrever” é ocultado.</p>
+                                                    </div>
+                                                </div>
+                                            </section>
 
-                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
-                                            <div>
-                                                <h3 className="text-base font-semibold text-gray-800">Visibilidade no site</h3>
-                                                <p className="text-xs text-gray-500">Controle quando o card aparece e se está ativo.</p>
-                                            </div>
-                                            <div className="grid gap-4 md:grid-cols-2">
+                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
                                                 <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Início da exibição</label>
-                                                    <input 
-                                                        type="datetime-local" 
-                                                        name="data_inicio_exibicao" 
-                                                        value={eventFormData.data_inicio_exibicao || ''} 
-                                                        onChange={e => {
-                                                            setEventFormData(prev => ({ ...prev, data_inicio_exibicao: e.target.value }));
-                                                            clearEventError('data_inicio_exibicao');
-                                                            clearEventError('data_fim_exibicao');
-                                                        }} 
-                                                        className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                        aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
-                                                    />
-                                                    {eventFormErrors.data_inicio_exibicao && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
-                                                    )}
+                                                    <h3 className="text-base font-semibold text-gray-800">Visibilidade no site</h3>
+                                                    <p className="text-xs text-gray-500">Controle quando o card aparece e se está ativo.</p>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-gray-600 mb-1">Fim da exibição</label>
-                                                    <input 
-                                                        type="datetime-local" 
-                                                        name="data_fim_exibicao" 
-                                                        value={eventFormData.data_fim_exibicao || ''} 
-                                                        onChange={e => {
-                                                            setEventFormData(prev => ({ ...prev, data_fim_exibicao: e.target.value }));
-                                                            clearEventError('data_fim_exibicao');
-                                                        }} 
-                                                        className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                        aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
-                                                    />
-                                                    {eventFormErrors.data_fim_exibicao && (
-                                                        <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
-                                                    )}
+                                                <div className="grid gap-4 md:grid-cols-2">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Início da exibição</label>
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="data_inicio_exibicao"
+                                                            value={eventFormData.data_inicio_exibicao || ''}
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, data_inicio_exibicao: e.target.value }));
+                                                                clearEventError('data_inicio_exibicao');
+                                                                clearEventError('data_fim_exibicao');
+                                                            }}
+                                                            className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
+                                                        />
+                                                        {eventFormErrors.data_inicio_exibicao && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Fim da exibição</label>
+                                                        <input
+                                                            type="datetime-local"
+                                                            name="data_fim_exibicao"
+                                                            value={eventFormData.data_fim_exibicao || ''}
+                                                            onChange={e => {
+                                                                setEventFormData(prev => ({ ...prev, data_fim_exibicao: e.target.value }));
+                                                                clearEventError('data_fim_exibicao');
+                                                            }}
+                                                            className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
+                                                        />
+                                                        {eventFormErrors.data_fim_exibicao && (
+                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="evento_ativo"
-                                                    name="ativo" 
-                                                    checked={eventFormData.ativo === true} 
-                                                    onChange={e => setEventFormData(prev => ({ ...prev, ativo: e.target.checked }))} 
-                                                    className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
-                                                />
-                                                <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                                    Evento ativo e visível para pacientes
-                                                </label>
-                                            </div>
-                                        </section>
-
-                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <h3 className="text-base font-semibold text-gray-800">Sala Zoom e links</h3>
-                                                    <p className="text-xs text-gray-500">Usamos criação automática, mas você pode informar manualmente.</p>
-                                                </div>
-                                                <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                                <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
                                                     <input
                                                         type="checkbox"
-                                                        className="h-4 w-4 text-[#2d8659]"
-                                                        checked={showManualZoomFields}
-                                                        onChange={(e) => {
-                                                            setShowManualZoomFields(e.target.checked);
-                                                            if (!e.target.checked) {
-                                                                setEventFormData(prev => ({
-                                                                    ...prev,
-                                                                    meeting_link: '',
-                                                                    meeting_password: '',
-                                                                    meeting_id: '',
-                                                                    meeting_start_url: ''
-                                                                }));
-                                                            }
-                                                        }}
+                                                        id="evento_ativo"
+                                                        name="ativo"
+                                                        checked={eventFormData.ativo === true}
+                                                        onChange={e => setEventFormData(prev => ({ ...prev, ativo: e.target.checked }))}
+                                                        className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
                                                     />
-                                                    Preencher manualmente
-                                                </label>
-                                            </div>
-                                            {!showManualZoomFields && (
-                                                <div className="rounded-lg border border-dashed border-[#2d8659]/50 bg-[#2d8659]/5 p-4 text-xs text-gray-600">
-                                                    <p className="font-medium text-gray-800">Criação automática habilitada</p>
-                                                    <p>
-                                                        Ao salvar um novo evento, tentaremos criar a sala Zoom com os dados acima.
-                                                        Caso prefira informar o link manualmente, ative a opção “Preencher manualmente”.
-                                                    </p>
+                                                    <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                        Evento ativo e visível para pacientes
+                                                    </label>
                                                 </div>
-                                            )}
-                                            {showManualZoomFields && (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-medium mb-1">Link para participantes</label>
-                                                        <input
-                                                            type="url"
-                                                            value={eventFormData.meeting_link || ''}
-                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
-                                                            placeholder="https://zoom.us/j/123456"
-                                                            className="w-full input"
-                                                        />
-                                                        <p className="text-xs text-gray-500 mt-1">Mostrado apenas para inscritos confirmados.</p>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium mb-1">Senha da reunião</label>
-                                                        <input
-                                                            type="text"
-                                                            value={eventFormData.meeting_password || ''}
-                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_password: e.target.value }))}
-                                                            placeholder="Opcional"
-                                                            className="w-full input"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium mb-1">ID da reunião</label>
-                                                        <input
-                                                            type="text"
-                                                            value={eventFormData.meeting_id || ''}
-                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_id: e.target.value }))}
-                                                            placeholder="Ex: 123 456 789"
-                                                            className="w-full input"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium mb-1">Link do anfitrião</label>
-                                                        <input
-                                                            type="url"
-                                                            value={eventFormData.meeting_start_url || ''}
-                                                            onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_start_url: e.target.value }))}
-                                                            placeholder="https://zoom.us/s/host"
-                                                            className="w-full input"
-                                                        />
-                                                        <p className="text-xs text-gray-500 mt-1">Visível apenas no painel administrativo.</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </section>
+                                            </section>
 
-                                        <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
-                                            <div>
-                                                <h3 className="text-base font-semibold text-gray-800">Link do evento e publicação</h3>
-                                                <p className="text-xs text-gray-500">Use um slug amigável. Deixe vazio para gerar automaticamente.</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <input 
-                                                    name="link_slug" 
-                                                    value={eventFormData.link_slug || ''} 
-                                                    onChange={e => {
-                                                        const value = e.target.value.toLowerCase();
-                                                        setSlugManuallyEdited(true);
-                                                        setEventFormData(prev => ({ ...prev, link_slug: value }));
-                                                        clearEventError('link_slug');
-                                                    }} 
-                                                    placeholder="workshop-ansiedade"
-                                                    className={`flex-1 input ${eventFormErrors.link_slug ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                    aria-invalid={eventFormErrors.link_slug ? 'true' : 'false'}
-                                                    pattern="[a-z0-9-]+"
-                                                    title="Use apenas letras minúsculas, números e hífens"
-                                                />
-                                                <Button 
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
-                                                        setSlugManuallyEdited(true);
-                                                        setEventFormData(prev => ({ ...prev, link_slug: slug }));
-                                                        clearEventError('link_slug');
-                                                        toast({ title: 'Slug gerado!', description: slug });
-                                                    }}
-                                                    disabled={!eventFormData.titulo}
-                                                >
-                                                    Gerar
-                                                </Button>
-                                            </div>
-                                            {eventFormErrors.link_slug && (
-                                                <p className="text-xs text-red-500">{eventFormErrors.link_slug}</p>
-                                            )}
-                                            <p className="text-xs text-gray-500">
-                                                {eventFormData.link_slug ? `URL pública: /evento/${eventFormData.link_slug}` : 'Slug será sugerido com base no título.'}
-                                            </p>
-
-                                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-xl bg-gray-50 p-4 text-xs text-gray-600">
-                                                <div>
-                                                    <p className="font-semibold text-gray-800">Resumo rápido</p>
-                                                    <p>{eventFormData.data_inicio ? 'Início em ' + new Date(eventFormData.data_inicio).toLocaleString('pt-BR') : 'Defina a data de início.'}</p>
+                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <h3 className="text-base font-semibold text-gray-800">Sala Zoom e links</h3>
+                                                        <p className="text-xs text-gray-500">Usamos criação automática, mas você pode informar manualmente.</p>
+                                                    </div>
+                                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 text-[#2d8659]"
+                                                            checked={showManualZoomFields}
+                                                            onChange={(e) => {
+                                                                setShowManualZoomFields(e.target.checked);
+                                                                if (!e.target.checked) {
+                                                                    setEventFormData(prev => ({
+                                                                        ...prev,
+                                                                        meeting_link: '',
+                                                                        meeting_password: '',
+                                                                        meeting_id: '',
+                                                                        meeting_start_url: ''
+                                                                    }));
+                                                                }
+                                                            }}
+                                                        />
+                                                        Preencher manualmente
+                                                    </label>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p>{isFreeEvent ? 'Evento gratuito' : hasPaidValue ? `Valor previsto: R$ ${priceNumber.toFixed(2)}` : 'Informe o valor cobrado antes de publicar.'}</p>
-                                                    <p>{eventFormData.professional_id ? 'Profissional selecionado' : 'Selecione um profissional'}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-end">
-                                                {isEditingEvent && (
-                                                    <Button type="button" variant="outline" onClick={resetEventForm}>
-                                                        Cancelar edição
-                                                    </Button>
+                                                {!showManualZoomFields && (
+                                                    <div className="rounded-lg border border-dashed border-[#2d8659]/50 bg-[#2d8659]/5 p-4 text-xs text-gray-600">
+                                                        <p className="font-medium text-gray-800">Criação automática habilitada</p>
+                                                        <p>
+                                                            Ao salvar um novo evento, tentaremos criar a sala Zoom com os dados acima.
+                                                            Caso prefira informar o link manualmente, ative a opção “Preencher manualmente”.
+                                                        </p>
+                                                    </div>
                                                 )}
-                                                <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]">
-                                                    {isEditingEvent ? 'Salvar alterações' : 'Criar evento'}
-                                                </Button>
-                                            </div>
-                                        </section>
-                                    </form>
+                                                {showManualZoomFields && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-xs font-medium mb-1">Link para participantes</label>
+                                                            <input
+                                                                type="url"
+                                                                value={eventFormData.meeting_link || ''}
+                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
+                                                                placeholder="https://zoom.us/j/123456"
+                                                                className="w-full input"
+                                                            />
+                                                            <p className="text-xs text-gray-500 mt-1">Mostrado apenas para inscritos confirmados.</p>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium mb-1">Senha da reunião</label>
+                                                            <input
+                                                                type="text"
+                                                                value={eventFormData.meeting_password || ''}
+                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_password: e.target.value }))}
+                                                                placeholder="Opcional"
+                                                                className="w-full input"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium mb-1">ID da reunião</label>
+                                                            <input
+                                                                type="text"
+                                                                value={eventFormData.meeting_id || ''}
+                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_id: e.target.value }))}
+                                                                placeholder="Ex: 123 456 789"
+                                                                className="w-full input"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium mb-1">Link do anfitrião</label>
+                                                            <input
+                                                                type="url"
+                                                                value={eventFormData.meeting_start_url || ''}
+                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_start_url: e.target.value }))}
+                                                                placeholder="https://zoom.us/s/host"
+                                                                className="w-full input"
+                                                            />
+                                                            <p className="text-xs text-gray-500 mt-1">Visível apenas no painel administrativo.</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </section>
+
+                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                                <div>
+                                                    <h3 className="text-base font-semibold text-gray-800">Link do evento e publicação</h3>
+                                                    <p className="text-xs text-gray-500">Use um slug amigável. Deixe vazio para gerar automaticamente.</p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        name="link_slug"
+                                                        value={eventFormData.link_slug || ''}
+                                                        onChange={e => {
+                                                            const value = e.target.value.toLowerCase();
+                                                            setSlugManuallyEdited(true);
+                                                            setEventFormData(prev => ({ ...prev, link_slug: value }));
+                                                            clearEventError('link_slug');
+                                                        }}
+                                                        placeholder="workshop-ansiedade"
+                                                        className={`flex-1 input ${eventFormErrors.link_slug ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                        aria-invalid={eventFormErrors.link_slug ? 'true' : 'false'}
+                                                        pattern="[a-z0-9-]+"
+                                                        title="Use apenas letras minúsculas, números e hífens"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
+                                                            setSlugManuallyEdited(true);
+                                                            setEventFormData(prev => ({ ...prev, link_slug: slug }));
+                                                            clearEventError('link_slug');
+                                                            toast({ title: 'Slug gerado!', description: slug });
+                                                        }}
+                                                        disabled={!eventFormData.titulo}
+                                                    >
+                                                        Gerar
+                                                    </Button>
+                                                </div>
+                                                {eventFormErrors.link_slug && (
+                                                    <p className="text-xs text-red-500">{eventFormErrors.link_slug}</p>
+                                                )}
+                                                <p className="text-xs text-gray-500">
+                                                    {eventFormData.link_slug ? `URL pública: /evento/${eventFormData.link_slug}` : 'Slug será sugerido com base no título.'}
+                                                </p>
+
+                                                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-xl bg-gray-50 p-4 text-xs text-gray-600">
+                                                    <div>
+                                                        <p className="font-semibold text-gray-800">Resumo rápido</p>
+                                                        <p>{eventFormData.data_inicio ? 'Início em ' + new Date(eventFormData.data_inicio).toLocaleString('pt-BR') : 'Defina a data de início.'}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p>{isFreeEvent ? 'Evento gratuito' : hasPaidValue ? `Valor previsto: R$ ${priceNumber.toFixed(2)}` : 'Informe o valor cobrado antes de publicar.'}</p>
+                                                        <p>{eventFormData.professional_id ? 'Profissional selecionado' : 'Selecione um profissional'}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-end">
+                                                    {isEditingEvent && (
+                                                        <Button type="button" variant="outline" onClick={resetEventForm}>
+                                                            Cancelar edição
+                                                        </Button>
+                                                    )}
+                                                    <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]">
+                                                        {isEditingEvent ? 'Salvar alterações' : 'Criar evento'}
+                                                    </Button>
+                                                </div>
+                                            </section>
+                                        </form>
+                                    </div>
                                 </div>
-                            </div>
-                        </TabsContent>
+                            </TabsContent>
                         )}
 
                         {userRole === 'admin' && (
-                        <TabsContent value="event-registrations" className="mt-6">
-                            <EventRegistrationsDashboard events={events} userRole={userRole} />
-                        </TabsContent>
+                            <TabsContent value="event-registrations" className="mt-6">
+                                <EventRegistrationsDashboard events={events} userRole={userRole} />
+                            </TabsContent>
                         )}
 
                         {/* Depoimentos Section */}
                         {userRole === 'admin' && (
-                        <TabsContent value="testimonials" className="mt-6">
-                            <div className="bg-white rounded-xl shadow-lg p-8">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-2xl font-bold mb-4 flex items-center justify-center">
-                                        <MessageCircle className="w-6 h-6 mr-2 text-[#2d8659]" /> 
-                                        Gestão de Depoimentos
-                                    </h2>
-                                    <p className="text-gray-600 mb-6">
-                                        Gerencie todos os depoimentos enviados pelos usuários, modere conteúdo e 
-                                        controle quais aparecem no site principal.
-                                    </p>
-                                    
-                                    <div className="grid md:grid-cols-2 gap-6 mb-8">
-                                        <div className="bg-blue-50 p-6 rounded-lg">
-                                            <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-4">
-                                                <MessageCircle className="w-6 h-6 text-blue-600" />
+                            <TabsContent value="testimonials" className="mt-6">
+                                <div className="bg-white rounded-xl shadow-lg p-8">
+                                    <div className="text-center mb-8">
+                                        <h2 className="text-2xl font-bold mb-4 flex items-center justify-center">
+                                            <MessageCircle className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                            Gestão de Depoimentos
+                                        </h2>
+                                        <p className="text-gray-600 mb-6">
+                                            Gerencie todos os depoimentos enviados pelos usuários, modere conteúdo e
+                                            controle quais aparecem no site principal.
+                                        </p>
+
+                                        <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                            <div className="bg-blue-50 p-6 rounded-lg">
+                                                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-4">
+                                                    <MessageCircle className="w-6 h-6 text-blue-600" />
+                                                </div>
+                                                <h3 className="font-semibold text-lg mb-2">Página de Depoimentos</h3>
+                                                <p className="text-gray-600 text-sm mb-4">
+                                                    Local público onde usuários podem enviar seus depoimentos sobre a clínica.
+                                                </p>
+                                                <Button
+                                                    onClick={() => window.open('/depoimento', '_blank')}
+                                                    variant="outline"
+                                                    className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                >
+                                                    Ver Página Pública
+                                                </Button>
                                             </div>
-                                            <h3 className="font-semibold text-lg mb-2">Página de Depoimentos</h3>
-                                            <p className="text-gray-600 text-sm mb-4">
-                                                Local público onde usuários podem enviar seus depoimentos sobre a clínica.
-                                            </p>
-                                            <Button
-                                                onClick={() => window.open('/depoimento', '_blank')}
-                                                variant="outline"
-                                                className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-                                            >
-                                                Ver Página Pública
-                                            </Button>
+
+                                            <div className="bg-green-50 p-6 rounded-lg">
+                                                <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-4">
+                                                    <Star className="w-6 h-6 text-green-600" />
+                                                </div>
+                                                <h3 className="font-semibold text-lg mb-2">Painel de Moderação</h3>
+                                                <p className="text-gray-600 text-sm mb-4">
+                                                    Gerencie todos os depoimentos: aprovar, editar, organizar e controlar exibição.
+                                                </p>
+                                                <Button
+                                                    onClick={() => window.open('/admin/depoimentos', '_blank')}
+                                                    className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                                                >
+                                                    Acessar Gestão
+                                                </Button>
+                                            </div>
                                         </div>
-                                        
-                                        <div className="bg-green-50 p-6 rounded-lg">
-                                            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-4">
-                                                <Star className="w-6 h-6 text-green-600" />
-                                            </div>
-                                            <h3 className="font-semibold text-lg mb-2">Painel de Moderação</h3>
-                                            <p className="text-gray-600 text-sm mb-4">
-                                                Gerencie todos os depoimentos: aprovar, editar, organizar e controlar exibição.
-                                            </p>
-                                            <Button
-                                                onClick={() => window.open('/admin/depoimentos', '_blank')}
-                                                className="w-full bg-[#2d8659] hover:bg-[#236b47]"
-                                            >
-                                                Acessar Gestão
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="bg-gray-50 p-6 rounded-lg">
-                                        <h4 className="font-semibold mb-3">Funcionalidades Disponíveis:</h4>
-                                        <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
-                                            <div className="flex items-center gap-2">
-                                                <Check className="w-4 h-4 text-green-600" />
-                                                <span>Aprovar/Ocultar depoimentos</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check className="w-4 h-4 text-green-600" />
-                                                <span>Editar texto e correções</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check className="w-4 h-4 text-green-600" />
-                                                <span>Adicionar depoimentos externos</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check className="w-4 h-4 text-green-600" />
-                                                <span>Sistema de busca e filtros</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check className="w-4 h-4 text-green-600" />
-                                                <span>Controle de exibição no site</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <Check className="w-4 h-4 text-green-600" />
-                                                <span>Moderação completa de conteúdo</span>
+
+                                        <div className="bg-gray-50 p-6 rounded-lg">
+                                            <h4 className="font-semibold mb-3">Funcionalidades Disponíveis:</h4>
+                                            <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
+                                                <div className="flex items-center gap-2">
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                    <span>Aprovar/Ocultar depoimentos</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                    <span>Editar texto e correções</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                    <span>Adicionar depoimentos externos</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                    <span>Sistema de busca e filtros</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                    <span>Controle de exibição no site</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <Check className="w-4 h-4 text-green-600" />
+                                                    <span>Moderação completa de conteúdo</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </TabsContent>
+                            </TabsContent>
                         )}
                     </Tabs>
                 </div>
             </div>
-            
+
             <ConfirmDialog
                 isOpen={confirmDialog.isOpen}
                 onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
