@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 
-export function CostFormModal({ open, onClose, onSuccess }) {
+export function CostFormModal({ open, onClose, onSuccess, cost }) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -16,6 +16,29 @@ export function CostFormModal({ open, onClose, onSuccess }) {
         is_recurring: false,
         recurrence_period: ''
     });
+
+    // Preencher formulário quando editando
+    useEffect(() => {
+        if (cost) {
+            setFormData({
+                category: cost.category || 'server',
+                description: cost.description || '',
+                amount: cost.amount?.toString() || '',
+                cost_date: cost.cost_date || new Date().toISOString().split('T')[0],
+                is_recurring: cost.is_recurring || false,
+                recurrence_period: cost.recurrence_period || ''
+            });
+        } else {
+            setFormData({
+                category: 'server',
+                description: '',
+                amount: '',
+                cost_date: new Date().toISOString().split('T')[0],
+                is_recurring: false,
+                recurrence_period: ''
+            });
+        }
+    }, [cost, open]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -28,19 +51,33 @@ export function CostFormModal({ open, onClose, onSuccess }) {
             setLoading(true);
             const { data: { user } } = await supabase.auth.getUser();
 
-            const { error } = await supabase.from('platform_costs').insert([{
+            const costData = {
                 ...formData,
                 amount: parseFloat(formData.amount),
                 recurrence_period: formData.is_recurring ? formData.recurrence_period : null,
-                created_by: user?.id
-            }]);
+            };
 
-            if (error) throw error;
+            if (cost) {
+                // Atualizar custo existente
+                const { error } = await supabase
+                    .from('platform_costs')
+                    .update(costData)
+                    .eq('id', cost.id);
 
-            toast({ title: 'Sucesso', description: 'Custo adicionado com sucesso' });
+                if (error) throw error;
+                toast({ title: 'Sucesso', description: 'Custo atualizado com sucesso' });
+            } else {
+                // Criar novo custo
+                const { error } = await supabase
+                    .from('platform_costs')
+                    .insert([{ ...costData, created_by: user?.id }]);
+
+                if (error) throw error;
+                toast({ title: 'Sucesso', description: 'Custo adicionado com sucesso' });
+            }
+
             onSuccess?.();
             onClose();
-            setFormData({ category: 'server', description: '', amount: '', cost_date: new Date().toISOString().split('T')[0], is_recurring: false, recurrence_period: '' });
         } catch (error) {
             console.error('Error saving cost:', error);
             toast({ variant: 'destructive', title: 'Erro', description: error.message });
@@ -53,7 +90,7 @@ export function CostFormModal({ open, onClose, onSuccess }) {
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent className="max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Adicionar Custo</DialogTitle>
+                    <DialogTitle>{cost ? 'Editar Custo' : 'Adicionar Custo'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -105,7 +142,7 @@ export function CostFormModal({ open, onClose, onSuccess }) {
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
                         <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={loading}>
-                            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : 'Adicionar'}
+                            {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : (cost ? 'Atualizar' : 'Adicionar')}
                         </Button>
                     </DialogFooter>
                 </form>

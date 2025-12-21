@@ -9,6 +9,16 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -747,6 +757,9 @@ const AdminPage = () => {
 
     // Estado para modal de custos (P&L)
     const [isCostFormOpen, setIsCostFormOpen] = useState(false);
+    const [selectedCost, setSelectedCost] = useState(null);
+    const [costDeleteConfirmOpen, setCostDeleteConfirmOpen] = useState(false);
+    const [costToDelete, setCostToDelete] = useState(null);
     const [costRefreshKey, setCostRefreshKey] = useState(0);
 
     // Handler para salvar observações do paciente
@@ -3950,22 +3963,97 @@ const AdminPage = () => {
                         {userRole === 'admin' && (
                             <TabsContent value="profit-loss" className="mt-6">
                                 <ProfitLossDashboard
-                                    onAddCost={() => setIsCostFormOpen(true)}
+                                    onAddCost={() => {
+                                        setSelectedCost(null);
+                                        setIsCostFormOpen(true);
+                                    }}
+                                    onEditCost={(cost) => {
+                                        setSelectedCost(cost);
+                                        setIsCostFormOpen(true);
+                                    }}
+                                    onDeleteCost={(cost) => {
+                                        setCostToDelete(cost);
+                                        setCostDeleteConfirmOpen(true);
+                                    }}
                                     key={costRefreshKey}
                                 />
 
                                 {/* Cost Form Modal */}
                                 <CostFormModal
                                     open={isCostFormOpen}
-                                    onClose={() => setIsCostFormOpen(false)}
+                                    onClose={() => {
+                                        setIsCostFormOpen(false);
+                                        setSelectedCost(null);
+                                    }}
+                                    cost={selectedCost}
                                     onSuccess={() => {
                                         setCostRefreshKey(prev => prev + 1);
                                         toast({
                                             title: 'Sucesso',
-                                            description: 'Custo adicionado com sucesso'
+                                            description: selectedCost ? 'Custo atualizado' : 'Custo adicionado'
                                         });
                                     }}
                                 />
+
+                                {/* Delete Cost Confirmation Dialog */}
+                                <AlertDialog open={costDeleteConfirmOpen} onOpenChange={setCostDeleteConfirmOpen}>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                            <AlertDialogDescription className="space-y-2">
+                                                <p>Tem certeza que deseja excluir este custo?</p>
+                                                {costToDelete && (
+                                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-1 text-sm">
+                                                        <p><strong>Categoria:</strong> {costToDelete.category}</p>
+                                                        <p><strong>Descrição:</strong> {costToDelete.description}</p>
+                                                        <p><strong>Valor:</strong> R$ {costToDelete.amount?.toFixed(2)}</p>
+                                                        <p><strong>Data:</strong> {new Date(costToDelete.cost_date).toLocaleDateString('pt-BR')}</p>
+                                                    </div>
+                                                )}
+                                                <p className="text-red-600 font-medium mt-4">
+                                                    ⚠️ Esta ação não pode ser desfeita.
+                                                </p>
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={() => setCostToDelete(null)}>
+                                                Cancelar
+                                            </AlertDialogCancel>
+                                            <AlertDialogAction
+                                                onClick={async () => {
+                                                    if (costToDelete) {
+                                                        try {
+                                                            const { error } = await supabase
+                                                                .from('platform_costs')
+                                                                .delete()
+                                                                .eq('id', costToDelete.id);
+
+                                                            if (error) throw error;
+
+                                                            toast({
+                                                                title: 'Custo excluído',
+                                                                description: `Custo "${costToDelete.description}" foi excluído com sucesso.`
+                                                            });
+
+                                                            setCostRefreshKey(prev => prev + 1);
+                                                            setCostToDelete(null);
+                                                        } catch (error) {
+                                                            console.error('Error deleting cost:', error);
+                                                            toast({
+                                                                title: 'Erro ao excluir',
+                                                                description: error.message || 'Não foi possível excluir o custo',
+                                                                variant: 'destructive'
+                                                            });
+                                                        }
+                                                    }
+                                                }}
+                                                className="bg-red-600 hover:bg-red-700"
+                                            >
+                                                Excluir Custo
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
                             </TabsContent>
                         )}
 

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, PieChart, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, PieChart, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard, EmptyState, SkeletonStatsGrid } from '@/components/common';
-import { useProfitLoss } from '@/hooks/useProfitLoss';
+import { useProfitLoss, usePlatformCosts } from '@/hooks/useProfitLoss';
 import { cn } from '@/lib/utils';
 
-export function ProfitLossDashboard({ onAddCost, className = '' }) {
+export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, className = '' }) {
     const [period, setPeriod] = useState('month');
 
     // Calcular datas baseado no período
@@ -38,8 +38,27 @@ export function ProfitLossDashboard({ onAddCost, className = '' }) {
         isProfitable, costsByCategory, loading
     } = useProfitLoss(startDate, endDate);
 
+    // Buscar custos individuais para mostrar lista
+    const { costs, loading: costsLoading } = usePlatformCosts(startDate, endDate);
+
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+    };
+
+    const formatDate = (date) => {
+        if (!date) return '-';
+        return new Date(date).toLocaleDateString('pt-BR');
+    };
+
+    const getCategoryLabel = (category) => {
+        const labels = {
+            server: 'Servidor',
+            marketing: 'Marketing',
+            tools: 'Ferramentas',
+            salaries: 'Salários',
+            other: 'Outros'
+        };
+        return labels[category] || category;
     };
 
     if (loading) {
@@ -105,20 +124,16 @@ export function ProfitLossDashboard({ onAddCost, className = '' }) {
             </div>
 
             {/* Breakdown de Custos */}
-            {Object.keys(costsByCategory).length > 0 ? (
+            {Object.keys(costsByCategory).length > 0 && (
                 <div className="bg-white rounded-xl border p-6">
                     <h3 className="text-lg font-semibold mb-4">Custos por Categoria</h3>
                     <div className="space-y-3">
                         {Object.entries(costsByCategory).map(([category, data]) => {
                             const percentage = totalCosts > 0 ? (data.total / totalCosts) * 100 : 0;
-                            const labels = {
-                                server: 'Servidor', marketing: 'Marketing', tools: 'Ferramentas',
-                                salaries: 'Salários', other: 'Outros'
-                            };
                             return (
                                 <div key={category}>
                                     <div className="flex justify-between text-sm mb-1">
-                                        <span className="font-medium">{labels[category] || category}</span>
+                                        <span className="font-medium">{getCategoryLabel(category)}</span>
                                         <span>{formatCurrency(data.total)} ({percentage.toFixed(1)}%)</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
@@ -127,6 +142,64 @@ export function ProfitLossDashboard({ onAddCost, className = '' }) {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Lista de Custos Individuais */}
+            {costs.length > 0 ? (
+                <div className="bg-white rounded-xl border p-6">
+                    <h3 className="text-lg font-semibold mb-4">Custos Detalhados</h3>
+                    <div className="space-y-2">
+                        {costs.map((cost) => (
+                            <motion.div
+                                key={cost.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-3">
+                                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                            {getCategoryLabel(cost.category)}
+                                        </span>
+                                        <p className="font-medium">{cost.description}</p>
+                                        {cost.is_recurring && (
+                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                                                Recorrente
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        {formatDate(cost.cost_date)}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <p className="text-lg font-bold text-gray-900">
+                                        {formatCurrency(cost.amount)}
+                                    </p>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => onEditCost(cost)}
+                                            title="Editar Custo"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            onClick={() => onDeleteCost(cost)}
+                                            title="Excluir Custo"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        ))}
                     </div>
                 </div>
             ) : (
