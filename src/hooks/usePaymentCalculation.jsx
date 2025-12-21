@@ -29,7 +29,7 @@ export function usePaymentCalculation(professionalId = null, startDate = null, e
                 .from('professional_payments')
                 .select(`
                     *,
-                    professional:professionals(id, name, email)
+                    professional:professionals(id, name)
                 `)
                 .order('created_at', { ascending: false });
 

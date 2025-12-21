@@ -31,12 +31,15 @@ import { FinancialDashboard } from '@/components/admin/FinancialDashboard';
 import { ProfessionalPaymentsList } from '@/components/admin/ProfessionalPaymentsList';
 import { PaymentFormModal } from '@/components/admin/PaymentFormModal';
 import { PaymentDetailsModal } from '@/components/admin/PaymentDetailsModal';
+import { ProfitLossDashboard } from '@/components/admin/ProfitLossDashboard';
+import { CostFormModal } from '@/components/admin/CostFormModal';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
 import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
 import { usePatientData } from '@/hooks/usePatientData';
 import { cn } from '@/lib/utils';
+import { tabsConfig } from '@/config/tabsConfig';
 
 
 
@@ -714,27 +717,6 @@ const AdminPage = () => {
     }, [selectedAvailProfessional, user, userRole, selectedMonth, selectedYear, blockedDates]);
 
     // Definir tabsConfig ANTES de usá-lo em useEffect
-    const tabsConfig = {
-        admin: [
-            { value: 'bookings', label: 'Agendamentos', icon: Calendar },
-            { value: 'reviews', label: 'Avaliações', icon: Star },
-            // { value: 'payments', label: 'Pagamentos', icon: DollarSign },
-            { value: 'professionals', label: 'Profissionais', icon: Users },
-            { value: 'availability', label: 'Disponibilidade', icon: Clock },
-            { value: 'services', label: 'Serviços', icon: Briefcase },
-            { value: 'events', label: 'Eventos', icon: Calendar },
-            { value: 'event-registrations', label: 'Inscrições', icon: Ticket },
-            // { value: 'testimonials', label: 'Depoimentos', icon: MessageCircle },
-        ],
-        professional: [
-            { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-            { value: 'bookings', label: 'Agendamentos', icon: Calendar },
-            { value: 'patients', label: 'Pacientes', icon: Users },
-            { value: 'reviews', label: 'Avaliações', icon: Star },
-            { value: 'availability', label: 'Disponibilidade', icon: Clock },
-            { value: 'professionals', label: 'Meu Perfil', icon: UserCircle },
-        ]
-    };
 
     // Hook de estatísticas do profissional (usado apenas para profissionais)
     const professionalStats = useProfessionalStats(
@@ -761,6 +743,10 @@ const AdminPage = () => {
     const [isPaymentDetailsOpen, setIsPaymentDetailsOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
+
+    // Estado para modal de custos (P&L)
+    const [isCostFormOpen, setIsCostFormOpen] = useState(false);
+    const [costRefreshKey, setCostRefreshKey] = useState(0);
 
     // Handler para salvar observações do paciente
     const handleSavePatientNotes = async (patientEmail, notes) => {
@@ -3901,6 +3887,29 @@ const AdminPage = () => {
                                 payment={selectedPayment}
                             />
                         </TabsContent>
+
+                        {/* P&L Dashboard Tab - Admin Only */}
+                        {userRole === 'admin' && (
+                            <TabsContent value="profit-loss" className="mt-6">
+                                <ProfitLossDashboard
+                                    onAddCost={() => setIsCostFormOpen(true)}
+                                    key={costRefreshKey}
+                                />
+
+                                {/* Cost Form Modal */}
+                                <CostFormModal
+                                    open={isCostFormOpen}
+                                    onClose={() => setIsCostFormOpen(false)}
+                                    onSuccess={() => {
+                                        setCostRefreshKey(prev => prev + 1);
+                                        toast({
+                                            title: 'Sucesso',
+                                            description: 'Custo adicionado com sucesso'
+                                        });
+                                    }}
+                                />
+                            </TabsContent>
+                        )}
 
                         {(userRole === 'admin' || userRole === 'professional') && (
                             <TabsContent value="professionals" className="mt-6">
