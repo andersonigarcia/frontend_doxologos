@@ -742,6 +742,7 @@ const AdminPage = () => {
     const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
     const [isPaymentDetailsOpen, setIsPaymentDetailsOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
+    const [paymentBookings, setPaymentBookings] = useState([]);
     const [paymentRefreshKey, setPaymentRefreshKey] = useState(0);
 
     // Estado para modal de custos (P&L)
@@ -3845,17 +3846,72 @@ const AdminPage = () => {
 
                         <TabsContent value="payments" className="mt-6">
                             <ProfessionalPaymentsList
+                                key={paymentRefreshKey}
                                 onCreatePayment={() => {
                                     setSelectedPayment(null);
                                     setIsPaymentFormOpen(true);
                                 }}
                                 onViewDetails={async (payment) => {
                                     setSelectedPayment(payment);
+
+                                    // Buscar bookings relacionados ao pagamento
+                                    try {
+                                        const { data: bookings, error } = await supabase
+                                            .from('payment_bookings')
+                                            .select(`
+                                                booking_id,
+                                                amount,
+                                                bookings (
+                                                    id,
+                                                    booking_date,
+                                                    booking_time,
+                                                    patient_name,
+                                                    valor_repasse_profissional
+                                                )
+                                            `)
+                                            .eq('payment_id', payment.id);
+
+                                        if (error) throw error;
+
+                                        // Extrair bookings do relacionamento
+                                        const bookingsList = (bookings || []).map(pb => pb.bookings).filter(Boolean);
+                                        setPaymentBookings(bookingsList);
+                                    } catch (error) {
+                                        console.error('Error fetching payment bookings:', error);
+                                        setPaymentBookings([]);
+                                    }
+
                                     setIsPaymentDetailsOpen(true);
                                 }}
                                 onMarkAsPaid={async (payment) => {
                                     setSelectedPayment(payment);
                                     setIsPaymentFormOpen(true);
+                                }}
+                                onDelete={async (payment) => {
+                                    try {
+                                        // Deletar pagamento (cascade vai deletar payment_bookings automaticamente)
+                                        const { error } = await supabase
+                                            .from('professional_payments')
+                                            .delete()
+                                            .eq('id', payment.id);
+
+                                        if (error) throw error;
+
+                                        toast({
+                                            title: 'Pagamento excluído',
+                                            description: `Pagamento de ${payment.professional?.name} foi excluído com sucesso.`
+                                        });
+
+                                        // Forçar refresh da lista
+                                        setPaymentRefreshKey(prev => prev + 1);
+                                    } catch (error) {
+                                        console.error('Error deleting payment:', error);
+                                        toast({
+                                            title: 'Erro ao excluir',
+                                            description: error.message || 'Não foi possível excluir o pagamento',
+                                            variant: 'destructive'
+                                        });
+                                    }
                                 }}
                             />
 
@@ -3883,8 +3939,10 @@ const AdminPage = () => {
                                 onClose={() => {
                                     setIsPaymentDetailsOpen(false);
                                     setSelectedPayment(null);
+                                    setPaymentBookings([]);
                                 }}
                                 payment={selectedPayment}
+                                bookings={paymentBookings}
                             />
                         </TabsContent>
 

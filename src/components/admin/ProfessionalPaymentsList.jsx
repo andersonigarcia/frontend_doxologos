@@ -1,7 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Calendar, Check, Clock, Download, Eye, X, Plus, Filter } from 'lucide-react';
+import { DollarSign, Calendar, Check, Clock, Download, Eye, X, Plus, Filter, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { SkeletonTable, EmptyState } from '@/components/common';
 import { usePaymentCalculation } from '@/hooks/usePaymentCalculation';
 import { cn } from '@/lib/utils';
@@ -19,10 +29,13 @@ export function ProfessionalPaymentsList({
     onCreatePayment,
     onViewDetails,
     onMarkAsPaid,
+    onDelete,
     className = ''
 }) {
     const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'pending', 'paid'
     const [searchTerm, setSearchTerm] = useState('');
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [paymentToDelete, setPaymentToDelete] = useState(null);
 
     const { pendingPayments, paidPayments, totalPending, totalPaid, loading, refresh } = usePaymentCalculation();
 
@@ -281,19 +294,35 @@ export function ProfessionalPaymentsList({
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => onViewDetails(payment)}
+                                                title="Ver Detalhes"
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Button>
 
                                             {payment.status === 'pending' && (
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-green-600 hover:bg-green-700"
-                                                    onClick={() => onMarkAsPaid(payment)}
-                                                >
-                                                    <Check className="w-4 h-4 mr-1" />
-                                                    Marcar como Pago
-                                                </Button>
+                                                <>
+                                                    <Button
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700"
+                                                        onClick={() => onMarkAsPaid(payment)}
+                                                    >
+                                                        <Check className="w-4 h-4 mr-1" />
+                                                        Marcar como Pago
+                                                    </Button>
+
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        onClick={() => {
+                                                            setPaymentToDelete(payment);
+                                                            setDeleteConfirmOpen(true);
+                                                        }}
+                                                        title="Excluir Pagamento"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </>
                                             )}
                                         </div>
                                     </div>
@@ -303,6 +332,45 @@ export function ProfessionalPaymentsList({
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-2">
+                            <p>Tem certeza que deseja excluir este pagamento?</p>
+                            {paymentToDelete && (
+                                <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-1 text-sm">
+                                    <p><strong>Profissional:</strong> {paymentToDelete.professional?.name}</p>
+                                    <p><strong>Período:</strong> {formatDate(paymentToDelete.period_start)} - {formatDate(paymentToDelete.period_end)}</p>
+                                    <p><strong>Valor:</strong> {formatCurrency(paymentToDelete.total_amount)}</p>
+                                    <p><strong>Consultas:</strong> {paymentToDelete.total_bookings}</p>
+                                </div>
+                            )}
+                            <p className="text-red-600 font-medium mt-4">
+                                ⚠️ Esta ação não pode ser desfeita.
+                            </p>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setPaymentToDelete(null)}>
+                            Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (paymentToDelete) {
+                                    onDelete(paymentToDelete);
+                                    setPaymentToDelete(null);
+                                }
+                            }}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Excluir Pagamento
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
