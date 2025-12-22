@@ -146,24 +146,35 @@ serve(async (req) => {
     let success = false;
 
     // 2. Process based on Reference
+    let ledgerTransactionId = null;
+
     if (externalRef && externalRef.startsWith('EVENTO_')) {
-      // ... Logica de Evento (Simplificada para brevidade, mantendo existente) ...
-      // (Vou re-incluir a lógica original de evento aqui de forma resumida ou focada)
+      // ... Event Logic ...
       const inscricaoId = externalRef.replace('EVENTO_', '');
-      await supabase.from('inscricoes_eventos')
+      console.log(`🎫 Processing event payment - Enrollment ID: ${inscricaoId}`);
+
+      const { error: eventError } = await supabase.from('inscricoes_eventos')
         .update({
           payment_status: mpPayment.status,
           updated_at: new Date().toISOString()
         })
         .eq('id', inscricaoId);
 
+      if (eventError) console.error('Error updating event:', eventError);
+
+      // Update Payment Record for Event
+      const { data: payData } = await supabase.from('payments')
+        .update({ status: mpPayment.status, raw_payload: mpPayment })
+        .eq('mp_payment_id', paymentId.toString())
+        .select()
+        .single();
+
+      if (payData) ledgerTransactionId = payData.id;
+
       success = true;
     } else {
-      // Logic de Booking
-      // Tentar achar booking por marketplace_payment_id ou external_reference
+      // Booking Logic
       let bookingId = null;
-
-      // Se external_reference for UUID, assume que é booking_id
       if (externalRef && externalRef.length > 30) {
         bookingId = externalRef;
       }
@@ -175,12 +186,11 @@ serve(async (req) => {
           'in_process': 'pending',
           'rejected': 'cancelled',
           'cancelled': 'cancelled',
-          'refunded': 'cancelled', // Ou um status 'refunded' se existir
+          'refunded': 'cancelled',
           'charged_back': 'cancelled'
         };
 
         const newStatus = statusMap[mpPayment.status];
-
         if (newStatus) {
           await supabase.from('bookings')
             .update({
@@ -193,10 +203,64 @@ serve(async (req) => {
         }
       }
 
-      // Update payments table if exists
-      await supabase.from('payments')
+      const { data: payData } = await supabase.from('payments')
         .update({ status: mpPayment.status, raw_payload: mpPayment })
-        .eq('mp_payment_id', paymentId.toString());
+        .eq('mp_payment_id', paymentId.toString())
+        .select()
+        .single();
+
+      if (payData) ledgerTransactionId = payData.id;
+    }
+
+    // ========================================
+    // 3. LEDGER ENTRY (Double Entry Accounting)
+    // ========================================
+    if ((mpPayment.status === 'approved' || mpPayment.status === 'paid') && ledgerTransactionId) {
+      try {
+        console.log(`📒 Recording ledger entries for transaction ${ledgerTransactionId}`);
+
+        // Check for existing ledger entry to prevent duplicates
+        const { count } = await supabase.from('payment_ledger_entries')
+          .select('id', { count: 'exact', head: true })
+          .eq('transaction_id', ledgerTransactionId);
+
+        if (count === 0) {
+          const amount = mpPayment.transaction_amount;
+          const fee = mpPayment.fee_details?.reduce((acc: number, f: any) => acc + f.amount, 0) || 0;
+          const net = amount - fee;
+
+          // 1. DEBIT: Cash in Bank (Net or Gross? Usually Gross for revenue, but receiving is Net if fee deducted at source. 
+          // Let's record Gross amount as Cash for simplicity, and track fees separately if needed.
+          // For this MVP: Cash = Gross Amount.
+
+          const entries = [
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'DEBIT',
+              account_code: 'CASH_BANK',
+              amount: amount,
+              description: `Payment received ${paymentId} (MP)`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'CREDIT',
+              account_code: 'REVENUE_GROSS', // Or LIABILITY_PROFESSIONAL based on split
+              amount: amount,
+              description: `Gross revenue from payment ${paymentId}`,
+              created_at: new Date().toISOString()
+            }
+          ];
+
+          const { error: ledgerError } = await supabase.from('payment_ledger_entries').insert(entries);
+          if (ledgerError) console.error('❌ Ledger insert error:', ledgerError);
+          else console.log('✅ Ledger entries recorded successfully');
+        } else {
+          console.log('ℹ️ Ledger entries already exist, skipping.');
+        }
+      } catch (ledgerErr) {
+        console.error('❌ Unexpected ledger error:', ledgerErr);
+      }
     }
 
     // Update Log

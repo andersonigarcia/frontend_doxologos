@@ -8,7 +8,8 @@ import {
     Star,
     Ticket,
     LayoutDashboard,
-    UserCircle
+    UserCircle,
+    FileText
 } from 'lucide-react';
 
 /**
@@ -20,6 +21,7 @@ export const tabsConfig = {
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'payments', label: 'Pagamentos', icon: DollarSign },
         { value: 'profit-loss', label: 'Lucro/Prejuízo', icon: TrendingUp },
+        { value: 'livro-caixa', label: 'Livro Caixa', icon: FileText },
         { value: 'professionals', label: 'Profissionais', icon: Users },
         { value: 'services', label: 'Serviços', icon: Briefcase },
         { value: 'availability', label: 'Disponibilidade', icon: Clock },
