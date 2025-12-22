@@ -112,16 +112,29 @@ export function LedgerTable({ className = '' }) {
         });
     };
 
+    const getAccountParams = (code) => {
+        const map = {
+            'CASH_BANK': { label: 'Conta Banco / Caixa', variant: 'outline' },
+            'REVENUE_GROSS': { label: 'Receita Bruta (Legado)', variant: 'secondary' },
+            'REVENUE_SERVICE': { label: 'Receita Plataforma', variant: 'success' }, // New
+            'LIABILITY_PROFESSIONAL': { label: 'A Pagar (Profissional)', variant: 'warning' }, // New
+            'EXPENSE_FEE': { label: 'Taxas', variant: 'destructive' },
+            'EXPENSE_OPERATIONAL': { label: 'Despesas', variant: 'destructive' },
+            'EQUITY_ADJUSTMENT': { label: 'Ajuste Capital', variant: 'default' }
+        };
+        return map[code] || { label: code, variant: 'outline' };
+    };
+
     const getTypeParams = (type) => {
         if (type === 'DEBIT') return {
-            color: 'text-red-700 bg-red-50 border-red-200',
+            color: 'text-green-700 bg-green-50 border-green-200',
             icon: ArrowDownCircle,
-            label: 'Débito'
+            label: 'Entrada (+)'
         };
         return {
-            color: 'text-green-700 bg-green-50 border-green-200',
+            color: 'text-gray-700 bg-gray-50 border-gray-200',
             icon: ArrowUpCircle,
-            label: 'Crédito'
+            label: 'Saída/Obrigação (-)'
         };
     };
 
@@ -140,14 +153,15 @@ export function LedgerTable({ className = '' }) {
             }
 
             // CSV Header
-            const headers = ['Data', 'Descrição', 'Conta', 'Tipo', 'Valor', 'Fonte', 'ID Transação'];
+            const headers = ['Data', 'Descrição', 'Conta', 'Cod. Conta', 'Tipo', 'Valor', 'Fonte', 'ID Transação'];
 
             // CSV Rows
             const rows = data.map(entry => [
                 new Date(entry.created_at).toLocaleString('pt-BR'),
                 `"${entry.description.replace(/"/g, '""')}"`, // Escape quotes
+                getAccountParams(entry.account_code).label,
                 entry.account_code,
-                entry.entry_type,
+                entry.entry_type === 'DEBIT' ? 'Entrada' : 'Saída',
                 entry.amount.toFixed(2).replace('.', ','),
                 entry.metadata?.source || 'system',
                 entry.transaction_id
@@ -242,8 +256,11 @@ export function LedgerTable({ className = '' }) {
                                             </TableCell>
                                             <TableCell>{entry.description}</TableCell>
                                             <TableCell>
-                                                <Badge variant="outline" className="font-mono text-xs">
-                                                    {entry.account_code}
+                                                <Badge
+                                                    variant={getAccountParams(entry.account_code).variant}
+                                                    className="font-normal text-xs whitespace-nowrap"
+                                                >
+                                                    {getAccountParams(entry.account_code).label}
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>

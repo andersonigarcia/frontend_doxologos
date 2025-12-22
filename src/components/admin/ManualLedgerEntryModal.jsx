@@ -133,9 +133,10 @@ export function ManualLedgerEntryModal({ open, onClose, onSuccess, entryToEdit =
                                 value={formData.account_code}
                                 onChange={e => setFormData({ ...formData, account_code: e.target.value })}
                             >
-                                <option value="CASH_BANK">Caixa / Banco</option>
-                                <option value="REVENUE_GROSS">Receita Bruta</option>
-                                <option value="LIABILITY_PROFESSIONAL">Obrigação Profissional</option>
+                                <option value="CASH_BANK">Conta Banco / Caixa</option>
+                                <option value="REVENUE_SERVICE">Receita Plataforma</option>
+                                <option value="LIABILITY_PROFESSIONAL">A Pagar (Profissional)</option>
+                                <option value="REVENUE_GROSS">Receita Bruta (Legado)</option>
                                 <option value="EXPENSE_FEE">Taxa Bancária</option>
                                 <option value="EXPENSE_OPERATIONAL">Despesa Operacional</option>
                                 <option value="EQUITY_ADJUSTMENT">Ajuste de Capital</option>
