@@ -43,6 +43,7 @@ import { PaymentFormModal } from '@/components/admin/PaymentFormModal';
 import { PaymentDetailsModal } from '@/components/admin/PaymentDetailsModal';
 import { ProfitLossDashboard } from '@/components/admin/ProfitLossDashboard';
 import { LedgerTable } from '@/components/admin/LedgerTable';
+import { LedgerStats } from '@/components/admin/LedgerStats';
 import { CostFormModal } from '@/components/admin/CostFormModal';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
@@ -4061,6 +4062,7 @@ const AdminPage = () => {
                         {/* Ledger Tab - Admin Only */}
                         {userRole === 'admin' && (
                             <TabsContent value="livro-caixa" className="mt-6">
+                                <LedgerStats />
                                 <LedgerTable />
                             </TabsContent>
                         )}
