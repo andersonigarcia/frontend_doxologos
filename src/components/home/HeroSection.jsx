@@ -56,7 +56,7 @@ const HeroSection = ({
               </div>
               <div className="flex items-center gap-1.5 text-gray-700">
                 <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d8659]" />
-                <span className="font-medium">500+ Consultas</span>
+                <span className="font-medium">100+ Consultas</span>
               </div>
             </div>
 
