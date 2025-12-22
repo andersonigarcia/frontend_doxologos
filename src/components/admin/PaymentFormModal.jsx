@@ -43,7 +43,8 @@ export function PaymentFormModal({
     const { totalAmount, bookings, totalBookings, loading: calculatingAmount } = usePendingPaymentAmount(
         formData.professional_id,
         formData.period_start,
-        formData.period_end
+        formData.period_end,
+        payment?.id // Passar ID do pagamento para excluir verificação de "já pago" para seus próprios bookings
     );
 
     useEffect(() => {
@@ -59,7 +60,7 @@ export function PaymentFormModal({
                 status: payment.status || 'pending'
             });
         } else {
-            // Definir período padrão (mês anterior)
+            // Apenas define padrão se NÃO estiver editando
             const today = new Date();
             const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
             const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
@@ -128,7 +129,8 @@ export function PaymentFormModal({
             return;
         }
 
-        if (totalAmount <= 0) {
+        // Permitir salvar mesmo com valor 0 se estiver editando, mas alertar se for novo
+        if (totalAmount <= 0 && !payment) {
             toast({
                 variant: 'destructive',
                 title: 'Valor inválido',
@@ -168,6 +170,29 @@ export function PaymentFormModal({
 
                 if (error) throw error;
                 paymentId = payment.id;
+
+                // Atualizar relacionamentos com bookings
+                // Primeiro remove os existentes para recriar (evita duplicação ou inconsistência)
+                if (bookings.length > 0) {
+                    const { error: deleteError } = await supabase
+                        .from('payment_bookings')
+                        .delete()
+                        .eq('payment_id', paymentId);
+
+                    if (deleteError) throw deleteError;
+
+                    const paymentBookings = bookings.map(b => ({
+                        payment_id: paymentId,
+                        booking_id: b.id,
+                        amount: parseFloat(b.valor_repasse_profissional || 0)
+                    }));
+
+                    const { error: bookingsError } = await supabase
+                        .from('payment_bookings')
+                        .insert(paymentBookings);
+
+                    if (bookingsError) throw bookingsError;
+                }
             } else {
                 // Criar
                 const { data, error } = await supabase
@@ -180,17 +205,19 @@ export function PaymentFormModal({
                 paymentId = data.id;
 
                 // Criar relacionamentos com bookings
-                const paymentBookings = bookings.map(b => ({
-                    payment_id: paymentId,
-                    booking_id: b.id,
-                    amount: parseFloat(b.valor_repasse_profissional || 0)
-                }));
+                if (bookings.length > 0) {
+                    const paymentBookings = bookings.map(b => ({
+                        payment_id: paymentId,
+                        booking_id: b.id,
+                        amount: parseFloat(b.valor_repasse_profissional || 0)
+                    }));
 
-                const { error: bookingsError } = await supabase
-                    .from('payment_bookings')
-                    .insert(paymentBookings);
+                    const { error: bookingsError } = await supabase
+                        .from('payment_bookings')
+                        .insert(paymentBookings);
 
-                if (bookingsError) throw bookingsError;
+                    if (bookingsError) throw bookingsError;
+                }
             }
 
             toast({

@@ -175,7 +175,7 @@ export function ProfessionalPaymentsList({
                     </div>
 
                     <Button
-                        onClick={onCreatePayment}
+                        onClick={() => onCreatePayment()}
                         className="bg-[#2d8659] hover:bg-[#236b47]"
                     >
                         <Plus className="w-4 h-4 mr-2" />
@@ -235,7 +235,7 @@ export function ProfessionalPaymentsList({
                         }
                         action={statusFilter === 'all' ? {
                             label: 'Criar Pagamento',
-                            onClick: onCreatePayment
+                            onClick: () => onCreatePayment()
                         } : undefined}
                         compact={true}
                     />

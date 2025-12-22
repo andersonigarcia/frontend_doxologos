@@ -86,7 +86,7 @@ export function usePaymentCalculation(professionalId = null, startDate = null, e
  * @param {string} endDate - Data final (YYYY-MM-DD)
  * @returns {Object} Valor calculado e agendamentos
  */
-export function usePendingPaymentAmount(professionalId, startDate, endDate) {
+export function usePendingPaymentAmount(professionalId, startDate, endDate, excludePaymentId = null) {
     const [data, setData] = useState({
         totalAmount: 0,
         bookings: [],
@@ -128,13 +128,18 @@ export function usePendingPaymentAmount(professionalId, startDate, endDate) {
             // Verificar quais já foram pagos
             const { data: paidBookings, error: paidError } = await supabase
                 .from('payment_bookings')
-                .select('booking_id');
+                .select('booking_id, payment_id');
 
             if (paidError) throw paidError;
 
-            const paidBookingIds = new Set((paidBookings || []).map(pb => pb.booking_id));
+            // Criar conjunto de bookings pagos, excluindo os do pagamento atual se fornecido
+            const paidBookingIds = new Set(
+                (paidBookings || [])
+                    .filter(pb => pb.payment_id !== excludePaymentId)
+                    .map(pb => pb.booking_id)
+            );
 
-            // Filtrar apenas bookings não pagos
+            // Filtrar apenas bookings não pagos (ou pagos pelo pagamento atual)
             const unpaidBookings = (bookings || []).filter(b => !paidBookingIds.has(b.id));
 
             // Calcular total

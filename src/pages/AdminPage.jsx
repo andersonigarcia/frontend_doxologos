@@ -3905,7 +3905,19 @@ const AdminPage = () => {
                                 }}
                                 onDelete={async (payment) => {
                                     try {
-                                        // Deletar pagamento (cascade vai deletar payment_bookings automaticamente)
+                                        // Deletar pagamento (cascade vai deletar payment_bookings automaticamente, mas garantimos aqui)
+                                        // Primeiro deletar os vínculos
+                                        const { error: bookingsError } = await supabase
+                                            .from('payment_bookings')
+                                            .delete()
+                                            .eq('payment_id', payment.id);
+
+                                        if (bookingsError) {
+                                            console.error('Error deleting payment bookings:', bookingsError);
+                                            // Se falhar, tentamos prosseguir se for erro de "não encontrado", senão paramos
+                                        }
+
+                                        // Depois deletar o pagamento
                                         const { error } = await supabase
                                             .from('professional_payments')
                                             .delete()
