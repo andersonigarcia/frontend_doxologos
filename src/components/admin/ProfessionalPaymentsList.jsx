@@ -299,54 +299,52 @@ export function ProfessionalPaymentsList({
                                                 <Eye className="w-4 h-4" />
                                             </Button>
 
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => onCreatePayment(payment)}
+                                                title="Editar Pagamento"
+                                            >
+                                                <span className="sr-only">Editar</span>
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    width="16"
+                                                    height="16"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    className="w-4 h-4"
+                                                >
+                                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                                                </svg>
+                                            </Button>
+
                                             {payment.status === 'pending' && (
-                                                <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => onCreatePayment(payment)}
-                                                        title="Editar Pagamento"
-                                                    >
-                                                        <span className="sr-only">Editar</span>
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            width="16"
-                                                            height="16"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            strokeWidth="2"
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            className="w-4 h-4"
-                                                        >
-                                                            <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                                                        </svg>
-                                                    </Button>
-
-                                                    <Button
-                                                        size="sm"
-                                                        className="bg-green-600 hover:bg-green-700"
-                                                        onClick={() => onMarkAsPaid(payment)}
-                                                    >
-                                                        <Check className="w-4 h-4 mr-1" />
-                                                        Marcar como Pago
-                                                    </Button>
-
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                        onClick={() => {
-                                                            setPaymentToDelete(payment);
-                                                            setDeleteConfirmOpen(true);
-                                                        }}
-                                                        title="Excluir Pagamento"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </>
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-green-600 hover:bg-green-700"
+                                                    onClick={() => onMarkAsPaid(payment)}
+                                                >
+                                                    <Check className="w-4 h-4 mr-1" />
+                                                    Marcar como Pago
+                                                </Button>
                                             )}
+
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                onClick={() => {
+                                                    setPaymentToDelete(payment);
+                                                    setDeleteConfirmOpen(true);
+                                                }}
+                                                title="Excluir Pagamento"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
