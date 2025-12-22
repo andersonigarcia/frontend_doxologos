@@ -338,27 +338,63 @@ export function PaymentFormModal({
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Comprovante de Pagamento
                         </label>
-                        <div className="flex items-center gap-4">
-                            <label className="flex-1 cursor-pointer">
-                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#2d8659] transition-colors">
-                                    <div className="flex items-center justify-center gap-2 text-gray-600">
-                                        <Upload className="w-5 h-5" />
-                                        <span className="text-sm">
-                                            {uploadingProof ? 'Enviando...' : 'Clique para enviar'}
-                                        </span>
+                        {!formData.payment_proof_url ? (
+                            <div className="flex items-center gap-4">
+                                <label className="flex-1 cursor-pointer">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#2d8659] transition-colors">
+                                        <div className="flex items-center justify-center gap-2 text-gray-600">
+                                            <Upload className="w-5 h-5" />
+                                            <span className="text-sm">
+                                                {uploadingProof ? 'Enviando...' : 'Clique para enviar'}
+                                            </span>
+                                        </div>
                                     </div>
+                                    <input
+                                        type="file"
+                                        accept="image/*,application/pdf"
+                                        onChange={handleUploadProof}
+                                        className="hidden"
+                                        disabled={uploadingProof}
+                                    />
+                                </label>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 bg-gray-50 border rounded-lg p-2">
+                                <div className="flex-1 overflow-hidden">
+                                    {formData.payment_proof_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                        <div className="relative group">
+                                            <img
+                                                src={formData.payment_proof_url}
+                                                alt="Comprovante"
+                                                className="h-20 w-auto object-contain rounded border cursor-pointer hover:opacity-90"
+                                                onClick={() => window.open(formData.payment_proof_url, '_blank')}
+                                            />
+                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                                <span className="text-white text-xs font-medium">Ver</span>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <a
+                                            href={formData.payment_proof_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm truncate"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            Ver documento
+                                        </a>
+                                    )}
                                 </div>
-                                <input
-                                    type="file"
-                                    accept="image/*,application/pdf"
-                                    onChange={handleUploadProof}
-                                    className="hidden"
-                                    disabled={uploadingProof}
-                                />
-                            </label>
-                        </div>
-                        {formData.payment_proof_url && (
-                            <p className="text-xs text-green-600 mt-2">✓ Comprovante anexado</p>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => setFormData(prev => ({ ...prev, payment_proof_url: '' }))}
+                                >
+                                    <X className="w-4 h-4" />
+                                </Button>
+                            </div>
                         )}
                     </div>
 

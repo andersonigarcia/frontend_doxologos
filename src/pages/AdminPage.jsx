@@ -3863,8 +3863,8 @@ const AdminPage = () => {
                         <TabsContent value="payments" className="mt-6">
                             <ProfessionalPaymentsList
                                 key={paymentRefreshKey}
-                                onCreatePayment={() => {
-                                    setSelectedPayment(null);
+                                onCreatePayment={(payment = null) => {
+                                    setSelectedPayment(payment);
                                     setIsPaymentFormOpen(true);
                                 }}
                                 onViewDetails={async (payment) => {
