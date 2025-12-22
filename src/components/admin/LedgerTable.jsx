@@ -125,6 +125,58 @@ export function LedgerTable({ className = '' }) {
         };
     };
 
+    const handleExport = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('payment_ledger_entries')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                toast({ title: 'Aviso', description: 'Não há dados para exportar.' });
+                return;
+            }
+
+            // CSV Header
+            const headers = ['Data', 'Descrição', 'Conta', 'Tipo', 'Valor', 'Fonte', 'ID Transação'];
+
+            // CSV Rows
+            const rows = data.map(entry => [
+                new Date(entry.created_at).toLocaleString('pt-BR'),
+                `"${entry.description.replace(/"/g, '""')}"`, // Escape quotes
+                entry.account_code,
+                entry.entry_type,
+                entry.amount.toFixed(2).replace('.', ','),
+                entry.metadata?.source || 'system',
+                entry.transaction_id
+            ]);
+
+            // Combine
+            const csvContent = [
+                headers.join(';'),
+                ...rows.map(row => row.join(';'))
+            ].join('\n');
+
+            // Download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `ledger_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast({ title: 'Sucesso', description: 'Exportação iniciada.' });
+
+        } catch (error) {
+            console.error('Export error:', error);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Falha na exportação.' });
+        }
+    };
+
     return (
         <Card className={className}>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -144,6 +196,10 @@ export function LedgerTable({ className = '' }) {
                     <Button variant="outline" size="sm" onClick={() => setRefreshKey(k => k + 1)}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Atualizar
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleExport}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar CSV
                     </Button>
                 </div>
             </CardHeader>
