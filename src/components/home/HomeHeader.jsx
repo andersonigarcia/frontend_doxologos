@@ -30,9 +30,14 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               </a>
             ))}
             {!user && (
-              <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">
-                Área do Paciente
-              </Link>
+              <>
+                <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">
+                  Área do Paciente
+                </Link>
+                <Link to="/admin" className="text-gray-600 hover:text-[#2d8659] transition-colors text-sm">
+                  Sou Profissional
+                </Link>
+              </>
             )}
             {user ? (
               <>
@@ -72,9 +77,14 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               </a>
             ))}
             {!user && (
-              <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
-                Área do Paciente
-              </Link>
+              <>
+                <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
+                  Área do Paciente
+                </Link>
+                <Link to="/admin" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
+                  Sou Profissional
+                </Link>
+              </>
             )}
             {user ? (
               <div className="border-t border-gray-200 pt-4">
