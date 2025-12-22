@@ -17,7 +17,7 @@ const trustIndicators = [
     },
     {
         icon: Users,
-        value: '500+',
+        value: '100+',
         label: 'Consultas',
         color: 'blue',
         bgColor: 'from-blue-500 to-cyan-500'
@@ -111,8 +111,8 @@ const TrustIndicatorsSection = () => {
                                     key={index}
                                     onClick={() => handleIndicatorClick(index)}
                                     className={`h-2 rounded-full transition-all touch-manipulation ${index === currentIndex
-                                            ? 'w-8 bg-[#2d8659]'
-                                            : 'w-2 bg-gray-300'
+                                        ? 'w-8 bg-[#2d8659]'
+                                        : 'w-2 bg-gray-300'
                                         }`}
                                     aria-label={`Ver indicador ${index + 1}`}
                                 />
