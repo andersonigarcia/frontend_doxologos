@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Tooltip from '@/components/ui/Tooltip';
 
 /**
  * StatCard - Card especializado para exibição de estatísticas com tendências
@@ -72,7 +73,8 @@ export const StatCard = ({
     loading = false,
     invertTrendColors = false,
     className,
-    onClick
+    onClick,
+    tooltip // New prop
 }) => {
     const TrendIcon = trend ? getTrendIcon(trend.direction) : null;
     const trendColor = trend ? getTrendColor(trend.direction, invertTrendColors) : '';
@@ -89,9 +91,16 @@ export const StatCard = ({
                 className
             )}
         >
-            {/* Label */}
-            <div className="text-sm font-medium text-gray-600 mb-2">
-                {label}
+            {/* Label with optional Tooltip */}
+            <div className="flex items-center gap-2 mb-2">
+                <div className="text-sm font-medium text-gray-600">
+                    {label}
+                </div>
+                {tooltip && (
+                    <Tooltip content={tooltip}>
+                        <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                    </Tooltip>
+                )}
             </div>
 
             {/* Value */}

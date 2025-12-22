@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { Wallet, TrendingUp, TrendingDown, DollarSign, Loader2 } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, DollarSign, Loader2, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Tooltip from '@/components/ui/Tooltip';
 
 export function LedgerStats() {
     const [stats, setStats] = useState({
@@ -86,7 +87,12 @@ export function LedgerStats() {
             {/* Liability Card */}
             <div className="bg-white p-6 rounded-xl border border-orange-100 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-500">Obrigação com Profissionais</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-500">Obrigação com Profissionais</p>
+                        <Tooltip content="Valor total (histórico) que a plataforma deve repassar aos profissionais.">
+                            <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                        </Tooltip>
+                    </div>
                     <Wallet className="w-5 h-5 text-orange-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.liabilityBalance)}</h3>
@@ -99,7 +105,12 @@ export function LedgerStats() {
             {/* Cash Card */}
             <div className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-500">Saldo em Caixa (Estimado)</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-500">Saldo em Caixa (Estimado)</p>
+                        <Tooltip content="Estimativa baseada apenas nas Entradas e Saídas registradas neste livro caixa.">
+                            <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                        </Tooltip>
+                    </div>
                     <DollarSign className="w-5 h-5 text-blue-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.cashBalance)}</h3>
@@ -112,7 +123,12 @@ export function LedgerStats() {
             {/* Revenue Card */}
             <div className="bg-white p-6 rounded-xl border border-green-100 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-500">Receita de Serviços (Plataforma)</p>
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-500">Receita de Serviços (Plataforma)</p>
+                        <Tooltip content="Total acumulado que a plataforma ganhou com taxas de serviço.">
+                            <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                        </Tooltip>
+                    </div>
                     <TrendingUp className="w-5 h-5 text-green-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.revenueTotal)}</h3>

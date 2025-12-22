@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, DollarSign, PieChart, Plus, Pencil, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, PieChart, Plus, Pencil, Trash2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard, EmptyState, SkeletonStatsGrid } from '@/components/common';
 import { useProfitLoss, usePlatformCosts } from '@/hooks/useProfitLoss';
 import { cn } from '@/lib/utils';
+import Tooltip from '@/components/ui/Tooltip';
 
 export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, className = '' }) {
     const [period, setPeriod] = useState('month');
@@ -105,15 +106,35 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
 
             {/* Cards de Métricas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard label="Receita Total" value={formatCurrency(totalRevenue)} format="currency" />
-                <StatCard label="Margem Plataforma" value={formatCurrency(platformMargin)} format="currency" />
-                <StatCard label="Custos Totais" value={formatCurrency(totalCosts)} format="currency" />
+                <StatCard
+                    label="Receita Total"
+                    value={formatCurrency(totalRevenue)}
+                    format="currency"
+                    tooltip="Soma de todos os agendamentos (confirmados/pagos) no período."
+                />
+                <StatCard
+                    label="Margem Plataforma"
+                    value={formatCurrency(platformMargin)}
+                    format="currency"
+                    tooltip="Receita Total descontando o repasse aos profissionais."
+                />
+                <StatCard
+                    label="Custos Totais"
+                    value={formatCurrency(totalCosts)}
+                    format="currency"
+                    tooltip="Soma das despesas operacionais (servidor, marketing, etc)."
+                />
                 <motion.div className={cn(
                     'rounded-xl border p-6',
                     isProfitable ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                 )}>
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-medium text-gray-600">Lucro/Prejuízo</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-600">Lucro/Prejuízo</p>
+                            <Tooltip content="Resultado final: Margem da Plataforma - Custos Totais.">
+                                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                            </Tooltip>
+                        </div>
                         {isProfitable ? <TrendingUp className="w-5 h-5 text-green-600" /> : <TrendingDown className="w-5 h-5 text-red-600" />}
                     </div>
                     <p className={cn('text-3xl font-bold', isProfitable ? 'text-green-900' : 'text-red-900')}>

@@ -8,6 +8,22 @@ import { supabase } from '@/lib/customSupabaseClient';
  * @param {string} endDate - Data final (YYYY-MM-DD)
  * @param {string} category - Categoria específica (opcional)
  */
+// Helper para garantir conversão numérica segura
+const safeParseFloat = (value) => {
+    if (value === null || value === undefined) return 0;
+    // Se for string, tentar tratar formatação brasileira antes
+    if (typeof value === 'string') {
+        // Se tiver vírgula e ponto, assumir formato BR (1.000,00) ou US (1,000.00) é arriscado.
+        // A suposição segura para Supabase/Postgres Numeric é ponto decimal.
+        // Mas se por algum motivo vier com vírgula decimal simples:
+        if (value.includes(',') && !value.includes('.')) {
+            value = value.replace(',', '.');
+        }
+    }
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
 export function usePlatformCosts(startDate = null, endDate = null, category = null) {
     const [data, setData] = useState({
         costs: [],
@@ -45,7 +61,7 @@ export function usePlatformCosts(startDate = null, endDate = null, category = nu
             if (costsError) throw costsError;
 
             // Calcular totais
-            const totalCosts = (costs || []).reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+            const totalCosts = (costs || []).reduce((sum, c) => sum + safeParseFloat(c.amount), 0);
 
             // Agrupar por categoria
             const costsByCategory = (costs || []).reduce((acc, cost) => {
@@ -53,7 +69,7 @@ export function usePlatformCosts(startDate = null, endDate = null, category = nu
                 if (!acc[cat]) {
                     acc[cat] = { total: 0, count: 0, items: [] };
                 }
-                acc[cat].total += parseFloat(cost.amount || 0);
+                acc[cat].total += safeParseFloat(cost.amount);
                 acc[cat].count += 1;
                 acc[cat].items.push(cost);
                 return acc;
@@ -62,7 +78,7 @@ export function usePlatformCosts(startDate = null, endDate = null, category = nu
             // Calcular custos recorrentes
             const recurringCosts = (costs || [])
                 .filter(c => c.is_recurring)
-                .reduce((sum, c) => sum + parseFloat(c.amount || 0), 0);
+                .reduce((sum, c) => sum + safeParseFloat(c.amount), 0);
 
             setData({
                 costs: costs || [],
@@ -126,12 +142,12 @@ export function usePlatformRevenue(startDate = null, endDate = null) {
 
             // Calcular receita total
             const totalRevenue = (bookings || []).reduce((sum, b) =>
-                sum + parseFloat(b.valor_consulta || 0), 0
+                sum + safeParseFloat(b.valor_consulta), 0
             );
 
             // Calcular total de repasses
             const totalPayouts = (bookings || []).reduce((sum, b) =>
-                sum + parseFloat(b.valor_repasse_profissional || 0), 0
+                sum + safeParseFloat(b.valor_repasse_profissional), 0
             );
 
             // Margem da plataforma

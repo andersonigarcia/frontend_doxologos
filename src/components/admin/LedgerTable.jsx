@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     FileText,
     ArrowDownCircle,
@@ -17,7 +18,10 @@ import {
     RefreshCw,
     Download,
     Trash2,
-    Edit
+    Edit,
+    ChevronLeft,
+    ChevronRight,
+    Filter
 } from 'lucide-react';
 import {
     AlertDialog,
@@ -40,6 +44,17 @@ export function LedgerTable({ className = '' }) {
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);
 
+    // Filters
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [accountFilter, setAccountFilter] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
+
+    // Pagination
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(20);
+    const [totalCount, setTotalCount] = useState(0);
+
     // Values for modals
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
     const [entryToEdit, setEntryToEdit] = useState(null);
@@ -50,21 +65,49 @@ export function LedgerTable({ className = '' }) {
 
     useEffect(() => {
         fetchLedger();
-    }, [refreshKey]);
+    }, [refreshKey, page, startDate, endDate, accountFilter, typeFilter]);
+
+    // Reset page when filters change
+    useEffect(() => {
+        setPage(1);
+    }, [startDate, endDate, accountFilter, typeFilter]);
+
+    const buildQuery = (query) => {
+        if (startDate) query = query.gte('created_at', `${startDate}T00:00:00`);
+        if (endDate) query = query.lte('created_at', `${endDate}T23:59:59`);
+        if (accountFilter) query = query.eq('account_code', accountFilter);
+        if (typeFilter) query = query.eq('entry_type', typeFilter);
+        return query;
+    };
 
     const fetchLedger = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
+            // 1. Get exact count first
+            let countQuery = supabase
+                .from('payment_ledger_entries')
+                .select('*', { count: 'exact', head: true });
+
+            countQuery = buildQuery(countQuery);
+            const { count, error: countError } = await countQuery;
+            if (countError) throw countError;
+            setTotalCount(count || 0);
+
+            // 2. Get paginated data
+            let dataQuery = supabase
                 .from('payment_ledger_entries')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(50);
+                .range((page - 1) * pageSize, page * pageSize - 1);
+
+            dataQuery = buildQuery(dataQuery);
+            const { data, error } = await dataQuery;
 
             if (error) throw error;
             setEntries(data || []);
         } catch (error) {
             console.error('Error fetching ledger:', error);
+            toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível carregar o livro caixa.' });
         } finally {
             setLoading(false);
         }
@@ -116,8 +159,8 @@ export function LedgerTable({ className = '' }) {
         const map = {
             'CASH_BANK': { label: 'Conta Banco / Caixa', variant: 'outline' },
             'REVENUE_GROSS': { label: 'Receita Bruta (Legado)', variant: 'secondary' },
-            'REVENUE_SERVICE': { label: 'Receita Plataforma', variant: 'success' }, // New
-            'LIABILITY_PROFESSIONAL': { label: 'A Pagar (Profissional)', variant: 'warning' }, // New
+            'REVENUE_SERVICE': { label: 'Receita Plataforma', variant: 'success' },
+            'LIABILITY_PROFESSIONAL': { label: 'A Pagar (Profissional)', variant: 'warning' },
             'EXPENSE_FEE': { label: 'Taxas', variant: 'destructive' },
             'EXPENSE_OPERATIONAL': { label: 'Despesas', variant: 'destructive' },
             'EQUITY_ADJUSTMENT': { label: 'Ajuste Capital', variant: 'default' }
@@ -140,15 +183,22 @@ export function LedgerTable({ className = '' }) {
 
     const handleExport = async () => {
         try {
-            const { data, error } = await supabase
+            toast({ title: 'Aguarde', description: 'Gerando arquivo de exportação...' });
+
+            // Fetch ALL matching records for export (ignoring pagination)
+            let query = supabase
                 .from('payment_ledger_entries')
                 .select('*')
                 .order('created_at', { ascending: false });
 
+            query = buildQuery(query);
+
+            const { data, error } = await query;
+
             if (error) throw error;
 
             if (!data || data.length === 0) {
-                toast({ title: 'Aviso', description: 'Não há dados para exportar.' });
+                toast({ title: 'Aviso', description: 'Não há dados para exportar com os filtros atuais.' });
                 return;
             }
 
@@ -158,11 +208,11 @@ export function LedgerTable({ className = '' }) {
             // CSV Rows
             const rows = data.map(entry => [
                 new Date(entry.created_at).toLocaleString('pt-BR'),
-                `"${entry.description.replace(/"/g, '""')}"`, // Escape quotes
+                `"${(entry.description || '').replace(/"/g, '""')}"`,
                 getAccountParams(entry.account_code).label,
                 entry.account_code,
                 entry.entry_type === 'DEBIT' ? 'Entrada' : 'Saída',
-                entry.amount.toFixed(2).replace('.', ','),
+                (entry.amount || 0).toFixed(2).replace('.', ','),
                 entry.metadata?.source || 'system',
                 entry.transaction_id
             ]);
@@ -183,7 +233,7 @@ export function LedgerTable({ className = '' }) {
             link.click();
             document.body.removeChild(link);
 
-            toast({ title: 'Sucesso', description: 'Exportação iniciada.' });
+            toast({ title: 'Sucesso', description: 'Exportação concluída.' });
 
         } catch (error) {
             console.error('Export error:', error);
@@ -191,32 +241,82 @@ export function LedgerTable({ className = '' }) {
         }
     };
 
+    const totalPages = Math.ceil(totalCount / pageSize);
+
     return (
         <Card className={className}>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                        <FileText className="w-5 h-5 text-gray-500" />
-                        Livro Caixa (Ledger)
-                    </CardTitle>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Registro contábil de todas as movimentações financeiras
-                    </p>
+            <CardHeader>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-xl">
+                            <FileText className="w-5 h-5 text-gray-500" />
+                            Livro Caixa (Ledger)
+                        </CardTitle>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Registro contábil de todas as movimentações financeiras
+                        </p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button size="sm" onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            + Lançamento
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExport}>
+                            <Download className="w-4 h-4 mr-2" />
+                            Exportar
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button size="sm" onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
-                        + Lançamento
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setRefreshKey(k => k + 1)}>
-                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                        Atualizar
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={handleExport}>
-                        <Download className="w-4 h-4 mr-2" />
-                        Exportar CSV
-                    </Button>
+
+                {/* Filters Area */}
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Início</label>
+                        <Input
+                            type="date"
+                            className="bg-white"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Fim</label>
+                        <Input
+                            type="date"
+                            className="bg-white"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Conta</label>
+                        <select
+                            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={accountFilter}
+                            onChange={(e) => setAccountFilter(e.target.value)}
+                        >
+                            <option value="">Todas as Contas</option>
+                            <option value="CASH_BANK">Conta Banco / Caixa</option>
+                            <option value="LIABILITY_PROFESSIONAL">A Pagar (Profissional)</option>
+                            <option value="REVENUE_SERVICE">Receita Plataforma</option>
+                            <option value="EXPENSE_OPERATIONAL">Despesas</option>
+                            <option value="EXPENSE_FEE">Taxas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">Tipo</label>
+                        <select
+                            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
+                        >
+                            <option value="">Todos</option>
+                            <option value="DEBIT">Entradas (Debit)</option>
+                            <option value="CREDIT">Saídas (Credit)</option>
+                        </select>
+                    </div>
                 </div>
             </CardHeader>
+
             <CardContent>
                 <div className="rounded-md border">
                     <Table>
@@ -231,16 +331,19 @@ export function LedgerTable({ className = '' }) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {loading && entries.length === 0 ? (
+                            {loading ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center h-24 text-gray-500">
-                                        Carregando registros...
+                                        <div className="flex items-center justify-center gap-2">
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                            Carregando registros...
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             ) : entries.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center h-24 text-gray-500">
-                                        Nenhum registro encontrado no livro caixa.
+                                        Nenhum registro encontrado com os filtros selecionados.
                                     </TableCell>
                                 </TableRow>
                             ) : (
@@ -304,6 +407,37 @@ export function LedgerTable({ className = '' }) {
                         </TableBody>
                     </Table>
                 </div>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center justify-between mt-4">
+                    <div className="text-sm text-gray-500">
+                        Total: <strong>{totalCount}</strong> registros
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1 || loading}
+                        >
+                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            Anterior
+                        </Button>
+                        <span className="text-sm font-medium px-2">
+                            Página {page} de {totalPages || 1}
+                        </span>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page >= totalPages || loading}
+                        >
+                            Próximo
+                            <ChevronRight className="w-4 h-4 ml-1" />
+                        </Button>
+                    </div>
+                </div>
+
             </CardContent>
 
             <ManualLedgerEntryModal
