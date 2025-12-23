@@ -5,7 +5,7 @@ import analytics from '../lib/analytics';
 // Hook para tracking de páginas
 export const usePageTracking = (pageName, pageTitle) => {
   const location = useLocation();
-  
+
   useEffect(() => {
     const title = pageTitle || document.title;
     analytics.trackPageView(pageName || location.pathname, title);
@@ -22,13 +22,13 @@ export const useEventTracking = () => {
 // Hook para tracking de performance de componentes
 export const usePerformanceTracking = (componentName) => {
   const renderStartTime = useRef(performance.now());
-  
+
   useEffect(() => {
     const renderTime = performance.now() - renderStartTime.current;
     if (renderTime > 50) { // Track slow renders (>50ms)
       analytics.trackPerformanceMetric(`component_render_${componentName}`, renderTime);
     }
-  });
+  }, []); // Only runs on mount
 
   return useCallback((metricName, value) => {
     analytics.trackPerformanceMetric(`${componentName}_${metricName}`, value);
@@ -59,7 +59,7 @@ export const useFormTracking = (formName) => {
   }, [formName, trackEvent]);
 
   const trackFormSubmit = useCallback((success = true, errorMessage = null) => {
-    const completionTime = formStartTime.current ? 
+    const completionTime = formStartTime.current ?
       Date.now() - formStartTime.current : null;
 
     trackEvent('form_submit', {
@@ -72,7 +72,7 @@ export const useFormTracking = (formName) => {
   }, [formName, trackEvent]);
 
   const trackFormAbandonment = useCallback((lastField) => {
-    const timeSpent = formStartTime.current ? 
+    const timeSpent = formStartTime.current ?
       Date.now() - formStartTime.current : null;
 
     analytics.trackFormAbandonment(formName, lastField);
@@ -199,7 +199,7 @@ export const useEngagementTracking = () => {
     const handleBeforeUnload = () => {
       const sessionDuration = Date.now() - sessionStart.current;
       const pageViewDuration = Date.now() - pageViewStart.current;
-      
+
       trackEvent('session_end', {
         event_category: 'Engagement',
         event_label: 'Session Duration',
@@ -253,7 +253,7 @@ export const useScrollTracking = () => {
 
       // Track at 25%, 50%, 75%, 90% milestones
       const milestones = [0.25, 0.50, 0.75, 0.90];
-      
+
       milestones.forEach(milestone => {
         if (scrollPercent >= milestone && !trackedDepths.current.has(milestone)) {
           trackedDepths.current.add(milestone);
