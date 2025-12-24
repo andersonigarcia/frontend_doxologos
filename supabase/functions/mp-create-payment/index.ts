@@ -7,7 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key',
 };
 
 serve(async (req) => {
@@ -19,13 +19,13 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? `https://${Deno.env.get('SUPABASE_REFERENCE_ID')}.supabase.co`;
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SERVICE_ROLE_KEY');
-    
+
     // Determinar ambiente (test ou production)
     const environment = Deno.env.get('MP_ENVIRONMENT') || 'production';
-    const mpAccessToken = environment === 'test' 
+    const mpAccessToken = environment === 'test'
       ? Deno.env.get('MP_ACCESS_TOKEN_TEST')
       : Deno.env.get('MP_ACCESS_TOKEN');
-    
+
     console.log(`🔧 Mercado Pago Environment: ${environment}`);
 
     if (!mpAccessToken) {
@@ -44,13 +44,13 @@ serve(async (req) => {
       );
     }
 
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, { 
-      auth: { persistSession: false } 
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
+      auth: { persistSession: false }
     });
 
     const body = await req.json();
     const { booking_id, inscricao_id, amount, description, payer, payment_method_id } = body;
-    
+
     if (!booking_id && !inscricao_id) {
       return new Response(
         JSON.stringify({ error: 'booking_id or inscricao_id required' }),
@@ -117,25 +117,25 @@ serve(async (req) => {
       ...(typeof payer === 'object' && payer ? payer : {}),
       ...(isBookingPayment
         ? {
-            name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : booking?.patient_name,
-            email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : booking?.patient_email,
-            phone: payer?.phone || (booking?.patient_phone
-              ? {
-                  area_code: booking.patient_phone.substring(0, 2) || '11',
-                  number: booking.patient_phone.substring(2) || '999999999'
-                }
-              : undefined)
-          }
+          name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : booking?.patient_name,
+          email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : booking?.patient_email,
+          phone: payer?.phone || (booking?.patient_phone
+            ? {
+              area_code: booking.patient_phone.substring(0, 2) || '11',
+              number: booking.patient_phone.substring(2) || '999999999'
+            }
+            : undefined)
+        }
         : {
-            name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : inscricao?.patient_name,
-            email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : inscricao?.patient_email,
-            phone: payer?.phone || (inscricao?.patient_phone
-              ? {
-                  area_code: inscricao.patient_phone.substring(0, 2) || '11',
-                  number: inscricao.patient_phone.substring(2) || '999999999'
-                }
-              : undefined)
-          })
+          name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : inscricao?.patient_name,
+          email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : inscricao?.patient_email,
+          phone: payer?.phone || (inscricao?.patient_phone
+            ? {
+              area_code: inscricao.patient_phone.substring(0, 2) || '11',
+              number: inscricao.patient_phone.substring(2) || '999999999'
+            }
+            : undefined)
+        })
     };
 
     const paymentDescription = description || (
@@ -157,7 +157,7 @@ serve(async (req) => {
 
     // Criar pagamento PIX no Mercado Pago
     console.log('🔵 Creating PIX payment in Mercado Pago...');
-    
+
     const paymentPayload = {
       transaction_amount: finalAmount,
       description: paymentDescription,
@@ -198,7 +198,7 @@ serve(async (req) => {
 
     // Extrair dados do QR Code PIX
     const qrCodeData = paymentResult.point_of_interaction?.transaction_data;
-    
+
     if (!qrCodeData || !qrCodeData.qr_code) {
       console.error('❌ QR Code not found in payment response');
       return new Response(
@@ -250,7 +250,7 @@ serve(async (req) => {
     if (booking_id) {
       await supabaseAdmin
         .from('bookings')
-        .update({ 
+        .update({
           marketplace_payment_id: paymentResult.id.toString(),
           payment_status: 'pending',
           updated_at: nowIso
@@ -281,9 +281,9 @@ serve(async (req) => {
         qr_code_base64: qrCodeData.qr_code_base64,
         ticket_url: qrCodeData.ticket_url
       }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
 

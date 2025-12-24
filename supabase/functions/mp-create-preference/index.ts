@@ -2,14 +2,14 @@
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key',
 };
 
 Deno.serve(async (req) => {
   console.log('[MP] === FUNÇÃO INICIADA ===');
   console.log('[MP] Method:', req.method);
   console.log('[MP] URL:', req.url);
-  
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     console.log('[MP] Retornando CORS preflight');
@@ -20,10 +20,10 @@ Deno.serve(async (req) => {
     console.log('[MP] Parseando body...');
     const body = await req.json();
     console.log('[MP] Body recebido:', JSON.stringify(body));
-    
+
     const { booking_id, inscricao_id, amount, description, payer, payment_methods } = body;
     console.log('[MP] payment_methods extraído:', payment_methods);
-    
+
     if (!booking_id && !inscricao_id) {
       return new Response(
         JSON.stringify({ error: 'booking_id or inscricao_id required' }),
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       const bookingRes = await fetch(`${SUPABASE_URL}/rest/v1/bookings?select=*,services:service_id(*)&id=eq.${booking_id}`, {
         headers: { 'apikey': SERVICE_ROLE, 'Authorization': `Bearer ${SERVICE_ROLE}` }
       });
-      
+
       if (!bookingRes.ok) {
         return new Response(
           JSON.stringify({ error: 'booking lookup failed' }),
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
       const bookings = await bookingRes.json();
       const booking = bookings[0];
-      
+
       if (!booking) {
         return new Response(
           JSON.stringify({ error: 'booking not found' }),
@@ -76,13 +76,13 @@ Deno.serve(async (req) => {
         name: booking.patient_name,
         email: booking.patient_email
       };
-    } 
+    }
     // Se for inscrição de evento, buscar dados da inscrição
     else if (inscricao_id) {
       const inscricaoRes = await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?select=*,evento:eventos(*)&id=eq.${inscricao_id}`, {
         headers: { 'apikey': SERVICE_ROLE, 'Authorization': `Bearer ${SERVICE_ROLE}` }
       });
-      
+
       if (!inscricaoRes.ok) {
         return new Response(
           JSON.stringify({ error: 'inscricao lookup failed' }),
@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
       const inscricoes = await inscricaoRes.json();
       const inscricao = inscricoes[0];
-      
+
       if (!inscricao) {
         return new Response(
           JSON.stringify({ error: 'inscricao not found' }),
@@ -118,12 +118,12 @@ Deno.serve(async (req) => {
       console.log('[MP] Received payment_methods:', JSON.stringify(payment_methods));
       console.log('[MP] Type of excluded_payment_types:', typeof payment_methods.excluded_payment_types);
       console.log('[MP] Is array?:', Array.isArray(payment_methods.excluded_payment_types));
-      
+
       // Se veio installments, usar
       if (payment_methods.installments) {
         finalPaymentMethods.installments = payment_methods.installments;
       }
-      
+
       // Garantir que excluded_payment_types é array
       if (payment_methods.excluded_payment_types) {
         if (Array.isArray(payment_methods.excluded_payment_types)) {
@@ -133,7 +133,7 @@ Deno.serve(async (req) => {
           finalPaymentMethods.excluded_payment_types = [String(payment_methods.excluded_payment_types)];
         }
       }
-      
+
       // Garantir que excluded_payment_methods é array
       if (payment_methods.excluded_payment_methods) {
         if (Array.isArray(payment_methods.excluded_payment_methods)) {

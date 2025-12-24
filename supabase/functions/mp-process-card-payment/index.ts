@@ -3,12 +3,12 @@
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key',
 };
 
 Deno.serve(async (req) => {
   console.log('[MP Card] === FUNÇÃO INICIADA ===');
-  
+
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
-    
+
     const { token, amount, installments, description, payer, booking_id, inscricao_id } = body;
 
     if (!token || !amount) {
@@ -40,12 +40,12 @@ Deno.serve(async (req) => {
 
     // Validar e converter valor
     let transactionAmount = Number(amount);
-    
+
     // Validar valor mínimo
     if (isNaN(transactionAmount) || transactionAmount <= 0) {
       return new Response(
-        JSON.stringify({ 
-          error: 'invalid_amount', 
+        JSON.stringify({
+          error: 'invalid_amount',
           message: 'Valor do pagamento inválido ou zero',
           received: amount
         }),
