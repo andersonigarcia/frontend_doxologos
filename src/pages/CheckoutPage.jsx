@@ -40,6 +40,7 @@ const CheckoutPage = () => {
     const [creditError, setCreditError] = useState(null);
     const [existingPayment, setExistingPayment] = useState(null);
     const [showExistingPaymentModal, setShowExistingPaymentModal] = useState(false);
+    const [shouldForceNewPayment, setShouldForceNewPayment] = useState(false);
 
     const buildLogContext = (extra = {}) => ({
         bookingId: bookingId || null,
@@ -432,7 +433,11 @@ const CheckoutPage = () => {
         }
     };
 
-    const handlePayment = async () => {
+    const handlePayment = async (forceParam) => {
+        // Permitir forçar novo pagamento passando true
+        // Nota: eventos de click passam objeto event, então verificamos estritamente se é true
+        const force = forceParam === true;
+
         if (processing) return;
         setProcessing(true);
         setPaymentStatus(null);
@@ -442,11 +447,13 @@ const CheckoutPage = () => {
                 creditCoversTotal,
                 bookingTotal,
                 selectedMethod,
-                type
+                type,
+                force
             }));
 
             // NOVA LÓGICA: Verificar pagamentos duplicados (apenas se feature flag ativada)
-            if (isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK') && bookingId && type !== 'evento') {
+            // Se shouldForceNewPayment for true OU force for true, pulamos essa verificação
+            if (!force && !shouldForceNewPayment && isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK') && bookingId && type !== 'evento') {
                 const existing = await MercadoPagoService.checkExistingPayment(bookingId);
 
                 if (existing) {
@@ -1245,6 +1252,12 @@ const CheckoutPage = () => {
                         // Limpar estado de pagamento existente e forçar novo
                         setShowExistingPaymentModal(false);
                         setExistingPayment(null);
+                        setShouldForceNewPayment(true);
+
+                        // Opcional: Acionar novo pagamento imediatamente para melhor UX
+                        // O usuário disse "não vejo novo qrcode", esperando ação imediata.
+                        // Passamos 'true' para forçar bypass da verificação (importante pois state update é async)
+                        setTimeout(() => handlePayment(true), 100);
                     }}
                     onClose={() => setShowExistingPaymentModal(false)}
                 />
