@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -53,7 +53,28 @@ import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
 import { usePatientData } from '@/hooks/usePatientData';
 import { cn } from '@/lib/utils';
 import { tabsConfig } from '@/config/tabsConfig';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
+const SettingsToggle = () => {
+    const { settings, updateSetting, loading } = useSystemSettings();
+
+    if (loading) return <div className="text-sm text-gray-500">Carregando configurações...</div>;
+
+    return (
+        <div className="flex items-center space-x-2">
+            <Switch
+                id="lead-magnet-toggle"
+                checked={settings.lead_magnet_enabled}
+                onCheckedChange={(checked) => updateSetting('lead_magnet_enabled', checked)}
+            />
+            <Label htmlFor="lead-magnet-toggle" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Ativar Isca Digital (Guia de Ansiedade)
+            </Label>
+        </div>
+    );
+};
 
 
 const ROLE_DISPLAY = {
@@ -5615,6 +5636,22 @@ const AdminPage = () => {
                                                     <span>Moderação completa de conteúdo</span>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+                        )}
+                        {userRole === 'admin' && (
+                            <TabsContent value="settings" className="mt-6">
+                                <div className="bg-white rounded-xl shadow-lg p-6">
+                                    <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                        <Settings className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                        Configurações do Sistema
+                                    </h2>
+                                    <div className="space-y-6">
+                                        <div className="border rounded-lg p-4">
+                                            <h3 className="font-semibold text-lg mb-4">Marketing & Lead Magnets</h3>
+                                            <SettingsToggle />
                                         </div>
                                     </div>
                                 </div>

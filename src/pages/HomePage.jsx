@@ -19,6 +19,8 @@ import ContactSection from '@/components/home/ContactSection';
 import StickyBottomCTA from '@/components/home/StickyBottomCTA';
 import ComoFuncionaSection from '@/components/home/ComoFuncionaSection';
 import TrustIndicatorsSection from '@/components/home/TrustIndicatorsSection';
+import AnxietyGuideModal from '@/components/home/AnxietyGuideModal';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const videos = [
   {
@@ -84,10 +86,14 @@ const HomePage = () => {
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const formStartedRef = useRef(false);
 
+  /* Analytics & Settings */
   const { trackFormStart, trackFormSubmit, trackFormError, trackFieldChange } = useFormTracking('home_contact');
   const { trackVideoPlay } = useVideoTracking();
   const { trackElementView } = useEngagementTracking();
   const { trackComponentError, trackAsyncError } = useComponentErrorTracking('HomePage');
+
+  const { getSetting } = useSystemSettings('lead_magnet_enabled');
+  const isLeadMagnetEnabled = getSetting('lead_magnet_enabled', true);
 
   const { activeEvents, professionals, testimonials, testimonialsLoading } = useHomeContent({ toast, trackAsyncError });
 
@@ -350,7 +356,7 @@ const HomePage = () => {
                 <Link to="/doacao" className="block text-primary-light hover:text-white transition-colors font-medium">💚 Faça uma Doação</Link>
                 <Link to="/depoimento" className="block text-yellow-400 hover:text-white transition-colors font-medium">⭐ Deixe seu Depoimento</Link>
                 <Link to="/trabalhe-conosco" className="block text-gray-400 hover:text-white transition-colors">Trabalhe Conosco</Link>
-                <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Acesso Restrito</Link>
+                <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Área do Profissional</Link>
                 <Link to="/area-do-paciente" className="block text-gray-400 hover:text-white transition-colors">Área do Paciente</Link>
                 <Link to="/criar-usuarios" className="block text-gray-400 hover:text-white transition-colors text-xs opacity-50">Dev: Criar Usuários</Link>
               </div>
@@ -368,6 +374,9 @@ const HomePage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Lead Magnet Modal */}
+      <AnxietyGuideModal enabled={isLeadMagnetEnabled} />
     </>
   );
 };

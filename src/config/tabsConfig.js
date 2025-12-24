@@ -9,7 +9,8 @@ import {
     Ticket,
     LayoutDashboard,
     UserCircle,
-    FileText
+    FileText,
+    Settings
 } from 'lucide-react';
 
 /**
@@ -27,6 +28,7 @@ export const tabsConfig = {
         { value: 'availability', label: 'Disponibilidade', icon: Clock },
         { value: 'reviews', label: 'Avaliações', icon: Star },
         { value: 'events', label: 'Eventos', icon: Ticket },
+        { value: 'settings', label: 'Configurações', icon: Settings },
     ],
     professional: [
         { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },

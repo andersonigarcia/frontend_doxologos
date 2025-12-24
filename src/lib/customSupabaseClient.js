@@ -46,7 +46,7 @@ class SupabaseClientWrapper {
   setupErrorHandling() {
     // Interceptar apenas erros críticos
     const originalGetSession = this.client.auth.getSession.bind(this.client.auth);
-    
+
     this.client.auth.getSession = async (...args) => {
       try {
         const result = await originalGetSession(...args);
@@ -68,12 +68,13 @@ class SupabaseClientWrapper {
   get rpc() { return this.client.rpc.bind(this.client); }
   get storage() { return this.client.storage; }
   get functions() { return this.client.functions; }
+  get channel() { return this.client.channel.bind(this.client); }
 
   isJWTError(error) {
     if (!error) return false;
     const message = error.message?.toLowerCase() || '';
     const errorCode = error.error_code || error.code || '';
-    
+
     return (
       message.includes('jwt') ||
       message.includes('invalid claim') ||
@@ -89,13 +90,13 @@ class SupabaseClientWrapper {
         localStorage.removeItem(key);
       }
     });
-    
+
     Object.keys(sessionStorage).forEach(key => {
       if (key.includes('supabase') || key.includes('sb-')) {
         sessionStorage.removeItem(key);
       }
     });
-    
+
     console.log('✅ Storage limpo');
   }
 
