@@ -284,6 +284,19 @@ const CheckoutPage = () => {
         }
     };
 
+    // Helper para formatar data ignorando timezone (exibe exatamente o que está no banco)
+    const formatDateSafe = (dateString) => {
+        if (!dateString) return '';
+        // Se já vier com T, assumimos que pode ser tratado, mas se for YYYY-MM-DD simples:
+        if (dateString.includes('T')) {
+            return new Date(dateString).toLocaleDateString('pt-BR');
+        }
+        // Para YYYY-MM-DD, quebramos para evitar problemas de timezone UTC vs Local
+        const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
+        const date = new Date(year, month - 1, day);
+        return date.toLocaleDateString('pt-BR');
+    };
+
     const generateReservationToken = () => {
         if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
             return crypto.randomUUID();
@@ -1136,7 +1149,7 @@ const CheckoutPage = () => {
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="w-4 h-4 text-gray-400" />
                                                 <p className="font-semibold">
-                                                    {inscricao?.evento?.data_inicio && new Date(inscricao.evento.data_inicio).toLocaleDateString('pt-BR')}
+                                                    {formatDateSafe(inscricao?.evento?.data_inicio)}
                                                 </p>
                                             </div>
                                         </div>
@@ -1173,7 +1186,7 @@ const CheckoutPage = () => {
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="w-4 h-4 text-gray-400" />
                                                 <p className="font-semibold">
-                                                    {booking && new Date(booking.booking_date).toLocaleDateString('pt-BR')}
+                                                    {booking && formatDateSafe(booking.booking_date)}
                                                 </p>
                                             </div>
                                             <p className="text-sm">{booking?.booking_time}</p>
@@ -1217,7 +1230,7 @@ const CheckoutPage = () => {
                         </Card>
                     </div>
                 </div>
-            </div>
+            </div >
 
             {showExistingPaymentModal && existingPayment && (
                 <ExistingPaymentModal
@@ -1262,7 +1275,7 @@ const CheckoutPage = () => {
                     onClose={() => setShowExistingPaymentModal(false)}
                 />
             )}
-        </div>
+        </div >
     );
 };
 
