@@ -155,10 +155,10 @@ const LiveActivity = ({ currentStep }) => {
   const [show, setShow] = useState(false);
 
   const activities = [
-    { name: 'Maria Silva', action: 'agendou', time: '5 minutos', service: 'Psicoterapia' },
-    { name: 'João Santos', action: 'confirmou', time: '12 minutos', service: 'Terapia de Casal' },
-    { name: 'Ana Costa', action: 'agendou', time: '8 minutos', service: 'Psicoterapia' },
-    { name: 'Pedro Oliveira', action: 'agendou', time: '15 minutos', service: 'Psicoterapia' },
+    { name: 'Mais um paciente', action: 'agendou', time: '5 minutos', service: 'Psicoterapia' },
+    { name: 'Mais um paciente', action: 'confirmou', time: '12 minutos', service: 'Terapia de Casal' },
+    { name: 'Mais um paciente', action: 'agendou', time: '8 minutos', service: 'Psicoterapia' },
+    { name: 'Mais um paciente', action: 'agendou', time: '15 minutos', service: 'Psicoterapia' },
   ];
 
   useEffect(() => {
