@@ -462,38 +462,23 @@ const AdminPage = () => {
         if (rawProfessionals.length > 0) {
             if (isAdmin) {
                 try {
-                    const { data: sessionData } = await supabase.auth.getSession();
-                    const accessToken = sessionData?.session?.access_token;
+                    // Use supabase.functions.invoke to handle auth and routing automatically
+                    const { data, error } = await supabase.functions.invoke('admin-list-users');
 
-                    if (accessToken) {
-                        const response = await fetch(
-                            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-list-users`,
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${accessToken}`,
-                                    'Content-Type': 'application/json'
-                                }
-                            }
-                        );
+                    if (!error && data?.users) {
+                        const authUsers = data.users;
+                        const emailById = new Map(authUsers.map(authUser => [authUser.id, authUser.email]));
 
-                        if (response.ok) {
-                            const { users: authUsers } = await response.json();
-                            const emailById = new Map(authUsers.map(authUser => [authUser.id, authUser.email]));
+                        enrichedProfessionals = rawProfessionals.map(professional => {
+                            const lookupId = professional.user_id || professional.id;
+                            const resolvedEmail = professional.email || emailById.get(lookupId) || null;
 
-                            enrichedProfessionals = rawProfessionals.map(professional => {
-                                const lookupId = professional.user_id || professional.id;
-                                const resolvedEmail = professional.email || emailById.get(lookupId) || null;
-
-                                return resolvedEmail
-                                    ? { ...professional, email: resolvedEmail }
-                                    : professional;
-                            });
-                        } else {
-                            secureLog.warn('Não foi possível carregar emails via função admin-list-users.', { status: response.status });
-                        }
+                            return resolvedEmail
+                                ? { ...professional, email: resolvedEmail }
+                                : professional;
+                        });
                     } else {
-                        secureLog.warn('Token de sessão ausente ao tentar enriquecer emails dos profissionais.');
+                        secureLog.warn('Não foi possível carregar emails via função admin-list-users.', { error });
                     }
                 } catch (error) {
                     secureLog.error('Erro ao enriquecer emails dos profissionais:', error?.message || error);

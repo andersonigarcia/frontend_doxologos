@@ -861,8 +861,8 @@ const CheckoutPage = () => {
                                                             key={credit.id}
                                                             type="button"
                                                             className={`w-full text-left border rounded-lg p-3 transition ${selectedCreditId === credit.id
-                                                                    ? 'border-[#2d8659] bg-[#2d8659]/5'
-                                                                    : 'border-gray-200 hover:border-[#2d8659]/40'
+                                                                ? 'border-[#2d8659] bg-[#2d8659]/5'
+                                                                : 'border-gray-200 hover:border-[#2d8659]/40'
                                                                 } ${!covers ? 'opacity-60 cursor-not-allowed' : ''}`}
                                                             onClick={() => covers && setSelectedCreditId(credit.id)}
                                                             disabled={!covers || processing}
@@ -911,8 +911,8 @@ const CheckoutPage = () => {
                                         onClick={() => setSelectedMethod(method.id)}
                                         disabled={!method.available || processing || creditCoversTotal}
                                         className={`p-4 rounded-lg border-2 transition-all ${selectedMethod === method.id
-                                                ? 'border-[#2d8659] bg-[#2d8659]/5'
-                                                : 'border-gray-200 hover:border-[#2d8659]/50'
+                                            ? 'border-[#2d8659] bg-[#2d8659]/5'
+                                            : 'border-gray-200 hover:border-[#2d8659]/50'
                                             } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <div className="flex items-center gap-3 mb-2">
@@ -1211,6 +1211,44 @@ const CheckoutPage = () => {
                     </div>
                 </div>
             </div>
+
+            {showExistingPaymentModal && existingPayment && (
+                <ExistingPaymentModal
+                    payment={existingPayment}
+                    onContinue={() => {
+                        if (existingPayment?.qr_code && existingPayment?.payment_type === 'pix') {
+                            // Restaurar estado de pagamento PIX existente
+                            setPixPayment({
+                                payment_id: existingPayment.mp_payment_id,
+                                qr_code: existingPayment.qr_code,
+                                success: true
+                            });
+                            startPaymentPolling(existingPayment.mp_payment_id);
+                            setShowExistingPaymentModal(false);
+                            toast({
+                                title: 'Pagamento restaurado',
+                                description: 'QR Code recuperado com sucesso.'
+                            });
+                        } else if (existingPayment?.status === 'pending' && existingPayment?.external_resource_url) {
+                            // Se fosse boleto ou link externo
+                            window.location.href = existingPayment.external_resource_url;
+                        } else {
+                            // Fallback
+                            setShowExistingPaymentModal(false);
+                            toast({
+                                title: 'Continuando',
+                                description: 'Por favor, aguarde a verificação do pagamento.'
+                            });
+                        }
+                    }}
+                    onNewPayment={async () => {
+                        // Limpar estado de pagamento existente e forçar novo
+                        setShowExistingPaymentModal(false);
+                        setExistingPayment(null);
+                    }}
+                    onClose={() => setShowExistingPaymentModal(false)}
+                />
+            )}
         </div>
     );
 };
