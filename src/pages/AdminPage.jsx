@@ -45,6 +45,7 @@ import { ProfitLossDashboard } from '@/components/admin/ProfitLossDashboard';
 import { LedgerTable } from '@/components/admin/LedgerTable';
 import { LedgerStats } from '@/components/admin/LedgerStats';
 import { LedgerCharts } from '@/components/admin/LedgerCharts';
+import { AvailabilityManager } from '@/components/admin/availability/AvailabilityManager';
 import { CostFormModal } from '@/components/admin/CostFormModal';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
@@ -3798,184 +3799,27 @@ const AdminPage = () => {
                         </TabsContent>
 
                         <TabsContent value="availability" className="mt-6">
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                    <Clock className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                    Gestão de Disponibilidade
-                                </h2>
-
-                                {userRole === 'admin' && (
-                                    <div className="mb-6">
-                                        <label className="block text-sm font-medium mb-1">Profissional</label>
-                                        <select
-                                            value={selectedAvailProfessional}
-                                            onChange={e => setSelectedAvailProfessional(e.target.value)}
-                                            className="w-full input"
-                                        >
-                                            <option value="">Selecione um profissional</option>
-                                            {professionals.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                <div className="flex gap-4 mb-6">
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium mb-1">Mês</label>
-                                        <select
-                                            value={selectedMonth}
-                                            onChange={e => setSelectedMonth(Number(e.target.value))}
-                                            className="w-full input"
-                                        >
-                                            {Array.from({ length: 12 }, (_, i) => (
-                                                <option key={i + 1} value={i + 1}>
-                                                    {new Date(0, i).toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + new Date(0, i).toLocaleString('pt-BR', { month: 'long' }).slice(1)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex-1">
-                                        <label className="block text-sm font-medium mb-1">Ano</label>
-                                        <select
-                                            value={selectedYear}
-                                            onChange={e => setSelectedYear(Number(e.target.value))}
-                                            className="w-full input"
-                                        >
-                                            {[2024, 2025, 2026].map(year => (
-                                                <option key={year} value={year}>{year}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 mb-8">
-                                    {[
-                                        { key: 'monday', label: 'Segunda-feira' },
-                                        { key: 'tuesday', label: 'Terça-feira' },
-                                        { key: 'wednesday', label: 'Quarta-feira' },
-                                        { key: 'thursday', label: 'Quinta-feira' },
-                                        { key: 'friday', label: 'Sexta-feira' },
-                                        { key: 'saturday', label: 'Sábado' },
-                                        { key: 'sunday', label: 'Domingo' }
-                                    ].map(({ key, label }) => (
-                                        <div key={key} className="border p-4 rounded-lg bg-gray-50">
-                                            <label className="font-bold block mb-2 text-gray-700">{label}</label>
-                                            <input
-                                                type="text"
-                                                placeholder="Ex: 09:00, 10:00, 14:00"
-                                                className="w-full input"
-                                                value={(professionalAvailability[key] || []).join(', ')}
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    setProfessionalAvailability(prev => ({
-                                                        ...prev,
-                                                        [key]: val.split(',').map(t => t.trim()) // Keeps empty strings while typing, filtered on save
-                                                    }));
-                                                }}
-                                            />
-                                            <p className="text-xs text-gray-500 mt-1">Separe os horários por vírgula (formato HH:MM)</p>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex justify-end mb-8">
-                                    <LoadingButton
-                                        isLoading={isLoading('saveAvailability')}
-                                        loadingText="Salvando..."
-                                        onClick={handleSaveAvailability}
-                                        className="bg-[#2d8659] hover:bg-[#236b47] text-white px-8"
-                                    >
-                                        Salvar Disponibilidade no Mês
-                                    </LoadingButton>
-                                </div>
-
-                                <div className="mt-8 border-t pt-6">
-                                    <h3 className="text-xl font-bold mb-4 flex items-center text-red-600">
-                                        <CalendarX className="w-5 h-5 mr-2" />
-                                        Bloquear Datas Específicas
-                                    </h3>
-
-                                    <div className="bg-red-50 p-4 rounded-lg border border-red-100 mb-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-                                            <div className="lg:col-span-1">
-                                                <label className="block text-xs font-medium mb-1">Data</label>
-                                                <input
-                                                    type="date"
-                                                    value={newBlockedDate.date}
-                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, date: e.target.value })}
-                                                    className="w-full input bg-white"
-                                                />
-                                            </div>
-                                            <div className="lg:col-span-1">
-                                                <label className="block text-xs font-medium mb-1">Início (Opcional)</label>
-                                                <input
-                                                    type="time"
-                                                    value={newBlockedDate.start_time}
-                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, start_time: e.target.value })}
-                                                    className="w-full input bg-white"
-                                                />
-                                            </div>
-                                            <div className="lg:col-span-1">
-                                                <label className="block text-xs font-medium mb-1">Fim (Opcional)</label>
-                                                <input
-                                                    type="time"
-                                                    value={newBlockedDate.end_time}
-                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, end_time: e.target.value })}
-                                                    className="w-full input bg-white"
-                                                />
-                                            </div>
-                                            <div className="lg:col-span-1">
-                                                <label className="block text-xs font-medium mb-1">Motivo</label>
-                                                <input
-                                                    type="text"
-                                                    value={newBlockedDate.reason}
-                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, reason: e.target.value })}
-                                                    className="w-full input bg-white"
-                                                    placeholder="Ex: Feriado"
-                                                />
-                                            </div>
-                                            <div className="lg:col-span-1">
-                                                <Button onClick={handleAddBlockedDate} variant="destructive" className="w-full">
-                                                    Bloquear
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        {professionalBlockedDates.length === 0 ? (
-                                            <p className="text-gray-500 italic">Nenhuma data bloqueada.</p>
-                                        ) : (
-                                            professionalBlockedDates.map(blocked => (
-                                                <div key={blocked.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50">
-                                                    <div>
-                                                        <span className="font-medium text-red-700">
-                                                            {new Date(blocked.blocked_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                                                        </span>
-                                                        <span className="mx-2 text-gray-400">|</span>
-                                                        <span className="text-gray-700">{blocked.reason || 'Sem motivo'}</span>
-                                                        {(blocked.start_time || blocked.end_time) && (
-                                                            <span className="text-sm text-gray-500 ml-2">
-                                                                ({blocked.start_time || '00:00'} - {blocked.end_time || '23:59'})
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        onClick={() => handleDeleteBlockedDate(blocked.id)}
-                                                        className="hover:bg-red-100 hover:text-red-700"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </Button>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                            <AvailabilityManager
+                                userRole={userRole}
+                                professionals={professionals}
+                                selectedAvailProfessional={selectedAvailProfessional}
+                                setSelectedAvailProfessional={setSelectedAvailProfessional}
+                                selectedMonth={selectedMonth}
+                                setSelectedMonth={setSelectedMonth}
+                                selectedYear={selectedYear}
+                                setSelectedYear={setSelectedYear}
+                                professionalAvailability={professionalAvailability}
+                                setProfessionalAvailability={setProfessionalAvailability}
+                                handleSaveAvailability={handleSaveAvailability}
+                                isLoadingSave={isLoading('saveAvailability')}
+                                newBlockedDate={newBlockedDate}
+                                setNewBlockedDate={setNewBlockedDate}
+                                handleAddBlockedDate={handleAddBlockedDate}
+                                handleDeleteBlockedDate={handleDeleteBlockedDate}
+                                professionalBlockedDates={professionalBlockedDates}
+                            />
                         </TabsContent>
+
 
                         <TabsContent value="reviews" className="mt-6">
                             <div className="bg-white rounded-xl shadow-lg p-6">
@@ -4007,44 +3851,48 @@ const AdminPage = () => {
 
 
                         {/* Patients Tab - Professional View Only */}
-                        {isProfessionalView && (
-                            <TabsContent value="patients" className="mt-6">
-                                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                            <Users className="w-5 h-5" />
+                        {
+                            isProfessionalView && (
+                                <TabsContent value="patients" className="mt-6">
+                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                                <Users className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
+                                                <p className="text-sm text-gray-600">Visualize e gerencie seus pacientes</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
-                                            <p className="text-sm text-gray-600">Visualize e gerencie seus pacientes</p>
-                                        </div>
+
+                                        <PatientList
+                                            patients={patientData.patients}
+                                            onPatientClick={handlePatientClick}
+                                            loading={patientData.loading}
+                                        />
                                     </div>
 
-                                    <PatientList
-                                        patients={patientData.patients}
-                                        onPatientClick={handlePatientClick}
-                                        loading={patientData.loading}
+                                    <PatientDetailsModal
+                                        patient={selectedPatient}
+                                        isOpen={isPatientModalOpen}
+                                        onClose={() => {
+                                            setIsPatientModalOpen(false);
+                                            setSelectedPatient(null);
+                                        }}
+                                        onSaveNotes={handleSavePatientNotes}
                                     />
-                                </div>
-
-                                <PatientDetailsModal
-                                    patient={selectedPatient}
-                                    isOpen={isPatientModalOpen}
-                                    onClose={() => {
-                                        setIsPatientModalOpen(false);
-                                        setSelectedPatient(null);
-                                    }}
-                                    onSaveNotes={handleSavePatientNotes}
-                                />
-                            </TabsContent>
-                        )}
+                                </TabsContent>
+                            )
+                        }
 
                         {/* Financial Dashboard Tab - Professional View Only */}
-                        {isProfessionalView && (
-                            <TabsContent value="financeiro" className="mt-6">
-                                <FinancialDashboard professionalId={currentProfessional?.id} />
-                            </TabsContent>
-                        )}
+                        {
+                            isProfessionalView && (
+                                <TabsContent value="financeiro" className="mt-6">
+                                    <FinancialDashboard professionalId={currentProfessional?.id} />
+                                </TabsContent>
+                            )
+                        }
 
                         <TabsContent value="payments" className="mt-6">
                             <ProfessionalPaymentsList
@@ -4161,539 +4009,545 @@ const AdminPage = () => {
                         </TabsContent>
 
                         {/* P&L Dashboard Tab - Admin Only */}
-                        {userRole === 'admin' && (
-                            <TabsContent value="profit-loss" className="mt-6">
-                                <ProfitLossDashboard
-                                    onAddCost={() => {
-                                        setSelectedCost(null);
-                                        setIsCostFormOpen(true);
-                                    }}
-                                    onEditCost={(cost) => {
-                                        setSelectedCost(cost);
-                                        setIsCostFormOpen(true);
-                                    }}
-                                    onDeleteCost={(cost) => {
-                                        setCostToDelete(cost);
-                                        setCostDeleteConfirmOpen(true);
-                                    }}
-                                    key={costRefreshKey}
-                                />
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="profit-loss" className="mt-6">
+                                    <ProfitLossDashboard
+                                        onAddCost={() => {
+                                            setSelectedCost(null);
+                                            setIsCostFormOpen(true);
+                                        }}
+                                        onEditCost={(cost) => {
+                                            setSelectedCost(cost);
+                                            setIsCostFormOpen(true);
+                                        }}
+                                        onDeleteCost={(cost) => {
+                                            setCostToDelete(cost);
+                                            setCostDeleteConfirmOpen(true);
+                                        }}
+                                        key={costRefreshKey}
+                                    />
 
-                                {/* Cost Form Modal */}
-                                <CostFormModal
-                                    open={isCostFormOpen}
-                                    onClose={() => {
-                                        setIsCostFormOpen(false);
-                                        setSelectedCost(null);
-                                    }}
-                                    cost={selectedCost}
-                                    onSuccess={() => {
-                                        setCostRefreshKey(prev => prev + 1);
-                                        toast({
-                                            title: 'Sucesso',
-                                            description: selectedCost ? 'Custo atualizado' : 'Custo adicionado'
-                                        });
-                                    }}
-                                />
+                                    {/* Cost Form Modal */}
+                                    <CostFormModal
+                                        open={isCostFormOpen}
+                                        onClose={() => {
+                                            setIsCostFormOpen(false);
+                                            setSelectedCost(null);
+                                        }}
+                                        cost={selectedCost}
+                                        onSuccess={() => {
+                                            setCostRefreshKey(prev => prev + 1);
+                                            toast({
+                                                title: 'Sucesso',
+                                                description: selectedCost ? 'Custo atualizado' : 'Custo adicionado'
+                                            });
+                                        }}
+                                    />
 
-                                {/* Delete Cost Confirmation Dialog */}
-                                <AlertDialog open={costDeleteConfirmOpen} onOpenChange={setCostDeleteConfirmOpen}>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                                            <AlertDialogDescription className="space-y-2">
-                                                <p>Tem certeza que deseja excluir este custo?</p>
-                                                {costToDelete && (
-                                                    <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-1 text-sm">
-                                                        <p><strong>Categoria:</strong> {costToDelete.category}</p>
-                                                        <p><strong>Descrição:</strong> {costToDelete.description}</p>
-                                                        <p><strong>Valor:</strong> R$ {costToDelete.amount?.toFixed(2)}</p>
-                                                        <p><strong>Data:</strong> {new Date(costToDelete.cost_date).toLocaleDateString('pt-BR')}</p>
-                                                    </div>
-                                                )}
-                                                <p className="text-red-600 font-medium mt-4">
-                                                    ⚠️ Esta ação não pode ser desfeita.
-                                                </p>
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={() => setCostToDelete(null)}>
-                                                Cancelar
-                                            </AlertDialogCancel>
-                                            <AlertDialogAction
-                                                onClick={async () => {
-                                                    if (costToDelete) {
-                                                        try {
-                                                            const { error } = await supabase
-                                                                .from('platform_costs')
-                                                                .delete()
-                                                                .eq('id', costToDelete.id);
+                                    {/* Delete Cost Confirmation Dialog */}
+                                    <AlertDialog open={costDeleteConfirmOpen} onOpenChange={setCostDeleteConfirmOpen}>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                                <AlertDialogDescription className="space-y-2">
+                                                    <p>Tem certeza que deseja excluir este custo?</p>
+                                                    {costToDelete && (
+                                                        <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-1 text-sm">
+                                                            <p><strong>Categoria:</strong> {costToDelete.category}</p>
+                                                            <p><strong>Descrição:</strong> {costToDelete.description}</p>
+                                                            <p><strong>Valor:</strong> R$ {costToDelete.amount?.toFixed(2)}</p>
+                                                            <p><strong>Data:</strong> {new Date(costToDelete.cost_date).toLocaleDateString('pt-BR')}</p>
+                                                        </div>
+                                                    )}
+                                                    <p className="text-red-600 font-medium mt-4">
+                                                        ⚠️ Esta ação não pode ser desfeita.
+                                                    </p>
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={() => setCostToDelete(null)}>
+                                                    Cancelar
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={async () => {
+                                                        if (costToDelete) {
+                                                            try {
+                                                                const { error } = await supabase
+                                                                    .from('platform_costs')
+                                                                    .delete()
+                                                                    .eq('id', costToDelete.id);
 
-                                                            if (error) throw error;
+                                                                if (error) throw error;
 
-                                                            toast({
-                                                                title: 'Custo excluído',
-                                                                description: `Custo "${costToDelete.description}" foi excluído com sucesso.`
-                                                            });
+                                                                toast({
+                                                                    title: 'Custo excluído',
+                                                                    description: `Custo "${costToDelete.description}" foi excluído com sucesso.`
+                                                                });
 
-                                                            setCostRefreshKey(prev => prev + 1);
-                                                            setCostToDelete(null);
-                                                        } catch (error) {
-                                                            console.error('Error deleting cost:', error);
-                                                            toast({
-                                                                title: 'Erro ao excluir',
-                                                                description: error.message || 'Não foi possível excluir o custo',
-                                                                variant: 'destructive'
-                                                            });
+                                                                setCostRefreshKey(prev => prev + 1);
+                                                                setCostToDelete(null);
+                                                            } catch (error) {
+                                                                console.error('Error deleting cost:', error);
+                                                                toast({
+                                                                    title: 'Erro ao excluir',
+                                                                    description: error.message || 'Não foi possível excluir o custo',
+                                                                    variant: 'destructive'
+                                                                });
+                                                            }
                                                         }
-                                                    }
-                                                }}
-                                                className="bg-red-600 hover:bg-red-700"
-                                            >
-                                                Excluir Custo
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </TabsContent>
-                        )}
+                                                    }}
+                                                    className="bg-red-600 hover:bg-red-700"
+                                                >
+                                                    Excluir Custo
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </TabsContent>
+                            )
+                        }
 
                         {/* Ledger Tab - Admin Only */}
-                        {userRole === 'admin' && (
-                            <TabsContent value="livro-caixa" className="mt-6">
-                                <LedgerStats />
-                                <LedgerCharts />
-                                <LedgerTable />
-                            </TabsContent>
-                        )}
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="livro-caixa" className="mt-6">
+                                    <LedgerStats />
+                                    <LedgerCharts />
+                                    <LedgerTable />
+                                </TabsContent>
+                            )
+                        }
 
-                        {(userRole === 'admin' || userRole === 'professional') && (
-                            <TabsContent value="professionals" className="mt-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                            <Users className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                            {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
-                                        </h2>
-                                        <div className="space-y-4">
-                                            {professionals.map((prof, index) => (
-                                                <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                    } hover:bg-blue-50`}>
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-3">
-                                                                {prof.image_url && (
-                                                                    <img
-                                                                        src={prof.image_url}
-                                                                        alt={prof.name}
-                                                                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                                                                    />
-                                                                )}
-                                                                <div>
-                                                                    <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
-                                                                    {prof.email && (
-                                                                        <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                                                                            📧 {prof.email}
-                                                                        </p>
+                        {
+                            (userRole === 'admin' || userRole === 'professional') && (
+                                <TabsContent value="professionals" className="mt-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                            <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                                <Users className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                                {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
+                                            </h2>
+                                            <div className="space-y-4">
+                                                {professionals.map((prof, index) => (
+                                                    <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                        } hover:bg-blue-50`}>
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-3 mb-3">
+                                                                    {prof.image_url && (
+                                                                        <img
+                                                                            src={prof.image_url}
+                                                                            alt={prof.name}
+                                                                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                                                        />
                                                                     )}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                                <div>
-                                                                    <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
-                                                                    {prof.services_ids && prof.services_ids.length > 0 ? (
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {prof.services_ids.map(serviceId => {
-                                                                                const service = services.find(s => s.id === serviceId);
-                                                                                return service ? (
-                                                                                    <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                                        {service.name}
-                                                                                    </span>
-                                                                                ) : null;
-                                                                            })}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
-                                                                    )}
-                                                                </div>
-
-                                                                {prof.mini_curriculum && (
                                                                     <div>
-                                                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
-                                                                        <p className="text-sm text-gray-600 line-clamp-3">
-                                                                            {prof.mini_curriculum.length > 150
-                                                                                ? `${prof.mini_curriculum.substring(0, 150)}...`
-                                                                                : prof.mini_curriculum
-                                                                            }
-                                                                        </p>
+                                                                        <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
+                                                                        {prof.email && (
+                                                                            <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                                                                📧 {prof.email}
+                                                                            </p>
+                                                                        )}
                                                                     </div>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
+                                                                        {prof.services_ids && prof.services_ids.length > 0 ? (
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {prof.services_ids.map(serviceId => {
+                                                                                    const service = services.find(s => s.id === serviceId);
+                                                                                    return service ? (
+                                                                                        <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                                            {service.name}
+                                                                                        </span>
+                                                                                    ) : null;
+                                                                                })}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {prof.mini_curriculum && (
+                                                                        <div>
+                                                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
+                                                                            <p className="text-sm text-gray-600 line-clamp-3">
+                                                                                {prof.mini_curriculum.length > 150
+                                                                                    ? `${prof.mini_curriculum.substring(0, 150)}...`
+                                                                                    : prof.mini_curriculum
+                                                                                }
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex gap-2 ml-4">
+                                                                <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
+                                                                    <Edit className="w-4 h-4" />
+                                                                </Button>
+                                                                {userRole === 'admin' && (
+                                                                    <Button
+                                                                        size="icon"
+                                                                        variant="ghost"
+                                                                        onClick={() => handleDeleteProfessional(prof.id)}
+                                                                        className="hover:bg-red-50"
+                                                                        title="Excluir profissional"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                                                    </Button>
                                                                 )}
                                                             </div>
-                                                        </div>
-
-                                                        <div className="flex gap-2 ml-4">
-                                                            <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
-                                                            {userRole === 'admin' && (
-                                                                <Button
-                                                                    size="icon"
-                                                                    variant="ghost"
-                                                                    onClick={() => handleDeleteProfessional(prof.id)}
-                                                                    className="hover:bg-red-50"
-                                                                    title="Excluir profissional"
-                                                                >
-                                                                    <Trash2 className="w-4 h-4 text-red-500" />
-                                                                </Button>
-                                                            )}
                                                         </div>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6">
-                                            {userRole === 'admin'
-                                                ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
-                                                : 'Editar Meu Perfil'
-                                            }
-                                        </h2>
-                                        <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
-                                                <input
-                                                    name="name"
-                                                    value={professionalFormData.name}
-                                                    onChange={e => setProfessionalFormData({ ...professionalFormData, name: e.target.value })}
-                                                    placeholder="Ex: Dr. João Silva"
-                                                    className="w-full input"
-                                                    required
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
-                                                <div className="border rounded-lg p-3 max-h-32 overflow-y-auto bg-gray-50">
-                                                    {services.length === 0 ? (
-                                                        <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
-                                                    ) : (
-                                                        services.map(service => (
-                                                            <label key={service.id} className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={professionalFormData.services_ids.includes(service.id)}
-                                                                    onChange={(e) => {
-                                                                        const serviceId = service.id;
-                                                                        const currentServices = professionalFormData.services_ids;
-
-                                                                        if (e.target.checked) {
-                                                                            setProfessionalFormData({
-                                                                                ...professionalFormData,
-                                                                                services_ids: [...currentServices, serviceId]
-                                                                            });
-                                                                        } else {
-                                                                            setProfessionalFormData({
-                                                                                ...professionalFormData,
-                                                                                services_ids: currentServices.filter(id => id !== serviceId)
-                                                                            });
-                                                                        }
-                                                                    }}
-                                                                    className="rounded"
-                                                                />
-                                                                <span className="text-sm">{service.name}</span>
-                                                                <span className="text-xs text-gray-500">R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                                            </label>
-                                                        ))
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
-                                                <input
-                                                    name="email"
-                                                    value={professionalFormData.email}
-                                                    onChange={e => setProfessionalFormData({ ...professionalFormData, email: e.target.value })}
-                                                    type="email"
-                                                    placeholder="joao@clinica.com"
-                                                    className="w-full input"
-                                                    disabled={userRole === 'admin' && isEditingProfessional}
-                                                    required
-                                                />
-                                            </div>
-
-                                            {(userRole === 'admin' || !isEditingProfessional) && (
+                                        <div className="bg-white rounded-xl shadow-lg p-6">
+                                            <h2 className="text-2xl font-bold mb-6">
+                                                {userRole === 'admin'
+                                                    ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
+                                                    : 'Editar Meu Perfil'
+                                                }
+                                            </h2>
+                                            <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
                                                 <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
                                                     <input
-                                                        name="password"
-                                                        value={professionalFormData.password}
-                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, password: e.target.value })}
-                                                        type="password"
-                                                        placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'}
+                                                        name="name"
+                                                        value={professionalFormData.name}
+                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, name: e.target.value })}
+                                                        placeholder="Ex: Dr. João Silva"
                                                         className="w-full input"
-                                                        required={!isEditingProfessional}
+                                                        required
                                                     />
-                                                    {isEditingProfessional && userRole === 'admin' && (
-                                                        <p className="text-xs text-gray-500 mt-1">{`Deixe em branco para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
-                                                    )}
                                                 </div>
-                                            )}
 
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
+                                                    <div className="border rounded-lg p-3 max-h-32 overflow-y-auto bg-gray-50">
+                                                        {services.length === 0 ? (
+                                                            <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
+                                                        ) : (
+                                                            services.map(service => (
+                                                                <label key={service.id} className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={professionalFormData.services_ids.includes(service.id)}
+                                                                        onChange={(e) => {
+                                                                            const serviceId = service.id;
+                                                                            const currentServices = professionalFormData.services_ids;
 
-                                                {/* Upload de arquivo local */}
-                                                <div className="mb-3">
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={async (e) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                // Verificar tamanho do arquivo (máximo 5MB)
-                                                                if (file.size > 5 * 1024 * 1024) {
-                                                                    toast({
-                                                                        variant: 'destructive',
-                                                                        title: 'Arquivo muito grande',
-                                                                        description: 'Por favor, selecione uma imagem menor que 5MB'
-                                                                    });
-                                                                    return;
-                                                                }
-
-                                                                try {
-                                                                    toast({ title: 'Fazendo upload...', description: 'Processando e enviando imagem...' });
-
-                                                                    // Gerar nome único para o arquivo
-                                                                    const fileExt = file.name.split('.').pop();
-                                                                    const fileName = `professional_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-                                                                    const filePath = `professionals/${fileName}`;
-
-                                                                    // Processar e comprimir imagem antes do upload
-                                                                    const canvas = document.createElement('canvas');
-                                                                    const ctx = canvas.getContext('2d');
-                                                                    const img = new Image();
-
-                                                                    img.onload = async () => {
-                                                                        // Redimensionar para alta qualidade (800px max)
-                                                                        const maxSize = 800;
-                                                                        let { width, height } = img;
-
-                                                                        if (width > height) {
-                                                                            if (width > maxSize) {
-                                                                                height = (height * maxSize) / width;
-                                                                                width = maxSize;
-                                                                            }
-                                                                        } else {
-                                                                            if (height > maxSize) {
-                                                                                width = (width * maxSize) / height;
-                                                                                height = maxSize;
-                                                                            }
-                                                                        }
-
-                                                                        canvas.width = width;
-                                                                        canvas.height = height;
-
-                                                                        ctx.imageSmoothingEnabled = true;
-                                                                        ctx.imageSmoothingQuality = 'high';
-                                                                        ctx.drawImage(img, 0, 0, width, height);
-
-                                                                        // Converter para blob com boa qualidade
-                                                                        canvas.toBlob(async (blob) => {
-                                                                            if (!blob) {
-                                                                                toast({ variant: 'destructive', title: 'Erro ao processar imagem' });
-                                                                                return;
-                                                                            }
-
-                                                                            // Remover imagem anterior se existir
-                                                                            if (professionalFormData.image_url && professionalFormData.image_url.includes('supabase')) {
-                                                                                const oldPath = professionalFormData.image_url.split('/').slice(-2).join('/');
-                                                                                await supabase.storage.from('professional-photos').remove([oldPath]);
-                                                                            }
-
-                                                                            // Upload para Supabase Storage
-                                                                            const { data, error } = await supabase.storage
-                                                                                .from('professional-photos')
-                                                                                .upload(filePath, blob, {
-                                                                                    cacheControl: '3600',
-                                                                                    upsert: false
-                                                                                });
-
-                                                                            if (error) {
-                                                                                secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
-                                                                                secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
-                                                                                toast({
-                                                                                    variant: 'destructive',
-                                                                                    title: 'Erro no upload',
-                                                                                    description: 'Não foi possível fazer upload da imagem: ' + error.message
-                                                                                });
-                                                                                return;
-                                                                            }
-
-                                                                            // Obter URL pública
-                                                                            const { data: urlData } = supabase.storage
-                                                                                .from('professional-photos')
-                                                                                .getPublicUrl(filePath);
-
-                                                                            if (urlData?.publicUrl) {
+                                                                            if (e.target.checked) {
                                                                                 setProfessionalFormData({
                                                                                     ...professionalFormData,
-                                                                                    image_url: urlData.publicUrl
-                                                                                });
-
-                                                                                toast({
-                                                                                    title: 'Upload concluído!',
-                                                                                    description: `Imagem de alta qualidade salva (${Math.round(width)}x${Math.round(height)}px)`
+                                                                                    services_ids: [...currentServices, serviceId]
                                                                                 });
                                                                             } else {
-                                                                                toast({
-                                                                                    variant: 'destructive',
-                                                                                    title: 'Erro ao obter URL',
-                                                                                    description: 'Upload realizado mas não foi possível obter a URL'
+                                                                                setProfessionalFormData({
+                                                                                    ...professionalFormData,
+                                                                                    services_ids: currentServices.filter(id => id !== serviceId)
                                                                                 });
                                                                             }
-                                                                        }, 'image/jpeg', 0.85);
-                                                                    };
-
-                                                                    img.onerror = () => {
-                                                                        toast({
-                                                                            variant: 'destructive',
-                                                                            title: 'Erro ao processar imagem',
-                                                                            description: 'Não foi possível carregar o arquivo selecionado'
-                                                                        });
-                                                                    };
-
-                                                                    img.src = URL.createObjectURL(file);
-
-                                                                } catch (error) {
-                                                                    secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
-                                                                    secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
-                                                                    toast({
-                                                                        variant: 'destructive',
-                                                                        title: 'Erro no upload',
-                                                                        description: 'Não foi possível processar a imagem: ' + error.message
-                                                                    });
-                                                                }
-                                                            }
-                                                        }}
-                                                        className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
-                                                    />
-                                                    <p className="text-xs text-gray-500 mt-1">Upload seguro para Supabase Storage com alta qualidade (até 5MB)</p>
+                                                                        }}
+                                                                        className="rounded"
+                                                                    />
+                                                                    <span className="text-sm">{service.name}</span>
+                                                                    <span className="text-xs text-gray-500">R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                                </label>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
                                                 </div>
 
-                                                {/* Campo de URL alternativo */}
-                                                <div className="mb-3">
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
                                                     <input
-                                                        name="image_url"
-                                                        value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : professionalFormData.image_url}
-                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, image_url: e.target.value })}
-                                                        type="url"
-                                                        placeholder="Ou cole o link direto: https://exemplo.com/foto.jpg"
-                                                        className="w-full input text-sm"
+                                                        name="email"
+                                                        value={professionalFormData.email}
+                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, email: e.target.value })}
+                                                        type="email"
+                                                        placeholder="joao@clinica.com"
+                                                        className="w-full input"
+                                                        disabled={userRole === 'admin' && isEditingProfessional}
+                                                        required
                                                     />
-                                                    <p className="text-xs text-gray-500 mt-1">Alternativa: cole um link direto para a imagem</p>
                                                 </div>
 
-                                                {/* Preview da imagem */}
-                                                {professionalFormData.image_url && (
-                                                    <div className="flex items-center gap-3 mt-3">
-                                                        <img
-                                                            src={professionalFormData.image_url}
-                                                            alt="Preview"
-                                                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
-                                                            onError={(e) => {
-                                                                e.target.style.display = 'none';
-                                                            }}
+                                                {(userRole === 'admin' || !isEditingProfessional) && (
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
+                                                        <input
+                                                            name="password"
+                                                            value={professionalFormData.password}
+                                                            onChange={e => setProfessionalFormData({ ...professionalFormData, password: e.target.value })}
+                                                            type="password"
+                                                            placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'}
+                                                            className="w-full input"
+                                                            required={!isEditingProfessional}
                                                         />
-                                                        <div>
-                                                            <p className="text-sm font-medium text-gray-700">Preview da foto</p>
-                                                            <Button
-                                                                type="button"
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => setProfessionalFormData({ ...professionalFormData, image_url: '' })}
-                                                                className="mt-1 text-xs"
-                                                            >
-                                                                Remover foto
-                                                            </Button>
-                                                        </div>
+                                                        {isEditingProfessional && userRole === 'admin' && (
+                                                            <p className="text-xs text-gray-500 mt-1">{`Deixe em branco para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
+                                                        )}
                                                     </div>
                                                 )}
-                                            </div>
 
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Mini-currículo</label>
-                                                <textarea
-                                                    name="mini_curriculum"
-                                                    value={professionalFormData.mini_curriculum}
-                                                    onChange={e => setProfessionalFormData({ ...professionalFormData, mini_curriculum: e.target.value })}
-                                                    placeholder="Formação, experiências, especializações..."
-                                                    className="w-full input"
-                                                    rows="5"
-                                                ></textarea>
-                                            </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
 
-                                            <div className="flex gap-2">
-                                                <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingProfessionalProfile}>
-                                                    {isSavingProfessionalProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                                    {userRole === 'admin'
-                                                        ? (isEditingProfessional ? 'Salvar' : 'Criar')
-                                                        : 'Salvar Alterações'
-                                                    }
-                                                </Button>
-                                                {userRole === 'admin' && isEditingProfessional && (
-                                                    <Button type="button" variant="outline" onClick={resetProfessionalForm}>
-                                                        Cancelar
+                                                    {/* Upload de arquivo local */}
+                                                    <div className="mb-3">
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            onChange={async (e) => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    // Verificar tamanho do arquivo (máximo 5MB)
+                                                                    if (file.size > 5 * 1024 * 1024) {
+                                                                        toast({
+                                                                            variant: 'destructive',
+                                                                            title: 'Arquivo muito grande',
+                                                                            description: 'Por favor, selecione uma imagem menor que 5MB'
+                                                                        });
+                                                                        return;
+                                                                    }
+
+                                                                    try {
+                                                                        toast({ title: 'Fazendo upload...', description: 'Processando e enviando imagem...' });
+
+                                                                        // Gerar nome único para o arquivo
+                                                                        const fileExt = file.name.split('.').pop();
+                                                                        const fileName = `professional_${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+                                                                        const filePath = `professionals/${fileName}`;
+
+                                                                        // Processar e comprimir imagem antes do upload
+                                                                        const canvas = document.createElement('canvas');
+                                                                        const ctx = canvas.getContext('2d');
+                                                                        const img = new Image();
+
+                                                                        img.onload = async () => {
+                                                                            // Redimensionar para alta qualidade (800px max)
+                                                                            const maxSize = 800;
+                                                                            let { width, height } = img;
+
+                                                                            if (width > height) {
+                                                                                if (width > maxSize) {
+                                                                                    height = (height * maxSize) / width;
+                                                                                    width = maxSize;
+                                                                                }
+                                                                            } else {
+                                                                                if (height > maxSize) {
+                                                                                    width = (width * maxSize) / height;
+                                                                                    height = maxSize;
+                                                                                }
+                                                                            }
+
+                                                                            canvas.width = width;
+                                                                            canvas.height = height;
+
+                                                                            ctx.imageSmoothingEnabled = true;
+                                                                            ctx.imageSmoothingQuality = 'high';
+                                                                            ctx.drawImage(img, 0, 0, width, height);
+
+                                                                            // Converter para blob com boa qualidade
+                                                                            canvas.toBlob(async (blob) => {
+                                                                                if (!blob) {
+                                                                                    toast({ variant: 'destructive', title: 'Erro ao processar imagem' });
+                                                                                    return;
+                                                                                }
+
+                                                                                // Remover imagem anterior se existir
+                                                                                if (professionalFormData.image_url && professionalFormData.image_url.includes('supabase')) {
+                                                                                    const oldPath = professionalFormData.image_url.split('/').slice(-2).join('/');
+                                                                                    await supabase.storage.from('professional-photos').remove([oldPath]);
+                                                                                }
+
+                                                                                // Upload para Supabase Storage
+                                                                                const { data, error } = await supabase.storage
+                                                                                    .from('professional-photos')
+                                                                                    .upload(filePath, blob, {
+                                                                                        cacheControl: '3600',
+                                                                                        upsert: false
+                                                                                    });
+
+                                                                                if (error) {
+                                                                                    secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
+                                                                                    secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
+                                                                                    toast({
+                                                                                        variant: 'destructive',
+                                                                                        title: 'Erro no upload',
+                                                                                        description: 'Não foi possível fazer upload da imagem: ' + error.message
+                                                                                    });
+                                                                                    return;
+                                                                                }
+
+                                                                                // Obter URL pública
+                                                                                const { data: urlData } = supabase.storage
+                                                                                    .from('professional-photos')
+                                                                                    .getPublicUrl(filePath);
+
+                                                                                if (urlData?.publicUrl) {
+                                                                                    setProfessionalFormData({
+                                                                                        ...professionalFormData,
+                                                                                        image_url: urlData.publicUrl
+                                                                                    });
+
+                                                                                    toast({
+                                                                                        title: 'Upload concluído!',
+                                                                                        description: `Imagem de alta qualidade salva (${Math.round(width)}x${Math.round(height)}px)`
+                                                                                    });
+                                                                                } else {
+                                                                                    toast({
+                                                                                        variant: 'destructive',
+                                                                                        title: 'Erro ao obter URL',
+                                                                                        description: 'Upload realizado mas não foi possível obter a URL'
+                                                                                    });
+                                                                                }
+                                                                            }, 'image/jpeg', 0.85);
+                                                                        };
+
+                                                                        img.onerror = () => {
+                                                                            toast({
+                                                                                variant: 'destructive',
+                                                                                title: 'Erro ao processar imagem',
+                                                                                description: 'Não foi possível carregar o arquivo selecionado'
+                                                                            });
+                                                                        };
+
+                                                                        img.src = URL.createObjectURL(file);
+
+                                                                    } catch (error) {
+                                                                        secureLog.error('Erro no upload da foto do profissional:', error?.message || error);
+                                                                        secureLog.debug('Detalhes do erro no upload da foto do profissional', error);
+                                                                        toast({
+                                                                            variant: 'destructive',
+                                                                            title: 'Erro no upload',
+                                                                            description: 'Não foi possível processar a imagem: ' + error.message
+                                                                        });
+                                                                    }
+                                                                }
+                                                            }}
+                                                            className="w-full p-2 border border-gray-300 rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#2d8659] file:text-white hover:file:bg-[#236b47] file:cursor-pointer"
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">Upload seguro para Supabase Storage com alta qualidade (até 5MB)</p>
+                                                    </div>
+
+                                                    {/* Campo de URL alternativo */}
+                                                    <div className="mb-3">
+                                                        <input
+                                                            name="image_url"
+                                                            value={professionalFormData.image_url && professionalFormData.image_url.startsWith('data:') ? '' : professionalFormData.image_url}
+                                                            onChange={e => setProfessionalFormData({ ...professionalFormData, image_url: e.target.value })}
+                                                            type="url"
+                                                            placeholder="Ou cole o link direto: https://exemplo.com/foto.jpg"
+                                                            className="w-full input text-sm"
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">Alternativa: cole um link direto para a imagem</p>
+                                                    </div>
+
+                                                    {/* Preview da imagem */}
+                                                    {professionalFormData.image_url && (
+                                                        <div className="flex items-center gap-3 mt-3">
+                                                            <img
+                                                                src={professionalFormData.image_url}
+                                                                alt="Preview"
+                                                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+                                                                onError={(e) => {
+                                                                    e.target.style.display = 'none';
+                                                                }}
+                                                            />
+                                                            <div>
+                                                                <p className="text-sm font-medium text-gray-700">Preview da foto</p>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => setProfessionalFormData({ ...professionalFormData, image_url: '' })}
+                                                                    className="mt-1 text-xs"
+                                                                >
+                                                                    Remover foto
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Mini-currículo</label>
+                                                    <textarea
+                                                        name="mini_curriculum"
+                                                        value={professionalFormData.mini_curriculum}
+                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, mini_curriculum: e.target.value })}
+                                                        placeholder="Formação, experiências, especializações..."
+                                                        className="w-full input"
+                                                        rows="5"
+                                                    ></textarea>
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingProfessionalProfile}>
+                                                        {isSavingProfessionalProfile && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                        {userRole === 'admin'
+                                                            ? (isEditingProfessional ? 'Salvar' : 'Criar')
+                                                            : 'Salvar Alterações'
+                                                        }
                                                     </Button>
-                                                )}
-                                            </div>
-                                        </form>
+                                                    {userRole === 'admin' && isEditingProfessional && (
+                                                        <Button type="button" variant="outline" onClick={resetProfessionalForm}>
+                                                            Cancelar
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {userRole !== 'admin' && (
-                                    <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
-                                        <h3 className="text-xl font-semibold mb-2">Alterar senha de acesso</h3>
-                                        <p className="text-sm text-gray-600 mb-4">
-                                            Defina uma nova senha segura para acessar o painel profissional.
-                                        </p>
-                                        <form onSubmit={handleProfessionalPasswordChange} className="space-y-4 text-sm max-w-xl">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Nova senha</label>
-                                                    <input
-                                                        type="password"
-                                                        value={passwordFormData.newPassword}
-                                                        onChange={(e) => setPasswordFormData(prev => ({ ...prev, newPassword: e.target.value }))}
-                                                        placeholder="Mínimo de 6 caracteres"
-                                                        className="w-full input"
-                                                        required
-                                                    />
+                                    {userRole !== 'admin' && (
+                                        <div className="bg-white rounded-xl shadow-lg p-6 mt-6">
+                                            <h3 className="text-xl font-semibold mb-2">Alterar senha de acesso</h3>
+                                            <p className="text-sm text-gray-600 mb-4">
+                                                Defina uma nova senha segura para acessar o painel profissional.
+                                            </p>
+                                            <form onSubmit={handleProfessionalPasswordChange} className="space-y-4 text-sm max-w-xl">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Nova senha</label>
+                                                        <input
+                                                            type="password"
+                                                            value={passwordFormData.newPassword}
+                                                            onChange={(e) => setPasswordFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+                                                            placeholder="Mínimo de 6 caracteres"
+                                                            className="w-full input"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Confirmar nova senha</label>
+                                                        <input
+                                                            type="password"
+                                                            value={passwordFormData.confirmPassword}
+                                                            onChange={(e) => setPasswordFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                                            placeholder="Repita a nova senha"
+                                                            className="w-full input"
+                                                            required
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Confirmar nova senha</label>
-                                                    <input
-                                                        type="password"
-                                                        value={passwordFormData.confirmPassword}
-                                                        onChange={(e) => setPasswordFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                                                        placeholder="Repita a nova senha"
-                                                        className="w-full input"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-                                            <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingPassword}>
-                                                {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                                Atualizar senha
-                                            </Button>
-                                        </form>
-                                    </div>
-                                )}
-                            </TabsContent>
-                        )}
+                                                <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={isSavingPassword}>
+                                                    {isSavingPassword && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                                                    Atualizar senha
+                                                </Button>
+                                            </form>
+                                        </div>
+                                    )}
+                                </TabsContent>
+                            )
+                        }
 
                         <TabsContent value="availability" className="mt-6">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -4940,85 +4794,333 @@ const AdminPage = () => {
                             </div>
                         </TabsContent>
 
-                        {userRole === 'admin' && (
-                            <TabsContent value="services" className="mt-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6 flex items-center"><Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços</h2>
-                                        <div className="space-y-4">
-                                            {services.map((service, index) => {
-                                                // Contar quantos profissionais têm este serviço
-                                                const professionalsCount = professionals.filter(prof =>
-                                                    prof.services_ids && prof.services_ids.includes(service.id)
-                                                ).length;
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="services" className="mt-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                            <h2 className="text-2xl font-bold mb-6 flex items-center"><Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços</h2>
+                                            <div className="space-y-4">
+                                                {services.map((service, index) => {
+                                                    // Contar quantos profissionais têm este serviço
+                                                    const professionalsCount = professionals.filter(prof =>
+                                                        prof.services_ids && prof.services_ids.includes(service.id)
+                                                    ).length;
+
+                                                    return (
+                                                        <div key={service.id} className={`border rounded-lg p-5 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                            } hover:bg-blue-50`}>
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-3 mb-2">
+                                                                        <h3 className="font-bold text-lg text-gray-900">{service.name}</h3>
+                                                                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                            {professionalsCount} {professionalsCount === 1 ? 'profissional' : 'profissionais'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Valor cobrado (paciente)</span>
+                                                                            <span className="font-bold text-green-600">
+                                                                                R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Repasse ao profissional</span>
+                                                                            <span className="font-semibold text-blue-600">
+                                                                                R$ {parseFloat(service.professional_payout ?? service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                                            </span>
+                                                                            <span className="text-xs text-gray-500 block mt-1">
+                                                                                {(() => {
+                                                                                    const patientAmount = parseCurrencyToNumber(service.price) ?? 0;
+                                                                                    const payoutAmount = parseCurrencyToNumber(
+                                                                                        service.professional_payout === undefined || service.professional_payout === null
+                                                                                            ? service.price
+                                                                                            : service.professional_payout
+                                                                                    ) ?? 0;
+                                                                                    const fee = Math.max(patientAmount - payoutAmount, 0);
+                                                                                    return `Taxa plataforma: R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                                                                })()}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Duração</span>
+                                                                            <span className="font-medium">
+                                                                                {service.duration_minutes >= 60
+                                                                                    ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}`
+                                                                                    : `${service.duration_minutes}min`
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {professionalsCount > 0 && (
+                                                                        <div className="mt-3">
+                                                                            <span className="text-xs text-gray-500 block mb-1">Profissionais que atendem:</span>
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {professionals
+                                                                                    .filter(prof => prof.services_ids && prof.services_ids.includes(service.id))
+                                                                                    .map(prof => (
+                                                                                        <span key={prof.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                                                                            {prof.name}
+                                                                                        </span>
+                                                                                    ))
+                                                                                }
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex gap-2 ml-4">
+                                                                    <Button size="icon" variant="ghost" onClick={() => handleEditService(service)} title="Editar serviço">
+                                                                        <Edit className="w-4 h-4" />
+                                                                    </Button>
+                                                                    <Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)} className="hover:bg-red-50" title="Excluir serviço">
+                                                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white rounded-xl shadow-lg p-6">
+                                            <h2 className="text-2xl font-bold mb-6">{isEditingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
+                                            <form onSubmit={handleServiceSubmit} className="space-y-4 text-sm">
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Serviço</label>
+                                                    <input
+                                                        name="name"
+                                                        value={serviceFormData.name}
+                                                        onChange={e => setServiceFormData({ ...serviceFormData, name: e.target.value })}
+                                                        placeholder="Ex: Consulta Psicológica, Terapia de Casal"
+                                                        className="w-full input"
+                                                        required
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Valor cobrado do paciente (R$)</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                                                        <input
+                                                            name="price"
+                                                            value={serviceFormData.price}
+                                                            onChange={e => {
+                                                                const value = sanitizeCurrencyInput(e.target.value);
+                                                                setServiceFormData(prev => ({ ...prev, price: value }));
+                                                            }}
+                                                            type="text"
+                                                            placeholder="150,00"
+                                                            className="w-full input pl-8"
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Repasse ao profissional (R$)</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                                                        <input
+                                                            name="professional_payout"
+                                                            value={serviceFormData.professional_payout}
+                                                            onChange={e => {
+                                                                const value = sanitizeCurrencyInput(e.target.value);
+                                                                setServiceFormData(prev => ({ ...prev, professional_payout: value }));
+                                                            }}
+                                                            type="text"
+                                                            placeholder="150,00"
+                                                            className="w-full input pl-8"
+                                                        />
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        Caso deixe em branco, será usado o mesmo valor cobrado do paciente.
+                                                    </p>
+                                                </div>
+
+                                                <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
+                                                    <p className="flex justify-between">
+                                                        <span>Paciente paga</span>
+                                                        <span className="font-semibold text-gray-900">R$ {servicePricingPreview.patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    </p>
+                                                    <p className="flex justify-between mt-1">
+                                                        <span>Profissional recebe</span>
+                                                        <span className="font-semibold text-blue-700">R$ {servicePricingPreview.professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    </p>
+                                                    <p className="flex justify-between mt-1">
+                                                        <span>Taxa estimada da plataforma</span>
+                                                        <span className="font-semibold text-emerald-700">R$ {servicePricingPreview.platformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                    </p>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Duração</label>
+                                                    <div className="relative">
+                                                        <input
+                                                            name="duration_minutes"
+                                                            value={serviceFormData.duration_minutes}
+                                                            onChange={e => {
+                                                                const value = e.target.value.replace(/[^0-9]/g, '');
+                                                                setServiceFormData(prev => ({ ...prev, duration_minutes: value }));
+                                                            }}
+                                                            type="text"
+                                                            placeholder="50"
+                                                            className="w-full input pr-12"
+                                                            required
+                                                        />
+                                                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">min</span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 mt-1">Duração em minutos (ex: 50 para 50min, 90 para 1h30min)</p>
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                                                        {isEditingService ? 'Salvar' : 'Criar'}
+                                                    </Button>
+                                                    {isEditingService && (
+                                                        <Button type="button" variant="outline" onClick={resetServiceForm}>
+                                                            Cancelar
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            )
+                        }
+
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="events" className="mt-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                            <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
+                                            {events.map((event, index) => {
+                                                const dataInicio = new Date(event.data_inicio);
+                                                const dataFim = new Date(event.data_fim);
+                                                const dataExpiracao = new Date(event.data_limite_inscricao);
+                                                const isExpired = dataExpiracao < new Date();
+                                                const inscricoes = event.inscricoes_eventos?.[0]?.count || 0;
 
                                                 return (
-                                                    <div key={service.id} className={`border rounded-lg p-5 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                    <div key={event.id} className={`border rounded-lg p-6 mb-4 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                                                         } hover:bg-blue-50`}>
                                                         <div className="flex justify-between items-start">
                                                             <div className="flex-1">
-                                                                <div className="flex items-center gap-3 mb-2">
-                                                                    <h3 className="font-bold text-lg text-gray-900">{service.name}</h3>
-                                                                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                        {professionalsCount} {professionalsCount === 1 ? 'profissional' : 'profissionais'}
+                                                                <div className="flex items-center gap-3 mb-3">
+                                                                    <h3 className="font-bold text-lg text-gray-900">{event.titulo}</h3>
+                                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                                                        }`}>
+                                                                        {isExpired ? 'Expirado' : 'Aberto'}
                                                                     </span>
-                                                                </div>
-                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                                                    <div>
-                                                                        <span className="text-gray-500 block">Valor cobrado (paciente)</span>
-                                                                        <span className="font-bold text-green-600">
-                                                                            R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-gray-500 block">Repasse ao profissional</span>
-                                                                        <span className="font-semibold text-blue-600">
-                                                                            R$ {parseFloat(service.professional_payout ?? service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                                        </span>
-                                                                        <span className="text-xs text-gray-500 block mt-1">
-                                                                            {(() => {
-                                                                                const patientAmount = parseCurrencyToNumber(service.price) ?? 0;
-                                                                                const payoutAmount = parseCurrencyToNumber(
-                                                                                    service.professional_payout === undefined || service.professional_payout === null
-                                                                                        ? service.price
-                                                                                        : service.professional_payout
-                                                                                ) ?? 0;
-                                                                                const fee = Math.max(patientAmount - payoutAmount, 0);
-                                                                                return `Taxa plataforma: R$ ${fee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                                                            })()}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div>
-                                                                        <span className="text-gray-500 block">Duração</span>
-                                                                        <span className="font-medium">
-                                                                            {service.duration_minutes >= 60
-                                                                                ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''}`
-                                                                                : `${service.duration_minutes}min`
+                                                                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                        {event.tipo_evento}
+                                                                    </span>
+
+                                                                    {/* Novo badge: Status Ativo/Inativo */}
+                                                                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${event.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
+                                                                        }`}>
+                                                                        {event.ativo ? '✅ Ativo' : '⏸️ Inativo'}
+                                                                    </span>
+
+                                                                    {/* Novo badge: Status de Exibição */}
+                                                                    {event.data_inicio_exibicao && event.data_fim_exibicao && (
+                                                                        (() => {
+                                                                            const agora = new Date();
+                                                                            const inicioExibicao = new Date(event.data_inicio_exibicao);
+                                                                            const fimExibicao = new Date(event.data_fim_exibicao);
+
+                                                                            let statusExibicao = '';
+                                                                            let corExibicao = '';
+
+                                                                            if (agora < inicioExibicao) {
+                                                                                statusExibicao = '🕒 Aguardando';
+                                                                                corExibicao = 'bg-yellow-100 text-yellow-800';
+                                                                            } else if (agora >= inicioExibicao && agora <= fimExibicao) {
+                                                                                statusExibicao = '👁️ Exibindo';
+                                                                                corExibicao = 'bg-purple-100 text-purple-800';
+                                                                            } else {
+                                                                                statusExibicao = '🚫 Oculto';
+                                                                                corExibicao = 'bg-gray-100 text-gray-600';
                                                                             }
-                                                                        </span>
-                                                                    </div>
+
+                                                                            return (
+                                                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${corExibicao}`}>
+                                                                                    {statusExibicao}
+                                                                                </span>
+                                                                            );
+                                                                        })()
+                                                                    )}
                                                                 </div>
-                                                                {professionalsCount > 0 && (
-                                                                    <div className="mt-3">
-                                                                        <span className="text-xs text-gray-500 block mb-1">Profissionais que atendem:</span>
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {professionals
-                                                                                .filter(prof => prof.services_ids && prof.services_ids.includes(service.id))
-                                                                                .map(prof => (
-                                                                                    <span key={prof.id} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                                                                        {prof.name}
-                                                                                    </span>
-                                                                                ))
-                                                                            }
-                                                                        </div>
-                                                                    </div>
+
+                                                                {event.descricao && (
+                                                                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                                                                        {event.descricao.length > 120
+                                                                            ? `${event.descricao.substring(0, 120)}...`
+                                                                            : event.descricao
+                                                                        }
+                                                                    </p>
                                                                 )}
+
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Início</span>
+                                                                        <span className="font-medium">
+                                                                            {dataInicio.toLocaleDateString('pt-BR')} às {dataInicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Fim</span>
+                                                                        <span className="font-medium">
+                                                                            {dataFim.toLocaleDateString('pt-BR')} às {dataFim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-gray-500 block">Inscrições até</span>
+                                                                        <span className={`font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
+                                                                            {dataExpiracao.toLocaleDateString('pt-BR')} às {dataExpiracao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* Novas informações de exibição */}
+                                                                    {event.data_inicio_exibicao && (
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Exibe de</span>
+                                                                            <span className="font-medium text-blue-600">
+                                                                                {new Date(event.data_inicio_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_inicio_exibicao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                    {event.data_fim_exibicao && (
+                                                                        <div>
+                                                                            <span className="text-gray-500 block">Exibe até</span>
+                                                                            <span className="font-medium text-blue-600">
+                                                                                {new Date(event.data_fim_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_fim_exibicao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+
+                                                                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                                                                    <div className="flex items-center gap-4">
+                                                                        <span className="flex items-center text-sm text-gray-600">
+                                                                            <Users className="w-4 h-4 mr-1" />
+                                                                            {inscricoes} / {event.limite_participantes} inscritos
+                                                                        </span>
+                                                                        {event.link_slug && (
+                                                                            <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                                                Link: {event.link_slug}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                             <div className="flex gap-2 ml-4">
-                                                                <Button size="icon" variant="ghost" onClick={() => handleEditService(service)} title="Editar serviço">
+                                                                <Button size="icon" variant="ghost" onClick={() => handleEditEvent(event)} title="Editar evento">
                                                                     <Edit className="w-4 h-4" />
                                                                 </Button>
-                                                                <Button size="icon" variant="ghost" onClick={() => handleDeleteService(service.id)} className="hover:bg-red-50" title="Excluir serviço">
+                                                                <Button size="icon" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="hover:bg-red-50" title="Excluir evento">
                                                                     <Trash2 className="w-4 h-4 text-red-500" />
                                                                 </Button>
                                                             </div>
@@ -5027,803 +5129,565 @@ const AdminPage = () => {
                                                 );
                                             })}
                                         </div>
-                                    </div>
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6">{isEditingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
-                                        <form onSubmit={handleServiceSubmit} className="space-y-4 text-sm">
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Serviço</label>
-                                                <input
-                                                    name="name"
-                                                    value={serviceFormData.name}
-                                                    onChange={e => setServiceFormData({ ...serviceFormData, name: e.target.value })}
-                                                    placeholder="Ex: Consulta Psicológica, Terapia de Casal"
-                                                    className="w-full input"
-                                                    required
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Valor cobrado do paciente (R$)</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
-                                                    <input
-                                                        name="price"
-                                                        value={serviceFormData.price}
-                                                        onChange={e => {
-                                                            const value = sanitizeCurrencyInput(e.target.value);
-                                                            setServiceFormData(prev => ({ ...prev, price: value }));
-                                                        }}
-                                                        type="text"
-                                                        placeholder="150,00"
-                                                        className="w-full input pl-8"
-                                                        required
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Repasse ao profissional (R$)</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
-                                                    <input
-                                                        name="professional_payout"
-                                                        value={serviceFormData.professional_payout}
-                                                        onChange={e => {
-                                                            const value = sanitizeCurrencyInput(e.target.value);
-                                                            setServiceFormData(prev => ({ ...prev, professional_payout: value }));
-                                                        }}
-                                                        type="text"
-                                                        placeholder="150,00"
-                                                        className="w-full input pl-8"
-                                                    />
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Caso deixe em branco, será usado o mesmo valor cobrado do paciente.
-                                                </p>
-                                            </div>
-
-                                            <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-xs text-gray-600">
-                                                <p className="flex justify-between">
-                                                    <span>Paciente paga</span>
-                                                    <span className="font-semibold text-gray-900">R$ {servicePricingPreview.patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                </p>
-                                                <p className="flex justify-between mt-1">
-                                                    <span>Profissional recebe</span>
-                                                    <span className="font-semibold text-blue-700">R$ {servicePricingPreview.professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                </p>
-                                                <p className="flex justify-between mt-1">
-                                                    <span>Taxa estimada da plataforma</span>
-                                                    <span className="font-semibold text-emerald-700">R$ {servicePricingPreview.platformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                </p>
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-xs font-medium mb-1 text-gray-600">Duração</label>
-                                                <div className="relative">
-                                                    <input
-                                                        name="duration_minutes"
-                                                        value={serviceFormData.duration_minutes}
-                                                        onChange={e => {
-                                                            const value = e.target.value.replace(/[^0-9]/g, '');
-                                                            setServiceFormData(prev => ({ ...prev, duration_minutes: value }));
-                                                        }}
-                                                        type="text"
-                                                        placeholder="50"
-                                                        className="w-full input pr-12"
-                                                        required
-                                                    />
-                                                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">min</span>
-                                                </div>
-                                                <p className="text-xs text-gray-500 mt-1">Duração em minutos (ex: 50 para 50min, 90 para 1h30min)</p>
-                                            </div>
-
-                                            <div className="flex gap-2">
-                                                <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
-                                                    {isEditingService ? 'Salvar' : 'Criar'}
-                                                </Button>
-                                                {isEditingService && (
-                                                    <Button type="button" variant="outline" onClick={resetServiceForm}>
-                                                        Cancelar
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </TabsContent>
-                        )}
-
-                        {userRole === 'admin' && (
-                            <TabsContent value="events" className="mt-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
-                                        {events.map((event, index) => {
-                                            const dataInicio = new Date(event.data_inicio);
-                                            const dataFim = new Date(event.data_fim);
-                                            const dataExpiracao = new Date(event.data_limite_inscricao);
-                                            const isExpired = dataExpiracao < new Date();
-                                            const inscricoes = event.inscricoes_eventos?.[0]?.count || 0;
-
-                                            return (
-                                                <div key={event.id} className={`border rounded-lg p-6 mb-4 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                    } hover:bg-blue-50`}>
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="flex-1">
-                                                            <div className="flex items-center gap-3 mb-3">
-                                                                <h3 className="font-bold text-lg text-gray-900">{event.titulo}</h3>
-                                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${isExpired ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                                                                    }`}>
-                                                                    {isExpired ? 'Expirado' : 'Aberto'}
-                                                                </span>
-                                                                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                    {event.tipo_evento}
-                                                                </span>
-
-                                                                {/* Novo badge: Status Ativo/Inativo */}
-                                                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${event.ativo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'
-                                                                    }`}>
-                                                                    {event.ativo ? '✅ Ativo' : '⏸️ Inativo'}
-                                                                </span>
-
-                                                                {/* Novo badge: Status de Exibição */}
-                                                                {event.data_inicio_exibicao && event.data_fim_exibicao && (
-                                                                    (() => {
-                                                                        const agora = new Date();
-                                                                        const inicioExibicao = new Date(event.data_inicio_exibicao);
-                                                                        const fimExibicao = new Date(event.data_fim_exibicao);
-
-                                                                        let statusExibicao = '';
-                                                                        let corExibicao = '';
-
-                                                                        if (agora < inicioExibicao) {
-                                                                            statusExibicao = '🕒 Aguardando';
-                                                                            corExibicao = 'bg-yellow-100 text-yellow-800';
-                                                                        } else if (agora >= inicioExibicao && agora <= fimExibicao) {
-                                                                            statusExibicao = '👁️ Exibindo';
-                                                                            corExibicao = 'bg-purple-100 text-purple-800';
-                                                                        } else {
-                                                                            statusExibicao = '🚫 Oculto';
-                                                                            corExibicao = 'bg-gray-100 text-gray-600';
-                                                                        }
-
-                                                                        return (
-                                                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${corExibicao}`}>
-                                                                                {statusExibicao}
-                                                                            </span>
-                                                                        );
-                                                                    })()
-                                                                )}
-                                                            </div>
-
-                                                            {event.descricao && (
-                                                                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                                                                    {event.descricao.length > 120
-                                                                        ? `${event.descricao.substring(0, 120)}...`
-                                                                        : event.descricao
+                                        <div className="bg-white rounded-xl shadow-lg p-6">
+                                            <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
+                                            <form onSubmit={handleEventSubmit} className="space-y-6 text-sm">
+                                                <section className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
+                                                    <div>
+                                                        <h3 className="text-base font-semibold text-gray-800">Informações principais</h3>
+                                                        <p className="text-xs text-gray-500">Título, descrição e quem conduz o evento.</p>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <input
+                                                            name="titulo"
+                                                            value={eventFormData.titulo || ''}
+                                                            onChange={e => {
+                                                                const value = e.target.value;
+                                                                setEventFormData(prev => {
+                                                                    const next = { ...prev, titulo: value };
+                                                                    if (!slugManuallyEdited) {
+                                                                        next.link_slug = slugifyTitle(value);
                                                                     }
-                                                                </p>
-                                                            )}
-
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Início</span>
-                                                                    <span className="font-medium">
-                                                                        {dataInicio.toLocaleDateString('pt-BR')} às {dataInicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                    </span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Fim</span>
-                                                                    <span className="font-medium">
-                                                                        {dataFim.toLocaleDateString('pt-BR')} às {dataFim.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                    </span>
-                                                                </div>
-                                                                <div>
-                                                                    <span className="text-gray-500 block">Inscrições até</span>
-                                                                    <span className={`font-medium ${isExpired ? 'text-red-600' : 'text-green-600'}`}>
-                                                                        {dataExpiracao.toLocaleDateString('pt-BR')} às {dataExpiracao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                    </span>
-                                                                </div>
-
-                                                                {/* Novas informações de exibição */}
-                                                                {event.data_inicio_exibicao && (
-                                                                    <div>
-                                                                        <span className="text-gray-500 block">Exibe de</span>
-                                                                        <span className="font-medium text-blue-600">
-                                                                            {new Date(event.data_inicio_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_inicio_exibicao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                                {event.data_fim_exibicao && (
-                                                                    <div>
-                                                                        <span className="text-gray-500 block">Exibe até</span>
-                                                                        <span className="font-medium text-blue-600">
-                                                                            {new Date(event.data_fim_exibicao).toLocaleDateString('pt-BR')} às {new Date(event.data_fim_exibicao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                                                        </span>
-                                                                    </div>
+                                                                    return next;
+                                                                });
+                                                                clearEventError('titulo');
+                                                            }}
+                                                            placeholder="Título do Evento"
+                                                            className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
+                                                            required
+                                                        />
+                                                        {eventFormErrors.titulo && (
+                                                            <p className="text-xs text-red-500">{eventFormErrors.titulo}</p>
+                                                        )}
+                                                        <textarea
+                                                            name="descricao"
+                                                            value={eventFormData.descricao || ''}
+                                                            onChange={e => setEventFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                                                            placeholder="Descrição do conteúdo, público e diferenciais"
+                                                            className="w-full input"
+                                                            rows="3"
+                                                        />
+                                                        <div className="grid gap-3 md:grid-cols-2">
+                                                            <div>
+                                                                <label className="block text-xs font-medium text-gray-600 mb-1">Formato</label>
+                                                                <select
+                                                                    name="tipo_evento"
+                                                                    value={eventFormData.tipo_evento || 'Workshop'}
+                                                                    onChange={e => setEventFormData(prev => ({ ...prev, tipo_evento: e.target.value }))}
+                                                                    className="w-full input"
+                                                                >
+                                                                    <option value="Workshop">Workshop</option>
+                                                                    <option value="Palestra">Palestra</option>
+                                                                    <option value="Masterclass">Masterclass</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-medium text-gray-600 mb-1">Profissional responsável</label>
+                                                                <select
+                                                                    name="professional_id"
+                                                                    value={eventFormData.professional_id || ''}
+                                                                    onChange={e => {
+                                                                        setEventFormData(prev => ({ ...prev, professional_id: e.target.value }));
+                                                                        clearEventError('professional_id');
+                                                                    }}
+                                                                    className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                    aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
+                                                                    required
+                                                                >
+                                                                    <option value="">Selecione o profissional</option>
+                                                                    {professionals.map(p => (
+                                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                                {eventFormErrors.professional_id && (
+                                                                    <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
                                                                 )}
                                                             </div>
+                                                        </div>
+                                                    </div>
+                                                </section>
 
-                                                            <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
-                                                                <div className="flex items-center gap-4">
-                                                                    <span className="flex items-center text-sm text-gray-600">
-                                                                        <Users className="w-4 h-4 mr-1" />
-                                                                        {inscricoes} / {event.limite_participantes} inscritos
-                                                                    </span>
-                                                                    {event.link_slug && (
-                                                                        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                                                            Link: {event.link_slug}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2 ml-4">
-                                                            <Button size="icon" variant="ghost" onClick={() => handleEditEvent(event)} title="Editar evento">
-                                                                <Edit className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button size="icon" variant="ghost" onClick={() => handleDeleteEvent(event.id)} className="hover:bg-red-50" title="Excluir evento">
-                                                                <Trash2 className="w-4 h-4 text-red-500" />
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
-                                        <form onSubmit={handleEventSubmit} className="space-y-6 text-sm">
-                                            <section className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
-                                                <div>
-                                                    <h3 className="text-base font-semibold text-gray-800">Informações principais</h3>
-                                                    <p className="text-xs text-gray-500">Título, descrição e quem conduz o evento.</p>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    <input
-                                                        name="titulo"
-                                                        value={eventFormData.titulo || ''}
-                                                        onChange={e => {
-                                                            const value = e.target.value;
-                                                            setEventFormData(prev => {
-                                                                const next = { ...prev, titulo: value };
-                                                                if (!slugManuallyEdited) {
-                                                                    next.link_slug = slugifyTitle(value);
-                                                                }
-                                                                return next;
-                                                            });
-                                                            clearEventError('titulo');
-                                                        }}
-                                                        placeholder="Título do Evento"
-                                                        className={`w-full input ${eventFormErrors.titulo ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                        aria-invalid={eventFormErrors.titulo ? 'true' : 'false'}
-                                                        required
-                                                    />
-                                                    {eventFormErrors.titulo && (
-                                                        <p className="text-xs text-red-500">{eventFormErrors.titulo}</p>
-                                                    )}
-                                                    <textarea
-                                                        name="descricao"
-                                                        value={eventFormData.descricao || ''}
-                                                        onChange={e => setEventFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                                                        placeholder="Descrição do conteúdo, público e diferenciais"
-                                                        className="w-full input"
-                                                        rows="3"
-                                                    />
-                                                    <div className="grid gap-3 md:grid-cols-2">
+                                                <section className="rounded-2xl border border-gray-100 p-5 space-y-5">
+                                                    <div className="flex items-start justify-between gap-3">
                                                         <div>
-                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Formato</label>
-                                                            <select
-                                                                name="tipo_evento"
-                                                                value={eventFormData.tipo_evento || 'Workshop'}
-                                                                onChange={e => setEventFormData(prev => ({ ...prev, tipo_evento: e.target.value }))}
-                                                                className="w-full input"
-                                                            >
-                                                                <option value="Workshop">Workshop</option>
-                                                                <option value="Palestra">Palestra</option>
-                                                                <option value="Masterclass">Masterclass</option>
-                                                            </select>
+                                                            <h3 className="text-base font-semibold text-gray-800">Agenda e inscrições</h3>
+                                                            <p className="text-xs text-gray-500">Defina datas, limite de vagas e valor do evento.</p>
                                                         </div>
-                                                        <div>
-                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Profissional responsável</label>
-                                                            <select
-                                                                name="professional_id"
-                                                                value={eventFormData.professional_id || ''}
-                                                                onChange={e => {
-                                                                    setEventFormData(prev => ({ ...prev, professional_id: e.target.value }));
-                                                                    clearEventError('professional_id');
-                                                                }}
-                                                                className={`w-full input ${eventFormErrors.professional_id ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                                aria-invalid={eventFormErrors.professional_id ? 'true' : 'false'}
-                                                                required
-                                                            >
-                                                                <option value="">Selecione o profissional</option>
-                                                                {professionals.map(p => (
-                                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                                ))}
-                                                            </select>
-                                                            {eventFormErrors.professional_id && (
-                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.professional_id}</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-5">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <h3 className="text-base font-semibold text-gray-800">Agenda e inscrições</h3>
-                                                        <p className="text-xs text-gray-500">Defina datas, limite de vagas e valor do evento.</p>
-                                                    </div>
-                                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
-                                                        <input
-                                                            type="checkbox"
-                                                            className="h-4 w-4 text-[#2d8659]"
-                                                            checked={isFreeEvent}
-                                                            onChange={(e) => {
-                                                                setIsFreeEvent(e.target.checked);
-                                                                setEventFormData(prev => ({ ...prev, valor: e.target.checked ? 0 : '' }));
-                                                                clearEventError('valor');
-                                                            }}
-                                                        />
-                                                        Evento gratuito
-                                                    </label>
-                                                </div>
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            name="data_inicio"
-                                                            value={eventFormData.data_inicio || ''}
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, data_inicio: e.target.value }));
-                                                                clearEventError('data_inicio');
-                                                                clearEventError('data_fim');
-                                                            }}
-                                                            className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
-                                                            required
-                                                        />
-                                                        {eventFormErrors.data_inicio && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            name="data_fim"
-                                                            value={eventFormData.data_fim || ''}
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, data_fim: e.target.value }));
-                                                                clearEventError('data_fim');
-                                                            }}
-                                                            className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
-                                                            required
-                                                        />
-                                                        {eventFormErrors.data_fim && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Limite de participantes</label>
-                                                        <input
-                                                            type="number"
-                                                            name="limite_participantes"
-                                                            value={eventFormData.limite_participantes || ''}
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, limite_participantes: e.target.value }));
-                                                                clearEventError('limite_participantes');
-                                                            }}
-                                                            placeholder="Ex: 25"
-                                                            className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
-                                                            min="1"
-                                                            max="500"
-                                                            required
-                                                        />
-                                                        {eventFormErrors.limite_participantes && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
-                                                        )}
-                                                        <p className="text-[11px] text-gray-500 mt-1">Ajuste conforme a lotação máxima do evento.</p>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Vagas simultâneas na sala</label>
-                                                        <input
-                                                            type="number"
-                                                            name="vagas_disponiveis"
-                                                            value={eventFormData.vagas_disponiveis || 0}
-                                                            onChange={e => {
-                                                                const parsedValue = parseInt(e.target.value, 10);
-                                                                setEventFormData(prev => ({ ...prev, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue }));
-                                                                clearEventError('vagas_disponiveis');
-                                                            }}
-                                                            placeholder="0 = ilimitado"
-                                                            className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
-                                                            min="0"
-                                                            max="1000"
-                                                        />
-                                                        {eventFormErrors.vagas_disponiveis && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
-                                                        )}
-                                                        <p className="text-[11px] text-gray-500 mt-1">Use zero para manter o acesso ilimitado.</p>
-                                                    </div>
-                                                </div>
-                                                <div className="grid gap-4 md:grid-cols-2">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Valor do evento</label>
-                                                        <div className={`input flex items-center ${isFreeEvent ? 'bg-gray-100 text-gray-400' : ''}`}>
-                                                            <span className="text-xs text-gray-500 mr-2">R$</span>
+                                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                                                             <input
-                                                                type="number"
-                                                                name="valor"
-                                                                value={isFreeEvent ? 0 : eventFormData.valor || ''}
-                                                                onChange={e => {
-                                                                    const parsedValue = parseFloat(e.target.value);
-                                                                    setEventFormData(prev => ({ ...prev, valor: Number.isNaN(parsedValue) ? '' : parsedValue }));
+                                                                type="checkbox"
+                                                                className="h-4 w-4 text-[#2d8659]"
+                                                                checked={isFreeEvent}
+                                                                onChange={(e) => {
+                                                                    setIsFreeEvent(e.target.checked);
+                                                                    setEventFormData(prev => ({ ...prev, valor: e.target.checked ? 0 : '' }));
                                                                     clearEventError('valor');
                                                                 }}
-                                                                placeholder="Ex: 97,00"
-                                                                className="flex-1 bg-transparent outline-none"
-                                                                disabled={isFreeEvent}
-                                                                min="0"
-                                                                step="0.01"
                                                             />
+                                                            Evento gratuito
+                                                        </label>
+                                                    </div>
+                                                    <div className="grid gap-4 md:grid-cols-2">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                name="data_inicio"
+                                                                value={eventFormData.data_inicio || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, data_inicio: e.target.value }));
+                                                                    clearEventError('data_inicio');
+                                                                    clearEventError('data_fim');
+                                                                }}
+                                                                className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                                required
+                                                            />
+                                                            {eventFormErrors.data_inicio && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
+                                                            )}
                                                         </div>
-                                                        {eventFormErrors.valor && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
-                                                        )}
-                                                        <p className="text-[11px] text-gray-500 mt-1">
-                                                            {isFreeEvent ? 'Marque como pago para definir o valor.' : 'Será cobrado no checkout após a inscrição.'}
-                                                        </p>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                name="data_fim"
+                                                                value={eventFormData.data_fim || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, data_fim: e.target.value }));
+                                                                    clearEventError('data_fim');
+                                                                }}
+                                                                className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
+                                                                required
+                                                            />
+                                                            {eventFormErrors.data_fim && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            name="data_limite_inscricao"
-                                                            value={eventFormData.data_limite_inscricao || ''}
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, data_limite_inscricao: e.target.value }));
-                                                                clearEventError('data_limite_inscricao');
-                                                            }}
-                                                            className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
-                                                            required
-                                                        />
-                                                        {eventFormErrors.data_limite_inscricao && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
-                                                        )}
-                                                        <p className="text-[11px] text-gray-500 mt-1">Após essa data o botão “Inscrever” é ocultado.</p>
+                                                    <div className="grid gap-4 md:grid-cols-2">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Limite de participantes</label>
+                                                            <input
+                                                                type="number"
+                                                                name="limite_participantes"
+                                                                value={eventFormData.limite_participantes || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, limite_participantes: e.target.value }));
+                                                                    clearEventError('limite_participantes');
+                                                                }}
+                                                                placeholder="Ex: 25"
+                                                                className={`w-full input ${eventFormErrors.limite_participantes ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.limite_participantes ? 'true' : 'false'}
+                                                                min="1"
+                                                                max="500"
+                                                                required
+                                                            />
+                                                            {eventFormErrors.limite_participantes && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.limite_participantes}</p>
+                                                            )}
+                                                            <p className="text-[11px] text-gray-500 mt-1">Ajuste conforme a lotação máxima do evento.</p>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Vagas simultâneas na sala</label>
+                                                            <input
+                                                                type="number"
+                                                                name="vagas_disponiveis"
+                                                                value={eventFormData.vagas_disponiveis || 0}
+                                                                onChange={e => {
+                                                                    const parsedValue = parseInt(e.target.value, 10);
+                                                                    setEventFormData(prev => ({ ...prev, vagas_disponiveis: Number.isNaN(parsedValue) ? 0 : parsedValue }));
+                                                                    clearEventError('vagas_disponiveis');
+                                                                }}
+                                                                placeholder="0 = ilimitado"
+                                                                className={`w-full input ${eventFormErrors.vagas_disponiveis ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.vagas_disponiveis ? 'true' : 'false'}
+                                                                min="0"
+                                                                max="1000"
+                                                            />
+                                                            {eventFormErrors.vagas_disponiveis && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
+                                                            )}
+                                                            <p className="text-[11px] text-gray-500 mt-1">Use zero para manter o acesso ilimitado.</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </section>
+                                                    <div className="grid gap-4 md:grid-cols-2">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Valor do evento</label>
+                                                            <div className={`input flex items-center ${isFreeEvent ? 'bg-gray-100 text-gray-400' : ''}`}>
+                                                                <span className="text-xs text-gray-500 mr-2">R$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    name="valor"
+                                                                    value={isFreeEvent ? 0 : eventFormData.valor || ''}
+                                                                    onChange={e => {
+                                                                        const parsedValue = parseFloat(e.target.value);
+                                                                        setEventFormData(prev => ({ ...prev, valor: Number.isNaN(parsedValue) ? '' : parsedValue }));
+                                                                        clearEventError('valor');
+                                                                    }}
+                                                                    placeholder="Ex: 97,00"
+                                                                    className="flex-1 bg-transparent outline-none"
+                                                                    disabled={isFreeEvent}
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                />
+                                                            </div>
+                                                            {eventFormErrors.valor && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.valor}</p>
+                                                            )}
+                                                            <p className="text-[11px] text-gray-500 mt-1">
+                                                                {isFreeEvent ? 'Marque como pago para definir o valor.' : 'Será cobrado no checkout após a inscrição.'}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                name="data_limite_inscricao"
+                                                                value={eventFormData.data_limite_inscricao || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, data_limite_inscricao: e.target.value }));
+                                                                    clearEventError('data_limite_inscricao');
+                                                                }}
+                                                                className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
+                                                                required
+                                                            />
+                                                            {eventFormErrors.data_limite_inscricao && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
+                                                            )}
+                                                            <p className="text-[11px] text-gray-500 mt-1">Após essa data o botão “Inscrever” é ocultado.</p>
+                                                        </div>
+                                                    </div>
+                                                </section>
 
-                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
-                                                <div>
-                                                    <h3 className="text-base font-semibold text-gray-800">Visibilidade no site</h3>
-                                                    <p className="text-xs text-gray-500">Controle quando o card aparece e se está ativo.</p>
-                                                </div>
-                                                <div className="grid gap-4 md:grid-cols-2">
+                                                <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
                                                     <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Início da exibição</label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            name="data_inicio_exibicao"
-                                                            value={eventFormData.data_inicio_exibicao || ''}
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, data_inicio_exibicao: e.target.value }));
-                                                                clearEventError('data_inicio_exibicao');
-                                                                clearEventError('data_fim_exibicao');
-                                                            }}
-                                                            className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
-                                                        />
-                                                        {eventFormErrors.data_inicio_exibicao && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
-                                                        )}
+                                                        <h3 className="text-base font-semibold text-gray-800">Visibilidade no site</h3>
+                                                        <p className="text-xs text-gray-500">Controle quando o card aparece e se está ativo.</p>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-600 mb-1">Fim da exibição</label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            name="data_fim_exibicao"
-                                                            value={eventFormData.data_fim_exibicao || ''}
-                                                            onChange={e => {
-                                                                setEventFormData(prev => ({ ...prev, data_fim_exibicao: e.target.value }));
-                                                                clearEventError('data_fim_exibicao');
-                                                            }}
-                                                            className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                            aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
-                                                        />
-                                                        {eventFormErrors.data_fim_exibicao && (
-                                                            <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
-                                                        )}
+                                                    <div className="grid gap-4 md:grid-cols-2">
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Início da exibição</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                name="data_inicio_exibicao"
+                                                                value={eventFormData.data_inicio_exibicao || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, data_inicio_exibicao: e.target.value }));
+                                                                    clearEventError('data_inicio_exibicao');
+                                                                    clearEventError('data_fim_exibicao');
+                                                                }}
+                                                                className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
+                                                            />
+                                                            {eventFormErrors.data_inicio_exibicao && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Fim da exibição</label>
+                                                            <input
+                                                                type="datetime-local"
+                                                                name="data_fim_exibicao"
+                                                                value={eventFormData.data_fim_exibicao || ''}
+                                                                onChange={e => {
+                                                                    setEventFormData(prev => ({ ...prev, data_fim_exibicao: e.target.value }));
+                                                                    clearEventError('data_fim_exibicao');
+                                                                }}
+                                                                className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
+                                                            />
+                                                            {eventFormErrors.data_fim_exibicao && (
+                                                                <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id="evento_ativo"
-                                                        name="ativo"
-                                                        checked={eventFormData.ativo === true}
-                                                        onChange={e => setEventFormData(prev => ({ ...prev, ativo: e.target.checked }))}
-                                                        className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
-                                                    />
-                                                    <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
-                                                        Evento ativo e visível para pacientes
-                                                    </label>
-                                                </div>
-                                            </section>
-
-                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <h3 className="text-base font-semibold text-gray-800">Sala Zoom e links</h3>
-                                                        <p className="text-xs text-gray-500">Usamos criação automática, mas você pode informar manualmente.</p>
-                                                    </div>
-                                                    <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                                    <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
                                                         <input
                                                             type="checkbox"
-                                                            className="h-4 w-4 text-[#2d8659]"
-                                                            checked={showManualZoomFields}
-                                                            onChange={(e) => {
-                                                                setShowManualZoomFields(e.target.checked);
-                                                                if (!e.target.checked) {
-                                                                    setEventFormData(prev => ({
-                                                                        ...prev,
-                                                                        meeting_link: '',
-                                                                        meeting_password: '',
-                                                                        meeting_id: '',
-                                                                        meeting_start_url: ''
-                                                                    }));
-                                                                }
-                                                            }}
+                                                            id="evento_ativo"
+                                                            name="ativo"
+                                                            checked={eventFormData.ativo === true}
+                                                            onChange={e => setEventFormData(prev => ({ ...prev, ativo: e.target.checked }))}
+                                                            className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
                                                         />
-                                                        Preencher manualmente
-                                                    </label>
-                                                </div>
-                                                {!showManualZoomFields && (
-                                                    <div className="rounded-lg border border-dashed border-[#2d8659]/50 bg-[#2d8659]/5 p-4 text-xs text-gray-600">
-                                                        <p className="font-medium text-gray-800">Criação automática habilitada</p>
-                                                        <p>
-                                                            Ao salvar um novo evento, tentaremos criar a sala Zoom com os dados acima.
-                                                            Caso prefira informar o link manualmente, ative a opção “Preencher manualmente”.
-                                                        </p>
+                                                        <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                            Evento ativo e visível para pacientes
+                                                        </label>
                                                     </div>
-                                                )}
-                                                {showManualZoomFields && (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="block text-xs font-medium mb-1">Link para participantes</label>
-                                                            <input
-                                                                type="url"
-                                                                value={eventFormData.meeting_link || ''}
-                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
-                                                                placeholder="https://zoom.us/j/123456"
-                                                                className="w-full input"
-                                                            />
-                                                            <p className="text-xs text-gray-500 mt-1">Mostrado apenas para inscritos confirmados.</p>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-medium mb-1">Senha da reunião</label>
-                                                            <input
-                                                                type="text"
-                                                                value={eventFormData.meeting_password || ''}
-                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_password: e.target.value }))}
-                                                                placeholder="Opcional"
-                                                                className="w-full input"
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-medium mb-1">ID da reunião</label>
-                                                            <input
-                                                                type="text"
-                                                                value={eventFormData.meeting_id || ''}
-                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_id: e.target.value }))}
-                                                                placeholder="Ex: 123 456 789"
-                                                                className="w-full input"
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-medium mb-1">Link do anfitrião</label>
-                                                            <input
-                                                                type="url"
-                                                                value={eventFormData.meeting_start_url || ''}
-                                                                onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_start_url: e.target.value }))}
-                                                                placeholder="https://zoom.us/s/host"
-                                                                className="w-full input"
-                                                            />
-                                                            <p className="text-xs text-gray-500 mt-1">Visível apenas no painel administrativo.</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </section>
+                                                </section>
 
-                                            <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
-                                                <div>
-                                                    <h3 className="text-base font-semibold text-gray-800">Link do evento e publicação</h3>
-                                                    <p className="text-xs text-gray-500">Use um slug amigável. Deixe vazio para gerar automaticamente.</p>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        name="link_slug"
-                                                        value={eventFormData.link_slug || ''}
-                                                        onChange={e => {
-                                                            const value = e.target.value.toLowerCase();
-                                                            setSlugManuallyEdited(true);
-                                                            setEventFormData(prev => ({ ...prev, link_slug: value }));
-                                                            clearEventError('link_slug');
-                                                        }}
-                                                        placeholder="workshop-ansiedade"
-                                                        className={`flex-1 input ${eventFormErrors.link_slug ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                        aria-invalid={eventFormErrors.link_slug ? 'true' : 'false'}
-                                                        pattern="[a-z0-9-]+"
-                                                        title="Use apenas letras minúsculas, números e hífens"
-                                                    />
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        onClick={() => {
-                                                            const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
-                                                            setSlugManuallyEdited(true);
-                                                            setEventFormData(prev => ({ ...prev, link_slug: slug }));
-                                                            clearEventError('link_slug');
-                                                            toast({ title: 'Slug gerado!', description: slug });
-                                                        }}
-                                                        disabled={!eventFormData.titulo}
-                                                    >
-                                                        Gerar
-                                                    </Button>
-                                                </div>
-                                                {eventFormErrors.link_slug && (
-                                                    <p className="text-xs text-red-500">{eventFormErrors.link_slug}</p>
-                                                )}
-                                                <p className="text-xs text-gray-500">
-                                                    {eventFormData.link_slug ? `URL pública: /evento/${eventFormData.link_slug}` : 'Slug será sugerido com base no título.'}
-                                                </p>
-
-                                                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-xl bg-gray-50 p-4 text-xs text-gray-600">
-                                                    <div>
-                                                        <p className="font-semibold text-gray-800">Resumo rápido</p>
-                                                        <p>{eventFormData.data_inicio ? 'Início em ' + new Date(eventFormData.data_inicio).toLocaleString('pt-BR') : 'Defina a data de início.'}</p>
+                                                <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <h3 className="text-base font-semibold text-gray-800">Sala Zoom e links</h3>
+                                                            <p className="text-xs text-gray-500">Usamos criação automática, mas você pode informar manualmente.</p>
+                                                        </div>
+                                                        <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-4 w-4 text-[#2d8659]"
+                                                                checked={showManualZoomFields}
+                                                                onChange={(e) => {
+                                                                    setShowManualZoomFields(e.target.checked);
+                                                                    if (!e.target.checked) {
+                                                                        setEventFormData(prev => ({
+                                                                            ...prev,
+                                                                            meeting_link: '',
+                                                                            meeting_password: '',
+                                                                            meeting_id: '',
+                                                                            meeting_start_url: ''
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            Preencher manualmente
+                                                        </label>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <p>{isFreeEvent ? 'Evento gratuito' : hasPaidValue ? `Valor previsto: R$ ${priceNumber.toFixed(2)}` : 'Informe o valor cobrado antes de publicar.'}</p>
-                                                        <p>{eventFormData.professional_id ? 'Profissional selecionado' : 'Selecione um profissional'}</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-end">
-                                                    {isEditingEvent && (
-                                                        <Button type="button" variant="outline" onClick={resetEventForm}>
-                                                            Cancelar edição
-                                                        </Button>
+                                                    {!showManualZoomFields && (
+                                                        <div className="rounded-lg border border-dashed border-[#2d8659]/50 bg-[#2d8659]/5 p-4 text-xs text-gray-600">
+                                                            <p className="font-medium text-gray-800">Criação automática habilitada</p>
+                                                            <p>
+                                                                Ao salvar um novo evento, tentaremos criar a sala Zoom com os dados acima.
+                                                                Caso prefira informar o link manualmente, ative a opção “Preencher manualmente”.
+                                                            </p>
+                                                        </div>
                                                     )}
-                                                    <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]">
-                                                        {isEditingEvent ? 'Salvar alterações' : 'Criar evento'}
-                                                    </Button>
-                                                </div>
-                                            </section>
-                                        </form>
-                                    </div>
-                                </div>
-                            </TabsContent>
-                        )}
+                                                    {showManualZoomFields && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div>
+                                                                <label className="block text-xs font-medium mb-1">Link para participantes</label>
+                                                                <input
+                                                                    type="url"
+                                                                    value={eventFormData.meeting_link || ''}
+                                                                    onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_link: e.target.value }))}
+                                                                    placeholder="https://zoom.us/j/123456"
+                                                                    className="w-full input"
+                                                                />
+                                                                <p className="text-xs text-gray-500 mt-1">Mostrado apenas para inscritos confirmados.</p>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-medium mb-1">Senha da reunião</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={eventFormData.meeting_password || ''}
+                                                                    onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_password: e.target.value }))}
+                                                                    placeholder="Opcional"
+                                                                    className="w-full input"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-medium mb-1">ID da reunião</label>
+                                                                <input
+                                                                    type="text"
+                                                                    value={eventFormData.meeting_id || ''}
+                                                                    onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_id: e.target.value }))}
+                                                                    placeholder="Ex: 123 456 789"
+                                                                    className="w-full input"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-medium mb-1">Link do anfitrião</label>
+                                                                <input
+                                                                    type="url"
+                                                                    value={eventFormData.meeting_start_url || ''}
+                                                                    onChange={(e) => setEventFormData(prev => ({ ...prev, meeting_start_url: e.target.value }))}
+                                                                    placeholder="https://zoom.us/s/host"
+                                                                    className="w-full input"
+                                                                />
+                                                                <p className="text-xs text-gray-500 mt-1">Visível apenas no painel administrativo.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </section>
 
-                        {userRole === 'admin' && (
-                            <TabsContent value="event-registrations" className="mt-6">
-                                <EventRegistrationsDashboard events={events} userRole={userRole} />
-                            </TabsContent>
-                        )}
+                                                <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
+                                                    <div>
+                                                        <h3 className="text-base font-semibold text-gray-800">Link do evento e publicação</h3>
+                                                        <p className="text-xs text-gray-500">Use um slug amigável. Deixe vazio para gerar automaticamente.</p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            name="link_slug"
+                                                            value={eventFormData.link_slug || ''}
+                                                            onChange={e => {
+                                                                const value = e.target.value.toLowerCase();
+                                                                setSlugManuallyEdited(true);
+                                                                setEventFormData(prev => ({ ...prev, link_slug: value }));
+                                                                clearEventError('link_slug');
+                                                            }}
+                                                            placeholder="workshop-ansiedade"
+                                                            className={`flex-1 input ${eventFormErrors.link_slug ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                            aria-invalid={eventFormErrors.link_slug ? 'true' : 'false'}
+                                                            pattern="[a-z0-9-]+"
+                                                            title="Use apenas letras minúsculas, números e hífens"
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                const slug = generateUniqueSlug(eventFormData.titulo || 'evento');
+                                                                setSlugManuallyEdited(true);
+                                                                setEventFormData(prev => ({ ...prev, link_slug: slug }));
+                                                                clearEventError('link_slug');
+                                                                toast({ title: 'Slug gerado!', description: slug });
+                                                            }}
+                                                            disabled={!eventFormData.titulo}
+                                                        >
+                                                            Gerar
+                                                        </Button>
+                                                    </div>
+                                                    {eventFormErrors.link_slug && (
+                                                        <p className="text-xs text-red-500">{eventFormErrors.link_slug}</p>
+                                                    )}
+                                                    <p className="text-xs text-gray-500">
+                                                        {eventFormData.link_slug ? `URL pública: /evento/${eventFormData.link_slug}` : 'Slug será sugerido com base no título.'}
+                                                    </p>
+
+                                                    <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-xl bg-gray-50 p-4 text-xs text-gray-600">
+                                                        <div>
+                                                            <p className="font-semibold text-gray-800">Resumo rápido</p>
+                                                            <p>{eventFormData.data_inicio ? 'Início em ' + new Date(eventFormData.data_inicio).toLocaleString('pt-BR') : 'Defina a data de início.'}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p>{isFreeEvent ? 'Evento gratuito' : hasPaidValue ? `Valor previsto: R$ ${priceNumber.toFixed(2)}` : 'Informe o valor cobrado antes de publicar.'}</p>
+                                                            <p>{eventFormData.professional_id ? 'Profissional selecionado' : 'Selecione um profissional'}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-2 border-t pt-4 md:flex-row md:items-center md:justify-end">
+                                                        {isEditingEvent && (
+                                                            <Button type="button" variant="outline" onClick={resetEventForm}>
+                                                                Cancelar edição
+                                                            </Button>
+                                                        )}
+                                                        <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]">
+                                                            {isEditingEvent ? 'Salvar alterações' : 'Criar evento'}
+                                                        </Button>
+                                                    </div>
+                                                </section>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            )
+                        }
+
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="event-registrations" className="mt-6">
+                                    <EventRegistrationsDashboard events={events} userRole={userRole} />
+                                </TabsContent>
+                            )
+                        }
 
                         {/* Depoimentos Section */}
-                        {userRole === 'admin' && (
-                            <TabsContent value="testimonials" className="mt-6">
-                                <div className="bg-white rounded-xl shadow-lg p-8">
-                                    <div className="text-center mb-8">
-                                        <h2 className="text-2xl font-bold mb-4 flex items-center justify-center">
-                                            <MessageCircle className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                            Gestão de Depoimentos
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="testimonials" className="mt-6">
+                                    <div className="bg-white rounded-xl shadow-lg p-8">
+                                        <div className="text-center mb-8">
+                                            <h2 className="text-2xl font-bold mb-4 flex items-center justify-center">
+                                                <MessageCircle className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                                Gestão de Depoimentos
+                                            </h2>
+                                            <p className="text-gray-600 mb-6">
+                                                Gerencie todos os depoimentos enviados pelos usuários, modere conteúdo e
+                                                controle quais aparecem no site principal.
+                                            </p>
+
+                                            <div className="grid md:grid-cols-2 gap-6 mb-8">
+                                                <div className="bg-blue-50 p-6 rounded-lg">
+                                                    <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-4">
+                                                        <MessageCircle className="w-6 h-6 text-blue-600" />
+                                                    </div>
+                                                    <h3 className="font-semibold text-lg mb-2">Página de Depoimentos</h3>
+                                                    <p className="text-gray-600 text-sm mb-4">
+                                                        Local público onde usuários podem enviar seus depoimentos sobre a clínica.
+                                                    </p>
+                                                    <Button
+                                                        onClick={() => window.open('/depoimento', '_blank')}
+                                                        variant="outline"
+                                                        className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                    >
+                                                        Ver Página Pública
+                                                    </Button>
+                                                </div>
+
+                                                <div className="bg-green-50 p-6 rounded-lg">
+                                                    <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-4">
+                                                        <Star className="w-6 h-6 text-green-600" />
+                                                    </div>
+                                                    <h3 className="font-semibold text-lg mb-2">Painel de Moderação</h3>
+                                                    <p className="text-gray-600 text-sm mb-4">
+                                                        Gerencie todos os depoimentos: aprovar, editar, organizar e controlar exibição.
+                                                    </p>
+                                                    <Button
+                                                        onClick={() => window.open('/admin/depoimentos', '_blank')}
+                                                        className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                                                    >
+                                                        Acessar Gestão
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-gray-50 p-6 rounded-lg">
+                                                <h4 className="font-semibold mb-3">Funcionalidades Disponíveis:</h4>
+                                                <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                        <span>Aprovar/Ocultar depoimentos</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                        <span>Editar texto e correções</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                        <span>Adicionar depoimentos externos</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                        <span>Sistema de busca e filtros</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                        <span>Controle de exibição no site</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                        <span>Moderação completa de conteúdo</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </TabsContent>
+                            )
+                        }
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="settings" className="mt-6">
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                            <Settings className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                            Configurações do Sistema
                                         </h2>
-                                        <p className="text-gray-600 mb-6">
-                                            Gerencie todos os depoimentos enviados pelos usuários, modere conteúdo e
-                                            controle quais aparecem no site principal.
-                                        </p>
-
-                                        <div className="grid md:grid-cols-2 gap-6 mb-8">
-                                            <div className="bg-blue-50 p-6 rounded-lg">
-                                                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mx-auto mb-4">
-                                                    <MessageCircle className="w-6 h-6 text-blue-600" />
-                                                </div>
-                                                <h3 className="font-semibold text-lg mb-2">Página de Depoimentos</h3>
-                                                <p className="text-gray-600 text-sm mb-4">
-                                                    Local público onde usuários podem enviar seus depoimentos sobre a clínica.
-                                                </p>
-                                                <Button
-                                                    onClick={() => window.open('/depoimento', '_blank')}
-                                                    variant="outline"
-                                                    className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-                                                >
-                                                    Ver Página Pública
-                                                </Button>
-                                            </div>
-
-                                            <div className="bg-green-50 p-6 rounded-lg">
-                                                <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto mb-4">
-                                                    <Star className="w-6 h-6 text-green-600" />
-                                                </div>
-                                                <h3 className="font-semibold text-lg mb-2">Painel de Moderação</h3>
-                                                <p className="text-gray-600 text-sm mb-4">
-                                                    Gerencie todos os depoimentos: aprovar, editar, organizar e controlar exibição.
-                                                </p>
-                                                <Button
-                                                    onClick={() => window.open('/admin/depoimentos', '_blank')}
-                                                    className="w-full bg-[#2d8659] hover:bg-[#236b47]"
-                                                >
-                                                    Acessar Gestão
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-gray-50 p-6 rounded-lg">
-                                            <h4 className="font-semibold mb-3">Funcionalidades Disponíveis:</h4>
-                                            <div className="grid md:grid-cols-2 gap-3 text-sm text-gray-700">
-                                                <div className="flex items-center gap-2">
-                                                    <Check className="w-4 h-4 text-green-600" />
-                                                    <span>Aprovar/Ocultar depoimentos</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Check className="w-4 h-4 text-green-600" />
-                                                    <span>Editar texto e correções</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Check className="w-4 h-4 text-green-600" />
-                                                    <span>Adicionar depoimentos externos</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Check className="w-4 h-4 text-green-600" />
-                                                    <span>Sistema de busca e filtros</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Check className="w-4 h-4 text-green-600" />
-                                                    <span>Controle de exibição no site</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <Check className="w-4 h-4 text-green-600" />
-                                                    <span>Moderação completa de conteúdo</span>
-                                                </div>
+                                        <div className="space-y-6">
+                                            <div className="border rounded-lg p-4">
+                                                <h3 className="font-semibold text-lg mb-4">Marketing & Lead Magnets</h3>
+                                                <SettingsToggle />
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            </TabsContent>
-                        )}
-                        {userRole === 'admin' && (
-                            <TabsContent value="settings" className="mt-6">
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                        <Settings className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                        Configurações do Sistema
-                                    </h2>
-                                    <div className="space-y-6">
-                                        <div className="border rounded-lg p-4">
-                                            <h3 className="font-semibold text-lg mb-4">Marketing & Lead Magnets</h3>
-                                            <SettingsToggle />
-                                        </div>
-                                    </div>
-                                </div>
-                            </TabsContent>
-                        )}
-                    </Tabs>
-                </div>
+                                </TabsContent>
+                            )
+                        }
+                    </Tabs >
+                </div >
             </div >
 
             <ConfirmDialog
