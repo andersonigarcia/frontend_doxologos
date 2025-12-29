@@ -35,6 +35,8 @@ export const tabsConfig = {
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'pacientes', label: 'Pacientes', icon: Users },
         { value: 'financeiro', label: 'Financeiro', icon: DollarSign },
+        { value: 'availability', label: 'Disponibilidade', icon: Clock },
+        { value: 'reviews', label: 'Avaliações', icon: Star },
         { value: 'profile', label: 'Perfil', icon: UserCircle },
     ]
 };

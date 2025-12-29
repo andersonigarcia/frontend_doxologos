@@ -3797,6 +3797,186 @@ const AdminPage = () => {
                             </div>
                         </TabsContent>
 
+                        <TabsContent value="availability" className="mt-6">
+                            <div className="bg-white rounded-xl shadow-lg p-6">
+                                <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                    <Clock className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                    Gestão de Disponibilidade
+                                </h2>
+
+                                {userRole === 'admin' && (
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium mb-1">Profissional</label>
+                                        <select
+                                            value={selectedAvailProfessional}
+                                            onChange={e => setSelectedAvailProfessional(e.target.value)}
+                                            className="w-full input"
+                                        >
+                                            <option value="">Selecione um profissional</option>
+                                            {professionals.map(p => (
+                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-4 mb-6">
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium mb-1">Mês</label>
+                                        <select
+                                            value={selectedMonth}
+                                            onChange={e => setSelectedMonth(Number(e.target.value))}
+                                            className="w-full input"
+                                        >
+                                            {Array.from({ length: 12 }, (_, i) => (
+                                                <option key={i + 1} value={i + 1}>
+                                                    {new Date(0, i).toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + new Date(0, i).toLocaleString('pt-BR', { month: 'long' }).slice(1)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="block text-sm font-medium mb-1">Ano</label>
+                                        <select
+                                            value={selectedYear}
+                                            onChange={e => setSelectedYear(Number(e.target.value))}
+                                            className="w-full input"
+                                        >
+                                            {[2024, 2025, 2026].map(year => (
+                                                <option key={year} value={year}>{year}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 mb-8">
+                                    {[
+                                        { key: 'monday', label: 'Segunda-feira' },
+                                        { key: 'tuesday', label: 'Terça-feira' },
+                                        { key: 'wednesday', label: 'Quarta-feira' },
+                                        { key: 'thursday', label: 'Quinta-feira' },
+                                        { key: 'friday', label: 'Sexta-feira' },
+                                        { key: 'saturday', label: 'Sábado' },
+                                        { key: 'sunday', label: 'Domingo' }
+                                    ].map(({ key, label }) => (
+                                        <div key={key} className="border p-4 rounded-lg bg-gray-50">
+                                            <label className="font-bold block mb-2 text-gray-700">{label}</label>
+                                            <input
+                                                type="text"
+                                                placeholder="Ex: 09:00, 10:00, 14:00"
+                                                className="w-full input"
+                                                value={(professionalAvailability[key] || []).join(', ')}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    setProfessionalAvailability(prev => ({
+                                                        ...prev,
+                                                        [key]: val.split(',').map(t => t.trim()) // Keeps empty strings while typing, filtered on save
+                                                    }));
+                                                }}
+                                            />
+                                            <p className="text-xs text-gray-500 mt-1">Separe os horários por vírgula (formato HH:MM)</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex justify-end mb-8">
+                                    <LoadingButton
+                                        isLoading={isLoading('saveAvailability')}
+                                        loadingText="Salvando..."
+                                        onClick={handleSaveAvailability}
+                                        className="bg-[#2d8659] hover:bg-[#236b47] text-white px-8"
+                                    >
+                                        Salvar Disponibilidade no Mês
+                                    </LoadingButton>
+                                </div>
+
+                                <div className="mt-8 border-t pt-6">
+                                    <h3 className="text-xl font-bold mb-4 flex items-center text-red-600">
+                                        <CalendarX className="w-5 h-5 mr-2" />
+                                        Bloquear Datas Específicas
+                                    </h3>
+
+                                    <div className="bg-red-50 p-4 rounded-lg border border-red-100 mb-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                                            <div className="lg:col-span-1">
+                                                <label className="block text-xs font-medium mb-1">Data</label>
+                                                <input
+                                                    type="date"
+                                                    value={newBlockedDate.date}
+                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, date: e.target.value })}
+                                                    className="w-full input bg-white"
+                                                />
+                                            </div>
+                                            <div className="lg:col-span-1">
+                                                <label className="block text-xs font-medium mb-1">Início (Opcional)</label>
+                                                <input
+                                                    type="time"
+                                                    value={newBlockedDate.start_time}
+                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, start_time: e.target.value })}
+                                                    className="w-full input bg-white"
+                                                />
+                                            </div>
+                                            <div className="lg:col-span-1">
+                                                <label className="block text-xs font-medium mb-1">Fim (Opcional)</label>
+                                                <input
+                                                    type="time"
+                                                    value={newBlockedDate.end_time}
+                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, end_time: e.target.value })}
+                                                    className="w-full input bg-white"
+                                                />
+                                            </div>
+                                            <div className="lg:col-span-1">
+                                                <label className="block text-xs font-medium mb-1">Motivo</label>
+                                                <input
+                                                    type="text"
+                                                    value={newBlockedDate.reason}
+                                                    onChange={e => setNewBlockedDate({ ...newBlockedDate, reason: e.target.value })}
+                                                    className="w-full input bg-white"
+                                                    placeholder="Ex: Feriado"
+                                                />
+                                            </div>
+                                            <div className="lg:col-span-1">
+                                                <Button onClick={handleAddBlockedDate} variant="destructive" className="w-full">
+                                                    Bloquear
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {professionalBlockedDates.length === 0 ? (
+                                            <p className="text-gray-500 italic">Nenhuma data bloqueada.</p>
+                                        ) : (
+                                            professionalBlockedDates.map(blocked => (
+                                                <div key={blocked.id} className="flex justify-between items-center border p-3 rounded-lg bg-gray-50">
+                                                    <div>
+                                                        <span className="font-medium text-red-700">
+                                                            {new Date(blocked.blocked_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                                        </span>
+                                                        <span className="mx-2 text-gray-400">|</span>
+                                                        <span className="text-gray-700">{blocked.reason || 'Sem motivo'}</span>
+                                                        {(blocked.start_time || blocked.end_time) && (
+                                                            <span className="text-sm text-gray-500 ml-2">
+                                                                ({blocked.start_time || '00:00'} - {blocked.end_time || '23:59'})
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleDeleteBlockedDate(blocked.id)}
+                                                        className="hover:bg-red-100 hover:text-red-700"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
                         <TabsContent value="reviews" className="mt-6">
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <h2 className="text-2xl font-bold mb-6 flex items-center"><Star className="w-6 h-6 mr-2 text-[#2d8659]" /> Avaliações</h2>
