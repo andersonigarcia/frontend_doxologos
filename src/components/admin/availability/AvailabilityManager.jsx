@@ -179,6 +179,57 @@ export const AvailabilityManager = ({
                 ))}
             </div>
 
+            {professionalBlockedDates && professionalBlockedDates.length > 0 && (
+                <div className="mt-8 border-t pt-6">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center text-gray-800">
+                        <CalendarX className="w-5 h-5 mr-2 text-red-600" />
+                        Bloqueios Agendados
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {professionalBlockedDates.map((block) => (
+                            <div key={block.id} className="bg-red-50 border border-red-100 rounded-lg p-4 transition-all hover:border-red-200 hover:shadow-sm group">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <CalendarIcon className="w-4 h-4 text-red-500" />
+                                            <span className="font-semibold text-red-900">
+                                                {new Date(block.blocked_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                            </span>
+                                        </div>
+
+                                        {block.start_time && block.end_time ? (
+                                            <div className="flex items-center gap-2 text-sm text-red-700 mb-2">
+                                                <Clock className="w-3 h-3" />
+                                                <span>{block.start_time} - {block.end_time}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="mb-2">
+                                                <span className="text-xs font-medium bg-red-200 text-red-800 px-2 py-0.5 rounded-full">
+                                                    Dia Inteiro
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {block.reason && (
+                                            <p className="text-sm text-red-600 bg-red-100/50 p-2 rounded italic">
+                                                {block.reason}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteBlockedDate(block.id)}
+                                        className="text-red-400 hover:text-red-700 p-1 rounded-md hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                        title="Remover bloqueio"
+                                    >
+                                        <CalendarX className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <BlockedDatesModal
                 open={isBlockedDatesModalOpen}
                 onClose={() => setIsBlockedDatesModalOpen(false)}
