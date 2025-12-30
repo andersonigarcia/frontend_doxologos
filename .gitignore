@@ -39,3 +39,18 @@ node_modules/.vite/
 # OS
 .DS_Store
 Thumbs.db
+
+# Vite Temporary Files
+vite.config.js.timestamp-*.mjs
+vite.config.*.timestamp-*.mjs
+
+# Backup Files
+*.backup
+*.bak
+
+# Test Results
+test-results/
+playwright-report/
+
+# Deployment
+*.zip
