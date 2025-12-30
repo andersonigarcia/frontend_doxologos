@@ -3,7 +3,7 @@
 ## Correções Implementadas
 
 ### 1. ✅ Campo `mercadopago_payment_id` Corrigido
-**Problema**: Webhook usava `mp_payment_id` mas tabela tem `mercadopago_payment_id`  
+**Problema**: Webhook usava `mercadopago_payment_id` mas tabela tem `mp_payment_id`  
 **Correção**: Atualizado em 2 locações (linhas 168 e 208)
 
 ### 2. ✅ Validação de UUID Melhorada
