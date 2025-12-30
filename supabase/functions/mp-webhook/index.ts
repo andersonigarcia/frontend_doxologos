@@ -175,11 +175,44 @@ serve(async (req) => {
     } else {
       // Booking Logic
       let bookingId = null;
-      if (externalRef && externalRef.length > 30) {
-        bookingId = externalRef;
+
+      // UUID format validation
+      // Standard: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars with hyphens)
+      // Alternative: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (32 chars without hyphens)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidNoHyphensRegex = /^[0-9a-f]{32}$/i;
+
+      if (externalRef && !externalRef.startsWith('EVENTO_')) {
+        if (uuidRegex.test(externalRef) || uuidNoHyphensRegex.test(externalRef)) {
+          bookingId = externalRef;
+          console.log(`✅ Valid booking UUID detected: ${bookingId}`);
+        } else {
+          console.warn(`⚠️ Invalid UUID format for external_reference: ${externalRef}`);
+        }
       }
 
       if (bookingId) {
+        // Verify booking exists before updating
+        const { data: existingBooking, error: fetchError } = await supabase
+          .from('bookings')
+          .select('id, status')
+          .eq('id', bookingId)
+          .single();
+
+        if (fetchError || !existingBooking) {
+          console.error(`❌ Booking ${bookingId} not found!`, fetchError);
+          if (logId) await supabase.from('webhook_logs').update({
+            status: 'error',
+            error_message: `Booking ${bookingId} not found`
+          }).eq('id', logId);
+          return new Response(`Booking ${bookingId} not found`, { status: 404 });
+        }
+
+        console.log(`📋 Found booking ${bookingId}:`, {
+          currentStatus: existingBooking.status,
+          newMPStatus: mpPayment.status
+        });
+
         const statusMap: any = {
           'approved': 'confirmed',
           'authorized': 'confirmed',
@@ -192,22 +225,42 @@ serve(async (req) => {
 
         const newStatus = statusMap[mpPayment.status];
         if (newStatus) {
-          await supabase.from('bookings')
+          const { error: updateError } = await supabase.from('bookings')
             .update({
               status: newStatus,
-              payment_status: mpPayment.status,
               updated_at: new Date().toISOString()
             })
             .eq('id', bookingId);
+
+          if (updateError) {
+            console.error(`❌ Error updating booking ${bookingId}:`, updateError);
+            throw updateError;
+          }
+
+          console.log(`✅ Booking ${bookingId} updated successfully:`, {
+            oldStatus: existingBooking.status,
+            newStatus: newStatus,
+            mpPaymentStatus: mpPayment.status
+          });
           success = true;
+        } else {
+          console.warn(`⚠️ No status mapping for MP status: ${mpPayment.status}`);
         }
+      } else {
+        console.warn(`⚠️ No valid booking ID found in external_reference: ${externalRef}`);
       }
 
-      const { data: payData } = await supabase.from('payments')
+      const { data: payData, error: payUpdateError } = await supabase.from('payments')
         .update({ status: mpPayment.status, raw_payload: mpPayment })
         .eq('mp_payment_id', paymentId.toString())
         .select()
         .single();
+
+      if (payUpdateError) {
+        console.error(`❌ Error updating payment record:`, payUpdateError);
+      } else {
+        console.log(`✅ Payment record updated for MP payment ${paymentId}`);
+      }
 
       if (payData) ledgerTransactionId = payData.id;
     }
