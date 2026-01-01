@@ -146,6 +146,15 @@
   scrollbar-width: none;
 }
 
+/* Alias para scrollbar-hide (usado em componentes) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Animação customizada para destacar o passo atual */
 @keyframes glow {
   0%, 100% {

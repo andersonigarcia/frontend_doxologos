@@ -2630,9 +2630,13 @@ const AdminPage = () => {
                     )}
 
                     <Tabs id="admin-tabs" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="flex flex-wrap h-auto justify-start p-1 bg-gray-100 rounded-lg">
+                        <TabsList className="flex overflow-x-auto h-auto justify-start p-1 bg-gray-100 rounded-lg gap-1 no-scrollbar md:flex-wrap">
                             {currentTabs.map(tab => (
-                                <TabsTrigger key={tab.value} value={tab.value} className="flex-1 min-w-[120px] data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                                <TabsTrigger
+                                    key={tab.value}
+                                    value={tab.value}
+                                    className="flex-shrink-0 min-w-[140px] px-4 py-3 md:flex-1 md:min-w-[120px] data-[state=active]:bg-white data-[state=active]:shadow-sm transition-colors whitespace-nowrap"
+                                >
                                     <tab.icon className="w-4 h-4 mr-2" />{tab.label}
                                 </TabsTrigger>
                             ))}
@@ -2818,14 +2822,14 @@ const AdminPage = () => {
                         <TabsContent value="bookings" className="mt-6">
 
                             <div className="bg-white rounded-xl shadow-lg p-6">
-                                <div className="flex justify-between items-center mb-6">
+                                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
                                     <h2 className="text-2xl font-bold flex items-center">
                                         <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" />
                                         Agendamentos
                                         <span className="ml-2 text-lg text-gray-500">({getFilteredBookings().length}/{bookings.length})</span>
                                     </h2>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
                                         {/* View Toggle */}
                                         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                                             <Button
@@ -2833,7 +2837,7 @@ const AdminPage = () => {
                                                 size="sm"
                                                 onClick={() => setBookingView('list')}
                                                 className={cn(
-                                                    'h-8 px-3',
+                                                    'h-8 px-3 flex-1 sm:flex-none',
                                                     bookingView === 'list' && 'bg-white shadow-sm'
                                                 )}
                                             >
@@ -2845,7 +2849,7 @@ const AdminPage = () => {
                                                 size="sm"
                                                 onClick={() => setBookingView('calendar')}
                                                 className={cn(
-                                                    'h-8 px-3',
+                                                    'h-8 px-3 flex-1 sm:flex-none',
                                                     bookingView === 'calendar' && 'bg-white shadow-sm'
                                                 )}
                                             >
@@ -2858,7 +2862,7 @@ const AdminPage = () => {
                                             onClick={() => setShowFilters(!showFilters)}
                                             variant="outline"
                                             size="sm"
-                                            className="flex items-center"
+                                            className="flex items-center justify-center w-full sm:w-auto"
                                         >
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
