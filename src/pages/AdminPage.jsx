@@ -3328,27 +3328,32 @@ const AdminPage = () => {
 
                                                                     <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4">
                                                                         <div className="flex-1">
-                                                                            <div className="flex items-center gap-3 mb-3">
-                                                                                <h3 className="font-semibold text-lg text-gray-900">
-                                                                                    {b.patient_name || 'Nome não informado'}
-                                                                                </h3>
-                                                                                <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
-                                                                                    {statusLabels[b.status] || b.status}
-                                                                                </span>
+                                                                            <div className="mb-3">
+                                                                                {/* Nome e Status */}
+                                                                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                                                                    <h3 className="font-semibold text-lg text-gray-900">
+                                                                                        {b.patient_name || 'Nome não informado'}
+                                                                                    </h3>
+                                                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[b.status] || 'bg-gray-100 text-gray-800'}`}>
+                                                                                        {statusLabels[b.status] || b.status}
+                                                                                    </span>
+                                                                                </div>
+
+                                                                                {/* Badges de Valores */}
                                                                                 {(patientValue > 0 || professionalValue > 0) && (
                                                                                     <div className="flex flex-wrap gap-2">
                                                                                         {patientValue > 0 && userRole === 'admin' && (
-                                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
+                                                                                            <span className="px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold bg-green-100 text-green-800 border border-green-200">
                                                                                                 Paciente: R$ {patientValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                                             </span>
                                                                                         )}
                                                                                         {professionalValue > 0 && (
-                                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+                                                                                            <span className="px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold bg-blue-100 text-blue-800 border border-blue-200">
                                                                                                 {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                                             </span>
                                                                                         )}
                                                                                         {userRole === 'admin' && platformFeeValue > 0 && (
-                                                                                            <span className="px-3 py-1 rounded-full text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                                                                                            <span className="px-2.5 py-1 rounded-full text-xs sm:text-sm font-semibold bg-purple-100 text-purple-800 border border-purple-200">
                                                                                                 Taxa: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                                             </span>
                                                                                         )}
