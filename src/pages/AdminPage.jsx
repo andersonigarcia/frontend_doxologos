@@ -3326,7 +3326,7 @@ const AdminPage = () => {
                                                                         message={isItemLoading('status', b.id) ? 'Atualizando status...' : 'Salvando alterações...'}
                                                                     />
 
-                                                                    <div className="flex justify-between items-start mb-4">
+                                                                    <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-4 mb-4">
                                                                         <div className="flex-1">
                                                                             <div className="flex items-center gap-3 mb-3">
                                                                                 <h3 className="font-semibold text-lg text-gray-900">
@@ -3481,9 +3481,9 @@ const AdminPage = () => {
                                                                             )}
                                                                         </div>
 
-                                                                        <div className="flex gap-2 ml-4 flex-col items-end">
+                                                                        <div className="flex gap-3 flex-col w-full lg:ml-4 lg:w-auto lg:items-end">
                                                                             {/* Mudança rápida de status */}
-                                                                            <div className="w-48 relative">
+                                                                            <div className="w-full lg:w-48 relative">
                                                                                 <label className="block text-xs text-gray-600 mb-1">
                                                                                     Status Rápido:
                                                                                     {isItemLoading('status', b.id) && (
@@ -3511,7 +3511,7 @@ const AdminPage = () => {
                                                                                 </LoadingInput>
                                                                             </div>
 
-                                                                            <div className="flex gap-2">
+                                                                            <div className="flex flex-row gap-2">
                                                                                 <Dialog>
                                                                                     <DialogTrigger asChild>
                                                                                         <Button
@@ -3539,7 +3539,7 @@ const AdminPage = () => {
                                                                                                     )
                                                                                                 });
                                                                                             }}
-                                                                                            className={`hover:bg-blue-50 transition-all ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
+                                                                                            className={`hover:bg-blue-50 transition-all flex-1 ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''
                                                                                                 }`}
                                                                                         >
                                                                                             {isItemLoading('edit', b.id) ? (
@@ -3741,7 +3741,7 @@ const AdminPage = () => {
                                                                                     variant="destructive"
                                                                                     disabled={isAnyItemLoading()}
                                                                                     onClick={() => handleDeleteBooking(b)}
-                                                                                    className={`flex items-center ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                                                    className={`flex items-center flex-1 ${isAnyItemLoading() ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                                 >
                                                                                     {isItemLoading('delete', b.id) ? (
                                                                                         <LoadingSpinner size="sm" className="mr-1" />
