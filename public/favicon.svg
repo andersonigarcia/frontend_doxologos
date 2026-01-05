@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Fundo verde arredondado -->
+  <rect width="200" height="200" fill="#2d8659" rx="40"/>
+  
+  <!-- Coração outline branco -->
+  <g transform="translate(100, 85)">
+    <!-- Coração estilizado com borda grossa -->
+    <path d="M 0,-28 
+             C -20,-45 -50,-45 -50,-15 
+             C -50,10 -20,45 0,65 
+             C 20,45 50,10 50,-15 
+             C 50,-45 20,-45 0,-28 Z" 
+          fill="none" 
+          stroke="white" 
+          stroke-width="8" 
+          stroke-linecap="round" 
+          stroke-linejoin="round"/>
+  </g>
+  
+  <!-- Cruz branca no centro do coração -->
+  <g transform="translate(100, 85)">
+    <!-- Barra vertical da cruz -->
+    <rect x="-6" y="-15" width="12" height="40" fill="white" rx="4"/>
+    <!-- Barra horizontal da cruz -->
+    <rect x="-20" y="-1" width="40" height="12" fill="white" rx="4"/>
+  </g>
+  
+  <!-- Letra D branca no canto inferior direito -->
+  <text x="145" y="165" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white">D</text>
+</svg>

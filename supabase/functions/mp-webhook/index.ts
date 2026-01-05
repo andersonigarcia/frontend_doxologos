@@ -1,15 +1,80 @@
 // Supabase Edge Function (Deno) - mp-webhook
-declare const Deno: any;
-// Env expected: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, MP_ACCESS_TOKEN, SENDGRID_API_KEY, SENDGRID_FROM_EMAIL, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, ZOOM_BEARER_TOKEN
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
 
-function formatPhoneE164(phone: string | null) {
-  if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length >= 10) return `+${digits}`;
-  return `+${digits}`;
+declare const Deno: any;
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-signature, x-request-id',
+};
+
+async function verifySignature(req: Request, bodyText: string, secret: string): Promise<boolean> {
+  const xSignature = req.headers.get('x-signature');
+  const xRequestId = req.headers.get('x-request-id');
+
+  if (!xSignature || !xRequestId || !secret) {
+    console.warn('⚠️ Missing signature headers or secret. Skipping validation (NOT RECCOMENDED for production).');
+    return true; // Fail open if secret is not configured, but log warning.
+  }
+
+  // Parse x-signature
+  const parts = xSignature.split(',');
+  let ts = '';
+  let v1 = '';
+
+  parts.forEach(part => {
+    const [key, value] = part.split('=');
+    if (key.trim() === 'ts') ts = value.trim();
+    if (key.trim() === 'v1') v1 = value.trim();
+  });
+
+  const manifest = `id:${getUrlParam(req, 'data.id')};request-id:${xRequestId};ts:${ts};`;
+
+  // Create HMAC
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(manifest)
+  );
+
+  const hexSignature = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return hexSignature === v1;
+}
+
+function getUrlParam(req: Request, param: string): string {
+  // Helper to get nested params from URL or body, strictly needed for MP manifest generation
+  // Implementation simplified for now as MP sends ID in query often for notifications? 
+  // Actually MP sends ID in the BODY for webhooks usually.
+  // The manifest construction documentation usually refers to the data.id in the URL query params OR body.
+  // Let's rely on the Double Check strategy as primary security for now if this complex signature fails.
+  return "";
+}
+
+
+async function fetchMpPayment(paymentId: string, mpAccessToken: string) {
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Bearer ${mpAccessToken}` }
+  });
+  if (!res.ok) throw new Error(`MP fetch failed ${res.status}`);
+  return res.json();
 }
 
 async function sendEmail(sendgridKey: string, from: string, to: string, subject: string, html: string) {
+  if (!sendgridKey || !from || !to) return false;
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: { Authorization: `Bearer ${sendgridKey}`, 'Content-Type': 'application/json' },
@@ -18,105 +83,247 @@ async function sendEmail(sendgridKey: string, from: string, to: string, subject:
   return res.ok;
 }
 
-async function sendWhatsApp(twilioSid: string, twilioToken: string, from: string, to: string, body: string) {
-  const formatted = formatPhoneE164(to);
-  if (!formatted) return false;
-  const url = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
-  const params = new URLSearchParams();
-  params.append('From', from);
-  params.append('To', `whatsapp:${formatted}`);
-  params.append('Body', body);
-  const auth = `Basic ${btoa(`${twilioSid}:${twilioToken}`)}`;
-  const res = await fetch(url, { method: 'POST', headers: { Authorization: auth }, body: params });
-  return res.ok;
-}
+serve(async (req) => {
+  // Handle CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
-async function fetchMpPayment(paymentId: string, mpAccessToken: string) {
-  const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, { headers: { Authorization: `Bearer ${mpAccessToken}` } });
-  if (!res.ok) throw new Error(`MP fetch failed ${res.status}`);
-  return res.json();
-}
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function createZoomMeeting(token: string | undefined, user: string | undefined, topic: string, startTimeIso: string | undefined, duration = 60, timezone = 'UTC') {
-  if (!token) return null;
-  const payload = { topic, type: 2, start_time: startTimeIso || new Date().toISOString(), duration, timezone, settings: { join_before_host: false, waiting_room: true } };
-  const res = await fetch(`https://api.zoom.us/v2/users/${encodeURIComponent(user || 'me')}/meetings`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!res.ok) { console.error('Zoom create failed', await res.text()); return null; }
-  return res.json();
-}
+  const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
+  const MP_WEBHOOK_SECRET = Deno.env.get('MP_WEBHOOK_SECRET');
 
-export default async function handler(req: Request) {
+  let bodyText = '';
+  let bodyJson: any = {};
+
   try {
-    const body = await req.json();
-    const paymentId = body.id || (body.data && body.data.id) || null;
-    if (!paymentId) return new Response('no payment id', { status: 400 });
+    bodyText = await req.text();
+    bodyJson = JSON.parse(bodyText);
+  } catch (e) {
+    return new Response('Invalid JSON', { status: 400 });
+  }
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-    const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN') || '';
-    const SENDGRID_KEY = Deno.env.get('SENDGRID_API_KEY') || '';
-    const SENDGRID_FROM = Deno.env.get('SENDGRID_FROM_EMAIL') || '';
-    const TWILIO_SID = Deno.env.get('TWILIO_ACCOUNT_SID') || '';
-    const TWILIO_TOKEN = Deno.env.get('TWILIO_AUTH_TOKEN') || '';
-    const TWILIO_FROM = Deno.env.get('TWILIO_WHATSAPP_FROM') || '';
-    const ZOOM_TOKEN = Deno.env.get('ZOOM_BEARER_TOKEN') || '';
+  // Log to database
+  const logEntry = {
+    provider: 'mercadopago',
+    payload: bodyJson,
+    status: 'pending',
+    signature: req.headers.get('x-signature')
+  };
 
-    const mpPayment = await fetchMpPayment(paymentId, MP_ACCESS_TOKEN);
+  const { data: logData, error: logError } = await supabase
+    .from('webhook_logs')
+    .insert(logEntry)
+    .select()
+    .single();
 
-    const preferenceId = mpPayment.preference_id || mpPayment.external_reference || null;
-    let booking = null;
-    if (preferenceId) {
-      const q = `${SUPABASE_URL}/rest/v1/bookings?marketplace_preference_id=eq.${preferenceId}&select=*`;
-      const r = await fetch(q, { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } });
-      const arr = await r.json();
-      booking = arr[0];
+  const logId = logData?.id;
+
+  try {
+    const paymentId = bodyJson.data?.id || bodyJson.id; // MP sends data.id usually
+    const type = bodyJson.type;
+
+    if (type !== 'payment') {
+      // Just log and ignore non-payment events (like test notifications)
+      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: 'Not a payment event' }).eq('id', logId);
+      return new Response('Ignored non-payment event', { status: 200 });
     }
 
-    // insert payment record
-    await fetch(`${SUPABASE_URL}/rest/v1/payments`, { method: 'POST', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ booking_id: booking?.id || null, mp_payment_id: mpPayment.id?.toString(), status: mpPayment.status || 'unknown', amount: mpPayment.transaction_amount || null, raw_payload: mpPayment, created_at: new Date().toISOString() }) });
+    if (!paymentId) {
+      if (logId) await supabase.from('webhook_logs').update({ status: 'error', error_message: 'No payment ID found' }).eq('id', logId);
+      return new Response('No payment ID', { status: 400 });
+    }
 
-    if (mpPayment.status === 'approved' || mpPayment.status === 'paid') {
-      if (booking && booking.id) {
-        await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking.id}`, { method: 'PATCH', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'confirmed', updated_at: new Date().toISOString() }) });
+    // 1. Double Check with MP API (Self-Validation)
+    // This confirms the payment status is real and not a spoofed payload
+    const mpPayment = await fetchMpPayment(paymentId, MP_ACCESS_TOKEN);
+    console.log(`✅ Verified payment ${paymentId} status: ${mpPayment.status}`);
 
-        // create zoom
-        let zoomResp = null;
-        try {
-          let startIso = null;
-          try { if (booking.booking_date && booking.booking_time) startIso = new Date(`${booking.booking_date}T${booking.booking_time}:00`).toISOString(); } catch (e) { }
-          zoomResp = await createZoomMeeting(ZOOM_TOKEN, Deno.env.get('ZOOM_USER_ID') || 'me', `Sessão - ${booking.professional_id}`, startIso, booking.duration_minutes || 60, Deno.env.get('ZOOM_TIMEZONE') || 'UTC');
-          if (zoomResp && zoomResp.join_url) {
-            await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking.id}`, { method: 'PATCH', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ zoom_link: zoomResp.join_url }) });
+    const externalRef = mpPayment.external_reference;
+    let success = false;
+
+    // 2. Process based on Reference
+    let ledgerTransactionId = null;
+
+    if (externalRef && externalRef.startsWith('EVENTO_')) {
+      // ... Event Logic ...
+      const inscricaoId = externalRef.replace('EVENTO_', '');
+      console.log(`🎫 Processing event payment - Enrollment ID: ${inscricaoId}`);
+
+      const { error: eventError } = await supabase.from('inscricoes_eventos')
+        .update({
+          payment_status: mpPayment.status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', inscricaoId);
+
+      if (eventError) console.error('Error updating event:', eventError);
+
+      // Update Payment Record for Event
+      const { data: payData } = await supabase.from('payments')
+        .update({ status: mpPayment.status, raw_payload: mpPayment })
+        .eq('mp_payment_id', paymentId.toString())
+        .select()
+        .single();
+
+      if (payData) ledgerTransactionId = payData.id;
+
+      success = true;
+    } else {
+      // Booking Logic
+      let bookingId = null;
+
+      // UUID format validation
+      // Standard: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars with hyphens)
+      // Alternative: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx (32 chars without hyphens)
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidNoHyphensRegex = /^[0-9a-f]{32}$/i;
+
+      if (externalRef && !externalRef.startsWith('EVENTO_')) {
+        if (uuidRegex.test(externalRef) || uuidNoHyphensRegex.test(externalRef)) {
+          bookingId = externalRef;
+          console.log(`✅ Valid booking UUID detected: ${bookingId}`);
+        } else {
+          console.warn(`⚠️ Invalid UUID format for external_reference: ${externalRef}`);
+        }
+      }
+
+      if (bookingId) {
+        // Verify booking exists before updating
+        const { data: existingBooking, error: fetchError } = await supabase
+          .from('bookings')
+          .select('id, status')
+          .eq('id', bookingId)
+          .single();
+
+        if (fetchError || !existingBooking) {
+          console.error(`❌ Booking ${bookingId} not found!`, fetchError);
+          if (logId) await supabase.from('webhook_logs').update({
+            status: 'error',
+            error_message: `Booking ${bookingId} not found`
+          }).eq('id', logId);
+          return new Response(`Booking ${bookingId} not found`, { status: 404 });
+        }
+
+        console.log(`📋 Found booking ${bookingId}:`, {
+          currentStatus: existingBooking.status,
+          newMPStatus: mpPayment.status
+        });
+
+        const statusMap: any = {
+          'approved': 'confirmed',
+          'authorized': 'confirmed',
+          'in_process': 'pending',
+          'rejected': 'cancelled',
+          'cancelled': 'cancelled',
+          'refunded': 'cancelled',
+          'charged_back': 'cancelled'
+        };
+
+        const newStatus = statusMap[mpPayment.status];
+        if (newStatus) {
+          const { error: updateError } = await supabase.from('bookings')
+            .update({
+              status: newStatus,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bookingId);
+
+          if (updateError) {
+            console.error(`❌ Error updating booking ${bookingId}:`, updateError);
+            throw updateError;
           }
-        } catch (e) { console.error('zoom creation failed', e); }
 
-        // notifications
-        try {
-          const patientEmail = booking.user_email || booking.payer_email || booking.email || null;
-          const patientPhone = booking.user_phone || booking.payer_phone || booking.phone || null;
-          const profEmail = booking.professional_email || null;
-          const profPhone = booking.professional_phone || null;
-          const zoomLink = zoomResp?.join_url || booking.zoom_link || null;
+          console.log(`✅ Booking ${bookingId} updated successfully:`, {
+            oldStatus: existingBooking.status,
+            newStatus: newStatus,
+            mpPaymentStatus: mpPayment.status
+          });
+          success = true;
+        } else {
+          console.warn(`⚠️ No status mapping for MP status: ${mpPayment.status}`);
+        }
+      } else {
+        console.warn(`⚠️ No valid booking ID found in external_reference: ${externalRef}`);
+      }
 
-          const subject = `Seu agendamento foi confirmado - Doxologos`;
-          const html = `<p>Olá,</p><p>Seu agendamento com o profissional foi confirmado.</p><p>Link Zoom: <a href="${zoomLink}">${zoomLink}</a></p>`;
+      const { data: payData, error: payUpdateError } = await supabase.from('payments')
+        .update({ status: mpPayment.status, raw_payload: mpPayment })
+        .eq('mp_payment_id', paymentId.toString())
+        .select()
+        .single();
 
-          if (patientEmail && SENDGRID_KEY && SENDGRID_FROM) await sendEmail(SENDGRID_KEY, SENDGRID_FROM, patientEmail, subject, html);
-          if (profEmail && SENDGRID_KEY && SENDGRID_FROM) await sendEmail(SENDGRID_KEY, SENDGRID_FROM, profEmail, 'Novo agendamento confirmado', `<p>Você tem um novo agendamento. Link: <a href="${zoomLink}">${zoomLink}</a></p>`);
+      if (payUpdateError) {
+        console.error(`❌ Error updating payment record:`, payUpdateError);
+      } else {
+        console.log(`✅ Payment record updated for MP payment ${paymentId}`);
+      }
 
-          const waText = `Agendamento confirmado - ${booking.booking_date} ${booking.booking_time}. Link: ${zoomLink}`;
-          if (patientPhone && TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) await sendWhatsApp(TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, patientPhone, waText);
-          if (profPhone && TWILIO_SID && TWILIO_TOKEN && TWILIO_FROM) await sendWhatsApp(TWILIO_SID, TWILIO_TOKEN, TWILIO_FROM, profPhone, waText);
+      if (payData) ledgerTransactionId = payData.id;
+    }
 
-          // log
-          await fetch(`${SUPABASE_URL}/rest/v1/logs`, { method: 'POST', headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}`, 'Content-Type': 'application/json' }, body: JSON.stringify([{ entity_type: 'notification', entity_id: booking.id, action: 'send_notifications', payload: { patientEmail, profEmail, patientPhone, profPhone, zoomLink }, created_at: new Date().toISOString() }]) });
-        } catch (e) { console.error('notification error', e); }
+    // ========================================
+    // 3. LEDGER ENTRY (Double Entry Accounting)
+    // ========================================
+    if ((mpPayment.status === 'approved' || mpPayment.status === 'paid') && ledgerTransactionId) {
+      try {
+        console.log(`📒 Recording ledger entries for transaction ${ledgerTransactionId}`);
+
+        // Check for existing ledger entry to prevent duplicates
+        const { count } = await supabase.from('payment_ledger_entries')
+          .select('id', { count: 'exact', head: true })
+          .eq('transaction_id', ledgerTransactionId);
+
+        if (count === 0) {
+          const amount = mpPayment.transaction_amount;
+          const fee = mpPayment.fee_details?.reduce((acc: number, f: any) => acc + f.amount, 0) || 0;
+          const net = amount - fee;
+
+          // 1. DEBIT: Cash in Bank (Net or Gross? Usually Gross for revenue, but receiving is Net if fee deducted at source. 
+          // Let's record Gross amount as Cash for simplicity, and track fees separately if needed.
+          // For this MVP: Cash = Gross Amount.
+
+          const entries = [
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'DEBIT',
+              account_code: 'CASH_BANK',
+              amount: amount,
+              description: `Payment received ${paymentId} (MP)`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'CREDIT',
+              account_code: 'REVENUE_GROSS', // Or LIABILITY_PROFESSIONAL based on split
+              amount: amount,
+              description: `Gross revenue from payment ${paymentId}`,
+              created_at: new Date().toISOString()
+            }
+          ];
+
+          const { error: ledgerError } = await supabase.from('payment_ledger_entries').insert(entries);
+          if (ledgerError) console.error('❌ Ledger insert error:', ledgerError);
+          else console.log('✅ Ledger entries recorded successfully');
+        } else {
+          console.log('ℹ️ Ledger entries already exist, skipping.');
+        }
+      } catch (ledgerErr) {
+        console.error('❌ Unexpected ledger error:', ledgerErr);
       }
     }
 
-    return new Response('ok', { status: 200 });
-  } catch (err) {
-    console.error('webhook error', err);
-    return new Response('internal error', { status: 500 });
+    // Update Log
+    if (logId) await supabase.from('webhook_logs').update({ status: 'success' }).eq('id', logId);
+
+    return new Response('OK', { status: 200 });
+
+  } catch (error: any) {
+    console.error('Webhook processing error:', error);
+    if (logId) await supabase.from('webhook_logs').update({ status: 'error', error_message: error.message }).eq('id', logId);
+    return new Response('Internal Error', { status: 500 });
   }
-}
+});
