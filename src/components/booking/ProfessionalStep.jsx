@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Clock, User, ChevronRight, ChevronLeft, ArrowLeft, Quote, CheckCircle } from 'lucide-react';
+import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle } from 'lucide-react';
 import analytics from '@/lib/analytics';
 
 const ProfessionalStep = ({
@@ -21,8 +21,9 @@ const ProfessionalStep = ({
   const [mobileStage, setMobileStage] = useState('service');
   const professionalsSectionRef = useRef(null);
   const professionalCarouselRef = useRef(null);
-  const professionalsViewedRef = useRef(false);
+  const professionalsViewedRef = useRef(null);
   const [activeFilters, setActiveFilters] = useState([]);
+  const [showUnavailable, setShowUnavailable] = useState(false);
 
   const dayLabelMap = {
     sunday: { label: 'Domingo', index: 0 },
@@ -56,7 +57,27 @@ const ProfessionalStep = ({
     if (!schedule) {
       return false;
     }
-    return Object.values(schedule).some((times) => Array.isArray(times) && times.length > 0);
+
+    // Check if any day has available times
+    return Object.values(schedule).some((dayData) => {
+      if (!dayData) return false;
+
+      // New structure: {times: [...], month, year}
+      if (dayData.times && Array.isArray(dayData.times)) {
+        return dayData.times.length > 0;
+      }
+
+      // Multi-month structure: [{times: [...], month, year}, ...]
+      if (Array.isArray(dayData) && dayData.length > 0) {
+        if (dayData[0].times) {
+          return dayData.some(entry => entry.times && entry.times.length > 0);
+        }
+        // Old structure: direct array of times
+        return dayData.length > 0;
+      }
+
+      return false;
+    });
   };
 
   const getNextAvailableSlot = (professional) => {
@@ -64,12 +85,43 @@ const ProfessionalStep = ({
     if (!schedule) {
       return null;
     }
+
+    // Helper to extract times from new structure
+    const extractTimes = (dayData) => {
+      if (!dayData) return [];
+
+      // New structure: {times: [...], month, year}
+      if (dayData.times && Array.isArray(dayData.times)) {
+        return dayData.times;
+      }
+
+      // Multi-month structure: [{times: [...], month, year}, ...]
+      if (Array.isArray(dayData) && dayData.length > 0) {
+        if (dayData[0].times) {
+          // Return times from first available month
+          return dayData[0].times;
+        }
+        // Old structure: direct array of times
+        return dayData;
+      }
+
+      // Old structure: direct array
+      if (Array.isArray(dayData)) {
+        return dayData;
+      }
+
+      return [];
+    };
+
     const days = Object.entries(schedule)
-      .filter(([, times]) => Array.isArray(times) && times.length > 0)
+      .map(([day, dayData]) => [day, extractTimes(dayData)])
+      .filter(([, times]) => times.length > 0)
       .sort((a, b) => a[0].localeCompare(b[0]));
+
     if (!days.length) {
       return null;
     }
+
     return {
       day: days[0][0],
       time: days[0][1][0],
@@ -100,6 +152,57 @@ const ProfessionalStep = ({
       })
     );
   }, [activeFilters, availableProfessionals, quickFilterDefinitions]);
+
+  // Sort professionals: available first, then by next available slot
+  const sortedProfessionals = useMemo(() => {
+    return [...filteredProfessionals].sort((a, b) => {
+      const aHasAvail = professionalHasAvailability(a);
+      const bHasAvail = professionalHasAvailability(b);
+
+      // Available professionals first
+      if (aHasAvail && !bHasAvail) return -1;
+      if (!aHasAvail && bHasAvail) return 1;
+
+      // If both have availability, sort by next available slot
+      if (aHasAvail && bHasAvail) {
+        const aNext = getNextAvailableSlot(a);
+        const bNext = getNextAvailableSlot(b);
+        if (aNext && bNext) {
+          // Compare days first
+          const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+          const aDayIndex = dayOrder.indexOf(aNext.day);
+          const bDayIndex = dayOrder.indexOf(bNext.day);
+          if (aDayIndex !== bDayIndex) return aDayIndex - bDayIndex;
+          // Then compare times - ensure they are strings
+          const aTime = String(aNext.time || '');
+          const bTime = String(bNext.time || '');
+          return aTime.localeCompare(bTime);
+        }
+      }
+
+      // Keep original order for professionals without availability
+      return 0;
+    });
+  }, [filteredProfessionals, availability]);
+
+  // Separate available and unavailable professionals
+  const { availableProfessionals: sortedAvailable, unavailableProfessionals } = useMemo(() => {
+    const available = [];
+    const unavailable = [];
+
+    sortedProfessionals.forEach(prof => {
+      if (professionalHasAvailability(prof)) {
+        available.push(prof);
+      } else {
+        unavailable.push(prof);
+      }
+    });
+
+    return {
+      availableProfessionals: available,
+      unavailableProfessionals: unavailable
+    };
+  }, [sortedProfessionals]);
 
   const trackBookingEvent = (action, payload = {}) => {
     const eventPayload = { event: 'booking_funnel', action, ...payload };
@@ -442,6 +545,19 @@ const ProfessionalStep = ({
                 Serviço selecionado:
                 <span className="font-semibold text-[#2d8659] ml-1">{selectedServiceData?.name}</span>
               </p>
+              <p className="text-sm text-gray-600 mt-2">
+                {(() => {
+                  const availableCount = sortedAvailable.length;
+                  const unavailableCount = unavailableProfessionals.length;
+                  const total = availableCount + unavailableCount;
+
+                  if (unavailableCount === 0) {
+                    return `${availableCount} ${availableCount === 1 ? 'profissional disponível' : 'profissionais disponíveis'}`;
+                  }
+
+                  return `${availableCount} de ${total} profissionais com horários disponíveis`;
+                })()}
+              </p>
               {isMobile && (
                 <button
                   type="button"
@@ -552,7 +668,8 @@ const ProfessionalStep = ({
                   role="listbox"
                   aria-label="Lista de profissionais disponíveis"
                 >
-                  {filteredProfessionals.map((professional) => {
+                  {/* Available Professionals */}
+                  {sortedAvailable.map((professional) => {
                     const isSelectable = professionalHasAvailability(professional);
                     const nextSlot = getNextAvailableSlot(professional);
                     return (
@@ -572,6 +689,35 @@ const ProfessionalStep = ({
                             : 'opacity-60 cursor-not-allowed'
                           }`}
                       >
+                        {/* Badge for immediate availability */}
+                        {(() => {
+                          const nextSlot = getNextAvailableSlot(professional);
+                          if (!nextSlot) return null;
+
+                          const todayIndex = new Date().getDay();
+                          const tomorrowIndex = (todayIndex + 1) % 7;
+                          const dayInfo = dayLabelMap[nextSlot.day?.toLowerCase?.()] || {};
+
+                          if (dayInfo.index === todayIndex) {
+                            return (
+                              <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Disponível Hoje
+                              </div>
+                            );
+                          }
+
+                          if (dayInfo.index === tomorrowIndex) {
+                            return (
+                              <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                Disponível Amanhã
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        })()}
                         <div className="flex items-start gap-4">
                           <div className="flex-shrink-0">
                             {professional.image_url ? (
@@ -616,22 +762,148 @@ const ProfessionalStep = ({
                               </div>
                             </div>
                             {nextSlot && (
-                              <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-[#2d8659]">
-                                Próximo horário: {formatNextSlotLabel(nextSlot.day, nextSlot.time)}
+                              <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                                <Clock className="w-4 h-4 text-green-600" />
+                                <div className="flex-1">
+                                  <p className="text-xs text-gray-600">Próximo horário</p>
+                                  <p className="text-sm font-bold text-green-700">
+                                    {formatNextSlotLabel(nextSlot.day, nextSlot.time)}
+                                  </p>
+                                </div>
                               </div>
                             )}
                           </div>
                         </div>
                         {!isSelectable && (
-                          <div className="absolute inset-0 rounded-lg bg-white/75 backdrop-blur-[1px] border-2 border-transparent flex items-center justify-center">
-                            <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1 rounded-full">
-                              Agenda indisponível no momento
+                          <div className="absolute inset-0 rounded-lg bg-gray-50/95 backdrop-blur-sm border-2 border-gray-300 flex flex-col items-center justify-center gap-2">
+                            <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                              <Clock className="w-6 h-6 text-gray-400" />
+                            </div>
+                            <span className="text-sm font-semibold text-gray-700">
+                              Sem horários disponíveis
+                            </span>
+                            <span className="text-xs text-gray-500 px-4 text-center">
+                              Este profissional não tem agenda aberta no momento
                             </span>
                           </div>
                         )}
                       </button>
                     );
                   })}
+
+                  {/* Unavailable Professionals Section */}
+                  {unavailableProfessionals.length > 0 && (
+                    <>
+                      {/* Separator */}
+                      {sortedAvailable.length > 0 && (
+                        <div className="col-span-full my-4">
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1 h-px bg-gray-300"></div>
+                            <span className="text-sm text-gray-500 font-medium">
+                              Profissionais sem agenda disponível
+                            </span>
+                            <div className="flex-1 h-px bg-gray-300"></div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show More Button */}
+                      {!showUnavailable && (
+                        <div className="col-span-full">
+                          <button
+                            type="button"
+                            onClick={() => setShowUnavailable(true)}
+                            className="w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <span>Exibir {unavailableProfessionals.length} {unavailableProfessionals.length === 1 ? 'profissional' : 'profissionais'} sem agenda</span>
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Unavailable Professionals (when expanded) */}
+                      {showUnavailable && (
+                        <>
+                          {unavailableProfessionals.map((professional) => {
+                            return (
+                              <button
+                                key={professional.id}
+                                type="button"
+                                disabled={true}
+                                role="option"
+                                aria-selected={false}
+                                aria-disabled={true}
+                                className="relative p-6 rounded-lg border-2 border-gray-300 bg-gray-50/50 opacity-75 text-left cursor-not-allowed snap-center"
+                              >
+                                {/* Subtle overlay */}
+                                <div className="absolute inset-0 rounded-lg bg-white/40 pointer-events-none"></div>
+
+                                {/* Badge de indisponibilidade */}
+                                <div className="absolute top-4 right-4 bg-gray-100 border-2 border-gray-300 text-gray-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 z-10">
+                                  <Clock className="w-3 h-3" />
+                                  Sem Agenda
+                                </div>
+
+                                <div className="flex items-start gap-4 relative z-0">
+                                  <div className="flex-shrink-0">
+                                    {professional.image_url ? (
+                                      <img
+                                        src={professional.image_url}
+                                        alt={professional.name}
+                                        loading="lazy"
+                                        decoding="async"
+                                        className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                          e.target.nextElementSibling.style.display = 'flex';
+                                        }}
+                                      />
+                                    ) : null}
+                                    <div
+                                      className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white font-bold text-xl"
+                                      style={{ display: professional.image_url ? 'none' : 'flex' }}
+                                    >
+                                      {professional.name.charAt(0)}
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-xl mb-2 text-gray-700">
+                                      {professional.name}
+                                    </h4>
+                                    {professional.mini_curriculum && (
+                                      <p className="text-sm text-gray-600 mb-3">
+                                        {professional.mini_curriculum.length > 120
+                                          ? `${professional.mini_curriculum.substring(0, 120)}...`
+                                          : professional.mini_curriculum}
+                                      </p>
+                                    )}
+                                    {professional.email && (
+                                      <p className="text-xs text-gray-500 mb-2">📧 {professional.email}</p>
+                                    )}
+                                    <div className="flex items-center justify-between">
+                                      <span className="text-xs text-gray-500">✓ Especialista em {selectedServiceData?.name}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+
+                          {/* Collapse Button */}
+                          <div className="col-span-full">
+                            <button
+                              type="button"
+                              onClick={() => setShowUnavailable(false)}
+                              className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              <span>Ocultar profissionais indisponíveis</span>
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             )}
