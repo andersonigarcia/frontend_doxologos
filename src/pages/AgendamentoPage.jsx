@@ -612,10 +612,43 @@ const AgendamentoPage = () => {
   const getAvailableTimesForDate = () => {
     if (!selectedDate || !selectedProfessional || !availability[selectedProfessional]) return [];
 
-    const dayOfWeek = new Date(selectedDate + 'T00:00:00').getUTCDay();
+    const date = new Date(selectedDate + 'T00:00:00');
+    const dayOfWeek = date.getUTCDay();
+    const selectedMonth = date.getUTCMonth() + 1; // 1-12
+    const selectedYear = date.getUTCFullYear();
+
     const dayMapping = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayKey = dayMapping[dayOfWeek];
-    let times = availability[selectedProfessional]?.[dayKey] || [];
+
+    // Get availability for this day - could be object with {times, month, year} or array (for multi-month mode)
+    const dayAvailability = availability[selectedProfessional]?.[dayKey];
+
+    let times = [];
+
+    if (!dayAvailability) {
+      return [];
+    }
+
+    // Handle new structure: {times, month, year}
+    if (dayAvailability.times && Array.isArray(dayAvailability.times)) {
+      // Single month mode - check if month/year matches
+      if (dayAvailability.month === selectedMonth && dayAvailability.year === selectedYear) {
+        times = dayAvailability.times;
+      }
+    }
+    // Handle multi-month mode: array of {times, month, year}
+    else if (Array.isArray(dayAvailability)) {
+      const matchingEntry = dayAvailability.find(
+        entry => entry.month === selectedMonth && entry.year === selectedYear
+      );
+      if (matchingEntry && Array.isArray(matchingEntry.times)) {
+        times = matchingEntry.times;
+      }
+    }
+    // Fallback for old structure (direct array) - for backward compatibility during migration
+    else if (Array.isArray(dayAvailability)) {
+      times = dayAvailability;
+    }
 
     // Aplicar bloqueios de data
     const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === selectedDate);

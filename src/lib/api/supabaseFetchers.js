@@ -14,16 +14,67 @@ export async function fetchServices() {
   return ensureData(data);
 }
 
-export async function fetchAvailabilityMap() {
+/**
+ * Fetches availability map organized by professional and day of week
+ * @param {Object} options - Filtering options
+ * @param {number} options.month - Month to filter (1-12). Defaults to current month.
+ * @param {number} options.year - Year to filter. Defaults to current year.
+ * @param {number} options.includeNextMonths - Number of additional months to include. Defaults to 2 (total 3 months for booking calendars)
+ * @returns {Promise<Object>} Availability map organized by professional_id -> day_of_week -> availability data
+ */
+export async function fetchAvailabilityMap(options = {}) {
+  const currentDate = new Date();
+  const currentMonth = options.month || (currentDate.getMonth() + 1);
+  const currentYear = options.year || currentDate.getFullYear();
+  // Default to 2 additional months (current + 2 = 3 months total) for booking calendars
+  const includeNextMonths = options.includeNextMonths !== undefined ? options.includeNextMonths : 2;
+
   const { data, error } = await supabase.from('availability').select('*');
   if (error) throw error;
+
   const availabilityMap = {};
-  ensureData(data).forEach((slot) => {
+  const rawData = ensureData(data);
+
+  // Filter data by month/year range
+  const filteredData = rawData.filter((slot) => {
+    if (!slot.month || !slot.year) return false;
+
+    // Calculate month difference
+    const slotMonthIndex = (slot.year * 12) + slot.month;
+    const currentMonthIndex = (currentYear * 12) + currentMonth;
+    const maxMonthIndex = currentMonthIndex + includeNextMonths;
+
+    return slotMonthIndex >= currentMonthIndex && slotMonthIndex <= maxMonthIndex;
+  });
+
+  // Organize filtered data
+  filteredData.forEach((slot) => {
     if (!availabilityMap[slot.professional_id]) {
       availabilityMap[slot.professional_id] = {};
     }
-    availabilityMap[slot.professional_id][slot.day_of_week] = slot.available_times;
+
+    const dayKey = slot.day_of_week;
+
+    // If includeNextMonths is enabled, store as array to support multiple months
+    if (includeNextMonths > 0) {
+      if (!availabilityMap[slot.professional_id][dayKey]) {
+        availabilityMap[slot.professional_id][dayKey] = [];
+      }
+      availabilityMap[slot.professional_id][dayKey].push({
+        times: slot.available_times,
+        month: slot.month,
+        year: slot.year,
+      });
+    } else {
+      // Single month mode: just store the times with metadata
+      availabilityMap[slot.professional_id][dayKey] = {
+        times: slot.available_times,
+        month: slot.month,
+        year: slot.year,
+      };
+    }
   });
+
   return availabilityMap;
 }
 
