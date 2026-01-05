@@ -1,11 +1,14 @@
 
 import React, { useState } from 'react';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Heart, ArrowLeft, Briefcase, Upload } from 'lucide-react';
+import { Heart, ArrowLeft, Briefcase, Upload, File, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import { SecureStorage } from '@/lib/secureStorage';
+import emailService from '@/lib/emailService';
+import { logger } from '@/lib/logger';
 
 const TrabalheConoscoPage = () => {
   const { toast } = useToast();
@@ -18,31 +21,260 @@ const TrabalheConoscoPage = () => {
     experience: '',
     message: ''
   });
+  
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
-  const handleSubmit = (e) => {
+  /**
+   * Formata telefone: (11) 98765-4321 ou (11) 3456-7890
+   */
+  const formatPhone = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 10) {
+      // Telefone fixo: (11) 3456-7890
+      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    } else {
+      // Celular: (11) 98765-4321
+      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    }
+  };
+
+  /**
+   * Formata CRP: 06/123456
+   */
+  const formatCRP = (value) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 2) {
+      return numbers;
+    }
+    return numbers.replace(/(\d{2})(\d{0,6})/, '$1/$2');
+  };
+
+  /**
+   * Valida formato de email
+   */
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  /**
+   * Manipula mudanças nos campos do formulário com máscaras
+   */
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    let formattedValue = value;
+    
+    // Aplicar máscaras
+    if (name === 'phone') {
+      formattedValue = formatPhone(value);
+    } else if (name === 'crp') {
+      formattedValue = formatCRP(value);
+    } else if (name === 'email') {
+      // Validar email ao digitar
+      if (value && !validateEmail(value)) {
+        setEmailError('Email inválido');
+      } else {
+        setEmailError('');
+      }
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: formattedValue
+    }));
+  };
+
+  /**
+   * Manipula seleção de arquivo
+   */
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    
+    if (!file) return;
+    
+    // Validar tipo de arquivo (PDF)
+    if (file.type !== 'application/pdf') {
+      toast({
+        variant: 'destructive',
+        title: 'Formato inválido',
+        description: 'Por favor, selecione apenas arquivos PDF.',
+      });
+      return;
+    }
+    
+    // Validar tamanho (máx 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      toast({
+        variant: 'destructive',
+        title: 'Arquivo muito grande',
+        description: 'O arquivo deve ter no máximo 5MB.',
+      });
+      return;
+    }
+    
+    setResumeFile(file);
+    logger.info('Resume file selected', { 
+      name: file.name, 
+      size: file.size,
+      type: file.type 
+    });
+  };
+
+  /**
+   * Remove arquivo selecionado
+   */
+  const handleRemoveFile = () => {
+    setResumeFile(null);
+    logger.debug('Resume file removed');
+  };
+
+  /**
+   * Converte arquivo para Base64 para envio por email
+   */
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result.split(',')[1]); // Remove "data:application/pdf;base64,"
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const applications = JSON.parse(localStorage.getItem('jobApplications') || '[]');
-    applications.push({
-      ...formData,
-      date: new Date().toISOString()
-    });
-    localStorage.setItem('jobApplications', JSON.stringify(applications));
+    // Validar email antes de enviar
+    if (!validateEmail(formData.email)) {
+      toast({
+        variant: 'destructive',
+        title: 'Email inválido',
+        description: 'Por favor, insira um endereço de email válido.',
+      });
+      return;
+    }
 
-    toast({
-      title: "Candidatura enviada!",
-      description: "Entraremos em contato em breve. Obrigado pelo interesse!",
-    });
+    // Validar telefone (mínimo 10 dígitos)
+    const phoneDigits = formData.phone.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      toast({
+        variant: 'destructive',
+        title: 'Telefone inválido',
+        description: 'Por favor, insira um telefone válido com DDD.',
+      });
+      return;
+    }
 
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      specialty: '',
-      crp: '',
-      experience: '',
-      message: ''
-    });
+    // Validar CRP (formato: 06/123456)
+    const crpDigits = formData.crp.replace(/\D/g, '');
+    if (crpDigits.length < 8) {
+      toast({
+        variant: 'destructive',
+        title: 'CRP inválido',
+        description: 'Por favor, insira um CRP válido (ex: 06/123456).',
+      });
+      return;
+    }
+    
+    try {
+      setUploading(true);
+      
+      logger.info('Job application form submitted', { 
+        name: formData.name,
+        email: formData.email 
+      });
+      
+      // Converter arquivo para Base64
+      let resumeBase64 = null;
+      if (resumeFile) {
+        resumeBase64 = await convertFileToBase64(resumeFile);
+        logger.debug('Resume converted to Base64', { 
+          fileName: resumeFile.name 
+        });
+      }
+      
+      // Enviar email com currículo anexado
+      const emailData = {
+        to: 'doxologos@doxologos.com.br', // Email do RH
+        subject: `Nova Candidatura: ${formData.name}`,
+        html: `
+          <h2>Nova Candidatura Recebida</h2>
+          <p><strong>Nome:</strong> ${formData.name}</p>
+          <p><strong>Email:</strong> ${formData.email}</p>
+          <p><strong>Telefone:</strong> ${formData.phone}</p>
+          <p><strong>CRP:</strong> ${formData.crp}</p>
+          <p><strong>Especialidade:</strong> ${formData.specialty}</p>
+          <p><strong>Experiência:</strong> ${formData.experience}</p>
+          <p><strong>Mensagem:</strong></p>
+          <p>${formData.message || 'Não informada'}</p>
+          <hr>
+          <p><em>Currículo em anexo (se enviado)</em></p>
+        `,
+        attachments: resumeFile ? [{
+          filename: resumeFile.name,
+          content: resumeBase64,
+          encoding: 'base64',
+          contentType: 'application/pdf'
+        }] : []
+      };
+      
+      // Enviar email
+      const result = await emailService.sendEmail(emailData);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao enviar email');
+      }
+      
+      logger.success('Job application email sent', { 
+        to: emailData.to,
+        hasAttachment: !!resumeFile
+      });
+      
+      // Salvar candidatura localmente (backup)
+      const application = {
+        ...formData,
+        resumeFileName: resumeFile?.name,
+        date: new Date().toISOString()
+      };
+      
+      const applications = SecureStorage.getArray('jobApplications', []);
+      applications.push(application);
+      SecureStorage.set('jobApplications', applications);
+      
+      logger.success('Job application saved locally', { 
+        applicationId: applications.length 
+      });
+
+      toast({
+        title: "✅ Candidatura enviada!",
+        description: "Recebemos sua candidatura e currículo. Entraremos em contato em breve!",
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        specialty: '',
+        crp: '',
+        experience: '',
+        message: ''
+      });
+      setResumeFile(null);
+      
+    } catch (error) {
+      logger.error('Error submitting job application', error);
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao enviar candidatura',
+        description: 'Ocorreu um erro ao enviar o email. Por favor, tente novamente.',
+      });
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -201,9 +433,10 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">Nome Completo *</label>
                     <input
                       type="text"
+                      name="name"
                       required
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={handleInputChange}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
@@ -212,11 +445,17 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">Email *</label>
                     <input
                       type="email"
+                      name="email"
                       required
                       value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                      onChange={handleInputChange}
+                      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${
+                        emailError ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     />
+                    {emailError && (
+                      <p className="text-red-500 text-sm mt-1">{emailError}</p>
+                    )}
                   </div>
                 </div>
 
@@ -225,9 +464,12 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">Telefone *</label>
                     <input
                       type="tel"
+                      name="phone"
                       required
                       value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      onChange={handleInputChange}
+                      placeholder="(11) 98765-4321"
+                      maxLength="15"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
@@ -236,10 +478,12 @@ const TrabalheConoscoPage = () => {
                     <label className="block text-sm font-medium mb-2">CRP *</label>
                     <input
                       type="text"
+                      name="crp"
                       required
                       value={formData.crp}
-                      onChange={(e) => setFormData({...formData, crp: e.target.value})}
+                      onChange={handleInputChange}
                       placeholder="Ex: 06/123456"
+                      maxLength="9"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
@@ -248,9 +492,10 @@ const TrabalheConoscoPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Especialidade *</label>
                   <select
+                    name="specialty"
                     required
                     value={formData.specialty}
-                    onChange={(e) => setFormData({...formData, specialty: e.target.value})}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   >
                     <option value="">Selecione...</option>
@@ -265,9 +510,10 @@ const TrabalheConoscoPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Tempo de Experiência *</label>
                   <select
+                    name="experience"
                     required
                     value={formData.experience}
-                    onChange={(e) => setFormData({...formData, experience: e.target.value})}
+                    onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   >
                     <option value="">Selecione...</option>
@@ -282,38 +528,84 @@ const TrabalheConoscoPage = () => {
                 <div>
                   <label className="block text-sm font-medium mb-2">Mensagem / Carta de Apresentação</label>
                   <textarea
+                    name="message"
                     rows={6}
                     value={formData.message}
-                    onChange={(e) => setFormData({...formData, message: e.target.value})}
+                    onChange={handleInputChange}
                     placeholder="Conte-nos um pouco sobre você, sua experiência e por que gostaria de fazer parte da equipe Doxologos..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   />
                 </div>
 
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <label className="block text-sm font-medium mb-2">Currículo (PDF)</label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full border-dashed"
-                    onClick={() => toast({
-                      title: "🚧 Funcionalidade em desenvolvimento",
-                      description: "O upload de arquivos estará disponível em breve! Por enquanto, envie seu currículo por email.",
-                    })}
-                  >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Anexar Currículo
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Ou envie para: curriculos@doxologos.com.br
+                <div className="bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-300">
+                  <label className="block text-sm font-medium mb-3">
+                    Currículo (PDF) *
+                  </label>
+                  
+                  {!resumeFile ? (
+                    <div>
+                      <input
+                        type="file"
+                        id="resume-upload"
+                        accept="application/pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="resume-upload"
+                        className="flex flex-col items-center justify-center p-8 cursor-pointer hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                        <p className="text-sm font-medium text-gray-700 mb-1">
+                          Clique para selecionar ou arraste o arquivo
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Apenas PDF, máximo 5MB
+                        </p>
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <File className="w-8 h-8 text-[#2d8659]" />
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {resumeFile.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(resumeFile.size / 1024).toFixed(0)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveFile}
+                        className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                        aria-label="Remover arquivo"
+                      >
+                        <X className="w-5 h-5 text-gray-500" />
+                      </button>
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-gray-500 mt-3">
+                    💡 Dica: Inclua suas experiências, formações e certificações relevantes.
                   </p>
                 </div>
 
                 <Button
                   type="submit"
-                  className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6"
+                  disabled={uploading || !resumeFile}
+                  className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Enviar Candidatura
+                  {uploading ? (
+                    <>
+                      <Upload className="w-5 h-5 mr-2 animate-pulse" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Enviar Candidatura'
+                  )}
                 </Button>
               </form>
             </motion.div>

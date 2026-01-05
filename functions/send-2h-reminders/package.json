@@ -1,0 +1,16 @@
+{
+    "name": "send-2h-reminders",
+    "version": "1.0.0",
+    "description": "Função serverless para enviar lembretes 2h antes das consultas",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "test": "node index.js"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.39.0"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

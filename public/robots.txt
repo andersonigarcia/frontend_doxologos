@@ -1,0 +1,83 @@
+# robots.txt para Doxologos
+# https://doxologos.com.br/robots.txt
+
+# Permitir todos os bots em geral
+User-agent: *
+Allow: /
+
+# Páginas específicas para não indexar
+Disallow: /admin
+Disallow: /area-do-paciente
+Disallow: /checkout
+Disallow: /checkout/*
+Disallow: /pagamento-simulado
+Disallow: /create-users
+Disallow: /pagamentos
+Disallow: /depoimentos-admin
+
+# Permitir explicitamente páginas importantes
+Allow: /
+Allow: /agendamento
+Allow: /quem-somos
+Allow: /trabalhe-conosco
+Allow: /doacao
+Allow: /depoimento
+Allow: /recuperar-senha
+Allow: /redefinir-senha
+
+# Permitir acesso a recursos CSS e JS para melhor renderização
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.svg$
+Allow: /*.webp$
+
+# Configurações específicas para bots principais
+
+# Google
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+# Bing
+User-agent: Bingbot
+Allow: /
+
+# Facebook (para Preview de Links)
+User-agent: Facebot
+Allow: /
+
+# Twitter
+User-agent: Twitterbot
+Allow: /
+
+# LinkedIn
+User-agent: LinkedInBot
+Allow: /
+
+# WhatsApp
+User-agent: WhatsApp
+Allow: /
+
+# Bots maliciosos bloqueados
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Sitemap
+Sitemap: https://doxologos.com.br/sitemap.xml
+
+# Crawl-delay para evitar sobrecarga
+Crawl-delay: 1

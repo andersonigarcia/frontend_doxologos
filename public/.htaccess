@@ -1,9 +1,22 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+  
+  # Não redirecionar arquivos que existem
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Não redirecionar arquivos com extensões específicas
+  RewriteCond %{REQUEST_URI} !\.(js|css|jpg|jpeg|png|gif|svg|ico|webp|woff|woff2|ttf|eot|json|xml|txt)$ [NC]
+  
   RewriteRule ^ index.html [L]
+</IfModule>
+
+# Tipos MIME corretos para JavaScript modules
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+  AddType image/svg+xml .svg
 </IfModule>
 
 <IfModule mod_headers.c>

@@ -1,7 +1,7 @@
-import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { EDIT_MODE_STYLES } from './visual-editor-config';
+import { normalizePath } from 'vite';
+import { EDIT_MODE_STYLES } from './visual-editor-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = resolve(__filename, '..');
@@ -11,14 +11,12 @@ export default function inlineEditDevPlugin() {
     name: 'vite:inline-edit-dev',
     apply: 'serve',
     transformIndexHtml() {
-      const scriptPath = resolve(__dirname, 'edit-mode-script.js');
-      const scriptContent = readFileSync(scriptPath, 'utf-8');
+      const scriptPath = normalizePath(resolve(__dirname, 'edit-mode-script.js'));
 
       return [
         {
           tag: 'script',
-          attrs: { type: 'module' },
-          children: scriptContent,
+          attrs: { type: 'module', src: `/@fs/${scriptPath}` },
           injectTo: 'body'
         },
         {
