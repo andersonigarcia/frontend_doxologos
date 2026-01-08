@@ -143,6 +143,7 @@ serve(async (req) => {
     console.log(`✅ Verified payment ${paymentId} status: ${mpPayment.status}`);
 
     const externalRef = mpPayment.external_reference;
+    console.log(`🔍 Processing external_reference: ${externalRef}`);
     let success = false;
 
     // 2. Process based on Reference
@@ -188,7 +189,13 @@ serve(async (req) => {
           console.log(`✅ Valid booking UUID detected: ${bookingId}`);
         } else {
           console.warn(`⚠️ Invalid UUID format for external_reference: ${externalRef}`);
+          console.warn(`   UUID regex test: ${uuidRegex.test(externalRef)}`);
+          console.warn(`   UUID no-hyphens test: ${uuidNoHyphensRegex.test(externalRef)}`);
         }
+      } else if (externalRef) {
+        console.log(`🎫 Event reference detected: ${externalRef}`);
+      } else {
+        console.warn(`⚠️ No external_reference provided in payment ${paymentId}`);
       }
 
       if (bookingId) {
@@ -210,7 +217,9 @@ serve(async (req) => {
 
         console.log(`📋 Found booking ${bookingId}:`, {
           currentStatus: existingBooking.status,
-          newMPStatus: mpPayment.status
+          currentPaymentStatus: existingBooking.payment_status,
+          newMPStatus: mpPayment.status,
+          willUpdateTo: statusMap[mpPayment.status]
         });
 
         const statusMap: any = {
@@ -228,6 +237,8 @@ serve(async (req) => {
           const { error: updateError } = await supabase.from('bookings')
             .update({
               status: newStatus,
+              payment_status: mpPayment.status,
+              marketplace_payment_id: paymentId.toString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', bookingId);
@@ -240,7 +251,9 @@ serve(async (req) => {
           console.log(`✅ Booking ${bookingId} updated successfully:`, {
             oldStatus: existingBooking.status,
             newStatus: newStatus,
-            mpPaymentStatus: mpPayment.status
+            paymentStatus: mpPayment.status,
+            mpPaymentId: paymentId,
+            transactionAmount: mpPayment.transaction_amount
           });
           success = true;
         } else {
