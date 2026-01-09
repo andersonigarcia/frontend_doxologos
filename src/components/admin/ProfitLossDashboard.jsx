@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown, DollarSign, PieChart, Plus, Pencil, Trash2, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,31 +9,47 @@ import Tooltip from '@/components/ui/Tooltip';
 
 export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, className = '' }) {
     const [period, setPeriod] = useState('month');
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-    // Calcular datas baseado no período
-    const getDateRange = () => {
+    // Gerar lista de anos disponíveis (últimos 5 anos + ano atual)
+    const availableYears = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const years = [];
+        for (let i = 0; i < 5; i++) {
+            years.push(currentYear - i);
+        }
+        return years;
+    }, []);
+
+    // Calcular datas baseado no período e ano selecionado (recalcula quando period ou selectedYear muda)
+    const { startDate, endDate } = useMemo(() => {
         const today = new Date();
-        let startDate, endDate;
+        let start, end;
 
         if (period === 'month') {
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            // Se ano selecionado é o atual, usar mês atual
+            // Senão, usar janeiro do ano selecionado
+            const month = selectedYear === today.getFullYear() ? today.getMonth() : 0;
+            start = new Date(selectedYear, month, 1);
+            end = new Date(selectedYear, month + 1, 0);
         } else if (period === 'quarter') {
-            const quarter = Math.floor(today.getMonth() / 3);
-            startDate = new Date(today.getFullYear(), quarter * 3, 1);
-            endDate = new Date(today.getFullYear(), (quarter + 1) * 3, 0);
+            // Se ano selecionado é o atual, usar trimestre atual
+            // Senão, usar primeiro trimestre do ano selecionado
+            const currentQuarter = Math.floor(today.getMonth() / 3);
+            const quarter = selectedYear === today.getFullYear() ? currentQuarter : 0;
+            start = new Date(selectedYear, quarter * 3, 1);
+            end = new Date(selectedYear, (quarter + 1) * 3, 0);
         } else {
-            startDate = new Date(today.getFullYear(), 0, 1);
-            endDate = new Date(today.getFullYear(), 11, 31);
+            // Ano completo do ano selecionado
+            start = new Date(selectedYear, 0, 1);
+            end = new Date(selectedYear, 11, 31);
         }
 
         return {
-            startDate: startDate.toISOString().split('T')[0],
-            endDate: endDate.toISOString().split('T')[0]
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0]
         };
-    };
-
-    const { startDate, endDate } = getDateRange();
+    }, [period, selectedYear]); // Recalcula quando period ou selectedYear muda
     const {
         totalRevenue, platformMargin, totalCosts, profitLoss, profitMargin,
         isProfitable, costsByCategory, loading
@@ -89,38 +105,56 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
             </div>
 
             {/* Filtros de Período */}
-            <div className="flex gap-2">
-                <Button variant={period === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('month')}
-                    className={period === 'month' ? 'bg-[#2d8659]' : ''}>
-                    Este Mês
-                </Button>
-                <Button variant={period === 'quarter' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('quarter')}
-                    className={period === 'quarter' ? 'bg-[#2d8659]' : ''}>
-                    Trimestre
-                </Button>
-                <Button variant={period === 'year' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('year')}
-                    className={period === 'year' ? 'bg-[#2d8659]' : ''}>
-                    Ano
-                </Button>
+            <div className="flex gap-4 items-center">
+                <div className="flex gap-2">
+                    <Button variant={period === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('month')}
+                        className={period === 'month' ? 'bg-[#2d8659]' : ''}>
+                        Este Mês
+                    </Button>
+                    <Button variant={period === 'quarter' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('quarter')}
+                        className={period === 'quarter' ? 'bg-[#2d8659]' : ''}>
+                        Trimestre
+                    </Button>
+                    <Button variant={period === 'year' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('year')}
+                        className={period === 'year' ? 'bg-[#2d8659]' : ''}>
+                        Ano
+                    </Button>
+                </div>
+
+                {/* Seletor de Ano */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 font-medium">Ano:</span>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2d8659] focus:border-transparent bg-white"
+                    >
+                        {availableYears.map(year => (
+                            <option key={year} value={year}>
+                                {year}
+                            </option>
+                        ))}
+                    </select>
+                </div>
             </div>
 
             {/* Cards de Métricas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     label="Receita Total"
-                    value={formatCurrency(totalRevenue)}
+                    value={totalRevenue}
                     format="currency"
                     tooltip="Soma de todos os agendamentos (confirmados/pagos) no período."
                 />
                 <StatCard
                     label="Margem Plataforma"
-                    value={formatCurrency(platformMargin)}
+                    value={platformMargin}
                     format="currency"
                     tooltip="Receita Total descontando o repasse aos profissionais."
                 />
                 <StatCard
                     label="Custos Totais"
-                    value={formatCurrency(totalCosts)}
+                    value={totalCosts}
                     format="currency"
                     tooltip="Soma das despesas operacionais (servidor, marketing, etc)."
                 />
