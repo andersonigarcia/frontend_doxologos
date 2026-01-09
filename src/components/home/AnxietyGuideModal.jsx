@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import emailService from '@/lib/emailService';
 import { useEventTracking } from '@/hooks/useAnalytics';
+import { useLeadTracking } from '@/hooks/useLeadTracking';
 
 const AnxietyGuideModal = ({ enabled = true }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +18,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
 
     const { toast } = useToast();
     const trackEvent = useEventTracking();
+    const { trackLeadMagnetView, trackLeadMagnetSubmit } = useLeadTracking();
 
     useEffect(() => {
         // Se desabilitado via configuração, não faz nada
@@ -33,7 +35,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
         const timer = setTimeout(() => {
             if (!hasSeen) {
                 setIsOpen(true);
-                trackEvent('lead_magnet_view', { magnet: 'anxiety_guide' });
+                trackLeadMagnetView('anxiety_guide');
             }
         }, 15000);
 
@@ -43,7 +45,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                 const scrollPercent = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
                 if (scrollPercent > 0.5) {
                     setIsOpen(true);
-                    trackEvent('lead_magnet_view', { magnet: 'anxiety_guide', trigger: 'scroll' });
+                    trackLeadMagnetView('anxiety_guide', { trigger: 'scroll' });
                     window.removeEventListener('scroll', handleScroll);
                 }
             }
@@ -55,7 +57,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
             clearTimeout(timer);
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [hasSeen, isOpen, trackEvent, enabled]);
+    }, [hasSeen, isOpen, trackLeadMagnetView, enabled]);
 
     const handleClose = () => {
         setIsOpen(false);
@@ -70,8 +72,8 @@ const AnxietyGuideModal = ({ enabled = true }) => {
 
         setLoading(true);
         try {
-            // Rastrear envio
-            trackEvent('lead_magnet_submit', { magnet: 'anxiety_guide' });
+            // Track and save lead to database
+            await trackLeadMagnetSubmit('anxiety_guide', { email, name });
 
             // HTML do Guia por Email
             const guideHtml = `
@@ -81,7 +83,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                     </div>
                     
                     <div style="padding: 30px; background-color: #ffffff; border: 1px solid #e0e0e0; border-top: none;">
-                        <p>Olá, <strong>${name}</strong>!</p>
+                        <p>Olá <strong>${name}</strong>!</p>
                         <p>Ficamos felizes em ver você dando o primeiro passo para cuidar da sua saúde emocional. A ansiedade é um desafio real, mas existem ferramentas práticas para enfrentá-la.</p>
                         
                         <div style="background-color: #f9fdfa; border-left: 4px solid #2d8659; padding: 20px; margin: 30px 0;">
@@ -124,7 +126,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                 type: 'lead_magnet'
             });
 
-            // Enviar notificação admin (opcional, para saber que leads estão entrando)
+            // Enviar notificação admin
             await emailService.sendEmail({
                 to: 'contato@doxologos.com.br',
                 subject: 'Novo Lead Capturado (Guia Ansiedade) 🎯',
@@ -135,9 +137,6 @@ const AnxietyGuideModal = ({ enabled = true }) => {
             setSuccess(true);
             setHasSeen(true);
             localStorage.setItem('doxologos_anxiety_guide_seen', 'true');
-
-            // Opcional: fechar após alguns segundos
-            // setTimeout(() => setIsOpen(false), 5000);
 
         } catch (error) {
             console.error(error);

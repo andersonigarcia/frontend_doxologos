@@ -26,7 +26,7 @@ export async function handler(event, context) {
     if (!to || !subject || !html) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: 'Dados obrigatórios ausentes',
           required: ['to', 'subject', 'html']
         })
@@ -59,11 +59,16 @@ export async function handler(event, context) {
       subject,
       html,
       text: text || stripHtml(html),
-      // Headers adicionais
+      // Headers adicionais para garantir renderização HTML
       headers: {
         'X-Mailer': 'Doxologos Email Service',
-        'X-Priority': '3'
-      }
+        'X-Priority': '3',
+        'Content-Type': 'text/html; charset=UTF-8',
+        'MIME-Version': '1.0'
+      },
+      // Configurações de encoding
+      encoding: 'utf-8',
+      textEncoding: 'base64'
     };
 
     // Enviar e-mail
@@ -116,9 +121,9 @@ export async function sendEmail(req, res) {
     httpMethod: req.method,
     body: JSON.stringify(req.body)
   };
-  
+
   const result = await handler(event, {});
   const response = JSON.parse(result.body);
-  
+
   return res.status(result.statusCode).json(response);
 }

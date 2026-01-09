@@ -54,3 +54,6 @@ playwright-report/
 
 # Deployment
 *.zip
+
+# Local Netlify folder
+.netlify

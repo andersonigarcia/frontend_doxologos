@@ -29,6 +29,8 @@ import RedefinirSenhaPage from '@/pages/RedefinirSenhaPage';
 import MinhasInscricoesPage from '@/pages/MinhasInscricoesPage';
 import AdminUsuariosPage from '@/pages/AdminUsuariosPage';
 import TermosCondicoesPage from '@/pages/TermosCondicoesPage';
+import AnsiedadePage from '@/pages/AnsiedadePage';
+import TerapiaCasalPage from '@/pages/TerapiaCasalPage';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 
 // Initialize Web Vitals monitoring
@@ -168,6 +170,16 @@ function AppContent() {
         <Route path="/admin/usuarios" element={
           <PageErrorBoundary pageName="Gestão de Usuários">
             <AdminUsuariosPage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/ansiedade" element={
+          <PageErrorBoundary pageName="Terapia para Ansiedade">
+            <AnsiedadePage />
+          </PageErrorBoundary>
+        } />
+        <Route path="/terapia-de-casal" element={
+          <PageErrorBoundary pageName="Terapia de Casal">
+            <TerapiaCasalPage />
           </PageErrorBoundary>
         } />
       </Routes>

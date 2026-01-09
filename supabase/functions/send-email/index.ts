@@ -56,10 +56,10 @@ serve(async (req) => {
 
     // Preparar destinatários
     const recipients = Array.isArray(to) ? to : [to];
-    
+
     // Preparar estrutura do email
     const emailContent = {
-      from: ${fromName} <>,
+      from: `${fromName} <${fromEmail}>`,
       to: recipients.join(", "),
       subject,
       content: "text/html",
@@ -70,7 +70,7 @@ serve(async (req) => {
     if (cc) {
       const ccRecipients = Array.isArray(cc) ? cc : [cc];
       emailContent.cc = ccRecipients.join(", ");
-      console.log(" Com cópia para:", emailContent.cc);
+      console.log("📧 Com cópia para:", emailContent.cc);
     }
 
     // Adicionar ReplyTo se fornecido
@@ -85,15 +85,15 @@ serve(async (req) => {
     console.log(" Email enviado com sucesso");
 
     return new Response(
-      JSON.stringify({ success: true, messageId: ${Date.now()} }),
+      JSON.stringify({ success: true, messageId: `${Date.now()}` }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error(" Erro ao enviar email:", error);
     return new Response(
-      JSON.stringify({ 
-        error: "Falha ao enviar email", 
-        details: error.message 
+      JSON.stringify({
+        error: "Falha ao enviar email",
+        details: error.message
       }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -332,6 +332,40 @@ class BookingEmailManager {
     }
   }
 
+  /**
+   * 9. Email de Checklist de Saúde Mental
+   * Enviado quando usuário solicita o checklist
+   */
+  async sendChecklist(name, email) {
+    try {
+      const recipientEmail = (email || '').trim();
+
+      if (!recipientEmail) {
+        logger.error('❌ Email ausente para envio de checklist');
+        return { success: false, error: 'missing_email' };
+      }
+
+      const html = this.templates.checklistEmail(name);
+
+      const emailConfig = {
+        to: recipientEmail,
+        subject: '✅ Seu Checklist: 15 Sinais de que Você Precisa de Ajuda Psicológica',
+        html,
+        type: 'lead_magnet'
+      };
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de checklist enviado', { to: recipientEmail });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar checklist', error);
+      return { success: false, error: error.message };
+    }
+  }
+
   // Alias para compatibilidade
   async sendBookingConfirmation(bookingData, sendCopy = true) {
     return this.sendConfirmation(bookingData, sendCopy);

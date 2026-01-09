@@ -20,6 +20,8 @@ import StickyBottomCTA from '@/components/home/StickyBottomCTA';
 import ComoFuncionaSection from '@/components/home/ComoFuncionaSection';
 import TrustIndicatorsSection from '@/components/home/TrustIndicatorsSection';
 import AnxietyGuideModal from '@/components/home/AnxietyGuideModal';
+import InspiringVideosSection from '@/components/home/InspiringVideosSection';
+import ExitIntentPopup from '@/components/leadMagnets/ExitIntentPopup';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const videos = [
@@ -301,6 +303,8 @@ const HomePage = () => {
 
         <TrustIndicatorsSection />
 
+        <InspiringVideosSection />
+
         <ComoFuncionaSection />
 
         <ProfessionalsCarousel professionals={professionals} />
@@ -375,8 +379,9 @@ const HomePage = () => {
         </div>
       </footer>
 
-      {/* Lead Magnet Modal */}
+      {/* Lead Magnet Modals */}
       <AnxietyGuideModal enabled={isLeadMagnetEnabled} />
+      <ExitIntentPopup />
     </>
   );
 };
