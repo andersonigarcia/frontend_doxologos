@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { usePlatformRevenueFromLedger } from './usePlatformRevenueFromLedger';
 
 /**
  * Hook para gerenciar custos da plataforma
@@ -182,12 +183,15 @@ export function usePlatformRevenue(startDate = null, endDate = null) {
 
 /**
  * Hook para calcular Lucro/Prejuízo
+ * ATUALIZADO: Usa payment_ledger_entries como fonte de dados
  * 
  * @param {string} startDate - Data inicial (YYYY-MM-DD)
  * @param {string} endDate - Data final (YYYY-MM-DD)
  */
 export function useProfitLoss(startDate = null, endDate = null) {
-    const revenue = usePlatformRevenue(startDate, endDate);
+    // ATUALIZADO: Usar ledger ao invés de bookings
+    // const revenue = usePlatformRevenue(startDate, endDate);
+    const revenue = usePlatformRevenueFromLedger(startDate, endDate);
     const costs = usePlatformCosts(startDate, endDate);
 
     const profitLoss = revenue.platformMargin - costs.totalCosts;
@@ -222,5 +226,11 @@ export function useProfitLoss(startDate = null, endDate = null) {
         }
     };
 }
+
+/**
+ * Hook auxiliar para usar ledger como fonte
+ * Importado de arquivo separado
+ */
+export { usePlatformRevenueFromLedger } from './usePlatformRevenueFromLedger';
 
 export default useProfitLoss;
