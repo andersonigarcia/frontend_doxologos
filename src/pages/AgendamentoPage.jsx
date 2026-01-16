@@ -1574,12 +1574,15 @@ const AgendamentoPage = () => {
                   setStep(3);
                 } else if (step === 3 && selectedDate && selectedTime) {
                   setStep(4);
+                } else if (step === 4 && canProceedToSummary) {
+                  handleProceedToSummary();
                 }
               }}
               disabled={(
                 (step === 1 && !selectedService) ||
                 (step === 2 && !selectedProfessional) ||
-                (step === 3 && (!selectedDate || !selectedTime))
+                (step === 3 && (!selectedDate || !selectedTime)) ||
+                (step === 4 && !canProceedToSummary)
               )}
               className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold"
             >
