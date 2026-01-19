@@ -138,26 +138,58 @@ Deno.serve(async (req) => {
     });
 
     // Atualizar booking ou inscrição
-    if (booking_id && mpJson.status === 'approved') {
-      await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
+    // ✅ FIX: Atualizar AMBOS status e payment_status para garantir confirmação automática
+    // ✅ FIX: Tratar 'approved' E 'authorized' (alguns cartões retornam 'authorized' primeiro)
+    if (booking_id && (mpJson.status === 'approved' || mpJson.status === 'authorized')) {
+      console.log(`[MP Card] 🔄 Atualizando booking ${booking_id} - Status MP: ${mpJson.status}`);
+
+      const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
         method: 'PATCH',
         headers: {
           'apikey': SERVICE_ROLE,
           'Authorization': `Bearer ${SERVICE_ROLE}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
         },
-        body: JSON.stringify({ payment_status: 'paid' })
+        body: JSON.stringify({
+          status: 'confirmed',           // ✅ NOVO: Confirmar booking imediatamente
+          payment_status: mpJson.status  // ✅ Manter status original do MP
+        })
       });
-    } else if (inscricao_id && mpJson.status === 'approved') {
-      await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricao_id}`, {
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error(`[MP Card] ❌ Erro ao atualizar booking: ${errorText}`);
+      } else {
+        const updated = await updateResponse.json();
+        console.log(`[MP Card] ✅ Booking confirmado com sucesso:`, updated);
+      }
+    } else if (inscricao_id && (mpJson.status === 'approved' || mpJson.status === 'authorized')) {
+      console.log(`[MP Card] 🔄 Atualizando inscrição ${inscricao_id} - Status MP: ${mpJson.status}`);
+
+      const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricao_id}`, {
         method: 'PATCH',
         headers: {
           'apikey': SERVICE_ROLE,
           'Authorization': `Bearer ${SERVICE_ROLE}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
         },
-        body: JSON.stringify({ payment_status: 'paid' })
+        body: JSON.stringify({
+          status: 'confirmado',          // ✅ NOVO: Confirmar inscrição
+          payment_status: mpJson.status  // ✅ Manter status original do MP
+        })
       });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error(`[MP Card] ❌ Erro ao atualizar inscrição: ${errorText}`);
+      } else {
+        const updated = await updateResponse.json();
+        console.log(`[MP Card] ✅ Inscrição confirmada com sucesso:`, updated);
+      }
+    } else if (booking_id || inscricao_id) {
+      console.log(`[MP Card] ℹ️ Pagamento não confirmado automaticamente - Status: ${mpJson.status}`);
     }
 
     return new Response(

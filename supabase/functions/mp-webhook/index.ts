@@ -141,6 +141,8 @@ serve(async (req) => {
     // This confirms the payment status is real and not a spoofed payload
     const mpPayment = await fetchMpPayment(paymentId, MP_ACCESS_TOKEN);
     console.log(`✅ Verified payment ${paymentId} status: ${mpPayment.status}`);
+    console.log(`💳 Payment method: ${mpPayment.payment_method_id}`);
+    console.log(`📊 Payment type: ${mpPayment.payment_type_id}`);
 
     const externalRef = mpPayment.external_reference;
     console.log(`🔍 Processing external_reference: ${externalRef}`);
@@ -225,6 +227,7 @@ serve(async (req) => {
         const statusMap: any = {
           'approved': 'confirmed',
           'authorized': 'confirmed',
+          'paid': 'confirmed',        // ✅ NOVO: Adicionar 'paid'
           'in_process': 'pending',
           'rejected': 'cancelled',
           'cancelled': 'cancelled',
