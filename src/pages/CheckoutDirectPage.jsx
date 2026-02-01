@@ -38,7 +38,6 @@ const CheckoutDirectPage = () => {
 
     // Mercado Pago
     const [mp, setMp] = useState(null);
-    const [cardForm, setCardForm] = useState(null);
 
     useEffect(() => {
         return () => {
