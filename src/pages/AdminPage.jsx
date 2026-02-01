@@ -2311,6 +2311,35 @@ const AdminPage = () => {
         fetchAllData();
     };
     const resetEventForm = () => {
+        // Helper: gera datetime-local padrão inteligente
+        const getSmartDefaultDateTime = (hoursFromNow = 0, roundToNext = 'hour') => {
+            const now = new Date();
+            now.setHours(now.getHours() + hoursFromNow);
+
+            // Arredondar para próxima hora ou meia hora
+            if (roundToNext === 'hour') {
+                now.setMinutes(0, 0, 0);
+                now.setHours(now.getHours() + 1); // Próxima hora cheia
+            } else if (roundToNext === 'halfhour') {
+                const minutes = now.getMinutes();
+                if (minutes < 30) {
+                    now.setMinutes(30, 0, 0);
+                } else {
+                    now.setMinutes(0, 0, 0);
+                    now.setHours(now.getHours() + 1);
+                }
+            }
+
+            return now.toISOString().slice(0, 16);
+        };
+
+        // Valores padrão inteligentes
+        const defaultDataInicio = getSmartDefaultDateTime(24, 'hour'); // Amanhã, próxima hora cheia
+        const defaultDataFim = getSmartDefaultDateTime(26, 'hour'); // 2h depois do início
+        const defaultDataLimiteInscricao = getSmartDefaultDateTime(23, 'hour'); // 1h antes do evento
+        const defaultDataInicioExibicao = getSmartDefaultDateTime(0, 'hour'); // Agora (próxima hora)
+        const defaultDataFimExibicao = getSmartDefaultDateTime(24, 'hour'); // Até o início do evento
+
         setIsEditingEvent(false);
         setEventFormErrors({});
         setSlugManuallyEdited(false);
@@ -2321,16 +2350,16 @@ const AdminPage = () => {
             titulo: '',
             descricao: '',
             tipo_evento: 'Workshop',
-            data_inicio: '',
-            data_fim: '',
+            data_inicio: defaultDataInicio,
+            data_fim: defaultDataFim,
             professional_id: '',
-            limite_participantes: '',
-            data_limite_inscricao: '',
+            limite_participantes: '30', // Valor padrão sugerido
+            data_limite_inscricao: defaultDataLimiteInscricao,
             valor: 0,
             vagas_disponiveis: 0, // 0 = ilimitado
             link_slug: '',
-            data_inicio_exibicao: '',
-            data_fim_exibicao: '',
+            data_inicio_exibicao: defaultDataInicioExibicao,
+            data_fim_exibicao: defaultDataFimExibicao,
             meeting_link: '',
             meeting_password: '',
             meeting_id: '',
@@ -4997,37 +5026,85 @@ const AdminPage = () => {
                                                     <div className="grid gap-4 md:grid-cols-2">
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
-                                                            <input
-                                                                type="datetime-local"
-                                                                name="data_inicio"
-                                                                value={eventFormData.data_inicio || ''}
-                                                                onChange={e => {
-                                                                    setEventFormData(prev => ({ ...prev, data_inicio: e.target.value }));
-                                                                    clearEventError('data_inicio');
-                                                                    clearEventError('data_fim');
-                                                                }}
-                                                                className={`w-full input ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                                aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
-                                                                required
-                                                            />
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <input
+                                                                        type="date"
+                                                                        name="data_inicio_date"
+                                                                        value={eventFormData.data_inicio ? eventFormData.data_inicio.split('T')[0] : ''}
+                                                                        onChange={e => {
+                                                                            const dateValue = e.target.value;
+                                                                            const timeValue = eventFormData.data_inicio ? eventFormData.data_inicio.split('T')[1] : '09:00';
+                                                                            setEventFormData(prev => ({ ...prev, data_inicio: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_inicio');
+                                                                            clearEventError('data_fim');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                                        required
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Data</p>
+                                                                </div>
+                                                                <div>
+                                                                    <input
+                                                                        type="time"
+                                                                        name="data_inicio_time"
+                                                                        value={eventFormData.data_inicio ? eventFormData.data_inicio.split('T')[1] || '09:00' : '09:00'}
+                                                                        onChange={e => {
+                                                                            const dateValue = eventFormData.data_inicio ? eventFormData.data_inicio.split('T')[0] : new Date().toISOString().split('T')[0];
+                                                                            const timeValue = e.target.value;
+                                                                            setEventFormData(prev => ({ ...prev, data_inicio: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_inicio');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_inicio ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_inicio ? 'true' : 'false'}
+                                                                        required
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Hora</p>
+                                                                </div>
+                                                            </div>
                                                             {eventFormErrors.data_inicio && (
                                                                 <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio}</p>
                                                             )}
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
-                                                            <input
-                                                                type="datetime-local"
-                                                                name="data_fim"
-                                                                value={eventFormData.data_fim || ''}
-                                                                onChange={e => {
-                                                                    setEventFormData(prev => ({ ...prev, data_fim: e.target.value }));
-                                                                    clearEventError('data_fim');
-                                                                }}
-                                                                className={`w-full input ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                                aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
-                                                                required
-                                                            />
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <input
+                                                                        type="date"
+                                                                        name="data_fim_date"
+                                                                        value={eventFormData.data_fim ? eventFormData.data_fim.split('T')[0] : ''}
+                                                                        onChange={e => {
+                                                                            const dateValue = e.target.value;
+                                                                            const timeValue = eventFormData.data_fim ? eventFormData.data_fim.split('T')[1] : '11:00';
+                                                                            setEventFormData(prev => ({ ...prev, data_fim: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_fim');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
+                                                                        required
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Data</p>
+                                                                </div>
+                                                                <div>
+                                                                    <input
+                                                                        type="time"
+                                                                        name="data_fim_time"
+                                                                        value={eventFormData.data_fim ? eventFormData.data_fim.split('T')[1] || '11:00' : '11:00'}
+                                                                        onChange={e => {
+                                                                            const dateValue = eventFormData.data_fim ? eventFormData.data_fim.split('T')[0] : new Date().toISOString().split('T')[0];
+                                                                            const timeValue = e.target.value;
+                                                                            setEventFormData(prev => ({ ...prev, data_fim: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_fim');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_fim ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_fim ? 'true' : 'false'}
+                                                                        required
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Hora</p>
+                                                                </div>
+                                                            </div>
                                                             {eventFormErrors.data_fim && (
                                                                 <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim}</p>
                                                             )}
@@ -5109,18 +5186,42 @@ const AdminPage = () => {
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
-                                                            <input
-                                                                type="datetime-local"
-                                                                name="data_limite_inscricao"
-                                                                value={eventFormData.data_limite_inscricao || ''}
-                                                                onChange={e => {
-                                                                    setEventFormData(prev => ({ ...prev, data_limite_inscricao: e.target.value }));
-                                                                    clearEventError('data_limite_inscricao');
-                                                                }}
-                                                                className={`w-full input ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                                aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
-                                                                required
-                                                            />
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <input
+                                                                        type="date"
+                                                                        name="data_limite_inscricao_date"
+                                                                        value={eventFormData.data_limite_inscricao ? eventFormData.data_limite_inscricao.split('T')[0] : ''}
+                                                                        onChange={e => {
+                                                                            const dateValue = e.target.value;
+                                                                            const timeValue = eventFormData.data_limite_inscricao ? eventFormData.data_limite_inscricao.split('T')[1] : '23:59';
+                                                                            setEventFormData(prev => ({ ...prev, data_limite_inscricao: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_limite_inscricao');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
+                                                                        required
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Data</p>
+                                                                </div>
+                                                                <div>
+                                                                    <input
+                                                                        type="time"
+                                                                        name="data_limite_inscricao_time"
+                                                                        value={eventFormData.data_limite_inscricao ? eventFormData.data_limite_inscricao.split('T')[1] || '23:59' : '23:59'}
+                                                                        onChange={e => {
+                                                                            const dateValue = eventFormData.data_limite_inscricao ? eventFormData.data_limite_inscricao.split('T')[0] : new Date().toISOString().split('T')[0];
+                                                                            const timeValue = e.target.value;
+                                                                            setEventFormData(prev => ({ ...prev, data_limite_inscricao: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_limite_inscricao');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_limite_inscricao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_limite_inscricao ? 'true' : 'false'}
+                                                                        required
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Hora</p>
+                                                                </div>
+                                                            </div>
                                                             {eventFormErrors.data_limite_inscricao && (
                                                                 <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_limite_inscricao}</p>
                                                             )}
@@ -5137,35 +5238,81 @@ const AdminPage = () => {
                                                     <div className="grid gap-4 md:grid-cols-2">
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Início da exibição</label>
-                                                            <input
-                                                                type="datetime-local"
-                                                                name="data_inicio_exibicao"
-                                                                value={eventFormData.data_inicio_exibicao || ''}
-                                                                onChange={e => {
-                                                                    setEventFormData(prev => ({ ...prev, data_inicio_exibicao: e.target.value }));
-                                                                    clearEventError('data_inicio_exibicao');
-                                                                    clearEventError('data_fim_exibicao');
-                                                                }}
-                                                                className={`w-full input ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                                aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
-                                                            />
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <input
+                                                                        type="date"
+                                                                        name="data_inicio_exibicao_date"
+                                                                        value={eventFormData.data_inicio_exibicao ? eventFormData.data_inicio_exibicao.split('T')[0] : ''}
+                                                                        onChange={e => {
+                                                                            const dateValue = e.target.value;
+                                                                            const timeValue = eventFormData.data_inicio_exibicao ? eventFormData.data_inicio_exibicao.split('T')[1] : '00:00';
+                                                                            setEventFormData(prev => ({ ...prev, data_inicio_exibicao: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_inicio_exibicao');
+                                                                            clearEventError('data_fim_exibicao');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Data</p>
+                                                                </div>
+                                                                <div>
+                                                                    <input
+                                                                        type="time"
+                                                                        name="data_inicio_exibicao_time"
+                                                                        value={eventFormData.data_inicio_exibicao ? eventFormData.data_inicio_exibicao.split('T')[1] || '00:00' : '00:00'}
+                                                                        onChange={e => {
+                                                                            const dateValue = eventFormData.data_inicio_exibicao ? eventFormData.data_inicio_exibicao.split('T')[0] : new Date().toISOString().split('T')[0];
+                                                                            const timeValue = e.target.value;
+                                                                            setEventFormData(prev => ({ ...prev, data_inicio_exibicao: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_inicio_exibicao');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_inicio_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_inicio_exibicao ? 'true' : 'false'}
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Hora</p>
+                                                                </div>
+                                                            </div>
                                                             {eventFormErrors.data_inicio_exibicao && (
                                                                 <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_inicio_exibicao}</p>
                                                             )}
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Fim da exibição</label>
-                                                            <input
-                                                                type="datetime-local"
-                                                                name="data_fim_exibicao"
-                                                                value={eventFormData.data_fim_exibicao || ''}
-                                                                onChange={e => {
-                                                                    setEventFormData(prev => ({ ...prev, data_fim_exibicao: e.target.value }));
-                                                                    clearEventError('data_fim_exibicao');
-                                                                }}
-                                                                className={`w-full input ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
-                                                                aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
-                                                            />
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <input
+                                                                        type="date"
+                                                                        name="data_fim_exibicao_date"
+                                                                        value={eventFormData.data_fim_exibicao ? eventFormData.data_fim_exibicao.split('T')[0] : ''}
+                                                                        onChange={e => {
+                                                                            const dateValue = e.target.value;
+                                                                            const timeValue = eventFormData.data_fim_exibicao ? eventFormData.data_fim_exibicao.split('T')[1] : '23:59';
+                                                                            setEventFormData(prev => ({ ...prev, data_fim_exibicao: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_fim_exibicao');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Data</p>
+                                                                </div>
+                                                                <div>
+                                                                    <input
+                                                                        type="time"
+                                                                        name="data_fim_exibicao_time"
+                                                                        value={eventFormData.data_fim_exibicao ? eventFormData.data_fim_exibicao.split('T')[1] || '23:59' : '23:59'}
+                                                                        onChange={e => {
+                                                                            const dateValue = eventFormData.data_fim_exibicao ? eventFormData.data_fim_exibicao.split('T')[0] : new Date().toISOString().split('T')[0];
+                                                                            const timeValue = e.target.value;
+                                                                            setEventFormData(prev => ({ ...prev, data_fim_exibicao: `${dateValue}T${timeValue}` }));
+                                                                            clearEventError('data_fim_exibicao');
+                                                                        }}
+                                                                        className={`w-full input text-sm ${eventFormErrors.data_fim_exibicao ? 'border-red-500 focus:ring-red-300' : ''}`}
+                                                                        aria-invalid={eventFormErrors.data_fim_exibicao ? 'true' : 'false'}
+                                                                    />
+                                                                    <p className="text-[10px] text-gray-500 mt-0.5">Hora</p>
+                                                                </div>
+                                                            </div>
                                                             {eventFormErrors.data_fim_exibicao && (
                                                                 <p className="text-xs text-red-500 mt-1">{eventFormErrors.data_fim_exibicao}</p>
                                                             )}
