@@ -190,7 +190,7 @@ const addTransformIndexHtml = {
 			},
 			{
 				tag: 'script',
-				attrs: {type: 'module'},
+				attrs: { type: 'module' },
 				children: configHorizonsConsoleErrroHandler,
 				injectTo: 'head',
 			},
@@ -215,7 +215,7 @@ const addTransformIndexHtml = {
 	},
 };
 
-console.warn = () => {};
+console.warn = () => { };
 
 const logger = createLogger()
 const loggerError = logger.error
@@ -228,14 +228,20 @@ logger.error = (msg, options) => {
 	loggerError(msg, options);
 }
 
+import basicSsl from '@vitejs/plugin-basic-ssl';
+
+// ... imports anteriores mantidos ...
+
 export default defineConfig({
 	customLogger: logger,
 	plugins: [
+		basicSsl(),
 		...(isDev ? [inlineEditPlugin(), editModeDevPlugin(), iframeRouteRestorationPlugin()] : []),
 		react(),
 		addTransformIndexHtml
 	],
 	server: {
+		https: true, // Forçar HTTPS
 		cors: true,
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',
@@ -251,14 +257,14 @@ export default defineConfig({
 							// Interceptar e responder com mock
 							proxy.removeAllListeners('proxyReq');
 							proxy.removeAllListeners('proxyRes');
-							
+
 							let body = '';
 							req.on('data', chunk => { body += chunk.toString(); });
 							req.on('end', () => {
 								try {
 									const data = JSON.parse(body);
 									console.log('🔵 [DEV] Mock MP Preference:', data);
-									
+
 									// Simular resposta do Mercado Pago
 									res.writeHead(200, { 'Content-Type': 'application/json' });
 									res.end(JSON.stringify({
@@ -281,7 +287,7 @@ export default defineConfig({
 		}
 	},
 	resolve: {
-		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json', ],
+		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json',],
 		alias: {
 			'@': path.resolve(__dirname, './src'),
 		},

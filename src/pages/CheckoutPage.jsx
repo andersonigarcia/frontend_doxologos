@@ -12,6 +12,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { safeRedirect } from '@/lib/securityUtils';
 import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import ExistingPaymentModal from '@/components/payment/ExistingPaymentModal';
+import { paymentOrchestrator } from '@/lib/payment';
 
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
@@ -41,6 +42,7 @@ const CheckoutPage = () => {
     const [existingPayment, setExistingPayment] = useState(null);
     const [showExistingPaymentModal, setShowExistingPaymentModal] = useState(false);
     const [shouldForceNewPayment, setShouldForceNewPayment] = useState(false);
+    const [stopMonitoring, setStopMonitoring] = useState(null); // Função para parar monitoramento
 
     const buildLogContext = (extra = {}) => ({
         bookingId: bookingId || null,
@@ -118,7 +120,20 @@ const CheckoutPage = () => {
             });
             navigate('/');
         }
-    }, [bookingId, inscricaoId, type]);
+    }, [bookingId, inscricaoId, type, valorParam, tituloParam]);
+
+    // Cleanup: Parar monitoramento quando componente desmontar
+    useEffect(() => {
+        return () => {
+            if (stopMonitoring) {
+                logger.info('CheckoutPage.cleanup:stopping-monitoring', buildLogContext());
+                stopMonitoring();
+            }
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+            }
+        };
+    }, [stopMonitoring, pollingInterval]);
 
     useEffect(() => {
         if (booking && type !== 'evento') {
@@ -479,6 +494,7 @@ const CheckoutPage = () => {
                         navigate('/checkout/success', {
                             state: { bookingId, paymentId: existing.mp_payment_id }
                         });
+                        setProcessing(false);
                         return;
                     }
 
@@ -493,133 +509,126 @@ const CheckoutPage = () => {
                 }
             }
 
-            if (creditCoversTotal && bookingId) {
-                await processCreditCheckout();
-                return;
-            }
+            // Obter informações do pagador
+            const session = await getFreshSession();
+            const referenceId = bookingId || inscricaoId;
 
-            let amount, description, payerInfo, referenceId;
-
+            // FIX: Calcular amount corretamente baseado no tipo
+            let amount = 0;
             if (type === 'evento') {
-                // Dados do evento
-                amount = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
-                description = `Evento - ${inscricao?.evento?.titulo || tituloParam || 'Evento Doxologos'}`;
-                payerInfo = {
-                    name: inscricao.patient_name,
-                    email: inscricao.patient_email,
-                    phone: {
-                        area_code: inscricao.patient_phone?.substring(0, 2) || '11',
-                        number: inscricao.patient_phone?.substring(2) || '999999999'
-                    }
-                };
-                referenceId = inscricaoId;
+                amount = inscricao?.valor || parseFloat(valorParam) || 0;
             } else {
-                // Dados do booking (original)
-                amount = booking.valor_consulta || booking.service?.price || 0;
-                description = `Consulta - ${booking.service?.name || 'Atendimento Psicológico'}`;
-                payerInfo = {
-                    name: booking.patient_name,
-                    email: booking.patient_email,
-                    phone: {
-                        area_code: booking.patient_phone?.substring(0, 2) || '11',
-                        number: booking.patient_phone?.substring(2) || '999999999'
-                    }
-                };
-                referenceId = bookingId;
+                // Para bookings, usar valor_consulta ou service.price
+                amount = booking?.valor_consulta || booking?.service?.price || parseFloat(valorParam) || 0;
             }
 
-            if (!amount || amount <= 0) {
-                throw new Error('Valor inválido para pagamento');
-            }
+            const description = booking
+                ? `Consulta Online - Agendamento ${referenceId}`
+                : (inscricao?.evento?.titulo || tituloParam || `Pagamento de Evento - Inscrição ${referenceId}`);
 
-            const requestPayload = {
+            const payerInfo = {
+                email: session?.user?.email || booking?.patient_email || inscricao?.email || '',
+                first_name: session?.user?.user_metadata?.full_name?.split(' ')[0] || booking?.patient_name?.split(' ')[0] || inscricao?.nome?.split(' ')[0] || '',
+                last_name: session?.user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || booking?.patient_name?.split(' ').slice(1).join(' ') || inscricao?.nome?.split(' ').slice(1).join(' ') || ''
+            };
+
+            // Preparar dados do pagamento
+            const paymentData = {
                 [type === 'evento' ? 'inscricao_id' : 'booking_id']: referenceId,
                 amount: amount,
                 description: description,
                 payer: payerInfo
             };
 
-            // Se for PIX, usar pagamento direto (sem redirecionamento)
-            if (selectedMethod === 'pix') {
-                logger.info('CheckoutPage.handlePayment:create-pix', buildLogContext({ referenceId, amount }));
+            logger.info('CheckoutPage.handlePayment:using-orchestrator', buildLogContext({
+                referenceId,
+                amount,
+                selectedMethod
+            }));
 
-                // Gerar idempotency key se feature flag ativada
-                const idempotencyKey = isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK') && bookingId
-                    ? MercadoPagoService.generateIdempotencyKey(bookingId)
-                    : undefined;
+            // ✅ NOVO: Usar PaymentOrchestrator (SOLID)
+            const result = await paymentOrchestrator.processPayment(
+                selectedMethod,
+                paymentData,
+                {
+                    // Callback de mudança de status
+                    onStatusChange: (statusUpdate) => {
+                        logger.info('CheckoutPage.handlePayment:status-change', buildLogContext({
+                            status: statusUpdate.status,
+                            statusDetail: statusUpdate.statusDetail
+                        }));
 
-                const result = await MercadoPagoService.createPixPayment(
-                    requestPayload,
-                    { idempotencyKey }
-                );
+                        setPaymentStatus({
+                            status: statusUpdate.status,
+                            detail: statusUpdate.statusDetail
+                        });
+                    },
 
-                if (result.success) {
-                    logger.success('CheckoutPage.handlePayment:pix-created', buildLogContext({
-                        referenceId,
-                        paymentId: result.payment_id,
-                        amount
-                    }));
-                    setPixPayment(result);
+                    // Callback de sucesso (pagamento aprovado)
+                    onSuccess: (paymentResult) => {
+                        logger.success('CheckoutPage.handlePayment:success', buildLogContext({
+                            paymentId: paymentResult.paymentId
+                        }));
 
-                    // Iniciar polling do status do pagamento
-                    startPaymentPolling(result.payment_id);
+                        toast({
+                            title: 'Pagamento aprovado!',
+                            description: 'Seu pagamento foi confirmado com sucesso.'
+                        });
 
+                        // Redirecionar para página de sucesso
+                        navigate('/checkout/success', {
+                            state: {
+                                bookingId: bookingId,
+                                inscricaoId: inscricaoId,
+                                paymentId: paymentResult.paymentId,
+                                paymentStatus: 'approved'
+                            }
+                        });
+                    },
+
+                    // Callback de erro
+                    onError: (error) => {
+                        logger.error('CheckoutPage.handlePayment:payment-error', null, buildLogContext({
+                            error: error.message || error.error
+                        }));
+
+                        const friendlyMessage = error.message
+                            || MercadoPagoService.getFriendlyStatusMessage(error.statusDetail, error.status)
+                            || 'Não foi possível processar o pagamento. Tente novamente.';
+
+                        toast({
+                            variant: 'destructive',
+                            title: 'Pagamento não aprovado',
+                            description: friendlyMessage
+                        });
+                    }
+                }
+            );
+
+            if (result.success) {
+                // Armazenar resultado e função de parar monitoramento
+                if (result.qrCode) {
+                    setPixPayment(result); // Para PIX, armazenar QR Code
+                }
+
+                if (result.stopMonitoring) {
+                    setStopMonitoring(() => result.stopMonitoring);
+                }
+
+                logger.success('CheckoutPage.handlePayment:orchestrator-success', buildLogContext({
+                    paymentId: result.paymentId,
+                    method: selectedMethod
+                }));
+
+                // Para PIX, mostrar mensagem de QR Code gerado
+                if (selectedMethod === 'pix') {
                     toast({
                         title: 'QR Code gerado!',
                         description: 'Escaneie o código para efetuar o pagamento.'
                     });
-                } else {
-                    throw new Error(result.error || 'Erro ao criar pagamento PIX');
                 }
             } else {
-                // Para outros métodos, usar preferência (redirecionamento)
-                logger.info('CheckoutPage.handlePayment:create-preference', buildLogContext({
-                    referenceId,
-                    amount,
-                    selectedMethod
-                }));
-
-                // Configurar payment_methods baseado no método selecionado
-                let paymentMethodConfig = {
-                    excluded_payment_methods: [],
-                    excluded_payment_types: [],
-                    installments: 12
-                };
-
-                // Configurar exclusões baseado no método selecionado
-                if (selectedMethod === 'credit_card') {
-                    // Apenas cartão de crédito
-                    paymentMethodConfig.excluded_payment_types = ['debit_card', 'ticket', 'bank_transfer', 'atm'];
-                } else if (selectedMethod === 'debit_card') {
-                    // Apenas cartão de débito
-                    paymentMethodConfig.excluded_payment_types = ['credit_card', 'ticket', 'bank_transfer', 'atm'];
-                } else if (selectedMethod === 'bank_transfer') {
-                    // Apenas boleto
-                    paymentMethodConfig.excluded_payment_types = ['credit_card', 'debit_card', 'atm'];
-                }
-
-                // Adicionar configuração de payment_methods ao payload
-                const preferencePayload = {
-                    ...requestPayload,
-                    payment_methods: paymentMethodConfig,
-                    selected_payment_method: selectedMethod // Adicionar método selecionado para referência
-                };
-
-                const result = await MercadoPagoService.createPreference(preferencePayload);
-
-                if (result.success) {
-                    setPreference(result);
-                    logger.success('CheckoutPage.handlePayment:preference-created', buildLogContext({
-                        referenceId,
-                        amount,
-                        init_point: result.init_point
-                    }));
-
-                    // Redirecionamento seguro - valida URL antes de redirecionar
-                    safeRedirect(result.init_point, '/');
-                } else {
-                    throw new Error(result.error || 'Erro ao processar pagamento');
-                }
+                throw new Error(result.error || 'Erro ao processar pagamento');
             }
 
         } catch (error) {
@@ -991,7 +1000,7 @@ const CheckoutPage = () => {
                                 <div className="flex flex-col items-center">
                                     <div className="bg-white p-4 rounded-lg border-2 mb-4">
                                         <QRCodeSVG
-                                            value={pixPayment.qr_code}
+                                            value={pixPayment.qrCode}
                                             size={256}
                                             level="M"
                                         />
@@ -1005,14 +1014,14 @@ const CheckoutPage = () => {
                                         <div className="flex gap-2">
                                             <input
                                                 type="text"
-                                                value={pixPayment.qr_code}
+                                                value={pixPayment.qrCode}
                                                 readOnly
                                                 className="flex-1 input text-xs font-mono"
                                             />
                                             <Button
                                                 size="sm"
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(pixPayment.qr_code);
+                                                    navigator.clipboard.writeText(pixPayment.qrCode);
                                                     toast({ title: 'Código copiado!' });
                                                 }}
                                             >
@@ -1024,13 +1033,17 @@ const CheckoutPage = () => {
                                     <div className="mt-6 text-center">
                                         <div className="flex items-center justify-center gap-2 text-yellow-600 mb-2">
                                             <Clock className="w-5 h-5 animate-pulse" />
-                                            <p className="font-semibold">Aguardando pagamento...</p>
+                                            <p className="font-semibold">
+                                                {paymentStatus?.status === 'approved'
+                                                    ? 'Pagamento Aprovado!'
+                                                    : 'Aguardando pagamento...'}
+                                            </p>
                                         </div>
                                         <p className="text-sm text-gray-600">
-                                            Verificando pagamento automaticamente...
+                                            Status atual: <span className="font-mono font-bold">{paymentStatus?.status || 'criado'}</span>
                                         </p>
                                         <p className="text-xs text-gray-500 mt-2">
-                                            O status será atualizado em alguns segundos após o pagamento
+                                            O status será atualizado automaticamente.
                                         </p>
                                     </div>
                                 </div>
@@ -1232,49 +1245,51 @@ const CheckoutPage = () => {
                 </div>
             </div >
 
-            {showExistingPaymentModal && existingPayment && (
-                <ExistingPaymentModal
-                    payment={existingPayment}
-                    onContinue={() => {
-                        if (existingPayment?.qr_code && existingPayment?.payment_type === 'pix') {
-                            // Restaurar estado de pagamento PIX existente
-                            setPixPayment({
-                                payment_id: existingPayment.mp_payment_id,
-                                qr_code: existingPayment.qr_code,
-                                success: true
-                            });
-                            startPaymentPolling(existingPayment.mp_payment_id);
+            {
+                showExistingPaymentModal && existingPayment && (
+                    <ExistingPaymentModal
+                        payment={existingPayment}
+                        onContinue={() => {
+                            if (existingPayment?.qr_code && existingPayment?.payment_type === 'pix') {
+                                // Restaurar estado de pagamento PIX existente
+                                setPixPayment({
+                                    payment_id: existingPayment.mp_payment_id,
+                                    qr_code: existingPayment.qr_code,
+                                    success: true
+                                });
+                                startPaymentPolling(existingPayment.mp_payment_id);
+                                setShowExistingPaymentModal(false);
+                                toast({
+                                    title: 'Pagamento restaurado',
+                                    description: 'QR Code recuperado com sucesso.'
+                                });
+                            } else if (existingPayment?.status === 'pending' && existingPayment?.external_resource_url) {
+                                // Se fosse boleto ou link externo
+                                window.location.href = existingPayment.external_resource_url;
+                            } else {
+                                // Fallback
+                                setShowExistingPaymentModal(false);
+                                toast({
+                                    title: 'Continuando',
+                                    description: 'Por favor, aguarde a verificação do pagamento.'
+                                });
+                            }
+                        }}
+                        onNewPayment={async () => {
+                            // Limpar estado de pagamento existente e forçar novo
                             setShowExistingPaymentModal(false);
-                            toast({
-                                title: 'Pagamento restaurado',
-                                description: 'QR Code recuperado com sucesso.'
-                            });
-                        } else if (existingPayment?.status === 'pending' && existingPayment?.external_resource_url) {
-                            // Se fosse boleto ou link externo
-                            window.location.href = existingPayment.external_resource_url;
-                        } else {
-                            // Fallback
-                            setShowExistingPaymentModal(false);
-                            toast({
-                                title: 'Continuando',
-                                description: 'Por favor, aguarde a verificação do pagamento.'
-                            });
-                        }
-                    }}
-                    onNewPayment={async () => {
-                        // Limpar estado de pagamento existente e forçar novo
-                        setShowExistingPaymentModal(false);
-                        setExistingPayment(null);
-                        setShouldForceNewPayment(true);
+                            setExistingPayment(null);
+                            setShouldForceNewPayment(true);
 
-                        // Opcional: Acionar novo pagamento imediatamente para melhor UX
-                        // O usuário disse "não vejo novo qrcode", esperando ação imediata.
-                        // Passamos 'true' para forçar bypass da verificação (importante pois state update é async)
-                        setTimeout(() => handlePayment(true), 100);
-                    }}
-                    onClose={() => setShowExistingPaymentModal(false)}
-                />
-            )}
+                            // Opcional: Acionar novo pagamento imediatamente para melhor UX
+                            // O usuário disse "não vejo novo qrcode", esperando ação imediata.
+                            // Passamos 'true' para forçar bypass da verificação (importante pois state update é async)
+                            setTimeout(() => handlePayment(true), 100);
+                        }}
+                        onClose={() => setShowExistingPaymentModal(false)}
+                    />
+                )
+            }
         </div >
     );
 };

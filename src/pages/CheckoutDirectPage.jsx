@@ -6,23 +6,26 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import MercadoPagoService from '@/lib/mercadoPagoService';
+import { paymentOrchestrator } from '@/lib/payment';
+import { logger } from '@/lib/logger';
 
 const CheckoutDirectPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { toast } = useToast();
-    
+
     const bookingId = searchParams.get('booking_id');
     const type = searchParams.get('type');
     const inscricaoId = searchParams.get('inscricao_id');
     const emailParam = searchParams.get('email');
     const valorParam = searchParams.get('valor');
-    
+
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
-    
+    const [stopMonitoring, setStopMonitoring] = useState(null);
+
     // Estado do formulário
     const [cardNumber, setCardNumber] = useState('');
     const [cardholderName, setCardholderName] = useState('');
@@ -32,10 +35,16 @@ const CheckoutDirectPage = () => {
     const [docType, setDocType] = useState('CPF');
     const [docNumber, setDocNumber] = useState('');
     const [payerEmail, setPayerEmail] = useState('');
-    
+
     // Mercado Pago
     const [mp, setMp] = useState(null);
     const [cardForm, setCardForm] = useState(null);
+
+    useEffect(() => {
+        return () => {
+            if (stopMonitoring) stopMonitoring();
+        };
+    }, [stopMonitoring]);
 
     useEffect(() => {
         if (emailParam && !payerEmail) {
@@ -78,7 +87,7 @@ const CheckoutDirectPage = () => {
                 .single();
 
             if (error) throw error;
-            
+
             setBooking(data);
             setCardholderName(data.patient_name || '');
             setDocNumber(data.patient_cpf || '');
@@ -104,7 +113,7 @@ const CheckoutDirectPage = () => {
                 .single();
 
             if (error) throw error;
-            
+
             setInscricao(data);
             setCardholderName(data.patient_name || '');
             setDocNumber(data.patient_cpf || '');
@@ -161,7 +170,7 @@ const CheckoutDirectPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!mp) {
             toast({
                 variant: 'destructive',
@@ -216,9 +225,9 @@ const CheckoutDirectPage = () => {
             };
 
             console.log('🔵 Criando token do cartão...');
-            
+
             const token = await mp.createCardToken(cardData);
-            
+
             if (!token || !token.id) {
                 throw new Error('Erro ao processar dados do cartão');
             }
@@ -230,7 +239,7 @@ const CheckoutDirectPage = () => {
                 token: token.id,
                 amount: amount,
                 installments: parseInt(installments),
-                description: type === 'evento' 
+                description: type === 'evento'
                     ? `Evento - ${inscricao?.evento?.titulo}`
                     : `Consulta - ${booking?.services?.name}`,
                 payer: {
@@ -246,32 +255,60 @@ const CheckoutDirectPage = () => {
 
             console.log('💳 Processando pagamento...');
 
-            const result = await MercadoPagoService.processCardPayment(paymentData);
+            // Adicionar paymentMethod ao payload
+            paymentData.paymentMethod = 'credit_card';
 
-            if (result.success) {
-                console.log('✅ Pagamento aprovado!');
-                toast({
-                    title: 'Pagamento aprovado!',
-                    description: 'Seu pagamento foi processado com sucesso.'
-                });
-                
-                // Redirecionar para página de sucesso
-                const referenceId = bookingId || inscricaoId;
-                const referenceType = type || 'booking';
-                navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
-                return;
+            const result = await paymentOrchestrator.processPayment(
+                'credit_card',
+                paymentData,
+                {
+                    onSuccess: (res) => {
+                        console.log('✅ Pagamento iniciado via Orquestrador:', res);
+                        toast({
+                            title: 'Processando...',
+                            description: 'Aguardando confirmação do banco.'
+                        });
+                    },
+                    onError: (err) => {
+                        console.error('❌ Erro no orquestrador:', err);
+                        toast({
+                            variant: 'destructive',
+                            title: 'Erro no pagamento',
+                            description: err.message || 'Não foi possível processar.'
+                        });
+                        setProcessing(false);
+                    },
+                    onStatusChange: (statusUpdate) => {
+                        console.log('🔄 Status atualizado:', statusUpdate);
+
+                        if (statusUpdate.status === 'approved') {
+                            toast({ title: 'Pagamento Aprovado!', className: 'bg-green-600 text-white' });
+                            const referenceId = bookingId || inscricaoId;
+                            const referenceType = type || 'booking';
+                            navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
+                        } else if (statusUpdate.status === 'rejected' || statusUpdate.status === 'cancelled') {
+                            const msg = statusUpdate.statusDetail === 'cc_rejected_high_risk'
+                                ? 'Pagamento recusado por segurança. Tente outro cartão.'
+                                : 'Pagamento não autorizado pelo banco.';
+
+                            toast({
+                                variant: 'destructive',
+                                title: 'Pagamento Recusado',
+                                description: msg
+                            });
+                            setProcessing(false);
+                            if (stopMonitoring) stopMonitoring();
+                        }
+                    }
+                }
+            );
+
+            if (result.success && result.stopMonitoring) {
+                setStopMonitoring(() => result.stopMonitoring);
+            } else if (!result.success) {
+                // Se falhou síncrono
+                setProcessing(false);
             }
-
-            const status = typeof result.status === 'string' ? result.status.toLowerCase() : '';
-            const isPending = status === 'pending' || status === 'in_process';
-            const friendlyMessage = result.friendlyMessage || result.error || 'Não foi possível processar o pagamento.';
-
-            toast({
-                variant: isPending ? 'default' : 'destructive',
-                title: isPending ? 'Pagamento em análise' : 'Pagamento não aprovado',
-                description: friendlyMessage
-            });
-            return;
 
         } catch (error) {
             console.error('Erro no pagamento:', error);
@@ -466,7 +503,7 @@ const CheckoutDirectPage = () => {
                     <div className="md:col-span-1">
                         <Card className="p-6 sticky top-6">
                             <h3 className="font-bold text-lg mb-4">Resumo do Pedido</h3>
-                            
+
                             {type === 'evento' && inscricao && (
                                 <div className="space-y-3 mb-4">
                                     <p className="text-sm text-gray-600">Evento</p>
