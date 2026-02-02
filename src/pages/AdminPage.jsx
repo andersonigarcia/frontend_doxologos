@@ -2368,6 +2368,7 @@ const AdminPage = () => {
             meeting_password: '',
             meeting_id: '',
             meeting_start_url: '',
+            meeting_link_release_minutes: 60, // Default 60 min
             ativo: true
         });
     };
@@ -2396,6 +2397,7 @@ const AdminPage = () => {
             meeting_password: event.meeting_password || '',
             meeting_id: event.meeting_id || '',
             meeting_start_url: event.meeting_start_url || '',
+            meeting_link_release_minutes: event.meeting_link_release_minutes ?? 60,
             ativo: event.ativo !== undefined ? event.ativo : true
         });
         setSlugManuallyEdited(Boolean(event.link_slug));
@@ -5158,6 +5160,27 @@ const AdminPage = () => {
                                                                 <p className="text-xs text-red-500 mt-1">{eventFormErrors.vagas_disponiveis}</p>
                                                             )}
                                                             <p className="text-[11px] text-gray-500 mt-1">Use zero para manter o acesso ilimitado.</p>
+                                                        </div>
+
+                                                        {/* Liberar Link antes (Novo) */}
+                                                        <div>
+                                                            <label className="block text-xs font-medium text-gray-600 mb-1">Liberar Link (min antes)</label>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="number"
+                                                                    name="meeting_link_release_minutes"
+                                                                    value={eventFormData.meeting_link_release_minutes || ''}
+                                                                    onChange={e => {
+                                                                        const val = parseInt(e.target.value);
+                                                                        setEventFormData(prev => ({ ...prev, meeting_link_release_minutes: isNaN(val) ? 0 : val }));
+                                                                    }}
+                                                                    className="w-full input pr-8"
+                                                                    min="0"
+                                                                    placeholder="Ex: 60"
+                                                                />
+                                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">min</span>
+                                                            </div>
+                                                            <p className="text-[11px] text-gray-500 mt-1">Tempo antes do início para exibir o botão de acesso.</p>
                                                         </div>
                                                     </div>
                                                     <div className="grid gap-4 md:grid-cols-2">

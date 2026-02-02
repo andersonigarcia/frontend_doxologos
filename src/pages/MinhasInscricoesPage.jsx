@@ -496,15 +496,37 @@ export default function MinhasInscricoesPage() {
                               <p className="text-sm text-green-800 mb-3">
                                 Acesse a sala Zoom no dia e horário do evento:
                               </p>
-                              <a
-                                href={meetingInfo.meetingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                Acessar Sala Zoom
-                              </a>
+                              {/* Link Release Check */}
+                              {(() => {
+                                const eventDate = new Date(inscricao.eventos.data_inicio);
+                                const releaseMinutes = inscricao.eventos.meeting_link_release_minutes ?? 60; // Default 60 min
+
+                                const releaseTime = new Date(eventDate.getTime() - releaseMinutes * 60000);
+                                const now = new Date();
+
+                                const isReleased = now >= releaseTime;
+
+                                if (isReleased) {
+                                  return (
+                                    <a
+                                      href={meetingInfo.meetingLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                      Acessar Sala Zoom
+                                    </a>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="bg-white/60 rounded px-3 py-2 text-sm text-green-800 border border-green-200 inline-block">
+                                      <span className="font-semibold block mb-1">🔒 Link Protegido</span>
+                                      Disponível a partir das {releaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({releaseMinutes} min antes do início)
+                                    </div>
+                                  );
+                                }
+                              })()}
                               {meetingInfo.meetingPassword && (
                                 <div className="mt-3 flex items-center gap-2 text-sm">
                                   <Lock className="w-4 h-4 text-green-700" />
