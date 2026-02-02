@@ -394,7 +394,7 @@ const EventoDetalhePage = () => {
             // ENVIAR EMAIL BASEADO NO TIPO DE EVENTO
             // ========================================
 
-            if (event.valor === 0) {
+            if (parseFloat(event.valor) === 0 || event.valor === null) {
                 // ========================================
                 // EVENTO GRATUITO: Enviar link Zoom imediatamente
                 // ========================================
@@ -431,21 +431,20 @@ const EventoDetalhePage = () => {
 
             } else {
                 // ========================================
-                // EVENTO PAGO: Redirecionar para Checkout Unificado
+                // EVENTO PAGO: Redirecionar para Checkout Unificado IMEDIATAMENTE
                 // ========================================
-                logger.info('EventoDetalhePage.handleRegistration:redirecting-to-checkout', buildLogContext({ inscricaoId: inscricao.id }));
+                logger.info('EventoDetalhePage.handleRegistration:redirecting-to-checkout', buildLogContext({
+                    inscricaoId: inscricao.id,
+                    valor: event.valor,
+                    eventId: event.id
+                }));
 
-                toast({
-                    title: "Inscrição iniciada!",
-                    description: "Redirecionando para pagamento seguro..."
-                });
-
+                // NÃO mostrar tela de confirmação - redirecionar IMEDIATAMENTE
                 // Redireciona para página de checkout com parâmetros corretos
-                // Passamos apenas o type e inscricao_id, o checkout vai buscar o preço e titulo/detalhes no futuro
-                // Mas para garantir que o checkout tenha informações básicas se não implementar o fetch via inscricao_id ainda,
-                // vamos passar também valor e título na URL (CheckoutPage.jsx suporta isso?)
-                // Olhando o CheckoutPage.jsx (do contexto anterior), ele olha `searchParams`.
                 navigate(`/checkout?type=evento&inscricao_id=${inscricao.id}&valor=${event.valor}&titulo=${encodeURIComponent(event.titulo)}`);
+
+                // Retornar para evitar qualquer código adicional
+                return;
             }
 
         } catch (error) {

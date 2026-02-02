@@ -174,6 +174,86 @@ serve(async (req) => {
 
       if (payData) ledgerTransactionId = payData.id;
 
+      // =====================================================
+      // FINANCIAL SPLIT LOGIC FOR EVENTS
+      // =====================================================
+      if (mpPayment.status === 'approved' && payData) {
+        console.log('💰 Processing financial split for event payment...');
+
+        try {
+          // 1. Fetch event details and configuration
+          const { data: inscricao, error: inscricaoError } = await supabase
+            .from('inscricoes_eventos')
+            .select(`
+              evento_id,
+              eventos (
+                id,
+                titulo,
+                valor,
+                professional_id,
+                platform_fee_type,
+                platform_fee_value
+              )
+            `)
+            .eq('id', inscricaoId)
+            .single();
+
+          if (inscricaoError || !inscricao) {
+            console.error('❌ Error fetching event details for split:', inscricaoError);
+          } else {
+            const evento = inscricao.eventos;
+            const totalAmount = mpPayment.transaction_amount;
+
+            // 2. Calculate split using database function
+            const { data: splitData, error: splitCalcError } = await supabase
+              .rpc('calculate_event_split', {
+                p_evento_id: evento.id,
+                p_total_amount: totalAmount
+              });
+
+            if (splitCalcError || !splitData || splitData.length === 0) {
+              console.error('❌ Error calculating split:', splitCalcError);
+            } else {
+              const split = splitData[0];
+
+              // 3. Register split in database
+              const { data: splitRecord, error: splitInsertError } = await supabase
+                .from('event_financial_splits')
+                .insert({
+                  evento_id: evento.id,
+                  inscricao_id: inscricaoId,
+                  payment_id: payData.id,
+                  total_amount: totalAmount,
+                  platform_amount: split.platform_amount,
+                  professional_amount: split.professional_amount,
+                  split_calculation: split.calculation_details,
+                  professional_id: evento.professional_id
+                })
+                .select()
+                .single();
+
+              if (splitInsertError) {
+                console.error('❌ Error inserting split record:', splitInsertError);
+              } else {
+                console.log('✅ Financial split registered successfully:', {
+                  split_id: splitRecord.id,
+                  total: totalAmount,
+                  platform: split.platform_amount,
+                  professional: split.professional_amount,
+                  evento: evento.titulo
+                });
+              }
+            }
+          }
+        } catch (splitError) {
+          console.error('❌ Unexpected error in split processing:', splitError);
+          // Don't fail the webhook - split is not critical for payment confirmation
+        }
+      }
+      // =====================================================
+      // END FINANCIAL SPLIT LOGIC
+      // =====================================================
+
       success = true;
     } else {
       // Booking Logic

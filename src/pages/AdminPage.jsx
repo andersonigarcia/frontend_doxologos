@@ -173,7 +173,10 @@ const AdminPage = () => {
         meeting_password: '',
         meeting_id: '',
         meeting_start_url: '',
-        ativo: true
+        ativo: true,
+        // Financial split fields
+        platform_fee_type: 'percentage',
+        platform_fee_value: 20.00
     });
     const [isEditingEvent, setIsEditingEvent] = useState(false);
     const [eventFormErrors, setEventFormErrors] = useState({});
@@ -5184,6 +5187,93 @@ const AdminPage = () => {
                                                                 {isFreeEvent ? 'Marque como pago para definir o valor.' : 'Será cobrado no checkout após a inscrição.'}
                                                             </p>
                                                         </div>
+
+                                                        {/* Financial Split Configuration */}
+                                                        {!isFreeEvent && eventFormData.valor > 0 && (
+                                                            <div>
+                                                                <label className="block text-xs font-medium text-gray-600 mb-1">Taxa da Plataforma</label>
+                                                                <div className="space-y-2">
+                                                                    <select
+                                                                        value={eventFormData.platform_fee_type}
+                                                                        onChange={e => setEventFormData(prev => ({ ...prev, platform_fee_type: e.target.value }))}
+                                                                        className="input text-sm w-full"
+                                                                    >
+                                                                        <option value="percentage">Percentual (%)</option>
+                                                                        <option value="fixed">Valor Fixo (R$)</option>
+                                                                    </select>
+
+                                                                    <div className="input flex items-center">
+                                                                        <span className="text-xs text-gray-500 mr-2">
+                                                                            {eventFormData.platform_fee_type === 'percentage' ? '%' : 'R$'}
+                                                                        </span>
+                                                                        <input
+                                                                            type="number"
+                                                                            value={eventFormData.platform_fee_value || ''}
+                                                                            onChange={e => {
+                                                                                const value = parseFloat(e.target.value);
+                                                                                setEventFormData(prev => ({
+                                                                                    ...prev,
+                                                                                    platform_fee_value: Number.isNaN(value) ? '' : value
+                                                                                }));
+                                                                            }}
+                                                                            placeholder={eventFormData.platform_fee_type === 'percentage' ? 'Ex: 20' : 'Ex: 15.00'}
+                                                                            className="flex-1 bg-transparent outline-none"
+                                                                            min="0"
+                                                                            step={eventFormData.platform_fee_type === 'percentage' ? '1' : '0.01'}
+                                                                            max={eventFormData.platform_fee_type === 'percentage' ? '100' : undefined}
+                                                                        />
+                                                                    </div>
+
+                                                                    {/* Split Preview */}
+                                                                    {eventFormData.platform_fee_value > 0 && (
+                                                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1">
+                                                                            <p className="text-xs font-medium text-blue-900">Distribuição Financeira:</p>
+                                                                            <div className="text-xs text-blue-800 space-y-0.5">
+                                                                                <div className="flex justify-between">
+                                                                                    <span>Valor Total:</span>
+                                                                                    <span className="font-medium">R$ {(eventFormData.valor || 0).toFixed(2)}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between">
+                                                                                    <span>Taxa Plataforma:</span>
+                                                                                    <span className="font-medium text-blue-600">
+                                                                                        R$ {(() => {
+                                                                                            const total = eventFormData.valor || 0;
+                                                                                            const feeValue = eventFormData.platform_fee_value || 0;
+                                                                                            if (eventFormData.platform_fee_type === 'percentage') {
+                                                                                                return ((total * feeValue) / 100).toFixed(2);
+                                                                                            }
+                                                                                            return feeValue.toFixed(2);
+                                                                                        })()}
+                                                                                    </span>
+                                                                                </div>
+                                                                                <div className="flex justify-between pt-1 border-t border-blue-300">
+                                                                                    <span>Valor Profissional:</span>
+                                                                                    <span className="font-medium text-green-600">
+                                                                                        R$ {(() => {
+                                                                                            const total = eventFormData.valor || 0;
+                                                                                            const feeValue = eventFormData.platform_fee_value || 0;
+                                                                                            let platformFee = 0;
+                                                                                            if (eventFormData.platform_fee_type === 'percentage') {
+                                                                                                platformFee = (total * feeValue) / 100;
+                                                                                            } else {
+                                                                                                platformFee = feeValue;
+                                                                                            }
+                                                                                            return (total - platformFee).toFixed(2);
+                                                                                        })()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <p className="text-[11px] text-gray-500">
+                                                                        A taxa será automaticamente calculada e registrada em cada pagamento.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="grid gap-4 md:grid-cols-2">
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Limite para inscrições</label>
                                                             <div className="space-y-2">
