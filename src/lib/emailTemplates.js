@@ -873,6 +873,162 @@
     `;
     return this.baseTemplate(content, `✅ Confirmado - ${evento.titulo}`);
   }
+  // EMAIL: Cancelamento de Inscrição em Evento
+  eventoCancelamento(inscricao, evento, reason = null, refundMessage = null) {
+    const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const content = `
+      <h2 style="color: #dc2626; margin: 0 0 20px 0;">❌ Inscrição Cancelada</h2>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+        Olá, <strong>${this.sanitizeForHtml(inscricao.nome)}</strong>!
+      </p>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
+        Informamos que sua inscrição no evento <strong>"${this.sanitizeForHtml(evento.titulo)}"</strong> foi cancelada.
+      </p>
+      
+      ${reason ? `
+      <div style="background: #fee2e2; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #ef4444;">
+        <p style="margin: 0; color: #991b1b; font-weight: bold;">Motivo do Cancelamento:</p>
+        <p style="margin: 5px 0 0 0; color: #7f1d1d; font-style: italic;">"${this.sanitizeForHtml(reason)}"</p>
+      </div>
+      ` : ''}
+
+      <div style="background: #f3f4f6; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #6b7280;">
+        <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 18px;">📅 Evento</h3>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>"${this.sanitizeForHtml(evento.titulo)}"</strong></p>
+        <p style="margin: 8px 0; font-size: 15px;"><strong>📆 Data:</strong> ${dataFormatada}</p>
+      </div>
+      
+      ${refundMessage ? `
+      <div style="background: #dbeafe; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6;">
+        <h3 style="margin: 0 0 10px 0; color: #1e40af; font-size: 18px;">💰 Informações de Reembolso</h3>
+        <p style="margin: 0; color: #1e3a8a;">
+          ${this.sanitizeForHtml(refundMessage)}
+        </p>
+      </div>
+      ` : ''}
+      
+      <div class="tips-box">
+        <h3>📋 O que fazer agora:</h3>
+        <ul>
+          <li>Se desejar, você pode se inscrever novamente (sujeito à disponibilidade)</li>
+          <li>Confira outros eventos em nossa plataforma</li>
+          <li>Entre em contato caso tenha dúvidas</li>
+        </ul>
+      </div>
+
+      <p style="margin: 30px 0 10px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
+        Esperamos vê-lo(a) em uma próxima oportunidade.<br>
+        Se tiver dúvidas, responda este email.
+      </p>
+      
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #6b7280;">
+        Atenciosamente,<br>
+        <strong>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `Cancelamento - ${evento.titulo}`);
+  }
+
+  // EMAIL: Reembolso Aprovado
+  eventoReembolsoAprovado(inscricao, evento, refundAmount) {
+    const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const content = `
+      <h2 style="color: #16a34a; margin: 0 0 20px 0;">✅ Reembolso Aprovado</h2>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+        Olá, <strong>${this.sanitizeForHtml(inscricao.nome)}</strong>!
+      </p>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
+        Sua solicitação de reembolso para o evento <strong>"${this.sanitizeForHtml(evento.titulo)}"</strong> foi aprovada.
+      </p>
+      
+      <div style="background: #dcfce7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
+        <h3 style="margin: 0 0 15px 0; color: #15803d; font-size: 18px;">💰 Detalhes do Reembolso</h3>
+        <p style="margin: 8px 0; font-size: 16px;"><strong>Valor a Reembolsar:</strong> R$ ${parseFloat(refundAmount).toFixed(2).replace('.', ',')}</p>
+        <p style="margin: 8px 0; font-size: 15px; color: #166534;">
+          O valor será estornado para o meio de pagamento original ou conta bancária em até 5 dias úteis, dependendo da operadora.
+        </p>
+      </div>
+      
+      <div style="background: #f3f4f6; padding: 20px; margin: 25px 0; border-radius: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #6b7280;">Evento: ${this.sanitizeForHtml(evento.titulo)}</p>
+        <p style="margin: 5px 0 0 0; font-size: 14px; color: #6b7280;">Data: ${dataFormatada}</p>
+      </div>
+
+      <p style="margin: 30px 0 10px 0; color: #64748b; font-size: 14px; line-height: 1.6;">
+        Estamos à disposição para quaisquer dúvidas.
+      </p>
+      
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #6b7280;">
+        Atenciosamente,<br>
+        <strong>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `Reembolso Aprovado - ${evento.titulo}`);
+  }
+
+  // EMAIL: Reembolso Rejeitado
+  eventoReembolsoRejeitado(inscricao, evento, reason = null) {
+    const dataFormatada = new Date(evento.data_inicio).toLocaleDateString('pt-BR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    const content = `
+      <h2 style="color: #dc2626; margin: 0 0 20px 0;">❌ Solicitação de Reembolso Negada</h2>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">
+        Olá, <strong>${this.sanitizeForHtml(inscricao.nome)}</strong>,
+      </p>
+      
+      <p style="font-size: 16px; color: #374151; margin-bottom: 25px;">
+        Informamos que sua solicitação de reembolso para o evento <strong>"${this.sanitizeForHtml(evento.titulo)}"</strong> foi analisada e, infelizmente, não pôde ser aprovada neste momento.
+      </p>
+      
+      ${reason ? `
+      <div style="background: #fee2e2; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #ef4444;">
+        <h3 style="margin: 0 0 10px 0; color: #991b1b; font-size: 16px;">Motivo da Recusa:</h3>
+        <p style="margin: 0; color: #7f1d1d; font-style: italic;">
+          "${this.sanitizeForHtml(reason)}"
+        </p>
+      </div>
+      ` : ''}
+      
+      <div style="background: #fef3c7; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
+         <p style="margin: 0; color: #92400e; font-size: 14px;">
+           Caso acredite que houve um equívoco, por favor entre em contato conosco respondendo a este email.
+         </p>
+      </div>
+
+      <div style="background: #f3f4f6; padding: 20px; margin: 25px 0; border-radius: 8px;">
+        <p style="margin: 0; font-size: 14px; color: #6b7280;">Evento: ${this.sanitizeForHtml(evento.titulo)}</p>
+        <p style="margin: 5px 0 0 0; font-size: 14px; color: #6b7280;">Data: ${dataFormatada}</p>
+      </div>
+      
+      <p style="margin: 20px 0 0 0; font-size: 14px; color: #6b7280;">
+        Atenciosamente,<br>
+        <strong>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, `Atualização sobre Reembolso - ${evento.titulo}`);
+  }
 }
 
 export default new EmailTemplates();

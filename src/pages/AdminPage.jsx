@@ -47,6 +47,7 @@ import { LedgerStats } from '@/components/admin/LedgerStats';
 import { LedgerCharts } from '@/components/admin/LedgerCharts';
 import { AvailabilityManager } from '@/components/admin/availability/AvailabilityManager';
 import { CostFormModal } from '@/components/admin/CostFormModal';
+import RefundRequestDashboard from '@/components/admin/RefundRequestDashboard';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
@@ -5668,6 +5669,13 @@ const AdminPage = () => {
                                             </div>
                                         </div>
                                     </div>
+                                </TabsContent>
+                            )
+                        }
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="refunds" className="mt-6">
+                                    <RefundRequestDashboard />
                                 </TabsContent>
                             )
                         }

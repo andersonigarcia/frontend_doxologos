@@ -7,9 +7,16 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, ExternalLink, Heart, ArrowLeft, Video, Lock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { fetchEventMeeting } from '@/services/eventAccessService';
+import emailService from '@/lib/emailService';
+import emailTemplates from '@/lib/emailTemplates';
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { AlertTriangle } from 'lucide-react';
 
 export default function MinhasInscricoesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [inscricoes, setInscricoes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +24,12 @@ export default function MinhasInscricoesPage() {
   const [meetingAccess, setMeetingAccess] = useState({});
   const [meetingLoading, setMeetingLoading] = useState({});
   const [meetingErrors, setMeetingErrors] = useState({});
+
+  // Cancellation State
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedInscricao, setSelectedInscricao] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -60,6 +73,72 @@ export default function MinhasInscricoesPage() {
       setLoading(false);
     }
   };
+
+  const handleOpenCancel = (inscricao) => {
+    setSelectedInscricao(inscricao);
+    setCancellationReason('');
+    setCancelModalOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!selectedInscricao) return;
+
+    try {
+      setIsCancelling(true);
+
+      const { data, error } = await supabase.rpc('cancel_event_registration', {
+        p_inscricao_id: selectedInscricao.id,
+        p_reason: cancellationReason
+      });
+
+      if (error) throw error;
+
+      // Send Cancellation Email
+      try {
+        const evento = selectedInscricao.eventos;
+        const refundMessage = data.refund_status === 'requested'
+          ? 'O reembolso foi solicitado e está sob análise. Em breve você receberá mais informações.'
+          : null;
+
+        const emailHtml = emailTemplates.eventoCancelamento(
+          selectedInscricao,
+          evento,
+          cancellationReason,
+          refundMessage
+        );
+
+        await emailService.sendEmail({
+          to: user.email,
+          subject: `Cancelamento - ${evento.titulo}`,
+          html: emailHtml,
+          type: 'event_cancellation'
+        });
+      } catch (emailErr) {
+        console.error('Erro ao enviar email de cancelamento:', emailErr);
+      }
+
+      toast({
+        title: "Cancelamento realizado",
+        description: data.message || "Sua inscrição foi cancelada com sucesso.",
+        variant: "default" // or success if available
+      });
+
+      setCancelModalOpen(false);
+      fetchInscricoes(); // Refresh list
+
+    } catch (err) {
+      console.error('Erro ao cancelar:', err);
+      toast({
+        title: "Erro ao cancelar",
+        description: err.message || "Não foi possível cancelar sua inscrição.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+
 
   const getStatusBadge = (inscricao) => {
     const { status, payment_status } = inscricao;
@@ -270,7 +349,7 @@ export default function MinhasInscricoesPage() {
               {inscricoes.map((inscricao, index) => {
                 const evento = inscricao.eventos;
                 const isPast = isEventoPast(evento.data_fim);
-                
+
                 // Lógica ajustada:
                 // - Eventos GRATUITOS: sempre mostra Zoom (se disponível)
                 // - Eventos PAGOS: mostra Zoom apenas se status='confirmed'
@@ -303,9 +382,8 @@ export default function MinhasInscricoesPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className={`bg-white rounded-xl shadow-lg overflow-hidden ${
-                      isPast ? 'opacity-75' : ''
-                    }`}
+                    className={`bg-white rounded-xl shadow-lg overflow-hidden ${isPast ? 'opacity-75' : ''
+                      }`}
                   >
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-4">
@@ -383,16 +461,15 @@ export default function MinhasInscricoesPage() {
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
                               <span className="text-gray-500">Status:</span>
-                              <span className={`ml-2 font-medium ${
-                                inscricao.payment_status === 'approved'
-                                  ? 'text-green-600'
-                                  : 'text-amber-600'
-                              }`}>
+                              <span className={`ml-2 font-medium ${inscricao.payment_status === 'approved'
+                                ? 'text-green-600'
+                                : 'text-amber-600'
+                                }`}>
                                 {inscricao.payment_status === 'approved'
                                   ? 'Pago'
                                   : inscricao.payment_status === 'pending'
-                                  ? 'Aguardando Pagamento'
-                                  : 'Pendente'}
+                                    ? 'Aguardando Pagamento'
+                                    : 'Pendente'}
                               </span>
                             </div>
                             {inscricao.payment_date && (
@@ -489,7 +566,7 @@ export default function MinhasInscricoesPage() {
                               <p className="text-sm text-amber-800 mb-3">
                                 Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Zoom após a confirmação do pagamento.
                               </p>
-                              
+
                               <Button
                                 onClick={() => handleOpenCheckout(inscricao)}
                                 className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700"
@@ -503,6 +580,19 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
+                      {/* Botão de Cancelamento */}
+                      {inscricao.status !== 'cancelled' && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleOpenCancel(inscricao)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 text-sm h-auto py-2 px-3"
+                          >
+                            Cancelar Inscrição
+                          </Button>
+                        </div>
+                      )}
+
                       {/* Mensagem se Zoom não disponível mas confirmado */}
                     </div>
                   </motion.div>
@@ -512,6 +602,49 @@ export default function MinhasInscricoesPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de Cancelamento */}
+      <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar Inscrição</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja cancelar sua inscrição?
+              {selectedInscricao?.eventos?.valor > 0 && ['paid', 'approved', 'confirmed'].includes(selectedInscricao?.payment_status) && (
+                <span className="block mt-2 font-medium text-amber-600 flex items-center">
+                  <AlertTriangle className="inline w-4 h-4 mr-1" />
+                  Atenção: Para eventos pagos, o reembolso passará por análise.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Motivo (opcional)
+            </label>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d8659]"
+              placeholder="Indique o motivo do cancelamento..."
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelModalOpen(false)}>
+              Manter Inscrição
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={isCancelling}
+            >
+              {isCancelling ? 'Processando...' : 'Confirmar Cancelamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

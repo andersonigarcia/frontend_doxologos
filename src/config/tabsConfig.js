@@ -10,7 +10,9 @@ import {
     LayoutDashboard,
     UserCircle,
     FileText,
-    Settings
+    Settings,
+    Receipt,
+    ClipboardList
 } from 'lucide-react';
 
 /**
@@ -28,6 +30,8 @@ export const tabsConfig = {
         { value: 'availability', label: 'Disponibilidade', icon: Clock },
         { value: 'reviews', label: 'Avaliações', icon: Star },
         { value: 'events', label: 'Eventos', icon: Ticket },
+        { value: 'event-registrations', label: 'Inscrições', icon: ClipboardList },
+        { value: 'refunds', label: 'Reembolsos', icon: Receipt },
         { value: 'settings', label: 'Configurações', icon: Settings },
     ],
     professional: [
