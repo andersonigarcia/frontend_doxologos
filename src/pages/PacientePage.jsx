@@ -1081,7 +1081,7 @@ const PacientePage = () => {
                                                                 rel="noopener noreferrer"
                                                                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
                                                             >
-                                                                🔗 Entrar na Sala Zoom
+                                                                🔗 Entrar na Sala Google Meet
                                                             </a>
                                                         </div>
                                                     </div>
@@ -1105,7 +1105,7 @@ const PacientePage = () => {
                                                             )}
                                                             <div className="text-xs text-blue-800 space-y-1 bg-white p-3 rounded border border-blue-200">
                                                                 <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
-                                                                <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
+                                                                <p>🌐 Funciona direto no navegador — não precisa instalar nada!</p>
                                                             </div>
                                                         </motion.div>
                                                     )}

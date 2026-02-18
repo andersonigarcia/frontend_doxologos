@@ -44,7 +44,12 @@ const PaymentSummaryStep = lazy(() => import('@/components/booking/PaymentSummar
 import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
 
 const MIN_PASSWORD_LENGTH = 8;
-const generateGoogleMeetLink = () => 'https://meet.google.com/new';
+const generateGoogleMeetLink = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  const segment = (len) =>
+    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `https://meet.google.com/${segment(3)}-${segment(4)}-${segment(3)}`;
+};
 
 // Skeleton Loader for lazy-loaded components
 const StepLoader = () => (
