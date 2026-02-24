@@ -3499,9 +3499,9 @@ const AdminPage = () => {
                                                                                                     </span>
                                                                                                 </div>
                                                                                             )}
-                                                                                            {b.meeting_start_url && (
+                                                                                            {b.meeting_start_url && b.meeting_start_url !== b.meeting_link ? (
                                                                                                 <div>
-                                                                                                    <span className="text-gray-600 font-medium">Link do Anfitrião:</span>
+                                                                                                    <span className="text-gray-600 font-medium">Link do Anfitrião (Zoom):</span>
                                                                                                     <a
                                                                                                         href={b.meeting_start_url}
                                                                                                         target="_blank"
@@ -3514,7 +3514,13 @@ const AdminPage = () => {
                                                                                                         ⚠️ Use este link para iniciar a reunião como anfitrião
                                                                                                     </span>
                                                                                                 </div>
-                                                                                            )}
+                                                                                            ) : b.meeting_link?.includes('meet.google.com') ? (
+                                                                                                <div>
+                                                                                                    <span className="text-xs text-gray-500 italic">
+                                                                                                        ℹ️ Google Meet — profissional e paciente usam o mesmo link acima
+                                                                                                    </span>
+                                                                                                </div>
+                                                                                            ) : null}
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
