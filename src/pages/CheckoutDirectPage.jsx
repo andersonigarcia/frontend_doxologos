@@ -275,12 +275,13 @@ const CheckoutDirectPage = () => {
                             title: 'Erro no pagamento',
                             description: err.message || 'Não foi possível processar.'
                         });
-                        setProcessing(false);
+                        setProcessing(false); // ✅ Liberar loading apenas em caso de erro
+                        if (stopMonitoring) stopMonitoring();
                     },
                     onStatusChange: (statusUpdate) => {
                         console.log('🔄 Status atualizado:', statusUpdate);
 
-                        if (statusUpdate.status === 'approved') {
+                        if (statusUpdate.status === 'approved' || statusUpdate.status === 'authorized') {
                             toast({ title: 'Pagamento Aprovado!', className: 'bg-green-600 text-white' });
                             const referenceId = bookingId || inscricaoId;
                             const referenceType = type || 'booking';
@@ -295,8 +296,18 @@ const CheckoutDirectPage = () => {
                                 title: 'Pagamento Recusado',
                                 description: msg
                             });
-                            setProcessing(false);
+                            setProcessing(false); // ✅ Liberar loading em rejeicão
                             if (stopMonitoring) stopMonitoring();
+                        } else if (statusUpdate.status === 'timeout') {
+                            // ⏳ Timeout do polling — o webhook ainda pode confirmar em background
+                            // Redirecionar para página de sucesso mesmo assim para o usuário verificar
+                            toast({
+                                title: 'Processando...',
+                                description: 'O pagamento está sendo analisado. Você receberá a confirmação por e-mail.'
+                            });
+                            const referenceId = bookingId || inscricaoId;
+                            const referenceType = type || 'booking';
+                            navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
                         }
                     }
                 }
@@ -304,6 +315,8 @@ const CheckoutDirectPage = () => {
 
             if (result.success && result.stopMonitoring) {
                 setStopMonitoring(() => result.stopMonitoring);
+                // ✅ Não chamar setProcessing(false) aqui: o polling ainda está ativo
+                // O estado será liberado pelos callbacks onError ou onStatusChange
             } else if (!result.success) {
                 // Se falhou síncrono
                 setProcessing(false);
@@ -316,8 +329,7 @@ const CheckoutDirectPage = () => {
                 title: 'Erro no pagamento',
                 description: error.message || 'Não foi possível processar o pagamento'
             });
-        } finally {
-            setProcessing(false);
+            setProcessing(false); // ✅ Liberar loading em exceção síncrona
         }
     };
 
