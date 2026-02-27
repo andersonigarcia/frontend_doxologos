@@ -1,173 +1,162 @@
-# 🌟 Doxologos - Plataforma de Telepsicologia
+# Doxologos — Plataforma de Telepsicologia
 
-> **Frontend React + Vite** com integração completa de pagamentos, videoconferência e sistema de agendamentos.
+> SPA React + Vite com Supabase como BaaS. Oferece agendamento, pagamentos (PIX e cartão via Mercado Pago), videoconferência (Google Meet / Zoom), e gestão administrativa completa.
 
-📁 **Estrutura Organizacional**: [Ver detalhes da organização de pastas](docs/README.md)
+📐 **Decisões técnicas e modelo de dados:** [ARCH.md](./ARCH.md)
 
-Este projeto oferece uma plataforma completa para telepsicologia com autenticação robusta, sistema de agendamentos e integrações avançadas.
+---
 
-## O que existe hoje
-- SPA em `src/` com páginas de agendamento (`src/pages/AgendamentoPage.jsx`), contexto de autenticação (`src/contexts/SupabaseAuthContext.jsx`) e cliente Supabase em `src/lib/customSupabaseClient.js`.
-- Dependências chave: `@supabase/supabase-js`, `react`, `react-router-dom`, `framer-motion`.
+## Índice
 
-## Arquitetura resumida
-- Frontend (React) — leitura de profissionais, serviços, disponibilidade; criação de bookings (status `pending_payment`).
-- Supabase (Auth + Postgres) — armazena dados e autenticação.
-- Edge Functions / Backend — responsável por Mercado Pago, Zoom e envio de notificações (email/WhatsApp).
+- [Visão Geral](#visão-geral)
+- [Stack](#stack)
+- [Instalação Local](#instalação-local)
+- [Variáveis de Ambiente](#variáveis-de-ambiente)
+- [Scripts Disponíveis](#scripts-disponíveis)
+- [Deploy](#deploy)
+- [Testes](#testes)
 
-## Banco de dados (tabelas sugeridas)
-- `professionals` (id, name, specialty, email, bio, ...)
-- `services` (id, name, price, duration_minutes, ...)
-- `availability` (professional_id, day_of_week, available_times)
-- `blocked_dates` (professional_id, blocked_date, start_time, end_time)
- - `bookings` (id, professional_id, service_id, user_id, booking_date, booking_time, status, zoom_link, marketplace_preference_id, patient_name, patient_email, patient_phone)
-- `payments` (id, booking_id, mp_payment_id, status, amount, raw_payload)
-- `logs` (audit table)
+---
 
-SQL de exemplo (criar no Supabase SQL Editor):
+## Visão Geral
 
-```sql
-create table services (
-  id uuid default gen_random_uuid() primary key,
-  name text not null,
-  description text,
-  duration_minutes int not null,
-  price numeric(10,2) not null,
-  created_at timestamptz default now()
-);
+O Doxologos é uma plataforma de saúde mental online que conecta pacientes a psicólogos. O sistema resolve:
 
-create table bookings (
-  id uuid default gen_random_uuid() primary key,
-  professional_id uuid not null,
-  service_id uuid not null,
-  user_id uuid,
-  booking_date date not null,
-  booking_time time not null,
-  status text default 'pending_payment',
-  zoom_link text,
-  marketplace_preference_id text,
-  created_at timestamptz default now(),
-  updated_at timestamptz
-);
+- **Agendamento** de consultas com seleção de profissional, serviço, data e horário.
+- **Pagamento online** via PIX e cartão de crédito, integrado ao Mercado Pago.
+- **Videoconferência** via Google Meet / Zoom, com links gerados automaticamente pós-confirmação de pagamento.
+- **Área do Paciente** para acompanhar histórico de consultas, inscrições em eventos e remarcações.
+- **Painel Administrativo** completo (agendas, pagamentos, usuários, finanças).
+- **Eventos e inscrições** com controle de vagas e envio de lembretes automáticos.
 
-create table payments (
-  id uuid default gen_random_uuid() primary key,
-  booking_id uuid references bookings(id),
-  mp_payment_id text,
-  status text,
-  amount numeric(10,2),
-  raw_payload jsonb,
-  created_at timestamptz default now()
-);
-```
+---
 
-## Fluxo de pagamento (recomendado)
-1. Frontend cria `booking` com status `pending_payment`.
-2. Frontend chama endpoint backend `/api/mp/create_preference` (Edge Function) passando booking_id e dados do pagador.
-3. Backend cria preferência no Mercado Pago com `access_token` seguro e retorna `init_point` (URL) para checkout.
-4. Usuário finaliza pagamento no Mercado Pago.
-5. Mercado Pago envia webhook para `/api/mp/webhook` (Edge Function) notificando alteração.
-6. Backend valida, atualiza `payments` e `bookings` (status -> `confirmed`), gera Zoom link e envia notificações.
+## Stack
 
-## Variáveis de ambiente (mínimas)
-- VITE_SUPABASE_URL (frontend)
-- VITE_SUPABASE_ANON_KEY (frontend)
-- SUPABASE_URL (backend/edge)
-- SUPABASE_SERVICE_ROLE_KEY (backend only)
-- MP_ACCESS_TOKEN (backend only)
-- MP_PUBLIC_KEY (frontend if needed)
-- ZOOM_API_KEY / ZOOM_API_SECRET (backend only)
-- SENDGRID_API_KEY or SMTP creds (backend)
-- WHATSAPP_API_TOKEN (backend)
- - SENDGRID_API_KEY (backend)
- - SENDGRID_FROM_EMAIL (backend)
- - TWILIO_ACCOUNT_SID (backend)
- - TWILIO_AUTH_TOKEN (backend)
- - TWILIO_WHATSAPP_FROM (backend) e.g. whatsapp:+55XXXXXXXXX
+| Camada | Tecnologia |
+|---|---|
+| Frontend | React 18, Vite 4, React Router v6 |
+| UI | TailwindCSS 3, Radix UI, Framer Motion, Lucide Icons |
+| Formulários | react-hook-form + Zod |
+| Server State | @tanstack/react-query |
+| Auth | Supabase Auth (email/senha + Magic Link) |
+| Database | Supabase PostgreSQL (com RLS) |
+| Backend-as-a-Service | Supabase Edge Functions (Deno) |
+| Pagamentos | Mercado Pago (PIX + Cartão) |
+| Videoconferência | Zoom API / Google Meet |
+| Notificações | Nodemailer (SMTP Hostinger) + Twilio (WhatsApp) |
+| Observabilidade | Web Vitals, Audit Logger, Logger estruturado |
+| Hospedagem | Netlify (frontend) + Supabase (BaaS + functions) |
 
-## Deploy rápido no Hostinger (direto ao ponto)
-- Build local: `npm run build` (produz `dist/`).
-- Upload `dist/` pelo Gerenciador de Arquivos do Hostinger ou configurar integração Git/CI do Hostinger.
-- Para webhooks e operações server-side, usar Supabase Edge Functions (mais simples) ou hospedar um pequeno Node service em Hostinger com HTTPS.
+---
 
-## Edge Functions
-- Recomendo usar Supabase Edge Functions para:
-  - Criar preferência Mercado Pago (não expor token)
-  - Processar webhook Mercado Pago
-  - Criar meeting Zoom
-  - Enviar notificações
+## Instalação Local
 
-## Deploy das Edge Functions (Supabase)
-Pré-requisitos:
-- Instale a Supabase CLI: https://supabase.com/docs/guides/cli
-- Autentique-se: `supabase login`
-
-Passos:
-1. No terminal, faça login e selecione o projeto: `supabase login` e `supabase link --project-ref <project-ref>`.
-2. Deploy das funções (exemplo):
+**Pré-requisitos:** Node.js ≥ 18, npm ≥ 9.
 
 ```bash
-npm run supabase:deploy:functions
+# 1. Clone o repositório
+git clone <repo-url>
+cd frontend_doxologos
+
+# 2. Instale as dependências
+npm install
+
+# 3. Configure as variáveis de ambiente
+cp config/local.env.example config/local.env
+# Edite config/local.env com suas chaves
+
+# 4. Inicie o servidor de desenvolvimento
+npm run dev
+# Acessível em http://localhost:3000
 ```
 
-3. Após deploy, anote as URLs públicas das funções para configurar no Mercado Pago (webhook) e para o frontend (create_preference).
+> **HTTPS local (necessário para Mercado Pago):** `.\start-https-dev.ps1`
 
-Observação: revise as variáveis de ambiente no painel Supabase > Settings > API & Environment Variables e adicione: `SUPABASE_SERVICE_ROLE_KEY`, `MP_ACCESS_TOKEN`, `SENDGRID_API_KEY`, `SENDGRID_FROM_EMAIL`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `ZOOM_BEARER_TOKEN`, `ZOOM_USER_ID`.
+---
 
-## Testes de notificação (SendGrid + Twilio)
-1. Configure as variáveis de ambiente do backend:
+## Variáveis de Ambiente
 
-```powershell
-$env:SUPABASE_URL = 'https://<your-supabase>.supabase.co'
-$env:SUPABASE_SERVICE_ROLE_KEY = '<service-role-key>'
-$env:MP_ACCESS_TOKEN = '<mp_access_token>'
-$env:SENDGRID_API_KEY = '<sendgrid_api_key>'
-$env:SENDGRID_FROM_EMAIL = 'no-reply@yourdomain.com'
-$env:TWILIO_ACCOUNT_SID = '<twilio_sid>'
-$env:TWILIO_AUTH_TOKEN = '<twilio_token>'
-$env:TWILIO_WHATSAPP_FROM = 'whatsapp:+5511999999999'
-$env:ZOOM_BEARER_TOKEN = '<zoom_bearer>'
-```
+Separadas por contexto. **Nunca comite chaves reais no git.**
 
-2. Em ambiente de teste, crie um booking manualmente no Supabase com `status = 'pending_payment'` e `marketplace_preference_id` se quiser simular o fluxo.
-3. Simule um webhook POST para a URL da função `mp-webhook` com um JSON contendo `{ id: '<mp_payment_id>' }` (use ngrok ou a URL das Edge Functions). A função buscará o pagamento no Mercado Pago, atualizará o booking, criará a reunião Zoom e tentará enviar email/WhatsApp.
-4. Verifique a tabela `logs` para confirmar envios e erros.
+### Frontend (`VITE_*` — expostas ao browser)
 
-## Teste automatizado do fluxo (simples)
-Um script de teste rápido está disponível em `tools/test-flow.js` que usa a `service_role` do Supabase para simular:
-- criação de booking
-- inserção de pagamento (approved)
-- confirmação do booking e inserção de zoom_link
+| Variável | Descrição |
+|---|---|
+| `VITE_SUPABASE_URL` | URL pública do projeto Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Chave anônima do Supabase (pública) |
+| `VITE_APP_URL` | URL base da aplicação (ex: `https://doxologos.com.br`) |
+| `VITE_APP_ENV` | Ambiente: `development`, `staging`, `production` |
+| `VITE_LOG_LEVEL` | Nível de log: `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `VITE_GA4_MEASUREMENT_ID` | ID do Google Analytics 4 (opcional) |
 
-Como usar:
+### Backend — Edge Functions (configuradas no Supabase Dashboard)
 
-1. Copie `config/local.env.example` → `config/local.env` e preencha `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (para testes locais apenas).
-2. Rode:
+| Variável | Descrição |
+|---|---|
+| `SUPABASE_URL` | URL do projeto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | 🔐 Chave de serviço (acesso total, **nunca expor**) |
+| `MP_ACCESS_TOKEN` | 🔐 Token OAuth Mercado Pago (backend only) |
+| `ZOOM_BEARER_TOKEN` | 🔐 Token da API do Zoom |
+| `ZOOM_USER_ID` | ID do usuário host no Zoom |
+| `SMTP_HOST` | Host SMTP para envio de emails |
+| `SMTP_PORT` | Porta SMTP (ex: `587`) |
+| `SMTP_USER` | Usuário SMTP |
+| `SMTP_PASS` | 🔐 Senha SMTP |
+| `SMTP_FROM_EMAIL` | E-mail remetente |
+| `TWILIO_ACCOUNT_SID` | 🔐 SID da conta Twilio |
+| `TWILIO_AUTH_TOKEN` | 🔐 Token auth Twilio |
+| `TWILIO_WHATSAPP_FROM` | Número WhatsApp Twilio (ex: `whatsapp:+55...`) |
+
+---
+
+## Scripts Disponíveis
 
 ```bash
-npm run test:flow
+npm run dev                        # Servidor local (porta 3000)
+npm run build                      # Build de produção (gera dist/)
+npm run preview                    # Preview do build local
+
+npm test                           # Testes unitários (Jest)
+npm run test:coverage              # Cobertura de testes
+npm run test:e2e:ui                # Testes E2E (Playwright)
+
+npm run test:flow                  # Simula fluxo de agendamento + pagamento
+npm run test:e2e                   # Teste de integração com Edge Functions
+
+npm run supabase:deploy:functions  # Deploy mp-create-preference e mp-webhook
+npm run supabase:deploy:all        # Idem
+
+npm run deploy:netlify             # Deploy frontend no Netlify
+npm run analyze:bundle             # Analisa bundle gerado
 ```
 
-Isso criará registros de teste nas tabelas `bookings`, `payments` e `logs`. Depois verifique no Supabase Studio.
+---
 
-## Teste E2E (integração com funções deployadas)
-O script `tools/e2e-flow.js` permite testar o fluxo chamando as funções públicas deployadas. Configure no `config/local.env`:
+## Deploy
 
-- FUNCTION_CREATE_URL=https://<project>.functions.supabase.co/mp-create-preference
-- FUNCTION_WEBHOOK_URL=https://<project>.functions.supabase.co/mp-webhook
-- TEST_BOOKING_ID=<id de um booking existente para usar no teste>
+### Frontend (Netlify)
+1. `npm run build` — gera a pasta `dist/`.
+2. `netlify deploy --prod` ou configure o CI no painel Netlify.
+3. Configure as variáveis `VITE_*` nas **Environment Variables** do Netlify.
 
-Rode:
-
+### Edge Functions (Supabase)
 ```bash
-npm run test:e2e
+supabase login
+supabase link --project-ref <project-ref>
+npm run supabase:deploy:all
 ```
+Configure as variáveis de backend no painel **Supabase → Settings → Edge Function Secrets**.
 
-O script chamará `mp-create-preference` e então postará um webhook fake para `mp-webhook`. Depois verifique no Supabase Studio as atualizações.
+---
 
-## Configuração local (opcional)
-Para facilitar o desenvolvimento local você pode criar um arquivo `config/local.env` baseado no `config/local.env.example` com suas chaves de teste (não commitável).
+## Testes
 
-O projeto inclui um loader usado pelas Edge Functions de exemplo para importar `config/local.env` em `process.env` quando rodando localmente. Não use `config/local.env` em produção — em produção configure variáveis de ambiente no provedor (Supabase, Hostinger, etc.).
+| Tipo | Framework | Comando |
+|---|---|---|
+| Unitários | Jest + Testing Library | `npm test` |
+| E2E (UI) | Playwright | `npm run test:e2e:ui` |
+| Integração Pagamento | Node script | `npm run test:flow` |
+| Integração Edge Functions | Node script | `npm run test:e2e` |
 
-Lembrete: nunca comite chaves sensíveis no repositório.
+> Consulte [ARCH.md](./ARCH.md) para fluxos detalhados, modelo de dados e políticas RLS.
