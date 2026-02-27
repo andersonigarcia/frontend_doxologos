@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from '@/components/ui/toaster';
 import ErrorBoundary, { PageErrorBoundary } from '@/components/ErrorBoundary';
@@ -125,10 +125,11 @@ function AppContent() {
             <TermosCondicoesPage />
           </PageErrorBoundary>
         } />
+        {/* Rota disponível apenas em desenvolvimento local */}
         <Route path="/criar-usuarios" element={
-          <PageErrorBoundary pageName="Criar Usuários">
-            <CreateUsersPage />
-          </PageErrorBoundary>
+          import.meta.env.DEV
+            ? <PageErrorBoundary pageName="Criar Usuários"><CreateUsersPage /></PageErrorBoundary>
+            : <Navigate to="/" replace />
         } />
         <Route path="/pagamento-simulado" element={
           <PageErrorBoundary pageName="Pagamento Simulado">
