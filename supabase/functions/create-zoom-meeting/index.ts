@@ -3,9 +3,11 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
-const ZOOM_CLIENT_ID = Deno.env.get('VITE_ZOOM_CLIENT_ID')
-const ZOOM_CLIENT_SECRET = Deno.env.get('VITE_ZOOM_CLIENT_SECRET')
-const ZOOM_ACCOUNT_ID = Deno.env.get('VITE_ZOOM_ACCOUNT_ID')
+// SECURITY FIX (S-04): Usando nomes sem prefixo VITE_ (o prefixo é específico do Vite/browser).
+// Configure no Dashboard Supabase: Settings > Edge Functions > Secrets
+const ZOOM_CLIENT_ID = Deno.env.get('ZOOM_CLIENT_ID')
+const ZOOM_CLIENT_SECRET = Deno.env.get('ZOOM_CLIENT_SECRET')
+const ZOOM_ACCOUNT_ID = Deno.env.get('ZOOM_ACCOUNT_ID')
 
 interface ZoomMeetingRequest {
   booking_date: string
@@ -20,10 +22,10 @@ interface ZoomMeetingRequest {
 
 async function getZoomAccessToken(): Promise<string> {
   console.log('🔑 Obtendo token do Zoom...')
-  
+
   const credentials = btoa(`${ZOOM_CLIENT_ID}:${ZOOM_CLIENT_SECRET}`)
   const tokenUrl = `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${ZOOM_ACCOUNT_ID}`
-  
+
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -43,7 +45,7 @@ async function getZoomAccessToken(): Promise<string> {
 
 async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest) {
   console.log('🎥 Criando reunião no Zoom...')
-  
+
   // Formatar data/hora para ISO 8601
   const bookingDateTime = new Date(`${meetingData.booking_date}T${meetingData.booking_time}:00`)
   const startTime = bookingDateTime.toISOString()
@@ -93,7 +95,7 @@ async function createZoomMeeting(token: string, meetingData: ZoomMeetingRequest)
   }
 
   const meeting = await response.json()
-  
+
   console.log('✅ Reunião criada:', meeting.id)
 
   return {
@@ -124,15 +126,15 @@ serve(async (req: Request) => {
 
     // Parse request body
     const meetingData: ZoomMeetingRequest = await req.json()
-    
+
     console.log('📋 Dados recebidos:', meetingData)
 
     // Obter token
     const token = await getZoomAccessToken()
-    
+
     // Criar reunião
     const result = await createZoomMeeting(token, meetingData)
-    
+
     return new Response(
       JSON.stringify({ success: true, data: result }),
       {
@@ -143,11 +145,11 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error('❌ Erro:', error)
     const errorMessage = error instanceof Error ? error.message : String(error)
-    
+
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: errorMessage 
+      JSON.stringify({
+        success: false,
+        error: errorMessage
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

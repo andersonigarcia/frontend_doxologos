@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { HelmetProvider } from 'react-helmet-async';
 import { Toaster } from '@/components/ui/toaster';
 import ErrorBoundary, { PageErrorBoundary } from '@/components/ErrorBoundary';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { usePageTracking } from '@/hooks/useAnalytics';
 import { useComprehensiveErrorTracking } from '@/hooks/useErrorTracking';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -66,9 +67,12 @@ function AppContent() {
           </PageErrorBoundary>
         } />
         <Route path="/admin" element={
-          <PageErrorBoundary pageName="Admin">
-            <AdminPage />
-          </PageErrorBoundary>
+          // SECURITY FIX (S-03): Apenas usuários com role='admin' acessam rotas /admin
+          <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+            <PageErrorBoundary pageName="Admin">
+              <AdminPage />
+            </PageErrorBoundary>
+          </ProtectedRoute>
         } />
         <Route path="/area-do-paciente" element={
           <PageErrorBoundary pageName="Área do Paciente">
@@ -106,9 +110,11 @@ function AppContent() {
           </PageErrorBoundary>
         } />
         <Route path="/admin/depoimentos" element={
-          <PageErrorBoundary pageName="Admin Depoimentos">
-            <DepoimentosAdminPage />
-          </PageErrorBoundary>
+          <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+            <PageErrorBoundary pageName="Admin Depoimentos">
+              <DepoimentosAdminPage />
+            </PageErrorBoundary>
+          </ProtectedRoute>
         } />
         <Route path="/evento/:slug" element={
           <PageErrorBoundary pageName="Evento Detalhe">
@@ -162,14 +168,18 @@ function AppContent() {
           </PageErrorBoundary>
         } />
         <Route path="/admin/pagamentos" element={
-          <PageErrorBoundary pageName="Gerenciamento de Pagamentos">
-            <PaymentsPage />
-          </PageErrorBoundary>
+          <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+            <PageErrorBoundary pageName="Gerenciamento de Pagamentos">
+              <PaymentsPage />
+            </PageErrorBoundary>
+          </ProtectedRoute>
         } />
         <Route path="/admin/usuarios" element={
-          <PageErrorBoundary pageName="Gestão de Usuários">
-            <AdminUsuariosPage />
-          </PageErrorBoundary>
+          <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+            <PageErrorBoundary pageName="Gestão de Usuários">
+              <AdminUsuariosPage />
+            </PageErrorBoundary>
+          </ProtectedRoute>
         } />
       </Routes>
       <Toaster />

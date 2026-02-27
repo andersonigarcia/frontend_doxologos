@@ -1,6 +1,11 @@
 /**
  * Serviço de Integração com Zoom
- * Gerencia autenticação OAuth e criação de salas de reunião
+ * Gerencia criação e gestão de salas de reunião via Edge Functions do Supabase.
+ *
+ * SECURITY FIX (S-04): As credenciais OAuth do Zoom (clientId, clientSecret, accountId)
+ * foram removidas do cliente. NUNCA devem usar prefixo VITE_ pois o Vite as embutiria
+ * no bundle JS expondo-as publicamente. Toda autenticação com a API Zoom acontece
+ * exclusivamente nas Edge Functions server-side (via Deno.env.get).
  */
 
 import { secureLog } from './secureLogger';
@@ -8,19 +13,8 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 class ZoomService {
   constructor() {
-    this.clientId = import.meta.env.VITE_ZOOM_CLIENT_ID;
-    this.clientSecret = import.meta.env.VITE_ZOOM_CLIENT_SECRET;
-    this.accountId = import.meta.env.VITE_ZOOM_ACCOUNT_ID;
-    this.apiBaseUrl = 'https://api.zoom.us/v2';
-    this.tokenUrl = 'https://zoom.us/oauth/token';
-    this.accessToken = null;
-    this.tokenExpiry = null;
-
-    secureLog.info('ZoomService inicializado', {
-      hasClientId: !!this.clientId,
-      hasClientSecret: !!this.clientSecret,
-      hasAccountId: !!this.accountId
-    });
+    // Sem secrets no cliente — credenciais ficam exclusivamente nas Edge Functions
+    secureLog.info('ZoomService inicializado (modo seguro via Edge Functions)');
   }
 
   async callSupabaseFunction(functionName, payload) {
@@ -119,31 +113,15 @@ class ZoomService {
   }
 
   /**
-   * Deleta uma reunião
+   * Deleta uma reunião do Zoom via Edge Function
    * @param {string} meetingId - ID da reunião
    */
   async deleteMeeting(meetingId) {
     try {
-      const token = await this.getAccessToken();
-      
-      secureLog.info('Deletando reunião:', meetingId);
-
-      const response = await fetch(`${this.apiBaseUrl}/meetings/${meetingId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok && response.status !== 204) {
-        const errorText = await response.text();
-        secureLog.warn('Erro ao deletar reunião:', response.status, errorText);
-        // Não lançar erro, apenas logar
-        return false;
-      }
-
+      secureLog.info('Deletando reunião via Edge Function:', meetingId);
+      const data = await this.callSupabaseFunction('zoom-delete-meeting', { meeting_id: meetingId });
       secureLog.success('Reunião deletada com sucesso');
-      return true;
+      return data?.success ?? true;
     } catch (error) {
       secureLog.error('Erro ao deletar reunião:', error);
       return false;
@@ -151,31 +129,14 @@ class ZoomService {
   }
 
   /**
-   * Atualiza uma reunião existente
+   * Atualiza uma reunião existente via Edge Function
    * @param {string} meetingId - ID da reunião
    * @param {Object} updateData - Dados a atualizar
    */
   async updateMeeting(meetingId, updateData) {
     try {
-      const token = await this.getAccessToken();
-      
-      secureLog.info('Atualizando reunião:', meetingId);
-
-      const response = await fetch(`${this.apiBaseUrl}/meetings/${meetingId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updateData)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        secureLog.warn('Erro ao atualizar reunião:', response.status, errorText);
-        throw new Error(`Falha ao atualizar reunião: ${response.status}`);
-      }
-
+      secureLog.info('Atualizando reunião via Edge Function:', meetingId);
+      await this.callSupabaseFunction('zoom-update-meeting', { meeting_id: meetingId, ...updateData });
       secureLog.success('Reunião atualizada com sucesso');
       return true;
     } catch (error) {

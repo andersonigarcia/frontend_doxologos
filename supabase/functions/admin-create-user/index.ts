@@ -3,7 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-  return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -33,10 +33,13 @@ Deno.serve(async (req) => {
     const { data: { user: currentUser }, error: currentUserError } = await supabaseAdmin.auth.getUser(accessToken)
 
     if (currentUserError || !currentUser) {
-  throw new Error('Usuário não autenticado.')
+      throw new Error('Usuário não autenticado.')
     }
 
-    if (currentUser.user_metadata?.role !== 'admin') {
+    // SECURITY FIX (S-02): Validar role via app_metadata (imutável pelo cliente).
+    // Fallback em user_metadata para compat. com admins criados antes desta migração.
+    const callerRole = currentUser.app_metadata?.role ?? currentUser.user_metadata?.role;
+    if (callerRole !== 'admin') {
       return new Response(
         JSON.stringify({ error: 'Acesso negado. Apenas administradores podem criar usuários.' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 },

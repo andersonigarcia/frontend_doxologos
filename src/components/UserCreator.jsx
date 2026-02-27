@@ -31,32 +31,42 @@ const UserCreator = () => {
     setIsCreating(true);
 
     try {
-      // 1. Criar usuário no Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
-        options: {
-          data: {
+      // SECURITY FIX (S-02): Usar a Edge Function admin-create-user que grava a role em
+      // app_metadata (só editável pelo servidor via service_role).
+      // Antes: supabase.auth.signUp gravava em user_metadata (editável pelo próprio usuário).
+      const { data, error: functionError } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: userData.email,
+          password: userData.password,
+          userMetadata: {
             full_name: userData.full_name,
-            role: userData.role
-          }
-        }
+          },
+          // app_metadata é somente-servidor — usuários não podem alterar este campo
+          appMetadata: {
+            role: userData.role,
+          },
+        },
       });
 
-      if (signUpError) {
-        throw signUpError;
+      if (functionError) {
+        throw functionError;
       }
 
-      if (!authData.user) {
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      const createdUser = data?.user;
+      if (!createdUser) {
         throw new Error('Falha ao criar usuário');
       }
 
-      // 2. Se for profissional, criar entrada na tabela professionals
+      // Se for profissional, criar entrada na tabela professionals
       if (userData.role === 'professional') {
         const { error: profError } = await supabase
           .from('professionals')
           .insert([{
-            id: authData.user.id,
+            id: createdUser.id,
             name: userData.full_name,
             email: userData.email,
             specialty: userData.specialty || 'Psicologia Clínica',
@@ -116,7 +126,7 @@ const UserCreator = () => {
                   name="role"
                   value="admin"
                   checked={userData.role === 'admin'}
-                  onChange={(e) => setUserData({...userData, role: e.target.value})}
+                  onChange={(e) => setUserData({ ...userData, role: e.target.value })}
                 />
                 <Shield className="w-4 h-4" />
                 Administrador
@@ -127,7 +137,7 @@ const UserCreator = () => {
                   name="role"
                   value="professional"
                   checked={userData.role === 'professional'}
-                  onChange={(e) => setUserData({...userData, role: e.target.value})}
+                  onChange={(e) => setUserData({ ...userData, role: e.target.value })}
                 />
                 <Stethoscope className="w-4 h-4" />
                 Profissional
@@ -142,7 +152,7 @@ const UserCreator = () => {
               type="text"
               required
               value={userData.full_name}
-              onChange={(e) => setUserData({...userData, full_name: e.target.value})}
+              onChange={(e) => setUserData({ ...userData, full_name: e.target.value })}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
               placeholder="Ex: Dr. João Silva"
             />
@@ -154,7 +164,7 @@ const UserCreator = () => {
               type="email"
               required
               value={userData.email}
-              onChange={(e) => setUserData({...userData, email: e.target.value})}
+              onChange={(e) => setUserData({ ...userData, email: e.target.value })}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
               placeholder="Ex: joao@doxologos.com"
             />
@@ -166,7 +176,7 @@ const UserCreator = () => {
               type="password"
               required
               value={userData.password}
-              onChange={(e) => setUserData({...userData, password: e.target.value})}
+              onChange={(e) => setUserData({ ...userData, password: e.target.value })}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
               placeholder="Mínimo 6 caracteres"
               minLength={6}
@@ -181,7 +191,7 @@ const UserCreator = () => {
                 <input
                   type="text"
                   value={userData.specialty}
-                  onChange={(e) => setUserData({...userData, specialty: e.target.value})}
+                  onChange={(e) => setUserData({ ...userData, specialty: e.target.value })}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   placeholder="Ex: Psicologia Clínica"
                 />
@@ -191,7 +201,7 @@ const UserCreator = () => {
                 <label className="block text-sm font-medium mb-2">Mini currículo</label>
                 <textarea
                   value={userData.mini_curriculum}
-                  onChange={(e) => setUserData({...userData, mini_curriculum: e.target.value})}
+                  onChange={(e) => setUserData({ ...userData, mini_curriculum: e.target.value })}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                   placeholder="Breve descrição profissional..."
                   rows={3}
@@ -200,8 +210,8 @@ const UserCreator = () => {
             </>
           )}
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isCreating}
             className="w-full bg-[#2d8659] hover:bg-[#236b47]"
           >

@@ -23,8 +23,12 @@ export function AuthProvider({ children }) {
     setUser(currentUser);
 
     if (currentUser) {
-      setUserRole(currentUser.user_metadata?.role || 'user');
-      console.log('👤 Usuário logado:', currentUser.email);
+      // SECURITY FIX (S-02): Ler role de app_metadata (só editável pelo servidor/service_role)
+      // com fallback em user_metadata para compat. com usuários criados antes desta migração.
+      // Após todos os usuários serem migrados via admin-create-user, remover o fallback.
+      const role = currentUser.app_metadata?.role ?? currentUser.user_metadata?.role ?? 'user';
+      setUserRole(role);
+      console.log('👤 Usuário logado:', currentUser.email, '| role fonte:', currentUser.app_metadata?.role ? 'app_metadata' : 'user_metadata (legado)');
     } else {
       setUserRole(null);
       console.log('👤 Usuário deslogado');
