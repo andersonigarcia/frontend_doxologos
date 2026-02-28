@@ -98,8 +98,8 @@ function AppContent() {
             </PageErrorBoundary>
           } />
           <Route path="/admin" element={
-            // SECURITY FIX (S-03): Apenas usuários com role='admin' acessam rotas /admin
-            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+            // SECURITY FIX (S-03): Admins e Profissionais acessam as rotas /admin (AdminPage tem lógica interna de visualização)
+            <ProtectedRoute requiredRoles={['admin', 'professional']} redirectTo="/">
               <PageErrorBoundary pageName="Admin">
                 <AdminPage />
               </PageErrorBoundary>
