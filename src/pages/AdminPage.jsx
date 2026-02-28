@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAdminData } from '@/hooks/useAdminData';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -129,14 +130,14 @@ const AdminPage = () => {
     const { toast } = useToast();
     const { user, userRole, signIn, signOut, updatePassword } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
-    const [bookings, setBookings] = useState([]);
-    const [services, setServices] = useState([]);
-    const [availability, setAvailability] = useState({});
-    const [blockedDates, setBlockedDates] = useState([]);
-    const [events, setEvents] = useState([]);
-    const [professionals, setProfessionals] = useState([]);
-    const [reviews, setReviews] = useState([]);
-    const [loading, setLoading] = useState(true);
+
+    // P-03: Dados e fetching centralizados no hook useAdminData
+    const {
+        bookings, services, professionals, availability,
+        blockedDates, events, reviews, loading,
+        selectedAvailProfessional, setSelectedAvailProfessional,
+        refreshData: fetchAllData,
+    } = useAdminData({ user, userRole });
     const [isSavingProfessionalProfile, setIsSavingProfessionalProfile] = useState(false);
     const [passwordFormData, setPasswordFormData] = useState({ newPassword: '', confirmPassword: '' });
     const [isSavingPassword, setIsSavingPassword] = useState(false);
@@ -147,7 +148,7 @@ const AdminPage = () => {
     const [isEditingProfessional, setIsEditingProfessional] = useState(false);
     const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '' });
 
-    const [selectedAvailProfessional, setSelectedAvailProfessional] = useState('');
+
     const [professionalAvailability, setProfessionalAvailability] = useState({});
     const [professionalBlockedDates, setProfessionalBlockedDates] = useState([]);
     const [newBlockedDate, setNewBlockedDate] = useState({ date: '', start_time: '', end_time: '', reason: '' });
@@ -318,350 +319,8 @@ const AdminPage = () => {
         type: 'danger'
     });
 
-    const fetchAllData = useCallback(async () => {
 
-        setLoading(true);
-        const isAdmin = userRole === 'admin';
-        const professionalId = user?.id;
 
-        // Se for profissional, buscar o professional_id associado
-        let professionalsRecordId = null;
-        if (!isAdmin && professionalId) {
-            const { data: profData } = await supabase
-                .from('professionals')
-                .select('id')
-                .eq('user_id', professionalId)
-                .maybeSingle();
-            professionalsRecordId = profData?.id;
-        }
-        if (!isAdmin && !professionalsRecordId && professionalId) {
-            professionalsRecordId = professionalId;
-            secureLog.debug('Usando fallback de professionalId para consultas vinculadas ao profissional atual.', { professionalId });
-        }
-
-        const professionalFilterId = isAdmin ? null : professionalsRecordId;
-
-        const reviewSelect = `
-            *,
-            bookings:bookings!left(
-                id,
-                professional_id,
-                patient_name,
-                patient_email,
-                booking_date,
-                booking_time,
-                professional:professionals(id, name)
-            )
-        `;
-
-        let reviewsPromise;
-        if (isAdmin) {
-            reviewsPromise = supabase
-                .from('reviews')
-                .select(reviewSelect)
-                .order('created_at', { ascending: false });
-        } else if (professionalFilterId) {
-            reviewsPromise = (async () => {
-                const [directRes, bookingRes] = await Promise.all([
-                    supabase
-                        .from('reviews')
-                        .select(reviewSelect)
-                        .eq('professional_id', professionalFilterId)
-                        .eq('is_approved', true)
-                        .order('created_at', { ascending: false }),
-                    supabase
-                        .from('reviews')
-                        .select(reviewSelect)
-                        .eq('is_approved', true)
-                        .eq('bookings.professional_id', professionalFilterId)
-                        .order('created_at', { ascending: false })
-                ]);
-
-                const firstError = directRes.error || bookingRes.error || null;
-                const mergedData = [...(directRes.data || []), ...(bookingRes.data || [])];
-
-                if (mergedData.length === 0) {
-                    return { data: [], error: firstError };
-                }
-
-                const uniqueById = [];
-                const seenIds = new Set();
-                mergedData.forEach(review => {
-                    if (review?.id && !seenIds.has(review.id)) {
-                        seenIds.add(review.id);
-                        uniqueById.push(review);
-                    }
-                });
-
-                return { data: uniqueById, error: firstError };
-            })();
-        } else {
-            reviewsPromise = Promise.resolve({ data: [], error: null });
-        }
-
-        const eventsPromise = isAdmin
-            ? supabase
-                .from('eventos')
-                .select('*')
-                .order('data_inicio', { ascending: false })
-            : professionalFilterId
-                ? supabase
-                    .from('eventos')
-                    .select('*')
-                    .eq('professional_id', professionalFilterId)
-                    .order('data_inicio', { ascending: false })
-                : Promise.resolve({ data: [], error: null });
-
-        const bookingsPromise = isAdmin
-            ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(id, name, price, duration_minutes, professional_payout)')
-            : professionalFilterId
-                ? supabase.from('bookings').select('*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(id, name, price, duration_minutes, professional_payout)').eq('professional_id', professionalFilterId)
-                : Promise.resolve({ data: [], error: null });
-
-        const servicesPromise = supabase.from('services').select('*');
-
-        const professionalsPromise = isAdmin
-            ? supabase.from('professionals').select('*')
-            : supabase
-                .from('professionals')
-                .select('*')
-                .or(`user_id.eq.${professionalId},id.eq.${professionalId}`);
-
-        const availabilityPromise = isAdmin
-            ? supabase.from('availability').select('*')
-            : professionalFilterId
-                ? supabase.from('availability').select('*').eq('professional_id', professionalFilterId)
-                : Promise.resolve({ data: [], error: null });
-
-        const blockedDatesPromise = isAdmin
-            ? supabase.from('blocked_dates').select('*')
-            : professionalFilterId
-                ? supabase.from('blocked_dates').select('*').eq('professional_id', professionalFilterId)
-                : Promise.resolve({ data: [], error: null });
-
-        const promises = [
-            bookingsPromise,
-            servicesPromise,
-            professionalsPromise,
-            availabilityPromise,
-            blockedDatesPromise,
-            eventsPromise,
-            reviewsPromise
-        ];
-
-        const [bookingsRes, servicesRes, profsRes, availRes, blockedDatesRes, eventsRes, reviewsRes] = await Promise.all(promises);
-
-        if (profsRes.error) {
-            secureLog.error('Erro ao buscar profissionais:', profsRes.error?.message || profsRes.error);
-            secureLog.debug('Detalhes do erro ao buscar profissionais', profsRes.error);
-        }
-
-        if (reviewsRes.error) {
-            secureLog.error('Erro ao buscar avaliações:', reviewsRes.error?.message || reviewsRes.error);
-            secureLog.debug('Detalhes do erro ao buscar avaliações', reviewsRes.error);
-        }
-
-        const rawProfessionals = profsRes.data || [];
-        let enrichedProfessionals = rawProfessionals;
-
-        if (rawProfessionals.length > 0) {
-            if (isAdmin) {
-                try {
-                    // Use supabase.functions.invoke to handle auth and routing automatically
-                    const { data, error } = await supabase.functions.invoke('admin-list-users');
-
-                    if (!error && data?.users) {
-                        const authUsers = data.users;
-                        const emailById = new Map(authUsers.map(authUser => [authUser.id, authUser.email]));
-
-                        enrichedProfessionals = rawProfessionals.map(professional => {
-                            const lookupId = professional.user_id || professional.id;
-                            const resolvedEmail = professional.email || emailById.get(lookupId) || null;
-
-                            return resolvedEmail
-                                ? { ...professional, email: resolvedEmail }
-                                : professional;
-                        });
-                    } else {
-                        secureLog.warn('Não foi possível carregar emails via função admin-list-users.', { error });
-                    }
-                } catch (error) {
-                    secureLog.error('Erro ao enriquecer emails dos profissionais:', error?.message || error);
-                    secureLog.debug('Detalhes do erro ao enriquecer emails dos profissionais', error);
-                }
-            } else if (user?.email) {
-                enrichedProfessionals = rawProfessionals.map(professional => {
-                    const matchesCurrentUser = professional.user_id === user.id || professional.id === user.id;
-                    if (!professional.email && matchesCurrentUser) {
-                        return { ...professional, email: user.email };
-                    }
-                    return professional;
-                });
-            }
-        }
-
-        const normalizedServices = (servicesRes.data || []).map((service) => {
-            const patientValue = parseCurrencyToNumber(service.price);
-            const payoutValue = parseCurrencyToNumber(
-                service.professional_payout === undefined || service.professional_payout === null
-                    ? service.price
-                    : service.professional_payout
-            );
-
-            return {
-                ...service,
-                price: Number.isFinite(patientValue) ? patientValue : 0,
-                professional_payout: Number.isFinite(payoutValue)
-                    ? payoutValue
-                    : (Number.isFinite(patientValue) ? patientValue : 0),
-                duration_minutes: Number.isFinite(Number.parseInt(service.duration_minutes, 10))
-                    ? Number.parseInt(service.duration_minutes, 10)
-                    : service.duration_minutes
-            };
-        });
-
-        const serviceMap = new Map(normalizedServices.map((service) => [service.id, service]));
-
-        const normalizedBookings = (bookingsRes.data || []).map((booking) => {
-            const joinedService = booking.service
-                ? {
-                    ...booking.service,
-                    price: Number.isFinite(parseCurrencyToNumber(booking.service.price))
-                        ? parseCurrencyToNumber(booking.service.price)
-                        : 0,
-                    professional_payout: Number.isFinite(
-                        parseCurrencyToNumber(
-                            booking.service.professional_payout === undefined || booking.service.professional_payout === null
-                                ? booking.service.price
-                                : booking.service.professional_payout
-                        )
-                    )
-                        ? parseCurrencyToNumber(
-                            booking.service.professional_payout === undefined || booking.service.professional_payout === null
-                                ? booking.service.price
-                                : booking.service.professional_payout
-                        )
-                        : 0,
-                    duration_minutes: Number.isFinite(Number.parseInt(booking.service.duration_minutes, 10))
-                        ? Number.parseInt(booking.service.duration_minutes, 10)
-                        : booking.service.duration_minutes
-                }
-                : null;
-
-            const resolvedService = serviceMap.get(booking.service_id) || joinedService;
-
-            const patientValueRaw = parseCurrencyToNumber(booking.valor_consulta);
-            const fallbackPatientValue = parseCurrencyToNumber(resolvedService?.price);
-            const patientValue = Number.isFinite(patientValueRaw)
-                ? patientValueRaw
-                : (Number.isFinite(fallbackPatientValue) ? fallbackPatientValue : 0);
-
-            const payoutValueRaw = parseCurrencyToNumber(booking.valor_repasse_profissional);
-            const fallbackPayoutValue = parseCurrencyToNumber(
-                resolvedService?.professional_payout ?? resolvedService?.price ?? patientValue
-            );
-            const professionalValue = Number.isFinite(payoutValueRaw)
-                ? payoutValueRaw
-                : (Number.isFinite(fallbackPayoutValue) ? fallbackPayoutValue : patientValue);
-
-            return {
-                ...booking,
-                valor_consulta: patientValue,
-                valor_repasse_profissional: professionalValue,
-                service: resolvedService ? { ...resolvedService } : joinedService
-            };
-        });
-
-        setServices(normalizedServices);
-        setBookings(normalizedBookings);
-        setProfessionals(enrichedProfessionals);
-        if (enrichedProfessionals.length > 0) {
-            // Para admin, usa o primeiro profissional da lista
-            // Para professional, usa sempre o registro encontrado para o usuário logado
-            const profIdToSelect = isAdmin ? enrichedProfessionals[0].id : enrichedProfessionals[0].id;
-            if (profIdToSelect) {
-                setSelectedAvailProfessional(profIdToSelect);
-            }
-        } else if (!isAdmin && professionalId) {
-            secureLog.warn('Nenhum registro de profissional encontrado para o usuário atual.');
-            secureLog.debug('Profissional sem registro associado', { professionalId });
-        }
-        // Mapear profissionais aos eventos e carregar contagem de inscrições
-        const eventsWithProfessionals = await Promise.all((eventsRes.data || []).map(async (event) => {
-            const professional = enrichedProfessionals.find(p => p.id === event.professional_id);
-
-            // Tentar buscar contagem real de inscrições
-            let inscricoesCount = 0;
-            try {
-                const { count, error } = await supabase
-                    .from('inscricoes_eventos')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('evento_id', event.id)
-                    .in('status', ['pending', 'confirmed']);
-
-                if (!error) {
-                    inscricoesCount = count || 0;
-                }
-            } catch (error) {
-
-            }
-
-            return {
-                ...event,
-                professional: professional ? { name: professional.name } : null,
-                inscricoes_eventos: [{ count: inscricoesCount }]
-            };
-        }));
-
-        setEvents(eventsWithProfessionals);
-        setBlockedDates(blockedDatesRes.data || []);
-
-        const reviewsWithProfessionals = (reviewsRes.data || []).map(review => {
-            const bookingRelation = Array.isArray(review.bookings) ? review.bookings[0] : review.bookings;
-            const professionalFromBooking = bookingRelation?.professional;
-            const fallbackProfessional = enrichedProfessionals.find(p => p.id === (bookingRelation?.professional_id ?? review.professional_id));
-            const resolvedProfessional = professionalFromBooking
-                ? { id: professionalFromBooking.id, name: professionalFromBooking.name }
-                : fallbackProfessional
-                    ? { id: fallbackProfessional.id, name: fallbackProfessional.name }
-                    : review.professional || null;
-
-            const resolvedPatientName = review.patient_name
-                || bookingRelation?.patient_name
-                || review.patient_email
-                || bookingRelation?.patient_email
-                || null;
-
-            const resolvedPatientEmail = review.patient_email || bookingRelation?.patient_email || null;
-
-            return {
-                ...review,
-                bookings: bookingRelation,
-                patient_name: resolvedPatientName,
-                patient_email: resolvedPatientEmail,
-                professional: resolvedProfessional
-            };
-        });
-
-        const filteredReviews = isAdmin
-            ? reviewsWithProfessionals
-            : reviewsWithProfessionals.filter(review => review.is_approved);
-
-        setReviews(filteredReviews);
-
-        const availabilityMap = {};
-        (availRes.data || []).forEach(avail => {
-            if (!availabilityMap[avail.professional_id]) {
-                availabilityMap[avail.professional_id] = { monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: [], sunday: [] };
-            }
-            availabilityMap[avail.professional_id][avail.day_of_week] = avail.available_times;
-        });
-        setAvailability(availabilityMap);
-
-        setLoading(false);
-    }, [user, userRole]);
-
-    useEffect(() => { if (user) fetchAllData(); }, [user, fetchAllData]);
 
     // Auto-inicializar edição para profissionais
     useEffect(() => {
