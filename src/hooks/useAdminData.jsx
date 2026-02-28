@@ -126,7 +126,22 @@ export function useAdminData({ user, userRole }) {
             reviewsPromise = (async () => {
                 const [directRes, bookingRes] = await Promise.all([
                     supabase.from('reviews').select(reviewSelect).eq('professional_id', professionalFilterId).eq('is_approved', true).order('created_at', { ascending: false }),
-                    supabase.from('reviews').select(reviewSelect).eq('is_approved', true).eq('bookings.professional_id', professionalFilterId).order('created_at', { ascending: false }),
+                    supabase.from('reviews')
+                        .select(`
+                            *,
+                            bookings:bookings!inner(
+                                id,
+                                professional_id,
+                                patient_name,
+                                patient_email,
+                                booking_date,
+                                booking_time,
+                                professional:professionals(id, name)
+                            )
+                        `)
+                        .eq('is_approved', true)
+                        .eq('bookings.professional_id', professionalFilterId)
+                        .order('created_at', { ascending: false }),
                 ]);
                 const firstError = directRes.error || bookingRes.error || null;
                 const merged = [...(directRes.data || []), ...(bookingRes.data || [])];
@@ -263,6 +278,16 @@ export function useAdminData({ user, userRole }) {
                 patient_email: review.patient_email || bookingRelation?.patient_email || null,
                 professional: resolvedProfessional,
             };
+        }).filter(review => {
+            // SECURITY: Filtro redundante no frontend para garantir que profissionais
+            // não vejam avaliações de outros, mesmo que a query falhe em filtrar.
+            if (isAdmin) return true;
+            if (!professionalFilterId) return false;
+
+            const reviewProfId = review.professional_id;
+            const bookingProfId = review.bookings?.professional_id;
+
+            return reviewProfId === professionalFilterId || bookingProfId === professionalFilterId;
         });
 
         // Mapear availability
