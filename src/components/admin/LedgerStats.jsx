@@ -3,6 +3,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { Wallet, TrendingUp, TrendingDown, DollarSign, Loader2, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Tooltip from '@/components/ui/Tooltip';
+import { toCents, fromCents } from '@/lib/money';
 
 export function LedgerStats() {
     const [stats, setStats] = useState({
@@ -33,32 +34,29 @@ export function LedgerStats() {
             let revenue = 0;
 
             data.forEach(entry => {
-                const amount = parseFloat(entry.amount || 0);
+                // M-01: centavos para evitar erros de float
+                const cents = toCents(entry.amount);
 
                 if (entry.account_code === 'LIABILITY_PROFESSIONAL') {
-                    // Liability: Credit increases (owe more), Debit decreases (paid out)
-                    if (entry.entry_type === 'CREDIT') liability += amount;
-                    if (entry.entry_type === 'DEBIT') liability -= amount;
+                    if (entry.entry_type === 'CREDIT') liability += cents;
+                    if (entry.entry_type === 'DEBIT') liability -= cents;
                 }
 
                 if (entry.account_code === 'CASH_BANK') {
-                    // Asset: Debit increases (money in), Credit decreases (money out)
-                    if (entry.entry_type === 'DEBIT') cash += amount;
-                    if (entry.entry_type === 'CREDIT') cash -= amount;
+                    if (entry.entry_type === 'DEBIT') cash += cents;
+                    if (entry.entry_type === 'CREDIT') cash -= cents;
                 }
 
                 if (entry.account_code === 'REVENUE_SERVICE' || entry.account_code === 'REVENUE_GROSS') {
-                    // Revenue: Credit increases
-                    if (entry.entry_type === 'CREDIT') revenue += amount;
-                    // Debits to revenue (refunds) would reduce it
-                    if (entry.entry_type === 'DEBIT') revenue -= amount;
+                    if (entry.entry_type === 'CREDIT') revenue += cents;
+                    if (entry.entry_type === 'DEBIT') revenue -= cents;
                 }
             });
 
             setStats({
-                liabilityBalance: liability,
-                cashBalance: cash,
-                revenueTotal: revenue
+                liabilityBalance: fromCents(liability),
+                cashBalance: fromCents(cash),
+                revenueTotal: fromCents(revenue)
             });
 
         } catch (error) {
@@ -84,8 +82,8 @@ export function LedgerStats() {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {/* Liability Card */}
-            <div className="bg-white p-6 rounded-xl border border-orange-100 shadow-sm">
+            {/* Âmbar — obrigação (liability): dinheiro a pagar ao profissional */}
+            <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 border-l-4 border-l-amber-500 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-gray-500">Obrigação com Profissionais</p>
@@ -93,17 +91,17 @@ export function LedgerStats() {
                             <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
                         </Tooltip>
                     </div>
-                    <Wallet className="w-5 h-5 text-orange-500" />
+                    <Wallet className="w-5 h-5 text-amber-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.liabilityBalance)}</h3>
-                <p className="text-xs text-orange-600 mt-1 flex items-center">
+                <p className="text-xs text-amber-700 mt-1 flex items-center">
                     <TrendingUp className="w-3 h-3 mr-1" />
                     Valor pendente de repasse
                 </p>
             </div>
 
-            {/* Cash Card */}
-            <div className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm">
+            {/* Azul — saldo de caixa */}
+            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 border-l-4 border-l-blue-500 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-gray-500">Saldo em Caixa (Estimado)</p>
@@ -114,14 +112,14 @@ export function LedgerStats() {
                     <DollarSign className="w-5 h-5 text-blue-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.cashBalance)}</h3>
-                <p className="text-xs text-blue-600 mt-1 flex items-center">
+                <p className="text-xs text-blue-700 mt-1 flex items-center">
                     <TrendingUp className="w-3 h-3 mr-1" />
                     Entradas líquidas
                 </p>
             </div>
 
-            {/* Revenue Card */}
-            <div className="bg-white p-6 rounded-xl border border-green-100 shadow-sm">
+            {/* Verde — receita da plataforma */}
+            <div className="bg-emerald-50 p-6 rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-gray-500">Receita de Serviços (Plataforma)</p>
@@ -129,10 +127,10 @@ export function LedgerStats() {
                             <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
                         </Tooltip>
                     </div>
-                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    <TrendingUp className="w-5 h-5 text-emerald-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.revenueTotal)}</h3>
-                <p className="text-xs text-green-600 mt-1 flex items-center">
+                <p className="text-xs text-emerald-700 mt-1 flex items-center">
                     <TrendingUp className="w-3 h-3 mr-1" />
                     Total acumulado
                 </p>

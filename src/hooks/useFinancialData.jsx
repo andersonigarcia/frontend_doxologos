@@ -1,14 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { toCents, fromCents, sumMoney } from '@/lib/money';
 
-/**
- * Hook para dados financeiros com filtros de período
- * 
- * @param {string} professionalId - ID do profissional
- * @param {string} startDate - Data inicial (YYYY-MM-DD)
- * @param {string} endDate - Data final (YYYY-MM-DD)
- * @returns {Object} Dados financeiros e estado de loading
- */
+// M-01: parseFloat substituído por toCents/fromCents/sumMoney de money.js
+
 export function useFinancialData(professionalId, startDate, endDate) {
     const [data, setData] = useState({
         dailyRevenue: 0,
@@ -23,14 +18,7 @@ export function useFinancialData(professionalId, startDate, endDate) {
 
     const fetchData = useCallback(async () => {
         if (!professionalId || !startDate || !endDate) {
-            setData({
-                dailyRevenue: 0,
-                weeklyRevenue: 0,
-                monthlyRevenue: 0,
-                pendingPayments: [],
-                serviceBreakdown: [],
-                totalPending: 0,
-            });
+            setData({ dailyRevenue: 0, weeklyRevenue: 0, monthlyRevenue: 0, pendingPayments: [], serviceBreakdown: [], totalPending: 0 });
             setLoading(false);
             return;
         }
@@ -39,7 +27,6 @@ export function useFinancialData(professionalId, startDate, endDate) {
             setLoading(true);
             setError(null);
 
-            // Fetch bookings in date range
             const { data: bookings, error: bookingsError } = await supabase
                 .from('bookings')
                 .select('*, service:services(name, price)')
@@ -49,57 +36,38 @@ export function useFinancialData(professionalId, startDate, endDate) {
 
             if (bookingsError) throw bookingsError;
 
-            // Calculate date ranges
             const today = new Date().toISOString().split('T')[0];
             const weekAgo = new Date();
             weekAgo.setDate(weekAgo.getDate() - 7);
             const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
-            // Calculate daily revenue
-            const dailyRevenue = (bookings || [])
-                .filter(b => b.booking_date === today && ['confirmed', 'paid', 'completed'].includes(b.status))
-                .reduce((sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0), 0);
+            const confirmed = (bookings || []).filter(b => ['confirmed', 'paid', 'completed'].includes(b.status));
 
-            // Calculate weekly revenue
-            const weeklyRevenue = (bookings || [])
-                .filter(b => b.booking_date >= weekAgoStr && ['confirmed', 'paid', 'completed'].includes(b.status))
-                .reduce((sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0), 0);
+            // M-01: somas via centavos
+            const dailyRevenue = sumMoney(confirmed.filter(b => b.booking_date === today), b => b.valor_repasse_profissional);
+            const weeklyRevenue = sumMoney(confirmed.filter(b => b.booking_date >= weekAgoStr), b => b.valor_repasse_profissional);
+            const monthlyRevenue = sumMoney(confirmed, b => b.valor_repasse_profissional);
 
-            // Calculate monthly/period revenue
-            const monthlyRevenue = (bookings || [])
-                .filter(b => ['confirmed', 'paid', 'completed'].includes(b.status))
-                .reduce((sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0), 0);
-
-            // Get pending payments
             const pendingPayments = (bookings || [])
                 .filter(b => b.status === 'pending_payment' || b.status === 'awaiting_payment')
                 .sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
 
-            const totalPending = pendingPayments.reduce((sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0), 0);
+            const totalPending = sumMoney(pendingPayments, b => b.valor_repasse_profissional);
 
-            // Service breakdown
+            // Service breakdown via centavos
             const serviceMap = {};
-            (bookings || [])
-                .filter(b => ['confirmed', 'paid', 'completed'].includes(b.status))
-                .forEach(b => {
-                    const serviceName = b.service?.name || 'Sem serviço';
-                    if (!serviceMap[serviceName]) {
-                        serviceMap[serviceName] = { name: serviceName, revenue: 0, count: 0 };
-                    }
-                    serviceMap[serviceName].revenue += parseFloat(b.valor_repasse_profissional) || 0;
-                    serviceMap[serviceName].count += 1;
-                });
-
-            const serviceBreakdown = Object.values(serviceMap).sort((a, b) => b.revenue - a.revenue);
-
-            setData({
-                dailyRevenue,
-                weeklyRevenue,
-                monthlyRevenue,
-                pendingPayments,
-                serviceBreakdown,
-                totalPending,
+            confirmed.forEach(b => {
+                const name = b.service?.name || 'Sem serviço';
+                if (!serviceMap[name]) serviceMap[name] = { name, revenueCents: 0, count: 0 };
+                serviceMap[name].revenueCents += toCents(b.valor_repasse_profissional);
+                serviceMap[name].count += 1;
             });
+
+            const serviceBreakdown = Object.values(serviceMap)
+                .map(s => ({ ...s, revenue: fromCents(s.revenueCents) }))
+                .sort((a, b) => b.revenueCents - a.revenueCents);
+
+            setData({ dailyRevenue, weeklyRevenue, monthlyRevenue, pendingPayments, serviceBreakdown, totalPending });
         } catch (err) {
             console.error('Error fetching financial data:', err);
             setError(err);
@@ -108,9 +76,7 @@ export function useFinancialData(professionalId, startDate, endDate) {
         }
     }, [professionalId, startDate, endDate]);
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     return { ...data, loading, error, refresh: fetchData };
 }

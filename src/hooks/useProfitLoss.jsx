@@ -1,29 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { sumMoney, toCents, fromCents } from '@/lib/money';
 import { usePlatformRevenueFromLedger } from './usePlatformRevenueFromLedger';
 
-/**
- * Hook para gerenciar custos da plataforma
- * 
- * @param {string} startDate - Data inicial (YYYY-MM-DD)
- * @param {string} endDate - Data final (YYYY-MM-DD)
- * @param {string} category - Categoria específica (opcional)
- */
-// Helper para garantir conversão numérica segura
-const safeParseFloat = (value) => {
-    if (value === null || value === undefined) return 0;
-    // Se for string, tentar tratar formatação brasileira antes
-    if (typeof value === 'string') {
-        // Se tiver vírgula e ponto, assumir formato BR (1.000,00) ou US (1,000.00) é arriscado.
-        // A suposição segura para Supabase/Postgres Numeric é ponto decimal.
-        // Mas se por algum motivo vier com vírgula decimal simples:
-        if (value.includes(',') && !value.includes('.')) {
-            value = value.replace(',', '.');
-        }
-    }
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? 0 : parsed;
-};
+// M-01: safeParseFloat substituído por sumMoney/toCents de money.js
 
 export function usePlatformCosts(startDate = null, endDate = null, category = null) {
     const [data, setData] = useState({
@@ -45,48 +25,31 @@ export function usePlatformCosts(startDate = null, endDate = null, category = nu
                 .select('*')
                 .order('cost_date', { ascending: false });
 
-            if (startDate) {
-                query = query.gte('cost_date', startDate);
-            }
-
-            if (endDate) {
-                query = query.lte('cost_date', endDate);
-            }
-
-            if (category) {
-                query = query.eq('category', category);
-            }
+            if (startDate) query = query.gte('cost_date', startDate);
+            if (endDate) query = query.lte('cost_date', endDate);
+            if (category) query = query.eq('category', category);
 
             const { data: costs, error: costsError } = await query;
-
             if (costsError) throw costsError;
 
-            // Calcular totais
-            const totalCosts = (costs || []).reduce((sum, c) => sum + safeParseFloat(c.amount), 0);
+            // M-01: soma via centavos para evitar erros IEEE 754
+            const totalCosts = sumMoney(costs || [], c => c.amount);
 
-            // Agrupar por categoria
             const costsByCategory = (costs || []).reduce((acc, cost) => {
                 const cat = cost.category || 'other';
-                if (!acc[cat]) {
-                    acc[cat] = { total: 0, count: 0, items: [] };
-                }
-                acc[cat].total += safeParseFloat(cost.amount);
+                if (!acc[cat]) acc[cat] = { total: 0, count: 0, items: [] };
+                acc[cat].total = fromCents(toCents(acc[cat].total) + toCents(cost.amount));
                 acc[cat].count += 1;
                 acc[cat].items.push(cost);
                 return acc;
             }, {});
 
-            // Calcular custos recorrentes
-            const recurringCosts = (costs || [])
-                .filter(c => c.is_recurring)
-                .reduce((sum, c) => sum + safeParseFloat(c.amount), 0);
+            const recurringCosts = sumMoney(
+                (costs || []).filter(c => c.is_recurring),
+                c => c.amount
+            );
 
-            setData({
-                costs: costs || [],
-                totalCosts,
-                costsByCategory,
-                recurringCosts,
-            });
+            setData({ costs: costs || [], totalCosts, costsByCategory, recurringCosts });
         } catch (err) {
             console.error('Error fetching costs:', err);
             setError(err);
@@ -95,19 +58,11 @@ export function usePlatformCosts(startDate = null, endDate = null, category = nu
         }
     }, [startDate, endDate, category]);
 
-    useEffect(() => {
-        fetchCosts();
-    }, [fetchCosts]);
+    useEffect(() => { fetchCosts(); }, [fetchCosts]);
 
     return { ...data, loading, error, refresh: fetchCosts };
 }
 
-/**
- * Hook para calcular receita da plataforma
- * 
- * @param {string} startDate - Data inicial (YYYY-MM-DD)
- * @param {string} endDate - Data final (YYYY-MM-DD)
- */
 export function usePlatformRevenue(startDate = null, endDate = null) {
     const [data, setData] = useState({
         totalRevenue: 0,
@@ -129,43 +84,25 @@ export function usePlatformRevenue(startDate = null, endDate = null) {
                 .select('valor_consulta, valor_repasse_profissional, status')
                 .in('status', ['confirmed', 'paid', 'completed']);
 
-            if (startDate) {
-                query = query.gte('booking_date', startDate);
-            }
-
-            if (endDate) {
-                query = query.lte('booking_date', endDate);
-            }
+            if (startDate) query = query.gte('booking_date', startDate);
+            if (endDate) query = query.lte('booking_date', endDate);
 
             const { data: bookings, error: bookingsError } = await query;
-
             if (bookingsError) throw bookingsError;
 
-            // Calcular receita total
-            const totalRevenue = (bookings || []).reduce((sum, b) =>
-                sum + safeParseFloat(b.valor_consulta), 0
-            );
+            // M-01: soma via centavos
+            const totalRevenueCents = (bookings || []).reduce((s, b) => s + toCents(b.valor_consulta), 0);
+            const totalPayoutsCents = (bookings || []).reduce((s, b) => s + toCents(b.valor_repasse_profissional), 0);
+            const platformMarginCents = totalRevenueCents - totalPayoutsCents;
 
-            // Calcular total de repasses
-            const totalPayouts = (bookings || []).reduce((sum, b) =>
-                sum + safeParseFloat(b.valor_repasse_profissional), 0
-            );
-
-            // Margem da plataforma
-            const platformMargin = totalRevenue - totalPayouts;
-
-            // Percentual de margem
-            const marginPercentage = totalRevenue > 0
-                ? (platformMargin / totalRevenue) * 100
+            const totalRevenue = fromCents(totalRevenueCents);
+            const totalPayouts = fromCents(totalPayoutsCents);
+            const platformMargin = fromCents(platformMarginCents);
+            const marginPercentage = totalRevenueCents > 0
+                ? (platformMarginCents / totalRevenueCents) * 100
                 : 0;
 
-            setData({
-                totalRevenue,
-                totalPayouts,
-                platformMargin,
-                marginPercentage,
-                bookingsCount: (bookings || []).length,
-            });
+            setData({ totalRevenue, totalPayouts, platformMargin, marginPercentage, bookingsCount: (bookings || []).length });
         } catch (err) {
             console.error('Error fetching revenue:', err);
             setError(err);
@@ -174,63 +111,39 @@ export function usePlatformRevenue(startDate = null, endDate = null) {
         }
     }, [startDate, endDate]);
 
-    useEffect(() => {
-        fetchRevenue();
-    }, [fetchRevenue]);
+    useEffect(() => { fetchRevenue(); }, [fetchRevenue]);
 
     return { ...data, loading, error, refresh: fetchRevenue };
 }
 
-/**
- * Hook para calcular Lucro/Prejuízo
- * ATUALIZADO: Usa payment_ledger_entries como fonte de dados
- * 
- * @param {string} startDate - Data inicial (YYYY-MM-DD)
- * @param {string} endDate - Data final (YYYY-MM-DD)
- */
 export function useProfitLoss(startDate = null, endDate = null) {
-    // ATUALIZADO: Usar ledger ao invés de bookings
-    // const revenue = usePlatformRevenue(startDate, endDate);
     const revenue = usePlatformRevenueFromLedger(startDate, endDate);
     const costs = usePlatformCosts(startDate, endDate);
 
-    const profitLoss = revenue.platformMargin - costs.totalCosts;
-    const profitMargin = revenue.totalRevenue > 0
-        ? (profitLoss / revenue.totalRevenue) * 100
+    // M-01: usa centavos para o cálculo final
+    const profitLossCents = toCents(revenue.platformMargin) - toCents(costs.totalCosts);
+    const profitLoss = fromCents(profitLossCents);
+    const profitMargin = toCents(revenue.totalRevenue) > 0
+        ? (profitLossCents / toCents(revenue.totalRevenue)) * 100
         : 0;
-
     const isProfitable = profitLoss > 0;
 
     return {
-        // Receita
         totalRevenue: revenue.totalRevenue,
         totalPayouts: revenue.totalPayouts,
         platformMargin: revenue.platformMargin,
         marginPercentage: revenue.marginPercentage,
-
-        // Custos
         totalCosts: costs.totalCosts,
         costsByCategory: costs.costsByCategory,
-
-        // P&L
         profitLoss,
         profitMargin,
         isProfitable,
-
-        // Estado
         loading: revenue.loading || costs.loading,
         error: revenue.error || costs.error,
-        refresh: () => {
-            revenue.refresh();
-            costs.refresh();
-        }
+        refresh: () => { revenue.refresh(); costs.refresh(); }
     };
 }
 
-/**
- * Hook auxiliar para usar ledger como fonte
- * Importado de arquivo separado
- */
 export { usePlatformRevenueFromLedger } from './usePlatformRevenueFromLedger';
 
 export default useProfitLoss;

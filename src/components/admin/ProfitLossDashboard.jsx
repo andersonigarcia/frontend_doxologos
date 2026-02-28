@@ -51,7 +51,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
         };
     }, [period, selectedYear]); // Recalcula quando period ou selectedYear muda
     const {
-        totalRevenue, platformMargin, totalCosts, profitLoss, profitMargin,
+        totalRevenue, totalPayouts, platformMargin, totalCosts, profitLoss, profitMargin,
         isProfitable, costsByCategory, loading
     } = useProfitLoss(startDate, endDate);
 
@@ -139,24 +139,38 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
             </div>
 
             {/* Cards de Métricas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                {/* Azul — receita bruta (entrada total dos clientes) */}
                 <StatCard
                     label="Receita Total"
                     value={totalRevenue}
                     format="currency"
-                    tooltip="Soma de todos os agendamentos (confirmados/pagos) no período."
+                    tooltip="Valor total recebido dos clientes no período (bruto)."
+                    className="border-l-4 border-l-blue-500 bg-blue-50"
                 />
+                {/* Verde — margem da plataforma */}
                 <StatCard
                     label="Margem Plataforma"
                     value={platformMargin}
                     format="currency"
-                    tooltip="Receita Total descontando o repasse aos profissionais."
+                    tooltip="Comissão da plataforma (% sobre cada agendamento)."
+                    className="border-l-4 border-l-emerald-500 bg-emerald-50"
                 />
+                {/* Roxo — obrigação com profissionais (liability) */}
+                <StatCard
+                    label="Repasse Profissionais"
+                    value={totalPayouts}
+                    format="currency"
+                    tooltip="Total repassado (ou a repassar) aos profissionais no período."
+                    className="border-l-4 border-l-violet-500 bg-violet-50"
+                />
+                {/* Âmbar — custos operacionais (despesa) */}
                 <StatCard
                     label="Custos Totais"
                     value={totalCosts}
                     format="currency"
                     tooltip="Soma das despesas operacionais (servidor, marketing, etc)."
+                    className="border-l-4 border-l-amber-500 bg-amber-50"
                 />
                 <motion.div className={cn(
                     'rounded-xl border p-6',

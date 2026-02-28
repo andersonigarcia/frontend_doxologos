@@ -15,8 +15,9 @@ async function verifySignature(req: Request, bodyText: string, secret: string): 
   const xRequestId = req.headers.get('x-request-id');
 
   if (!xSignature || !xRequestId || !secret) {
-    console.warn('⚠️ Missing signature headers or secret. Skipping validation (NOT RECCOMENDED for production).');
-    return true; // Fail open if secret is not configured, but log warning.
+    // M-06: Fail-CLOSED — nunca aceitar webhooks sem assinatura verificável em produção.
+    console.error('🔒 MP_WEBHOOK_SECRET não configurado ou headers ausentes. Rejeitando requisição.');
+    return false;
   }
 
   // Parse x-signature
@@ -297,17 +298,11 @@ serve(async (req) => {
           return new Response(`Booking ${bookingId} not found`, { status: 404 });
         }
 
-        console.log(`📋 Found booking ${bookingId}:`, {
-          currentStatus: existingBooking.status,
-          currentPaymentStatus: existingBooking.payment_status,
-          newMPStatus: mpPayment.status,
-          willUpdateTo: statusMap[mpPayment.status]
-        });
-
+        // M-03: statusMap declarado antes de qualquer uso
         const statusMap: any = {
           'approved': 'confirmed',
           'authorized': 'confirmed',
-          'paid': 'confirmed',        // ✅ NOVO: Adicionar 'paid'
+          'paid': 'confirmed',
           'in_process': 'pending',
           'rejected': 'cancelled',
           'cancelled': 'cancelled',
@@ -315,8 +310,30 @@ serve(async (req) => {
           'charged_back': 'cancelled'
         };
 
+        console.log(`📋 Found booking ${bookingId}:`, {
+          currentStatus: existingBooking.status,
+          currentPaymentStatus: existingBooking.payment_status,
+          newMPStatus: mpPayment.status,
+          willUpdateTo: statusMap[mpPayment.status]
+        });
+
+
         const newStatus = statusMap[mpPayment.status];
-        if (newStatus) {
+
+        // M-03: Máquina de estados — impede regressões de status por webhooks tardios
+        const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+          'pending': ['confirmed', 'cancelled'],
+          'awaiting_payment': ['confirmed', 'cancelled'],
+          'confirmed': ['cancelled', 'completed'],
+          'completed': [], // estado terminal — nenhuma transição permitida
+          'cancelled': [], // estado terminal — nenhuma transição permitida
+        };
+        const allowedNext = ALLOWED_TRANSITIONS[existingBooking.status] ?? [];
+
+        if (newStatus && !allowedNext.includes(newStatus)) {
+          console.warn(`⚠️ [M-03] Transição bloqueada: ${existingBooking.status} → ${newStatus} para booking ${bookingId}. Webhook ignorado.`);
+          success = true; // considera processado sem erro
+        } else if (newStatus) {
           const { error: updateError } = await supabase.from('bookings')
             .update({
               status: newStatus,
@@ -339,7 +356,7 @@ serve(async (req) => {
             transactionAmount: mpPayment.transaction_amount
           });
           success = true;
-        } else {
+        } else if (!newStatus) {
           console.warn(`⚠️ No status mapping for MP status: ${mpPayment.status}`);
         }
       } else {

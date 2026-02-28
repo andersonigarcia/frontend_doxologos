@@ -1,14 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { toCents, fromCents } from '@/lib/money';
 
-/**
- * Hook para cálculo de pagamentos aos profissionais
- * 
- * @param {string} professionalId - ID do profissional (opcional, se não fornecido busca todos)
- * @param {string} startDate - Data inicial do período (YYYY-MM-DD)
- * @param {string} endDate - Data final do período (YYYY-MM-DD)
- * @returns {Object} Dados de pagamentos calculados e estado de loading
- */
+// M-01: parseFloat substituído por toCents/fromCents de money.js
+
 export function usePaymentCalculation(professionalId = null, startDate = null, endDate = null) {
     const [data, setData] = useState({
         pendingPayments: [],
@@ -24,44 +19,30 @@ export function usePaymentCalculation(professionalId = null, startDate = null, e
             setLoading(true);
             setError(null);
 
-            // Buscar pagamentos existentes
-            let paymentsQuery = supabase
+            let query = supabase
                 .from('professional_payments')
-                .select(`
-                    *,
-                    professional:professionals(id, name)
-                `)
+                .select('*, professional:professionals(id, name)')
                 .order('created_at', { ascending: false });
 
-            if (professionalId) {
-                paymentsQuery = paymentsQuery.eq('professional_id', professionalId);
-            }
+            if (professionalId) query = query.eq('professional_id', professionalId);
+            if (startDate) query = query.gte('period_start', startDate);
+            if (endDate) query = query.lte('period_end', endDate);
 
-            if (startDate) {
-                paymentsQuery = paymentsQuery.gte('period_start', startDate);
-            }
-
-            if (endDate) {
-                paymentsQuery = paymentsQuery.lte('period_end', endDate);
-            }
-
-            const { data: payments, error: paymentsError } = await paymentsQuery;
-
+            const { data: payments, error: paymentsError } = await query;
             if (paymentsError) throw paymentsError;
 
-            // Separar por status
             const pendingPayments = (payments || []).filter(p => p.status === 'pending');
             const paidPayments = (payments || []).filter(p => p.status === 'paid');
 
-            // Calcular totais
-            const totalPending = pendingPayments.reduce((sum, p) => sum + parseFloat(p.total_amount || 0), 0);
-            const totalPaid = paidPayments.reduce((sum, p) => sum + parseFloat(p.total_amount || 0), 0);
+            // M-01: soma via centavos
+            const totalPendingCents = pendingPayments.reduce((s, p) => s + toCents(p.total_amount), 0);
+            const totalPaidCents = paidPayments.reduce((s, p) => s + toCents(p.total_amount), 0);
 
             setData({
                 pendingPayments,
                 paidPayments,
-                totalPending,
-                totalPaid,
+                totalPending: fromCents(totalPendingCents),
+                totalPaid: fromCents(totalPaidCents),
             });
         } catch (err) {
             console.error('Error calculating payments:', err);
@@ -71,27 +52,13 @@ export function usePaymentCalculation(professionalId = null, startDate = null, e
         }
     }, [professionalId, startDate, endDate]);
 
-    useEffect(() => {
-        calculatePayments();
-    }, [calculatePayments]);
+    useEffect(() => { calculatePayments(); }, [calculatePayments]);
 
     return { ...data, loading, error, refresh: calculatePayments };
 }
 
-/**
- * Hook para calcular valor pendente de um profissional em um período
- * 
- * @param {string} professionalId - ID do profissional
- * @param {string} startDate - Data inicial (YYYY-MM-DD)
- * @param {string} endDate - Data final (YYYY-MM-DD)
- * @returns {Object} Valor calculado e agendamentos
- */
 export function usePendingPaymentAmount(professionalId, startDate, endDate, excludePaymentId = null) {
-    const [data, setData] = useState({
-        totalAmount: 0,
-        bookings: [],
-        totalBookings: 0,
-    });
+    const [data, setData] = useState({ totalAmount: 0, bookings: [], totalBookings: 0 });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -105,18 +72,9 @@ export function usePendingPaymentAmount(professionalId, startDate, endDate, excl
             setLoading(true);
             setError(null);
 
-            // Buscar agendamentos confirmados/pagos/completados no período
             const { data: bookings, error: bookingsError } = await supabase
                 .from('bookings')
-                .select(`
-                    id,
-                    booking_date,
-                    booking_time,
-                    patient_name,
-                    valor_repasse_profissional,
-                    status,
-                    service:services(name)
-                `)
+                .select('id, booking_date, booking_time, patient_name, valor_repasse_profissional, status, service:services(name)')
                 .eq('professional_id', professionalId)
                 .gte('booking_date', startDate)
                 .lte('booking_date', endDate)
@@ -125,44 +83,33 @@ export function usePendingPaymentAmount(professionalId, startDate, endDate, excl
 
             if (bookingsError) throw bookingsError;
 
-            // Verificar quais já foram pagos
             const { data: paidBookings, error: paidError } = await supabase
                 .from('payment_bookings')
                 .select('booking_id, payment_id');
 
             if (paidError) throw paidError;
 
-            // Criar conjunto de bookings pagos, excluindo os do pagamento atual se fornecido
             const paidBookingIds = new Set(
                 (paidBookings || [])
                     .filter(pb => pb.payment_id !== excludePaymentId)
                     .map(pb => pb.booking_id)
             );
 
-            // Filtrar apenas bookings não pagos (ou pagos pelo pagamento atual)
             const unpaidBookings = (bookings || []).filter(b => !paidBookingIds.has(b.id));
 
-            // Calcular total
-            const totalAmount = unpaidBookings.reduce((sum, b) =>
-                sum + parseFloat(b.valor_repasse_profissional || 0), 0
-            );
+            // M-01: soma via centavos
+            const totalCents = unpaidBookings.reduce((s, b) => s + toCents(b.valor_repasse_profissional), 0);
 
-            setData({
-                totalAmount,
-                bookings: unpaidBookings,
-                totalBookings: unpaidBookings.length,
-            });
+            setData({ totalAmount: fromCents(totalCents), bookings: unpaidBookings, totalBookings: unpaidBookings.length });
         } catch (err) {
             console.error('Error calculating pending amount:', err);
             setError(err);
         } finally {
             setLoading(false);
         }
-    }, [professionalId, startDate, endDate]);
+    }, [professionalId, startDate, endDate, excludePaymentId]);
 
-    useEffect(() => {
-        calculate();
-    }, [calculate]);
+    useEffect(() => { calculate(); }, [calculate]);
 
     return { ...data, loading, error, refresh: calculate };
 }
