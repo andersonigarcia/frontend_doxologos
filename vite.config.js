@@ -294,7 +294,32 @@ export default defineConfig({
 	},
 	build: {
 		rollupOptions: {
-			// Remover external do Babel em produção pois os plugins de dev não são carregados
-		}
+			output: {
+				// PERF (P-04): Separar vendors em chunks independentes para melhor cache de browser.
+				// Quando apenas o código da aplicação muda, os chunks de vendor permanecem cacheados.
+				manualChunks(id) {
+					// React core — raramente muda
+					if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/') || id.includes('node_modules/react-router/')) {
+						return 'vendor-react';
+					}
+					// Supabase client
+					if (id.includes('node_modules/@supabase/')) {
+						return 'vendor-supabase';
+					}
+					// TanStack Query
+					if (id.includes('node_modules/@tanstack/')) {
+						return 'vendor-query';
+					}
+					// Animations e ícones
+					if (id.includes('node_modules/framer-motion/') || id.includes('node_modules/lucide-react/')) {
+						return 'vendor-ui';
+					}
+					// Mercado Pago SDK
+					if (id.includes('node_modules/@mercadopago/')) {
+						return 'vendor-payments';
+					}
+				},
+			},
+		},
 	}
 });

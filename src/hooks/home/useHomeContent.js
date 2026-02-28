@@ -1,134 +1,138 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+/**
+ * useHomeContent — Dados para a página inicial
+ *
+ * PERF (P-02): Migrado de useState + useEffect manual para TanStack Query.
+ * Benefícios:
+ *  - Cache automático: dados permanecem válidos por staleTime (5min) sem novo fetch
+ *  - Deduplicação: múltiplos componentes usando o mesmo queryKey compartilham 1 requisição
+ *  - Background refetch: dados são atualizados em background sem mostrar loading novamente
+ *
+ * A assinatura pública do hook é idêntica à anterior para evitar breaking changes.
+ */
+
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const sortProfessionals = (list = []) => {
-  return [...list].sort((a, b) => (a?.name || '').localeCompare(b?.name || '', 'pt-BR', { sensitivity: 'base' }));
+// ---------- fetchers puros (testáveis isoladamente) ----------
+
+const fetchActiveEvents = async () => {
+  const nowIso = new Date().toISOString();
+
+  const { data: eventsData, error: eventsError } = await supabase
+    .from('eventos')
+    .select('*')
+    .eq('status', 'aberto')
+    .eq('ativo', true)
+    .gt('data_limite_inscricao', nowIso)
+    .lte('data_inicio_exibicao', nowIso)
+    .gte('data_fim_exibicao', nowIso)
+    .order('data_inicio', { ascending: true });
+
+  if (eventsError) throw eventsError;
+
+  const events = eventsData || [];
+  if (events.length === 0) return [];
+
+  // Enriquecer com dados do profissional responsável
+  const professionalIds = [...new Set(events.map((e) => e.professional_id).filter(Boolean))];
+  if (professionalIds.length === 0) return events;
+
+  const { data: eventProfessionals, error: profError } = await supabase
+    .from('professionals')
+    .select('id, name')
+    .in('id', professionalIds);
+
+  if (profError) return events; // fallback sem enriquecimento
+
+  return events.map((event) => ({
+    ...event,
+    professional: eventProfessionals?.find((p) => p.id === event.professional_id),
+  }));
 };
 
-export function useHomeContent({ toast, trackAsyncError } = {}) {
-  const [activeEvents, setActiveEvents] = useState([]);
-  const [professionals, setProfessionals] = useState([]);
-  const [testimonials, setTestimonials] = useState([]);
-  const [testimonialsLoading, setTestimonialsLoading] = useState(true);
-  const isMountedRef = useRef(true);
+const fetchAllProfessionals = async () => {
+  const { data, error } = await supabase.from('professionals').select('*');
+  if (error) throw error;
+  return [...(data || [])].sort((a, b) =>
+    (a?.name || '').localeCompare(b?.name || '', 'pt-BR', { sensitivity: 'base' })
+  );
+};
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+const fetchHomeTestimonials = async () => {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select(`
+      *,
+      professionals(name),
+      bookings(patient_name, patient_email, booking_date, booking_time, professional:professionals(name))
+    `)
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false })
+    .limit(7);
+
+  if (error) throw error;
+  return data || [];
+};
+
+// ---------- hook público ----------
+
+export function useHomeContent({ toast, trackAsyncError } = {}) {
+  const queryClient = useQueryClient();
 
   const notify = useCallback(
     (payload) => {
-      if (!toast || !payload) {
-        return;
-      }
+      if (!toast || !payload) return;
       toast(payload);
     },
     [toast]
   );
 
-  const fetchHomeData = useCallback(async () => {
-    if (isMountedRef.current) {
-      setTestimonialsLoading(true);
-    }
+  const eventsQuery = useQuery({
+    queryKey: ['events', 'active'],
+    queryFn: fetchActiveEvents,
+    onError: (err) => {
+      trackAsyncError?.(err, 'fetch_events');
+    },
+  });
 
-    const nowIso = new Date().toISOString();
-
-    try {
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('eventos')
-        .select('*')
-        .eq('status', 'aberto')
-        .eq('ativo', true)
-        .gt('data_limite_inscricao', nowIso)
-        .lte('data_inicio_exibicao', nowIso)
-        .gte('data_fim_exibicao', nowIso)
-        .order('data_inicio', { ascending: true });
-
-      if (eventsError) {
-        trackAsyncError?.(eventsError, 'fetch_events');
-      } else if (isMountedRef.current) {
-        if (Array.isArray(eventsData) && eventsData.length > 0) {
-          const professionalIds = [...new Set(eventsData.map((event) => event.professional_id).filter(Boolean))];
-
-          if (professionalIds.length > 0) {
-            const { data: eventProfessionals, error: eventProfError } = await supabase
-              .from('professionals')
-              .select('id, name')
-              .in('id', professionalIds);
-
-            if (eventProfError) {
-              trackAsyncError?.(eventProfError, 'fetch_event_professionals');
-              setActiveEvents(eventsData);
-            } else {
-              const eventsWithProfessionals = eventsData.map((event) => ({
-                ...event,
-                professional: eventProfessionals?.find((professional) => professional.id === event.professional_id),
-              }));
-              setActiveEvents(eventsWithProfessionals);
-            }
-          } else {
-            setActiveEvents(eventsData);
-          }
-        } else {
-          setActiveEvents(eventsData || []);
-        }
-      }
-
-      const { data: profsData, error: profsError } = await supabase.from('professionals').select('*');
-
-      if (profsError) {
-        trackAsyncError?.(profsError, 'fetch_professionals');
-        notify({
-          variant: 'destructive',
-          title: 'Erro ao carregar profissionais',
-          description: profsError.message,
-        });
-      } else if (isMountedRef.current) {
-        setProfessionals(sortProfessionals(profsData || []));
-      }
-
-      const { data: reviewsData, error: reviewsError } = await supabase
-        .from('reviews')
-        .select(`
-            *,
-            professionals(name),
-            bookings(patient_name, patient_email, booking_date, booking_time, professional:professionals(name))
-          `)
-        .eq('is_approved', true)
-        .order('created_at', { ascending: false })
-        .limit(7);
-
-      if (reviewsError) {
-        trackAsyncError?.(reviewsError, 'fetch_reviews');
-      } else if (isMountedRef.current) {
-        setTestimonials(reviewsData || []);
-      }
-    } catch (error) {
-      trackAsyncError?.(error, 'fetch_home_data');
+  const professionalsQuery = useQuery({
+    queryKey: ['professionals'],
+    queryFn: fetchAllProfessionals,
+    onError: (err) => {
+      trackAsyncError?.(err, 'fetch_professionals');
       notify({
         variant: 'destructive',
-        title: 'Erro ao carregar conteúdo',
-        description: 'Não foi possível carregar algumas seções. Tente novamente.',
+        title: 'Erro ao carregar profissionais',
+        description: err.message,
       });
-    } finally {
-      if (isMountedRef.current) {
-        setTestimonialsLoading(false);
-      }
-    }
-  }, [notify, trackAsyncError]);
+    },
+  });
 
-  useEffect(() => {
-    fetchHomeData();
-  }, [fetchHomeData]);
+  const testimonialsQuery = useQuery({
+    queryKey: ['reviews', { scope: 'home' }],
+    queryFn: fetchHomeTestimonials,
+    onError: (err) => {
+      trackAsyncError?.(err, 'fetch_reviews');
+    },
+  });
+
+  // refreshHomeContent invalida e re-fetcha todos os dados da home
+  const refreshHomeContent = useCallback(() => {
+    return queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey[0];
+        return key === 'events' || key === 'professionals' || key === 'reviews';
+      },
+    });
+  }, [queryClient]);
 
   return {
-    activeEvents,
-    professionals,
-    testimonials,
-    testimonialsLoading,
-    refreshHomeContent: fetchHomeData,
+    activeEvents: eventsQuery.data ?? [],
+    professionals: professionalsQuery.data ?? [],
+    testimonials: testimonialsQuery.data ?? [],
+    // isLoading é true apenas no primeiro carregamento (sem dados em cache)
+    testimonialsLoading: testimonialsQuery.isLoading,
+    refreshHomeContent,
   };
 }

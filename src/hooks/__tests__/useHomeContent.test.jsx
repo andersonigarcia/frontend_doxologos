@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../tests/msw/server.js';
 import { TEST_SUPABASE_URL } from '../../../tests/msw/constants.js';
@@ -38,7 +39,20 @@ const homeFixtures = {
   ]
 };
 
-const createStrictWrapper = () => ({ children }) => <StrictMode>{children}</StrictMode>;
+// Cria um QueryClient fresco por teste (sem cache compartilhado entre testes)
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: 0 } },
+  });
+
+const createWrapper = () => {
+  const queryClient = createTestQueryClient();
+  return ({ children }) => (
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    </StrictMode>
+  );
+};
 
 const respondWithJson = (table, body, init) => {
   const endpoint = `*/rest/v1/${table}`;
@@ -71,7 +85,7 @@ describe('useHomeContent', () => {
     registerHomeSuccessHandlers();
     const toast = jest.fn();
     const trackAsyncError = jest.fn();
-    const wrapper = createStrictWrapper();
+    const wrapper = createWrapper();
 
     const { result, unmount } = renderHook(() => useHomeContent({ toast, trackAsyncError }), { wrapper });
 
@@ -97,7 +111,7 @@ describe('useHomeContent', () => {
 
     const toast = jest.fn();
     const trackAsyncError = jest.fn();
-    const wrapper = createStrictWrapper();
+    const wrapper = createWrapper();
 
     const { result, unmount } = renderHook(() => useHomeContent({ toast, trackAsyncError }), { wrapper });
 
