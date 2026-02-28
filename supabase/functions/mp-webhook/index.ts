@@ -84,7 +84,7 @@ async function sendEmail(sendgridKey: string, from: string, to: string, subject:
   return res.ok;
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -133,10 +133,10 @@ serve(async (req) => {
       return new Response('Ignored non-payment event', { status: 200 });
     }
 
-    if (!paymentId) {
-      if (logId) await supabase.from('webhook_logs').update({ status: 'error', error_message: 'No payment ID found' }).eq('id', logId);
-      return new Response('No payment ID', { status: 400 });
-    }
+    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
+
+    let bookingId: string | null = null;
+    let existingBooking: any = null;
 
     // 1. Double Check with MP API (Self-Validation)
     // This confirms the payment status is real and not a spoofed payload
@@ -258,7 +258,6 @@ serve(async (req) => {
       success = true;
     } else {
       // Booking Logic
-      let bookingId = null;
 
       // UUID format validation
       // Standard: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars with hyphens)
@@ -283,11 +282,13 @@ serve(async (req) => {
 
       if (bookingId) {
         // Verify booking exists before updating
-        const { data: existingBooking, error: fetchError } = await supabase
+        const { data: bookingData, error: fetchError } = await supabase
           .from('bookings')
-          .select('id, status')
+          .select('id, status, valor_consulta, valor_repasse_profissional, professional_id, patient_name, booking_date')
           .eq('id', bookingId)
           .single();
+
+        existingBooking = bookingData;
 
         if (fetchError || !existingBooking) {
           console.error(`❌ Booking ${bookingId} not found!`, fetchError);
@@ -381,50 +382,96 @@ serve(async (req) => {
     // ========================================
     // 3. LEDGER ENTRY (Double Entry Accounting)
     // ========================================
-    if ((mpPayment.status === 'approved' || mpPayment.status === 'paid') && ledgerTransactionId) {
-      try {
-        console.log(`📒 Recording ledger entries for transaction ${ledgerTransactionId}`);
+    const isPositiveStatus = ['approved', 'authorized', 'paid'].includes(mpPayment.status);
+    const isReversalStatus = ['refunded', 'charged_back'].includes(mpPayment.status);
 
-        // Check for existing ledger entry to prevent duplicates
-        const { count } = await supabase.from('payment_ledger_entries')
-          .select('id', { count: 'exact', head: true })
+    if ((isPositiveStatus || isReversalStatus) && ledgerTransactionId) {
+      try {
+        console.log(`📒 Recording ledger entries for transaction ${ledgerTransactionId} (Status: ${mpPayment.status})`);
+
+        // Check for existing ledger entry for this specific status/type to prevent duplicates
+        // Note: UNIQUE constraint (transaction_id, account_code, entry_type) protects this
+        const { data: existingEntries } = await supabase.from('payment_ledger_entries')
+          .select('account_code, entry_type')
           .eq('transaction_id', ledgerTransactionId);
 
-        if (count === 0) {
-          const amount = mpPayment.transaction_amount;
-          const fee = mpPayment.fee_details?.reduce((acc: number, f: any) => acc + f.amount, 0) || 0;
-          const net = amount - fee;
+        const hasEntry = (account: string, type: string) =>
+          existingEntries?.some((e: any) => e.account_code === account && e.entry_type === type);
 
-          // 1. DEBIT: Cash in Bank (Net or Gross? Usually Gross for revenue, but receiving is Net if fee deducted at source. 
-          // Let's record Gross amount as Cash for simplicity, and track fees separately if needed.
-          // For this MVP: Cash = Gross Amount.
+        const totalAmount = mpPayment.transaction_amount;
+        const profPayout = existingBooking?.valor_repasse_profissional || 0;
+        const platformFee = (existingBooking?.valor_consulta || totalAmount) - profPayout;
 
-          const entries = [
+        let entries: any[] = [];
+
+        if (isPositiveStatus && !hasEntry('CASH_BANK', 'DEBIT')) {
+          // Normal Payment Split
+          entries = [
             {
               transaction_id: ledgerTransactionId,
               entry_type: 'DEBIT',
               account_code: 'CASH_BANK',
-              amount: amount,
-              description: `Payment received ${paymentId} (MP)`,
+              amount: totalAmount,
+              description: `Recebimento: Agendamento #${bookingId || externalRef}`,
               created_at: new Date().toISOString()
             },
             {
               transaction_id: ledgerTransactionId,
               entry_type: 'CREDIT',
-              account_code: 'REVENUE_GROSS', // Or LIABILITY_PROFESSIONAL based on split
-              amount: amount,
-              description: `Gross revenue from payment ${paymentId}`,
+              account_code: 'REVENUE_SERVICE',
+              amount: platformFee,
+              description: `Receita Plataforma: Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'CREDIT',
+              account_code: 'LIABILITY_PROFESSIONAL',
+              amount: profPayout,
+              description: `A Pagar Profissional: Agendamento #${bookingId || externalRef}`,
               created_at: new Date().toISOString()
             }
           ];
-
-          const { error: ledgerError } = await supabase.from('payment_ledger_entries').insert(entries);
-          if (ledgerError) console.error('❌ Ledger insert error:', ledgerError);
-          else console.log('✅ Ledger entries recorded successfully');
-        } else {
-          console.log('ℹ️ Ledger entries already exist, skipping.');
+        } else if (isReversalStatus && !hasEntry('CASH_BANK', 'CREDIT')) {
+          // M-05: Reversal Entry (Refund/Chargeback)
+          console.log(`🔄 Creating reversal entries for ${mpPayment.status}`);
+          entries = [
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'CREDIT', // Money leaving bank
+              account_code: 'CASH_BANK',
+              amount: totalAmount,
+              description: `ESTORNO (${mpPayment.status}): Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'DEBIT', // Reversing platform revenue
+              account_code: 'REVENUE_SERVICE',
+              amount: platformFee,
+              description: `REVERSÃO RECEITA: Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'DEBIT', // Reversing professional liability
+              account_code: 'LIABILITY_PROFESSIONAL',
+              amount: profPayout,
+              description: `REVERSÃO REPASSE: Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            }
+          ];
         }
-      } catch (ledgerErr) {
+
+        if (entries.length > 0) {
+          const finalEntries = entries.filter(e => e.amount > 0 || e.account_code === 'CASH_BANK');
+          const { error: ledgerError } = await supabase.from('payment_ledger_entries').insert(finalEntries);
+          if (ledgerError) console.error('❌ Ledger insert error:', ledgerError);
+          else console.log(`✅ Ledger entries (${isReversalStatus ? 'reversal' : 'split'}) recorded successfully`);
+        } else {
+          console.log('ℹ️ Ledger entries for this status already exist or status not applicable, skipping.');
+        }
+      } catch (ledgerErr: any) {
         console.error('❌ Unexpected ledger error:', ledgerErr);
       }
     }
