@@ -4,16 +4,18 @@
 
 class EmailService {
   constructor() {
-    this.apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`;
-    // SECURITY FIX (S-01): Substituído VITE_SUPABASE_SERVICE_ROLE_KEY → VITE_SUPABASE_ANON_KEY.
-    // A service_role key bypassa todas as políticas de RLS e NUNCA deve ir para o bundle do cliente.
-    this.apiKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    this.fromEmail = import.meta.env.VITE_FROM_EMAIL || 'doxologos@doxologos.com.br';
-    this.fromName = import.meta.env.VITE_FROM_NAME || 'Doxologos Psicologia';
-    this.enabled = import.meta.env.VITE_ENABLE_EMAIL_NOTIFICATIONS !== 'false';
-    this.isDev = import.meta.env.VITE_ENVIRONMENT === 'development';
+    // Suporte Isomórfico: Node.js (Netlify Functions) vs Vite (Browser)
+    const isNode = typeof process !== 'undefined' && process.env;
 
-    if (import.meta.env.DEV) {
+    this.apiUrl = `${isNode ? process.env.VITE_SUPABASE_URL : import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`;
+    this.apiKey = isNode ? process.env.VITE_SUPABASE_ANON_KEY : import.meta.env.VITE_SUPABASE_ANON_KEY;
+    this.fromEmail = (isNode ? process.env.VITE_FROM_EMAIL : import.meta.env.VITE_FROM_EMAIL) || 'doxologos@doxologos.com.br';
+    this.fromName = (isNode ? process.env.VITE_FROM_NAME : import.meta.env.VITE_FROM_NAME) || 'Doxologos Psicologia';
+    this.enabled = (isNode ? process.env.VITE_ENABLE_EMAIL_NOTIFICATIONS : import.meta.env.VITE_ENABLE_EMAIL_NOTIFICATIONS) !== 'false';
+    this.isDev = (isNode ? process.env.VITE_ENVIRONMENT : import.meta.env.VITE_ENVIRONMENT) === 'development';
+
+    const isDevEnv = isNode ? (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) : import.meta.env.DEV;
+    if (isDevEnv) {
       console.log('🔧 EmailService Config:', {
         apiUrl: this.apiUrl,
         fromEmail: this.fromEmail,

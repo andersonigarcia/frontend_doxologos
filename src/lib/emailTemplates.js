@@ -6,7 +6,8 @@
     const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
     const isLocalhost = currentOrigin.includes('localhost') || currentOrigin.includes('127.0.0.1');
 
-    this.baseUrl = import.meta.env.VITE_APP_URL ||
+    const isNode = typeof process !== 'undefined' && process.env;
+    this.baseUrl = (isNode ? process.env.VITE_APP_URL : import.meta.env.VITE_APP_URL) ||
       (!isLocalhost && currentOrigin) ||
       'https://doxologos.com.br';
 
@@ -85,6 +86,41 @@
     }
   }
 
+  // Helper para gerar Link do Google Calendar
+  getGoogleCalendarLink(title, details, date, timeStr) {
+    try {
+      // Exemplo timeStr: "14:00" ou "14:00:00"
+      const timeParts = timeStr.split(':');
+      const hours = parseInt(timeParts[0], 10);
+      const mins = parseInt(timeParts[1], 10);
+
+      // Início
+      const start = new Date(`${date}T00:00:00`);
+      start.setHours(hours, mins, 0);
+
+      // Fim (Padrão 1 hora depois)
+      const end = new Date(start);
+      end.setHours(start.getHours() + 1);
+
+      // Formatar formato UTC basic: YYYYMMDDTHHMMSSZ
+      const formatToUTC = (d) => d.toISOString().replace(/-|:|\.\d\d\d/g, "");
+
+      const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: title,
+        details: details,
+        dates: `${formatToUTC(start)}/${formatToUTC(end)}`,
+        trp: 'false',
+        sprop: 'website:' + this.baseUrl,
+      });
+
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    } catch (e) {
+      console.error("Erro ao gerar link do Google Calendar", e);
+      return "#";
+    }
+  }
+
   // EMAIL 1: Confirmação de Agendamento (para o PACIENTE)
   bookingConfirmation(booking) {
     const content = `
@@ -134,7 +170,16 @@
       </div>
 
       <p style="text-align: center; margin-top: 30px;">
-        <a href="${this.baseUrl}/area-do-paciente" class="btn">Acessar Minha Área</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="margin-bottom: 15px;">Acessar Minha Área</a>
+        <br>
+        <a href="${this.getGoogleCalendarLink(
+      "Consulta Psicológica - Doxologos",
+      `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}`,
+      booking.appointment_date,
+      booking.appointment_time
+    )}" class="btn" style="background: #ffffff; color: #1f2937 !important; border: 1px solid #d1d5db; padding: 12px 24px; font-weight: 500;" target="_blank">
+          📅 Adicionar ao Google Agenda
+        </a>
       </p>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
@@ -216,6 +261,18 @@
           Clique no botão abaixo para acessar agora:
         </p>
         <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px; padding: 14px 30px; text-decoration: none;">🔐 Acessar Minha Área - Link da Reunião</a>
+        
+        <div style="margin-top: 20px;">
+          <a href="${this.getGoogleCalendarLink(
+      "Consulta Psicológica Doxologos (Meet)",
+      `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}\n${booking.meeting_link ? `Link da Reunião: ${booking.meeting_link}` : 'Link da reunião disponível na Área do Paciente.'}`,
+      booking.appointment_date,
+      booking.appointment_time
+    )}" class="btn" style="background: white; color: #1e40af !important; border: 1px solid #bfdbfe; font-size: 14px; padding: 10px 20px; text-decoration: none;" target="_blank">
+            📅 Salvar no Google Agenda
+          </a>
+        </div>
+
         <p style="margin: 20px 0 0 0; font-size: 13px; color: #1e3a8a;">
           💡 Salve este email! Você precisará consultar o link da reunião no dia da consulta.
         </p>
@@ -293,12 +350,17 @@
         <p style="margin: 5px 0; color: #064e3b;"><strong>Profissional:</strong> ${this.sanitizeForHtml(booking.professional_name)}</p>
       </div>
 
+      <div style="background: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #10b981;">
+        <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 16px;">📅 Dica Importante:</h3>
+        <p style="margin: 5px 0; color: #064e3b; font-size: 14px;">Recomendamos que você anote este novo horário na sua agenda ou adicione ao seu Google Calendar através da Área do Paciente.</p>
+      </div>
+
       <p style="font-size: 15px; color: #4b5563; margin: 20px 0;">
         Se você não puder comparecer no novo horário ou tiver alguma dúvida, entre em contato conosco o quanto antes.
       </p>
 
       <p style="text-align: center; margin-top: 30px;">
-        <a href="${this.baseUrl}/area-do-paciente" class="btn">Gerenciar Agendamento</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #f59e0b; padding: 14px 32px; font-size: 15px;">Gerenciar meu Agendamento</a>
       </p>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
@@ -342,14 +404,15 @@
       <div class="tips-box">
         <h3>📋 O que fazer agora:</h3>
         <ul>
-          <li>Se desejar, você pode fazer um novo agendamento a qualquer momento</li>
-          <li>Entre em contato conosco se tiver dúvidas ou precisar de ajuda</li>
-          <li>Estamos sempre à disposição para atendê-lo(a)</li>
+          <li>Se desejar, você pode realizar um novo agendamento de forma rápida pelo nosso site.</li>
+          <li>Em caso de dúvidas sobre estornos ou sobre este cancelamento, a nossa equipe de suporte está pronta para ajudar.</li>
         </ul>
       </div>
 
       <p style="text-align: center; margin-top: 30px;">
-        <a href="${this.baseUrl}/agendamento" class="btn">Fazer Novo Agendamento</a>
+        <a href="${this.baseUrl}/agendamento" class="btn" style="background: #dc2626; padding: 14px 32px; font-size: 15px; margin-bottom: 10px;">Fazer Novo Agendamento</a>
+        <br>
+        <a href="mailto:${this.supportEmail}" class="btn" style="background: white; color: #4b5563 !important; border: 1px solid #d1d5db; font-size: 14px;">✉️ Falar com Suporte</a>
       </p>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
@@ -378,12 +441,21 @@
         <p style="margin: 8px 0; color: #78350f;"><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(booking.service_name)}</p>
       </div>
 
-      <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6; text-align: center;">
-        <p style="margin: 0 0 15px 0; color: #1e40af; font-weight: 600; font-size: 16px;">🔗 Link da Consulta</p>
-        <p style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 14px;">
-          Acesse sua área do paciente para visualizar o link do Google Meet
+      <div style="background: #dbeafe; padding: 25px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
+        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🔗 Aonde eu entro?</h3>
+        <p style="margin: 0 0 15px 0; color: #1e3a8a; font-size: 15px;">
+          O link para a sala de consulta (Google Meet) já está disponível na sua Área do Paciente!
         </p>
-        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 15px;">Acessar Minha Área</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 15px; margin-bottom: 15px;">Acessar Minha Área</a>
+        <br>
+        <a href="${this.getGoogleCalendarLink(
+      "Consulta Psicológica - Doxologos",
+      `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}`,
+      booking.appointment_date,
+      booking.appointment_time
+    )}" class="btn" style="background: #ffffff; color: #1e40af !important; border: 1px solid #bfdbfe; font-size: 14px; padding: 10px 20px; text-decoration: none;" target="_blank">
+          📅 Salvar no Google Agenda
+        </a>
       </div>
 
       <div class="tips-box">
@@ -435,13 +507,22 @@
         <div style="background: #dbeafe; padding: 30px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
           <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 20px;">🎥 Acesse a Sala da Consulta</h3>
           <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
-            Clique no botão abaixo para entrar na sala Google Meet:
+            Clique no botão abaixo para entrar direto na sala do Google Meet agora:
           </p>
-          <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 18px; padding: 16px 40px;">
-            🔗 Entrar na Consulta Agora
+          <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 18px; padding: 16px 40px; margin-bottom: 15px;">
+            🔗 Entrar na Consulta
+          </a>
+          <br>
+          <a href="${this.getGoogleCalendarLink(
+      "Consulta Psicológica Doxologos (Meet)",
+      `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}\nLink: ${booking.meeting_link}`,
+      booking.appointment_date,
+      booking.appointment_time
+    )}" class="btn" style="background: white; color: #1e40af !important; border: 1px solid #bfdbfe; font-size: 14px; padding: 10px 20px; text-decoration: none;" target="_blank">
+            📅 Adicionar ao Google Agenda
           </a>
           <p style="margin: 20px 0 0 0; font-size: 14px; color: #1e3a8a;">
-            💡 Recomendamos entrar <strong>5 minutos antes</strong> do horário
+            💡 Recomendamos entrar na sala <strong>5 minutos antes</strong> do horário.
           </p>
         </div>
       ` : `

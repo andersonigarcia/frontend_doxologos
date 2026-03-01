@@ -115,7 +115,7 @@ async function getBookingsNeedingReminder() {
       professionals (
         id,
         name,
-        email
+        user_id
       ),
       services (
         id,
@@ -152,6 +152,17 @@ async function processBookingReminder(booking) {
     };
 
     try {
+        // Buscar email do profissional via Supabase Auth (Admin API)
+        let professional_email = null;
+        if (booking.professionals?.user_id) {
+            try {
+                const { data: authData } = await supabase.auth.admin.getUserById(booking.professionals.user_id);
+                professional_email = authData?.user?.email;
+            } catch (err) {
+                console.error(`Erro buscando auth user ${booking.professionals.user_id}:`, err);
+            }
+        }
+
         // Preparar dados do booking
         const bookingData = {
             id: booking.id,
@@ -159,7 +170,7 @@ async function processBookingReminder(booking) {
             patient_email: booking.patient_email,
             patient_phone: booking.patient_phone,
             professional_name: booking.professionals?.name,
-            professional_email: booking.professionals?.email,
+            professional_email: professional_email,
             service_name: booking.services?.name,
             appointment_date: booking.booking_date,
             appointment_time: booking.booking_time,
