@@ -44,12 +44,7 @@ const PaymentSummaryStep = lazy(() => import('@/components/booking/PaymentSummar
 import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
 
 const MIN_PASSWORD_LENGTH = 8;
-const generateGoogleMeetLink = () => {
-  const chars = 'abcdefghijklmnopqrstuvwxyz';
-  const segment = (len) =>
-    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  return `https://meet.google.com/${segment(3)}-${segment(4)}-${segment(3)}`;
-};
+// Removido o generateGoogleMeetLink, pois gerava salas aleatórias inválidas. Passamos a usar o link pessoal do profissional.
 
 // Skeleton Loader for lazy-loaded components
 const StepLoader = () => (
@@ -1060,12 +1055,12 @@ const AgendamentoPage = () => {
       }
 
       if (meetingPlatform === 'google_meet') {
-        const generatedMeetLink = generateGoogleMeetLink();
-        bookingData.meeting_link = generatedMeetLink;
+        const personalLink = professionalDetails?.personal_meet_link || null;
+        bookingData.meeting_link = personalLink;
         bookingData.meeting_password = null;
         bookingData.meeting_id = null;
-        bookingData.meeting_start_url = generatedMeetLink;
-        console.log('🎥 Link Google Meet gerado para o agendamento:', generatedMeetLink);
+        bookingData.meeting_start_url = personalLink;
+        console.log('🎥 Link Google Meet do profissional utilizado:', personalLink || 'Nenhum link cadastrado');
       }
 
       // Adicionar user_id se disponível

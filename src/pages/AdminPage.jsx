@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -1523,7 +1524,8 @@ const AdminPage = () => {
                 password: '',
                 mini_curriculum: '',
                 description: '',
-                image_url: ''
+                image_url: '',
+                personal_meet_link: ''
             });
             return;
         }
@@ -4157,6 +4159,18 @@ const AdminPage = () => {
                                                             className="w-full input text-sm"
                                                         />
                                                         <p className="text-xs text-gray-500 mt-1">Alternativa: cole um link direto para a imagem</p>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium">Link Fixo do Google Meet</label>
+                                                        <Input
+                                                            value={professionalFormData.personal_meet_link || ''}
+                                                            placeholder="https://meet.google.com/abc-defg-hij"
+                                                            onChange={(e) => setProfessionalFormData({ ...professionalFormData, personal_meet_link: e.target.value })}
+                                                        />
+                                                        <p className="text-xs text-gray-500">
+                                                            Link permanente que será enviado aos pacientes quando agendarem consultas pelo Google Meet com este profissional.
+                                                        </p>
                                                     </div>
 
                                                     {/* Preview da imagem */}
