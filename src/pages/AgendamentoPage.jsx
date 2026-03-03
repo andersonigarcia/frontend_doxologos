@@ -495,8 +495,13 @@ const AgendamentoPage = () => {
       return false;
     }
 
-    if (!authUser && (!patientData.name || !patientData.email || !patientData.phone || emailError)) {
-      return false;
+    if (!authUser) {
+      if (!patientData.email || emailError) {
+        return false;
+      }
+      if (!isExistingPatient && (!patientData.name || !patientData.phone)) {
+        return false;
+      }
     }
 
     if (authUser) {
@@ -537,12 +542,13 @@ const AgendamentoPage = () => {
   );
 
   const submitButtonTitle = useMemo(() => {
-    if (!authUser && (!patientData.name || !patientData.email || !patientData.phone)) {
-      return 'Preencha todos os campos obrigatórios';
-    }
+    if (!authUser) {
+      if (emailError) return 'Digite um email válido';
+      if (!patientData.email) return 'Preencha seu email';
 
-    if (!authUser && emailError) {
-      return 'Digite um email válido';
+      if (!isExistingPatient && (!patientData.name || !patientData.phone)) {
+        return 'Preencha todos os campos obrigatórios';
+      }
     }
 
     if (!patientData.acceptTerms) {
@@ -873,6 +879,7 @@ const AgendamentoPage = () => {
       }
 
       let userId;
+      let dynamicAuthMetadata = {};
 
       console.log('👤 [handleBooking] Verificando autenticação...');
 
@@ -898,6 +905,7 @@ const AgendamentoPage = () => {
         }
 
         userId = signInData.user?.id;
+        dynamicAuthMetadata = signInData.user?.user_metadata || {};
         setIsExistingPatient(true);
         toast({
           title: 'Login confirmado!',
@@ -939,6 +947,7 @@ const AgendamentoPage = () => {
             }
 
             userId = signInData.user?.id;
+            dynamicAuthMetadata = signInData.user?.user_metadata || {};
             toast({
               title: 'Bem-vindo de volta!',
               description: 'Localizamos seu cadastro e fizemos login para continuar.'
@@ -954,6 +963,7 @@ const AgendamentoPage = () => {
           }
         } else {
           userId = signUpData.user?.id || signUpData.session?.user?.id;
+          dynamicAuthMetadata = signUpData.user?.user_metadata || signUpData.session?.user?.user_metadata || {};
           toast({
             title: 'Cadastro criado!',
             description: 'Enviamos um email para confirmar seu acesso à Área do Paciente.'
@@ -973,6 +983,7 @@ const AgendamentoPage = () => {
                 const sessionUserId = autoSignInData.session?.user?.id || autoSignInData.user?.id;
                 if (sessionUserId) {
                   userId = sessionUserId;
+                  dynamicAuthMetadata = autoSignInData.session?.user?.user_metadata || autoSignInData.user?.user_metadata || dynamicAuthMetadata;
                   console.log('✅ [handleBooking] Sessão autenticada após cadastro:', sessionUserId);
                 }
               }
@@ -1018,8 +1029,8 @@ const AgendamentoPage = () => {
 
       console.log('📝 [handleBooking] Preparando dados do agendamento...');
 
-      const authMetadata = authUser?.user_metadata || {};
-      const normalizedPatientEmail = (patientData.email || authUser?.email || '').trim();
+      const authMetadata = Object.keys(authUser?.user_metadata || {}).length > 0 ? authUser.user_metadata : dynamicAuthMetadata || {};
+      const normalizedPatientEmail = (patientData.email || authUser?.email || authMetadata.email || '').trim();
       const normalizedPatientName = (patientData.name || authMetadata.full_name || authMetadata.name || '').trim();
       const safePatientName = normalizedPatientName || (authUser?.email ? authUser.email.split('@')[0] : 'Paciente Doxologos');
       const rawPatientPhone = (patientData.phone || authMetadata.phone || authMetadata.phone_number || '').trim();

@@ -143,7 +143,7 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
   const schema = useMemo(
     () =>
       buildPatientSchema({
-        requireIdentityFields: !authUser,
+        requireIdentityFields: !authUser && !isExistingPatient,
         requirePassword: !authUser,
         requireConfirmation: !authUser && !isExistingPatient,
       }),
