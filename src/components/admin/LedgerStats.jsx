@@ -25,7 +25,8 @@ export function LedgerStats() {
             // In a real production app with millions of rows, this should be a Postgres View or Materialized View
             const { data, error } = await supabase
                 .from('payment_ledger_entries')
-                .select('account_code, entry_type, amount');
+                .select('account_code, entry_type, amount')
+                .limit(10000);
 
             if (error) throw error;
 
