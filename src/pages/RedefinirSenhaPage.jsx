@@ -14,7 +14,7 @@ export default function RedefinirSenhaPage() {
   const { updatePassword, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,27 +32,29 @@ export default function RedefinirSenhaPage() {
     // Verificar se há um token de recuperação na URL
     const checkRecoveryToken = async () => {
       const hash = window.location.hash;
-      
-      // Se houver um hash com access_token, o Supabase já processou automaticamente
-      if (hash && hash.includes('access_token')) {
-        console.log('✅ Token de recuperação detectado na URL');
-        // Aguardar o contexto de autenticação processar
+      const search = window.location.search;
+
+      // Se houver um hash com access_token ou query string com code (PKCE do Supabase v2), o Supabase já processará
+      if ((hash && hash.includes('access_token')) || (search && search.includes('code='))) {
+        console.log('✅ Token de recuperação ou código PKCE detectado na URL');
+        // Aguardar o contexto de autenticação processar e capturar o usuário
         setTimeout(() => {
           setValidatingToken(false);
-        }, 2000);
+        }, 3000);
         return;
       }
-      
-      // Se não há hash mas há usuário, está OK
+
+      // Se não há token na URL mas há usuário, está OK (já logado/processado)
       if (user) {
         console.log('✅ Usuário autenticado:', user.email);
         setValidatingToken(false);
         return;
       }
-      
-      // Se não há token nem usuário após 5 minutos (300000ms), mostrar erro mas NÃO redirecionar
+
+      // Se não há token nem usuário após 10 segundos, mostrar erro mas NÃO redirecionar
+      // Isso conserta uma espera excessiva de 5 minutos.
       setTimeout(() => {
-        if (!user && !window.location.hash.includes('access_token')) {
+        if (!user && !window.location.hash.includes('access_token') && !window.location.search.includes('code=')) {
           console.error('❌ Token não encontrado ou expirado');
           toast({
             variant: 'destructive',
@@ -61,7 +63,7 @@ export default function RedefinirSenhaPage() {
           });
         }
         setValidatingToken(false);
-      }, 300000);
+      }, 10000);
     };
 
     checkRecoveryToken();
@@ -85,7 +87,7 @@ export default function RedefinirSenhaPage() {
 
     if (!error) {
       setSuccess(true);
-      
+
       // Redirecionar após 3 segundos
       setTimeout(() => {
         navigate('/area-do-paciente');
@@ -110,7 +112,7 @@ export default function RedefinirSenhaPage() {
                 <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-                
+
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Validando link de recuperação...
@@ -145,7 +147,7 @@ export default function RedefinirSenhaPage() {
                 <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                   <CheckCircle2 className="w-8 h-8 text-green-600" />
                 </div>
-                
+
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Senha Atualizada!
@@ -185,7 +187,7 @@ export default function RedefinirSenhaPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
@@ -275,9 +277,8 @@ export default function RedefinirSenhaPage() {
                     </p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                          passwordLength ? 'bg-green-100' : 'bg-gray-200'
-                        }`}>
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordLength ? 'bg-green-100' : 'bg-gray-200'
+                          }`}>
                           {passwordLength && <CheckCircle2 className="w-3 h-3 text-green-600" />}
                         </div>
                         <span className={passwordLength ? 'text-green-700' : 'text-gray-600'}>
@@ -285,9 +286,8 @@ export default function RedefinirSenhaPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-sm">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                          passwordsMatch ? 'bg-green-100' : 'bg-gray-200'
-                        }`}>
+                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordsMatch ? 'bg-green-100' : 'bg-gray-200'
+                          }`}>
                           {passwordsMatch && <CheckCircle2 className="w-3 h-3 text-green-600" />}
                         </div>
                         <span className={passwordsMatch ? 'text-green-700' : 'text-gray-600'}>
