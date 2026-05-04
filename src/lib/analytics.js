@@ -5,7 +5,7 @@ class AnalyticsManager {
     this.gaId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-XXXXXXXXXX';
     this.sessionId = this.generateSessionId();
     this.pageLoadTime = performance.now();
-    
+
     if (this.isProduction) {
       this.initializeAnalytics();
       this.setupPerformanceMonitoring();
@@ -48,7 +48,7 @@ class AnalyticsManager {
 
     // Monitor resource loading
     this.monitorResourceTiming();
-    
+
     // Monitor JavaScript errors
     this.setupErrorTracking();
   }
@@ -73,8 +73,8 @@ class AnalyticsManager {
         }
       }
     });
-    
-    observer.observe({type: 'resource', buffered: true});
+
+    observer.observe({ type: 'resource', buffered: true });
   }
 
   setupErrorTracking() {
@@ -100,7 +100,7 @@ class AnalyticsManager {
   // Core tracking methods
   trackPageView(pageName, pageTitle = document.title) {
     if (!this.isProduction || typeof gtag !== 'function') return;
-    
+
     gtag('config', this.gaId, {
       page_title: pageTitle,
       page_location: window.location.href,
@@ -111,7 +111,7 @@ class AnalyticsManager {
 
   trackEvent(eventName, parameters = {}) {
     if (!this.isProduction || typeof gtag !== 'function') return;
-    
+
     gtag('event', eventName, {
       session_id: this.sessionId,
       timestamp: Date.now(),
@@ -160,6 +160,29 @@ class AnalyticsManager {
         price: amount
       }]
     });
+
+    // Meta Pixel Purchase Event
+    if (typeof fbq === 'function') {
+      fbq('track', 'Purchase', {
+        value: amount,
+        currency: 'BRL',
+        content_name: 'Consulta Psicológica',
+        content_ids: [serviceId],
+        content_type: 'product',
+        order_id: bookingId
+      });
+    }
+
+    // Google Ads Conversion Event
+    if (typeof gtag === 'function') {
+      gtag('event', 'conversion', {
+        'send_to': 'AW-18137070850/X0LkCPvR2qYcEIL6tshD',
+        'value': amount || 1.0,
+        'currency': 'BRL',
+        'transaction_id': bookingId,
+        'new_customer': this.getUserType() === 'new_visitor'
+      });
+    }
   }
 
   trackTestimonialSubmitted(rating) {
@@ -198,11 +221,11 @@ class AnalyticsManager {
     const start = performance.now();
     const result = fn();
     const duration = performance.now() - start;
-    
+
     if (duration > 100) { // Track slow functions (>100ms)
       this.trackPerformanceMetric(`function_${functionName}`, duration);
     }
-    
+
     return result;
   }
 
@@ -210,11 +233,11 @@ class AnalyticsManager {
     const start = performance.now();
     const result = await fn();
     const duration = performance.now() - start;
-    
+
     if (duration > 500) { // Track slow async functions (>500ms)
       this.trackPerformanceMetric(`async_function_${functionName}`, duration);
     }
-    
+
     return result;
   }
 
@@ -225,6 +248,13 @@ class AnalyticsManager {
       event_label: `${funnelName} - Step ${step}`,
       ...metadata
     });
+
+    // Notify Meta Pixel of Checkout Initiation if it's the beginning of a booking process
+    if (typeof fbq === 'function') {
+      if (funnelName.toLowerCase().includes('booking') && step === 1) {
+        fbq('track', 'InitiateCheckout');
+      }
+    }
   }
 
   // A/B Testing support

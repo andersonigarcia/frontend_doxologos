@@ -47,6 +47,7 @@ import { ProfitLossDashboard } from '@/components/admin/ProfitLossDashboard';
 import { LedgerTable } from '@/components/admin/LedgerTable';
 import { LedgerStats } from '@/components/admin/LedgerStats';
 import { LedgerCharts } from '@/components/admin/LedgerCharts';
+import { DashboardGrowth } from '@/components/admin/growth/DashboardGrowth';
 import { AvailabilityManager } from '@/components/admin/availability/AvailabilityManager';
 import { CostFormModal } from '@/components/admin/CostFormModal';
 import RefundRequestDashboard from '@/components/admin/RefundRequestDashboard';
@@ -5278,6 +5279,15 @@ const AdminPage = () => {
                                             </form>
                                         </div>
                                     </div>
+                                </TabsContent>
+                            )
+                        }
+
+                        {/* Aba Growth / Tráfego (Novo) */}
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="growth" className="mt-6">
+                                    <DashboardGrowth />
                                 </TabsContent>
                             )
                         }
