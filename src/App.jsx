@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -66,6 +66,7 @@ const PageLoadingSpinner = () => (
 
 function AppContent() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Track page views and errors
   usePageTracking();
@@ -78,6 +79,20 @@ function AppContent() {
     warningTime: 2 * 60 * 1000,          // Avisar 2 minutos antes
     enabled: true
   });
+
+  // FIX: Quando o email de recuperação de senha redireciona para a raiz com ?code=,
+  // redirecionar automaticamente para /redefinir-senha preservando o código PKCE.
+  // Isso acontece quando o template de email do Supabase usa {{ .SiteURL }} em vez de {{ .ConfirmationURL }}.
+  useEffect(() => {
+    if (location.pathname === '/') {
+      const params = new URLSearchParams(location.search);
+      const code = params.get('code');
+      if (code) {
+        console.log('🔀 Código PKCE detectado na raiz, redirecionando para /redefinir-senha');
+        navigate(`/redefinir-senha?code=${encodeURIComponent(code)}`, { replace: true });
+      }
+    }
+  }, [location, navigate]);
 
   // Hide WhatsApp button on booking page to prevent overlap with conversion CTAs
   const shouldHideWhatsApp = location.pathname === '/agendamento';

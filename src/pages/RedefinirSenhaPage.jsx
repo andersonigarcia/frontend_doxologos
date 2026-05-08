@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Heart, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,10 @@ export default function RedefinirSenhaPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [validatingToken, setValidatingToken] = useState(true);
+  const [tokenError, setTokenError] = useState(false);
+
+  // Ref para evitar dupla execução em React.StrictMode
+  const hasAttemptedVerification = useRef(false);
 
   // Validações
   const passwordLength = newPassword.length >= 6;
@@ -29,45 +33,98 @@ export default function RedefinirSenhaPage() {
   const isValid = passwordLength && passwordsMatch;
 
   useEffect(() => {
-    // Verificar se há um token de recuperação na URL
+    // Prevenir dupla execução (React.StrictMode remonta o componente em dev)
+    if (hasAttemptedVerification.current) return;
+    hasAttemptedVerification.current = true;
+
     const checkRecoveryToken = async () => {
       const hash = window.location.hash;
-      const search = window.location.search;
+      const urlParams = new URLSearchParams(window.location.search);
 
-      // Se houver um hash com access_token ou query string com code (PKCE do Supabase v2), o Supabase já processará
-      if ((hash && hash.includes('access_token')) || (search && search.includes('code='))) {
-        console.log('✅ Token de recuperação ou código PKCE detectado na URL');
-        // Aguardar o contexto de autenticação processar e capturar o usuário
-        setTimeout(() => {
-          setValidatingToken(false);
-        }, 3000);
-        return;
-      }
+      // ─── Prioridade 1: token_hash via verifyOtp (funciona cross-browser) ───
+      // Este é o fluxo principal. O link do email envia token_hash diretamente
+      // para a página, sem passar pelo endpoint /auth/v1/verify do Supabase.
+      // Não depende de code_verifier no localStorage, então funciona mesmo
+      // quando o paciente abre o link em outro navegador/dispositivo.
+      const tokenHash = urlParams.get('token_hash');
+      const type = urlParams.get('type');
 
-      // Se não há token na URL mas há usuário, está OK (já logado/processado)
-      if (user) {
-        console.log('✅ Usuário autenticado:', user.email);
-        setValidatingToken(false);
-        return;
-      }
-
-      // Se não há token nem usuário após 10 segundos, mostrar erro mas NÃO redirecionar
-      // Isso conserta uma espera excessiva de 5 minutos.
-      setTimeout(() => {
-        if (!user && !window.location.hash.includes('access_token') && !window.location.search.includes('code=')) {
-          console.error('❌ Token não encontrado ou expirado');
-          toast({
-            variant: 'destructive',
-            title: 'Link inválido ou expirado',
-            description: 'O link de recuperação pode ter expirado. Solicite um novo link.',
+      if (tokenHash && type === 'recovery') {
+        console.log('🔑 Token hash detectado, verificando via verifyOtp...');
+        try {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
           });
+          if (error) {
+            console.error('❌ Erro ao verificar token_hash:', error.message);
+            setTokenError(true);
+            toast({
+              variant: 'destructive',
+              title: 'Link expirado ou inválido',
+              description: 'O link de recuperação expirou ou já foi utilizado. Solicite um novo link.',
+            });
+          } else {
+            console.log('✅ Sessão de recuperação criada para:', data?.user?.email);
+          }
+        } catch (err) {
+          console.error('❌ Erro inesperado ao verificar token:', err);
+          setTokenError(true);
         }
         setValidatingToken(false);
-      }, 10000);
+        return;
+      }
+
+      // ─── Prioridade 2: code PKCE (fallback para emails já enviados) ───
+      // Mantido para compatibilidade com emails enviados antes da atualização
+      // do template. Funciona apenas se o code_verifier estiver no localStorage
+      // (mesmo navegador que solicitou o reset).
+      const code = urlParams.get('code');
+      if (code) {
+        console.log('🔑 Código PKCE detectado, trocando por sessão...');
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('❌ Erro ao trocar código PKCE:', error.message);
+            setTokenError(true);
+            toast({
+              variant: 'destructive',
+              title: 'Link expirado ou inválido',
+              description: 'O link de recuperação expirou. Solicite um novo link.',
+            });
+          } else {
+            console.log('✅ Sessão de recuperação criada via PKCE para:', data?.user?.email);
+          }
+        } catch (err) {
+          console.error('❌ Erro inesperado ao processar código:', err);
+          setTokenError(true);
+        }
+        setValidatingToken(false);
+        return;
+      }
+
+      // ─── Prioridade 3: hash com access_token (fluxo legado/implicit) ───
+      if (hash && hash.includes('access_token')) {
+        console.log('✅ Token de recuperação (hash) detectado na URL');
+        setTimeout(() => setValidatingToken(false), 2000);
+        return;
+      }
+
+      // ─── Prioridade 4: usuário já autenticado (ex: recarregou a página) ───
+      if (user) {
+        console.log('✅ Usuário já autenticado:', user.email);
+        setValidatingToken(false);
+        return;
+      }
+
+      // Sem token e sem usuário = link inválido ou acesso direto
+      console.error('❌ Nenhum token de recuperação encontrado na URL');
+      setTokenError(true);
+      setValidatingToken(false);
     };
 
     checkRecoveryToken();
-  }, [user, navigate, toast]);
+  }, [user, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,6 +180,76 @@ export default function RedefinirSenhaPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Estado de erro do token (link expirado ou inválido)
+  if (tokenError) {
+    return (
+      <>
+        <Helmet>
+          <title>Link Expirado - Doxologos</title>
+        </Helmet>
+
+        <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
+                <Heart className="w-8 h-8 fill-[#2d8659]" />
+                Doxologos
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <Card>
+                <CardContent className="pt-6 text-center space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-8 h-8 text-red-600" />
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Link Expirado ou Inválido
+                    </h2>
+                    <p className="text-gray-600">
+                      O link de recuperação de senha expirou ou já foi utilizado.
+                      Solicite um novo link para redefinir sua senha.
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-sm text-amber-800">
+                      <strong>💡 Dica:</strong> Os links de recuperação expiram após 1 hora por motivos de segurança.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={() => navigate('/recuperar-senha')}
+                    className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                  >
+                    Solicitar Novo Link
+                  </Button>
+
+                  <Link
+                    to="/"
+                    className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#2d8659] transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar para o site
+                  </Link>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </>
