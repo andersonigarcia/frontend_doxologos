@@ -254,6 +254,11 @@ const HomePage = () => {
           name="description"
           content="Atendimento psicológico, workshops e palestras online com foco na ética cristã e acolhimento integral."
         />
+        <link rel="canonical" href="https://doxologos.com.br" />
+        <meta property="og:title" content="Doxologos - Clínica de Atendimento Psicológico Online com Ética Cristã" />
+        <meta property="og:description" content="Atendimento psicológico, workshops e palestras online com foco na ética cristã e acolhimento integral." />
+        <meta property="og:url" content="https://doxologos.com.br" />
+        <meta property="og:type" content="website" />
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -362,14 +367,32 @@ const HomePage = () => {
               </div>
             </div>
             <div>
-              <h3 className="font-bold text-lg mb-4">Contato</h3>
-              <div className="space-y-2 text-gray-400">
+              <h3 className="font-bold text-lg mb-4">Contato e Registro</h3>
+              <div className="space-y-2 text-gray-400 text-sm">
                 <p>contato@doxologos.com.br</p>
                 <p>(31) 97198-2947</p>
+                {/*<p className="border-t border-gray-800 pt-2 text-xs">
+                  CNPJ: 00.000.000/0000-00 (Placeholder)<br />
+                  Resp. Técnico: Psic. [Nome do Profissional] - CRP [00/0000]<br />
+                  <a href="https://e-psi.cfp.org.br" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                    Consulte nosso cadastro e-Psi
+                  </a>
+                </p> */}
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+
+          <div className="border-t border-gray-800 pt-6 pb-4 text-xs text-gray-500 max-w-3xl mx-auto text-center">
+            <p className="font-medium text-yellow-500 mb-2">
+              ⚠️ ATENÇÃO: Este site não oferece atendimento para casos de urgência ou emergência de saúde mental.
+              Em caso de crise grave, ligue 188 (CVV - Centro de Valorização da Vida) ou procure o pronto-socorro mais próximo.
+            </p>
+            <p>
+              Atendimento em conformidade com a Resolução CFP nº 11/2018 e orientações do Conselho Federal de Psicologia.
+            </p>
+          </div>
+
+          <div className="border-t border-gray-800 pt-6 text-center text-gray-400 text-sm">
             <p>&copy; {new Date().getFullYear()} Doxologos. Todos os direitos reservados.</p>
           </div>
         </div>

@@ -12,6 +12,11 @@ const QuemSomosPage = () => {
       <Helmet>
         <title>Quem Somos - Doxologos Clínica Online</title>
         <meta name="description" content="Conheça a Doxologos, nossa missão, visão e valores. Atendimento psicológico com ética cristã e acolhimento integral." />
+        <link rel="canonical" href="https://doxologos.com.br/quem-somos" />
+        <meta property="og:title" content="Quem Somos - Doxologos Clínica Online" />
+        <meta property="og:description" content="Conheça a Doxologos, nossa missão, visão e valores. Atendimento psicológico com ética cristã e acolhimento integral." />
+        <meta property="og:url" content="https://doxologos.com.br/quem-somos" />
+        <meta property="og:type" content="website" />
       </Helmet>
 
       <header className="bg-white shadow-sm">
