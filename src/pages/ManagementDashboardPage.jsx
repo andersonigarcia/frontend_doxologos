@@ -18,6 +18,7 @@ export const ManagementDashboardPage = () => {
   const [temporalData, setTemporalData] = useState([]);
   const [workloadData, setWorkloadData] = useState([]);
   const [retentionData, setRetentionData] = useState([]);
+  const [pageViewsData, setPageViewsData] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -54,6 +55,11 @@ export const ManagementDashboardPage = () => {
       const { data: retentionDataRes, error: retentionError } = await supabase.rpc('get_patient_retention');
       if (retentionError) throw retentionError;
       setRetentionData(retentionDataRes || []);
+
+      // 5. Fetch Page Views
+      const { data: pageViewsRes, error: pageViewsError } = await supabase.rpc('get_page_views_stats', { days_limit: 30 });
+      if (pageViewsError) throw pageViewsError;
+      setPageViewsData(pageViewsRes || []);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -218,6 +224,41 @@ export const ManagementDashboardPage = () => {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Page Views Ranking */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+            className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+          >
+            <h2 className="text-lg font-semibold mb-4 text-gray-800">Páginas Mais Acessadas (30 dias)</h2>
+            <div className="h-72 overflow-y-auto pr-2 custom-scrollbar">
+              {pageViewsData.length === 0 ? (
+                <p className="text-gray-500 text-center mt-10">Nenhum dado de acesso disponível ainda.</p>
+              ) : (
+                <div className="space-y-4">
+                  {pageViewsData.map((page, index) => (
+                    <div key={page.path} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                          {index + 1}º
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 truncate max-w-[200px]" title={page.path}>
+                            {page.path === '/' ? '/ (Home)' : page.path}
+                          </p>
+                          <p className="text-xs text-gray-500">{page.unique_sessions} sessões únicas</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900">{page.views}</p>
+                        <p className="text-xs text-gray-500">views</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </motion.div>
