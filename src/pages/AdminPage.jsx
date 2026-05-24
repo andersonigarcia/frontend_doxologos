@@ -2192,6 +2192,11 @@ const AdminPage = () => {
                             <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
                                 <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
                             </Link>
+                            {userRole === 'admin' && (
+                                <Link to="/admin/dashboard" className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-3 py-1.5 rounded-md">
+                                    <LayoutDashboard className="w-4 h-4 mr-1" /> Dashboard Gerencial
+                                </Link>
+                            )}
                             <div className="h-6 w-px bg-gray-300"></div>
                             <UserBadge
                                 user={user}
@@ -2265,6 +2270,15 @@ const AdminPage = () => {
                                 >
                                     <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
                                 </Link>
+                                {userRole === 'admin' && (
+                                    <Link
+                                        to="/admin/dashboard"
+                                        className="block px-2 py-2 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                    >
+                                        <LayoutDashboard className="w-4 h-4 mr-2 inline" /> Dashboard Gerencial
+                                    </Link>
+                                )}
                                 {hasEventsTab && (
                                     <Button
                                         variant="outline"

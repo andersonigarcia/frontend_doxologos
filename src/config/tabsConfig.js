@@ -22,7 +22,7 @@ import {
  */
 export const tabsConfig = {
     admin: [
-        // { value: 'growth', label: 'Growth (Marketing)', icon: LineChart },
+        { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'payments', label: 'Pagamentos', icon: DollarSign },
         { value: 'profit-loss', label: 'Lucro/Prejuízo', icon: TrendingUp },

@@ -17,7 +17,7 @@ async function fetchProfessionalStats(professionalId) {
                 .from('professionals')
                 .select('id')
                 .eq('user_id', user.id)
-                .single();
+                .maybeSingle();
             profId = profData?.id;
         }
     }

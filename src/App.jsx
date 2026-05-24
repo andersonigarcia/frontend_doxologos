@@ -41,6 +41,7 @@ const MinhasInscricoesPage = lazy(() => import('@/pages/MinhasInscricoesPage'));
 const AdminUsuariosPage = lazy(() => import('@/pages/AdminUsuariosPage'));
 const TermosCondicoesPage = lazy(() => import('@/pages/TermosCondicoesPage'));
 const FloatingWhatsAppButton = lazy(() => import('@/components/FloatingWhatsAppButton'));
+const ManagementDashboardPage = lazy(() => import('@/pages/ManagementDashboardPage'));
 
 // PERF (P-02): QueryClient com staleTime e gcTime para evitar refetches desnecessários
 const queryClient = new QueryClient({
@@ -117,6 +118,13 @@ function AppContent() {
             <ProtectedRoute requiredRoles={['admin', 'professional']} redirectTo="/">
               <PageErrorBoundary pageName="Admin">
                 <AdminPage />
+              </PageErrorBoundary>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/dashboard" element={
+            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+              <PageErrorBoundary pageName="Dashboard Gerencial">
+                <ManagementDashboardPage />
               </PageErrorBoundary>
             </ProtectedRoute>
           } />
