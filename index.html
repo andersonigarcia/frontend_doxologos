@@ -165,14 +165,16 @@
 		</script>
 
 	<!-- Google Analytics 4 e Google Ads -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=G-1RMKGB754J"></script>
-	<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18137070850"></script>
+	<script async src="https://www.googletagmanager.com/gtag/js?id=GT-MR45BRLS"></script>
 	<script>
 		window.dataLayer = window.dataLayer || [];
 		function gtag() { dataLayer.push(arguments); }
 		gtag('js', new Date());
 
-		// Iniciação do Google Ads
+		// Google Tag container (carrega GA4 + Google Ads automaticamente)
+		gtag('config', 'GT-MR45BRLS');
+
+		// Google Ads — configuração explícita para conversões
 		gtag('config', 'AW-18137070850');
 	</script>
 	<script type="module">

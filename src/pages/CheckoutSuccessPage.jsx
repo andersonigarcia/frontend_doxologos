@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
@@ -17,6 +17,7 @@ const CheckoutSuccessPage = () => {
     const [booking, setBooking] = useState(null);
     const [payment, setPayment] = useState(null);
     const [loading, setLoading] = useState(true);
+    const conversionTrackedRef = useRef(false);
 
     // Pegar dados do state (quando vem do CheckoutPage)
     const stateBookingId = location.state?.bookingId;
@@ -48,20 +49,24 @@ const CheckoutSuccessPage = () => {
                     if (bookingData) {
                         setBooking(bookingData);
                         
-                        // Track successful booking conversion
-                        logger.success('Booking completed successfully', {
-                            bookingId: bookingData.id,
-                            professionalId: bookingData.professional_id,
-                            serviceId: bookingData.service_id,
-                            amount: bookingData.service?.price
-                        });
-                        
-                        analytics.trackBookingCompleted(
-                            bookingData.id,
-                            bookingData.professional_id,
-                            bookingData.service_id,
-                            bookingData.service?.price || 0
-                        );
+                        // Track successful booking conversion (only once)
+                        if (!conversionTrackedRef.current) {
+                            conversionTrackedRef.current = true;
+
+                            logger.success('Booking completed successfully', {
+                                bookingId: bookingData.id,
+                                professionalId: bookingData.professional_id,
+                                serviceId: bookingData.service_id,
+                                amount: bookingData.service?.price
+                            });
+
+                            analytics.trackBookingCompleted(
+                                bookingData.id,
+                                bookingData.professional_id,
+                                bookingData.service_id,
+                                bookingData.service?.price || 0
+                            );
+                        }
                     }
                 }
 
