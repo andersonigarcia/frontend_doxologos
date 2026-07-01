@@ -49,126 +49,104 @@ const PaymentSummaryStep = ({
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3 flex items-center justify-center gap-3">
-          <Shield className="w-8 h-8 text-[#2d8659]" />
           Confirme seu agendamento
         </h2>
-        <p className="text-gray-600 text-lg">Verifique os dados abaixo antes de seguir para o pagamento seguro</p>
+        <p className="text-gray-600">Verifique os dados abaixo antes de seguir para o pagamento</p>
       </div>
 
-      <div className="bg-gradient-to-br from-[#2d8659]/5 to-blue-50 p-8 rounded-xl border border-[#2d8659]/20">
-        <h3 className="font-bold text-xl mb-6 flex items-center text-[#2d8659]">
-          <CheckCircle className="w-6 h-6 mr-2" />
-          Resumo do Agendamento
-        </h3>
-        <div className="grid md:grid-cols-2 gap-6">
+      {/* Container Estilo Ticket */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+        {/* Top Header */}
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
+          <CheckCircle className="w-5 h-5 text-[#2d8659]" />
+          <h3 className="font-bold text-gray-900">Resumo do Agendamento</h3>
+        </div>
+        
+        {/* Detalhes do Agendamento */}
+        <div className="p-6 grid sm:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#2d8659] rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-start gap-3">
+              <User className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-600">Profissional</p>
-                <p className="font-bold text-gray-900">{professional?.name || 'Selecione um profissional'}</p>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Profissional</p>
+                <p className="font-semibold text-gray-900">{professional?.name || 'Selecione um profissional'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-start gap-3">
+              <CreditCard className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-600">Serviço</p>
-                <p className="font-bold text-gray-900">{serviceDetails?.name || 'Selecione o serviço'}</p>
-                {serviceDuration && <p className="text-sm text-gray-600">Duração: {serviceDuration}</p>}
-                {meetingPlatform && (
-                  <p className="text-sm text-gray-600">
-                    Plataforma: Google Meet
-                  </p>
-                )}
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Serviço</p>
+                <p className="font-semibold text-gray-900">{serviceDetails?.name || 'Selecione o serviço'}</p>
+                {serviceDuration && <p className="text-sm text-gray-600 mt-1">Duração: {serviceDuration}</p>}
               </div>
             </div>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-start gap-3">
+              <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-600">Data</p>
-                <p className="font-bold text-gray-900">{formattedDate}</p>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Data</p>
+                <p className="font-semibold text-gray-900">{formattedDate}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-start gap-3">
+              <Clock className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-600">Horário</p>
-                <p className="font-bold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
+                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Horário</p>
+                <p className="font-semibold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-200 mt-6 pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-green-600" />
-              <span className="text-sm text-gray-600">Pagamento seguro</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600 mb-1">Valor total:</p>
-              <p className="text-3xl font-bold text-[#2d8659]">R$ {formatPrice(serviceDetails?.price)}</p>
-            </div>
-          </div>
+        {/* Linha Tracejada Estilo Ticket */}
+        <div className="relative flex items-center justify-center h-4">
+           <div className="absolute left-[-10px] w-5 h-5 rounded-full bg-white border-r border-gray-200 z-10"></div>
+           <div className="w-full border-t-2 border-dashed border-gray-200"></div>
+           <div className="absolute right-[-10px] w-5 h-5 rounded-full bg-white border-l border-gray-200 z-10"></div>
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-start gap-3">
-            <Zap className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-blue-900 mb-1">Próximos passos</h4>
-              <p className="text-sm text-blue-800">
-                Após o pagamento, você receberá por email e WhatsApp o link da sala Google Meet. A sessão começa pontualmente no horário escolhido.
-              </p>
-            </div>
-          </div>
+        {/* Valor Total */}
+        <div className="p-6 bg-gray-50 flex items-center justify-between">
+           <span className="text-gray-600 font-medium">Valor total a pagar:</span>
+           <span className="text-3xl font-bold text-[#2d8659]">R$ {formatPrice(serviceDetails?.price)}</span>
         </div>
       </div>
 
-      <div className="mt-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#2d8659]">Pagamento 100% seguro</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {paymentSecurityHighlights.map((highlight) => {
-              const Icon = highlight.icon || Shield;
-              return (
-                <div key={highlight.title} className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#2d8659]/10 flex items-center justify-center text-[#2d8659]">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900">{highlight.title}</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">{highlight.description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      <div className="mb-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex items-start gap-3">
+        <Zap className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+        <p className="text-sm text-blue-800 leading-relaxed">
+          Após o pagamento, você receberá o link da sala de vídeo. A sessão começa pontualmente.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-1 mt-6">
-        <div className="flex items-start gap-2">
-          <input type="checkbox" id="acceptTerms" className="mt-1" {...acceptTermsField} />
-          <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-            Li e aceito os{' '}
-            <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-[#2d8659] hover:underline font-medium">
-              termos e condições
-            </a>{' '}
-            *
+      <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-6">
+        <div className="flex items-center gap-2 text-gray-500">
+          <Shield className="w-4 h-4 text-green-600" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Pagamento Seguro</span>
+        </div>
+        {paymentSecurityHighlights.slice(0, 2).map((highlight) => {
+          const Icon = highlight.icon || Shield;
+          return (
+            <div key={highlight.title} className="flex items-center gap-2 text-gray-500">
+              <Icon className="w-4 h-4 text-gray-400" />
+              <span className="text-xs font-medium">{highlight.title}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-col gap-1 mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+        <div className="flex items-center gap-3">
+          <input type="checkbox" id="acceptTerms" className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-[#2d8659]" {...acceptTermsField} />
+          <label htmlFor="acceptTerms" className="text-sm text-gray-700 font-medium cursor-pointer">
+            Li e concordo com os{' '}
+            <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+              Termos e Condições
+            </a>
           </label>
         </div>
-        {acceptTermsError && <p className="text-red-500 text-sm">{acceptTermsError}</p>}
+        {acceptTermsError && <p className="text-red-500 text-sm ml-8 mt-1">{acceptTermsError}</p>}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mt-6">

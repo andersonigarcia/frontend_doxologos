@@ -70,10 +70,11 @@ const PatientAccountStep = ({
             <div className="relative">
               <input
                 type="email"
+                inputMode="email"
                 {...register('email', {
                   setValueAs: (value) => (value ?? '').trim(),
                 })}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-300'
+                className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-200'
                   }`}
                 placeholder="seu@email.com"
               />
@@ -143,7 +144,7 @@ const PatientAccountStep = ({
                       {...register('name', {
                         setValueAs: (value) => (value ?? '').trim(),
                       })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
                       placeholder="Seu nome completo"
                     />
                     {/* Checkmark de validação */}
@@ -165,13 +166,14 @@ const PatientAccountStep = ({
                   <div className="relative">
                     <input
                       type="tel"
+                      inputMode="numeric"
                       {...register('phone', {
                         onChange: (event) => {
                           const formatted = formatPhoneNumber(event.target.value);
                           event.target.value = formatted;
                         },
                       })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
                       placeholder="(00) 00000-0000"
                       maxLength={15}
                     />
@@ -204,51 +206,38 @@ const PatientAccountStep = ({
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Card Visual com Gradiente */}
-              <div className={`relative rounded-2xl p-6 border-2 transition-all duration-300 ${isExistingPatient
-                ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200'
-                : 'bg-gradient-to-br from-blue-50 via-sky-50 to-blue-50 border-blue-200'
+              {/* Card Simplificado */}
+              <div className={`relative rounded-xl p-4 md:p-5 border transition-all duration-300 ${isExistingPatient
+                ? 'bg-green-50 border-green-200'
+                : 'bg-blue-50 border-blue-200'
                 }`}>
-                {/* Header do Card com Ícone */}
-                <div className="flex items-start justify-between mb-6">
-                  <div className="flex items-start gap-4">
-                    {/* Ícone Grande */}
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${isExistingPatient
-                      ? 'bg-green-500 shadow-lg shadow-green-200'
-                      : 'bg-blue-500 shadow-lg shadow-blue-200'
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isExistingPatient
+                      ? 'bg-green-100 text-green-600'
+                      : 'bg-blue-100 text-blue-600'
                       }`}>
-                      {isExistingPatient ? (
-                        <UserCheck className="w-7 h-7 text-white" />
-                      ) : (
-                        <UserPlus className="w-7 h-7 text-white" />
-                      )}
+                      {isExistingPatient ? <UserCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                     </div>
-
-                    {/* Título e Subtítulo */}
                     <div>
-                      <h3 className={`text-xl font-bold mb-1 transition-colors duration-300 ${isExistingPatient ? 'text-green-900' : 'text-blue-900'
-                        }`}>
-                        {isExistingPatient ? 'Bem-vindo de volta!' : 'Novo por aqui?'}
+                      <h3 className={`font-semibold ${isExistingPatient ? 'text-green-900' : 'text-blue-900'}`}>
+                        {isExistingPatient ? 'Bem-vindo de volta!' : 'Nova conta'}
                       </h3>
-                      <p className={`text-sm transition-colors duration-300 ${isExistingPatient ? 'text-green-700' : 'text-blue-700'
-                        }`}>
-                        {isExistingPatient
-                          ? 'Encontramos seu cadastro'
-                          : 'Vamos criar sua conta'}
+                      <p className={`text-xs ${isExistingPatient ? 'text-green-700' : 'text-blue-700'}`}>
+                        {isExistingPatient ? 'Vincule seu agendamento' : 'Crie sua senha'}
                       </p>
                     </div>
                   </div>
-
-                  {/* Botão de Override - Discreto mas Visível */}
+                  
                   <button
                     type="button"
                     onClick={onToggleExistingPatient}
-                    className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${isExistingPatient
-                      ? 'text-green-700 hover:bg-green-100 border border-green-300'
-                      : 'text-blue-700 hover:bg-blue-100 border border-blue-300'
+                    className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${isExistingPatient
+                      ? 'text-green-700 hover:bg-green-200/50'
+                      : 'text-blue-700 hover:bg-blue-200/50'
                       }`}
                   >
-                    {isExistingPatient ? 'Sou novo' : 'Já tenho conta'}
+                    {isExistingPatient ? 'Trocar' : 'Já tenho conta'}
                   </button>
                 </div>
 
@@ -269,9 +258,9 @@ const PatientAccountStep = ({
                     <input
                       type={showPassword ? 'text' : 'password'}
                       {...register('password')}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
-                        ? 'border-green-200 focus:ring-green-500 focus:border-green-500'
-                        : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500'
+                      className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
+                        ? 'border-green-200 focus:ring-green-500'
+                        : 'border-blue-200 focus:ring-blue-500'
                         }`}
                       placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
                       autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
@@ -311,7 +300,7 @@ const PatientAccountStep = ({
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         {...register('confirmPassword')}
-                        className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
+                        className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
                         placeholder="Repita a senha"
                         autoComplete="new-password"
                       />
