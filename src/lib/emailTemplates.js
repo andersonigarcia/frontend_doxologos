@@ -1,4 +1,4 @@
-﻿export class EmailTemplates {
+export class EmailTemplates {
   constructor() {
     this.brandColor = "#2d8659";
     // Usar variável de ambiente ou URL de produção
@@ -31,26 +31,26 @@
   }
 
   baseTemplate(content, title = "Doxologos") {
-    return `<!DOCTYPE html>
+    const rawHtml = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>${title}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; line-height: 1.6; color: #1f2937; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 0; border-radius: 16px; border: 1px solid #f3f4f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; }
     .header { background: ${this.brandColor}; color: white; padding: 25px 30px; text-align: center; }
     .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
     .content { padding: 30px; }
-    .info-box { background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid ${this.brandColor}; }
+    .info-box { background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 16px; border: 1px solid #e5e7eb; }
     .info-box p { margin: 8px 0; font-size: 15px; }
-    .info-box strong { color: #1f2937; font-weight: 600; }
-    .tips-box { background: #fffbeb; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b; }
+    .info-box strong { color: #111827; font-weight: 600; }
+    .tips-box { background: #fffbeb; padding: 20px; margin: 20px 0; border-radius: 16px; border: 1px solid #fcd34d; }
     .tips-box h3 { margin: 0 0 15px 0; color: #92400e; font-size: 16px; }
     .tips-box ul { margin: 0; padding-left: 20px; }
     .tips-box li { margin: 8px 0; color: #78350f; }
-    .btn { display: inline-block; padding: 14px 32px; background: ${this.brandColor}; color: white !important; text-decoration: none; border-radius: 6px; font-weight: 600; margin: 10px 5px; transition: background 0.2s; }
+    .btn { display: inline-block; padding: 14px 32px; background: ${this.brandColor}; color: white !important; text-decoration: none; border-radius: 9999px; font-weight: 600; margin: 10px 5px; transition: background 0.2s; }
     .btn:hover { background: #236b47; }
     .btn-secondary { background: #6b7280; }
     .btn-secondary:hover { background: #4b5563; }
@@ -75,6 +75,12 @@
   </div>
 </body>
 </html>`;
+
+    // Limpeza de espaços em branco para evitar o bug de =20 (Quoted-Printable artifact)
+    return rawHtml
+      .replace(/>\s+</g, '><') // Remove quebras de linha/espaços excessivos entre tags
+      .replace(/\s{2,}/g, ' ') // Limita múltiplos espaços consecutivos a apenas 1
+      .trim();
   }
 
   formatDate(dateString) {
