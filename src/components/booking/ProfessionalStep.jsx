@@ -359,8 +359,8 @@ const ProfessionalStep = ({
       className={`bg-white rounded-xl shadow-lg p-8 ${reserveMobileCtaSpace ? 'pb-24' : ''}`}
     >
       {stageIndicator === 'service' ? <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Escolha o Serviço e Profissional</h2>
-        <p className="text-gray-600 text-lg">Comece selecionando o serviço ideal e depois escolha quem irá atendê-lo.</p>
+        <h2 className="text-3xl font-bold mb-3">Qual atendimento você procura?</h2>
+        <p className="text-gray-600 text-lg">Selecione a especialidade desejada para encontrarmos o psicólogo ideal para o seu momento.</p>
       </div> : ''}
 
 

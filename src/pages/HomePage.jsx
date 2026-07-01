@@ -20,6 +20,7 @@ import StickyBottomCTA from '@/components/home/StickyBottomCTA';
 import ComoFuncionaSection from '@/components/home/ComoFuncionaSection';
 import TrustIndicatorsSection from '@/components/home/TrustIndicatorsSection';
 import AnxietyGuideModal from '@/components/home/AnxietyGuideModal';
+import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const videos = [
@@ -400,6 +401,8 @@ const HomePage = () => {
 
       {/* Lead Magnet Modal */}
       <AnxietyGuideModal enabled={isLeadMagnetEnabled} />
+
+      <FloatingWhatsAppButton phoneNumber="5531971982947" message="Olá! Gostaria de tirar algumas dúvidas sobre o atendimento psicológico." />
     </>
   );
 };

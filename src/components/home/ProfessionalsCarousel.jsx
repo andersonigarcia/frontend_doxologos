@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, ExternalLink } from 'lucide-react';
-import HorizontalCarousel from '@/components/common/HorizontalCarousel';
+import { Calendar, ExternalLink, ArrowRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
@@ -61,16 +60,10 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
           <p className="text-xl text-gray-600">Equipe qualificada e comprometida com seu bem-estar</p>
         </motion.div>
 
-        <HorizontalCarousel
-          items={professionals}
-          ariaLabel="Profissionais disponíveis para agendamento"
-          trackClassName="gap-6 pb-8 pt-2 px-1"
-          itemClassName="min-w-[260px] sm:min-w-[300px] md:min-w-[320px] lg:min-w-[340px] max-w-[340px]"
-          getItemKey={(prof) => prof.id}
-          dotAriaLabel={(prof) => `Ir para o profissional ${prof?.name || ''}`}
-          gradientEdges
-          itemRenderer={({ item: prof, index }) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {professionals.slice(0, 6).map((prof, index) => (
             <motion.div
+              key={prof.id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -129,8 +122,21 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
                 </Button>
               </div>
             </motion.div>
-          )}
-        />
+          ))}
+        </div>
+
+        {professionals.length > 6 && (
+          <div className="mt-16 text-center">
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate('/agendamento')}
+              className="px-8 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white transition-colors h-14 text-lg font-medium"
+            >
+              Buscar psicólogo por especialidade <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
+        )}
       </div>
 
       <Dialog open={!!selectedProfessional} onOpenChange={(open) => !open && handleCloseProfile()}>
