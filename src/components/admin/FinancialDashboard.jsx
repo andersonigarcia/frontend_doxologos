@@ -149,7 +149,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('today')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Hoje
                         </Button>
@@ -157,7 +157,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('week')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Semana
                         </Button>
@@ -165,7 +165,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('month')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Mês
                         </Button>
@@ -173,14 +173,14 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('year')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Ano
                         </Button>
                         <Button
                             size="sm"
                             onClick={handleExportCSV}
-                            className="bg-[#2d8659] hover:bg-[#236b47] text-xs"
+                            className="rounded-full bg-[#2d8659] hover:bg-[#236b47] text-xs"
                         >
                             <Download className="w-4 h-4 mr-2" />
                             Exportar CSV

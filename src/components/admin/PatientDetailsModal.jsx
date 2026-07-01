@@ -143,14 +143,14 @@ export const PatientDetailsModal = ({
                             <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
                                 {/* Informações de Contato */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-3 p-5 bg-gray-50 border border-gray-100 rounded-2xl">
                                         <Mail className="w-5 h-5 text-[#2d8659]" />
                                         <div>
                                             <p className="text-xs text-gray-500">Email</p>
                                             <p className="font-medium text-gray-900">{patient.email || 'Não informado'}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                                    <div className="flex items-center gap-3 p-5 bg-gray-50 border border-gray-100 rounded-2xl">
                                         <Phone className="w-5 h-5 text-[#2d8659]" />
                                         <div>
                                             <p className="text-xs text-gray-500">Telefone</p>
@@ -161,7 +161,7 @@ export const PatientDetailsModal = ({
 
                                 {/* Estatísticas */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                    <div className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
                                         <div className="flex items-center gap-2 mb-1">
                                             <Calendar className="w-4 h-4 text-blue-600" />
                                             <p className="text-xs text-blue-600 font-medium">Total</p>
@@ -170,7 +170,7 @@ export const PatientDetailsModal = ({
                                         <p className="text-xs text-blue-600">consultas</p>
                                     </div>
 
-                                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                                    <div className="p-5 bg-green-50/50 rounded-2xl border border-green-100">
                                         <div className="flex items-center gap-2 mb-1">
                                             <TrendingUp className="w-4 h-4 text-green-600" />
                                             <p className="text-xs text-green-600 font-medium">Completas</p>
@@ -179,7 +179,7 @@ export const PatientDetailsModal = ({
                                         <p className="text-xs text-green-600">finalizadas</p>
                                     </div>
 
-                                    <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                                    <div className="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                                         <div className="flex items-center gap-2 mb-1">
                                             <DollarSign className="w-4 h-4 text-emerald-600" />
                                             <p className="text-xs text-emerald-600 font-medium">Total Gasto</p>
@@ -189,7 +189,7 @@ export const PatientDetailsModal = ({
                                         </p>
                                     </div>
 
-                                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                                    <div className="p-5 bg-purple-50/50 rounded-2xl border border-purple-100">
                                         <div className="flex items-center gap-2 mb-1">
                                             <Clock className="w-4 h-4 text-purple-600" />
                                             <p className="text-xs text-purple-600 font-medium">Média</p>
@@ -223,13 +223,13 @@ export const PatientDetailsModal = ({
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
                                         placeholder="Adicione observações sobre o paciente..."
-                                        className="w-full h-32 p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent resize-none"
+                                        className="w-full h-32 p-4 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent resize-none bg-gray-50 hover:bg-gray-100 transition-all focus:bg-white"
                                     />
                                     <div className="flex justify-end mt-2">
                                         <Button
                                             onClick={handleSaveNotes}
                                             disabled={isSaving || !notes.trim()}
-                                            className="bg-[#2d8659] hover:bg-[#236b47]"
+                                            className="rounded-full bg-[#2d8659] hover:bg-[#236b47]"
                                         >
                                             {isSaving ? 'Salvando...' : 'Salvar Observações'}
                                         </Button>
@@ -248,6 +248,7 @@ export const PatientDetailsModal = ({
                                 <Button
                                     variant="outline"
                                     onClick={onClose}
+                                    className="rounded-full"
                                 >
                                     Fechar
                                 </Button>

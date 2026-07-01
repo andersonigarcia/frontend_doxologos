@@ -162,7 +162,7 @@ export function ProfessionalPaymentsList({
             </div>
 
             {/* Filtros e Ações */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -190,7 +190,7 @@ export function ProfessionalPaymentsList({
                             variant={statusFilter === 'all' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setStatusFilter('all')}
-                            className={statusFilter === 'all' ? 'bg-[#2d8659] hover:bg-[#236b47]' : ''}
+                            className={`rounded-full ${statusFilter === 'all' ? 'bg-[#2d8659] hover:bg-[#236b47]' : ''}`}
                         >
                             Todos
                         </Button>
@@ -198,7 +198,7 @@ export function ProfessionalPaymentsList({
                             variant={statusFilter === 'pending' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setStatusFilter('pending')}
-                            className={statusFilter === 'pending' ? 'bg-orange-600 hover:bg-orange-700' : ''}
+                            className={`rounded-full ${statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
                         >
                             Pendentes
                         </Button>
@@ -206,7 +206,7 @@ export function ProfessionalPaymentsList({
                             variant={statusFilter === 'paid' ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setStatusFilter('paid')}
-                            className={statusFilter === 'paid' ? 'bg-green-600 hover:bg-green-700' : ''}
+                            className={`rounded-full ${statusFilter === 'paid' ? 'bg-[#2d8659] hover:bg-[#236b47]' : ''}`}
                         >
                             Pagos
                         </Button>
@@ -217,7 +217,7 @@ export function ProfessionalPaymentsList({
                         placeholder="Buscar profissional..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                        className="flex-1 px-5 py-2 text-sm border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all"
                     />
                 </div>
 
@@ -247,7 +247,7 @@ export function ProfessionalPaymentsList({
                                 initial={{ opacity: 0, x: -20 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: index * 0.05 }}
-                                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                className="relative bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 p-5 pl-6"
                             >
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="flex-1">
@@ -289,10 +289,11 @@ export function ProfessionalPaymentsList({
                                             </p>
                                         </div>
 
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 mt-2 md:mt-0">
                                             <Button
                                                 variant="outline"
                                                 size="sm"
+                                                className="rounded-full"
                                                 onClick={() => onViewDetails(payment)}
                                                 title="Ver Detalhes"
                                             >
@@ -302,6 +303,7 @@ export function ProfessionalPaymentsList({
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
+                                                className="rounded-full"
                                                 onClick={() => onCreatePayment(payment)}
                                                 title="Editar Pagamento"
                                             >
@@ -325,18 +327,18 @@ export function ProfessionalPaymentsList({
                                             {payment.status === 'pending' && (
                                                 <Button
                                                     size="sm"
-                                                    className="bg-green-600 hover:bg-green-700"
+                                                    className="rounded-full bg-emerald-600 hover:bg-emerald-700"
                                                     onClick={() => onMarkAsPaid(payment)}
                                                 >
                                                     <Check className="w-4 h-4 mr-1" />
-                                                    Marcar como Pago
+                                                    Marcar Pago
                                                 </Button>
                                             )}
 
                                             <Button
                                                 variant="outline"
                                                 size="sm"
-                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                className="rounded-full text-red-600 hover:text-red-700 hover:bg-red-50 border-gray-200"
                                                 onClick={() => {
                                                     setPaymentToDelete(payment);
                                                     setDeleteConfirmOpen(true);

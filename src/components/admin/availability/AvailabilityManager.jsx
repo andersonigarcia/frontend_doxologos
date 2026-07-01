@@ -88,7 +88,7 @@ export const AvailabilityManager = ({
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                 <h2 className="text-2xl font-bold flex items-center">
                     <Clock className="w-6 h-6 mr-2 text-[#2d8659]" />
@@ -99,7 +99,7 @@ export const AvailabilityManager = ({
                     <Button
                         variant="outline"
                         onClick={() => setIsBlockedDatesModalOpen(true)}
-                        className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                        className="rounded-full border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
                     >
                         <CalendarX className="w-4 h-4 mr-2" />
                         Bloqueios e Exceções
@@ -108,7 +108,7 @@ export const AvailabilityManager = ({
                         isLoading={isLoadingSave}
                         loadingText="Salvando..."
                         onClick={handleSaveAvailability}
-                        className="bg-[#2d8659] hover:bg-[#236b47] text-white h-10 px-6 shadow-sm flex items-center justify-center gap-2"
+                        className="rounded-full bg-[#2d8659] hover:bg-[#236b47] text-white h-10 px-6 shadow-sm flex items-center justify-center gap-2"
                     >
                         <Save className="w-4 h-4" />
                         Salvar Disponibilidade
@@ -117,12 +117,12 @@ export const AvailabilityManager = ({
             </div>
 
             {userRole === 'admin' && (
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+                <div className="mb-6 p-5 bg-gray-50 rounded-2xl border border-gray-100">
                     <label className="block text-sm font-medium mb-1 text-gray-700">Profissional</label>
                     <select
                         value={selectedAvailProfessional}
                         onChange={e => setSelectedAvailProfessional(e.target.value)}
-                        className="w-full input bg-white"
+                        className="w-full input bg-white rounded-xl"
                     >
                         <option value="">Selecione um profissional</option>
                         {professionals.map(p => (
@@ -140,7 +140,7 @@ export const AvailabilityManager = ({
                     <select
                         value={selectedMonth}
                         onChange={e => setSelectedMonth(Number(e.target.value))}
-                        className="w-full input"
+                        className="w-full input rounded-xl"
                     >
                         {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>

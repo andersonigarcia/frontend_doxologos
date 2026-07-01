@@ -99,7 +99,7 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
                             <h3 className="font-semibold mb-3">Consultas Incluídas ({bookings.length})</h3>
                             <div className="max-h-64 overflow-y-auto space-y-2">
                                 {bookings.map(booking => (
-                                    <div key={booking.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <div key={booking.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
                                         <div>
                                             <p className="font-medium">{booking.patient_name}</p>
                                             <p className="text-sm text-gray-600">

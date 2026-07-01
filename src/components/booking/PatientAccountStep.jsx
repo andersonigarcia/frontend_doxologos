@@ -57,7 +57,7 @@ const PatientAccountStep = ({
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3">Falta pouco! Como podemos chamar você?</h2>
         <p className="text-gray-600 text-lg">Estamos quase lá. Preencha seus dados básicos para finalizarmos o agendamento.</p>
@@ -74,7 +74,7 @@ const PatientAccountStep = ({
                 {...register('email', {
                   setValueAs: (value) => (value ?? '').trim(),
                 })}
-                className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-200'
+                className={`w-full px-4 py-3 border rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-200'
                   }`}
                 placeholder="seu@email.com"
               />
@@ -101,7 +101,7 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-green-600 mt-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200"
+                className="flex items-center gap-2 text-sm text-green-600 mt-2 bg-green-50 px-3 py-2 rounded-2xl border border-green-200"
               >
                 <CheckCircle className="w-4 h-4" />
                 <span className="font-medium">✓ Email encontrado - Bem-vindo de volta!</span>
@@ -112,7 +112,7 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-blue-600 mt-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200"
+                className="flex items-center gap-2 text-sm text-blue-600 mt-2 bg-blue-50 px-3 py-2 rounded-2xl border border-blue-200"
               >
                 <Sparkles className="w-4 h-4" />
                 <span className="font-medium">✓ Novo por aqui? Vamos criar sua conta!</span>
@@ -120,7 +120,7 @@ const PatientAccountStep = ({
             )}
 
             {emailCheckError && (
-              <p className="text-amber-600 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+              <p className="text-amber-600 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-2xl border border-amber-200">
                 {emailCheckError}
               </p>
             )}
@@ -144,7 +144,7 @@ const PatientAccountStep = ({
                       {...register('name', {
                         setValueAs: (value) => (value ?? '').trim(),
                       })}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
                       placeholder="Seu nome completo"
                     />
                     {/* Checkmark de validação */}
@@ -173,7 +173,7 @@ const PatientAccountStep = ({
                           event.target.value = formatted;
                         },
                       })}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
                       placeholder="(00) 00000-0000"
                       maxLength={15}
                     />
@@ -207,7 +207,7 @@ const PatientAccountStep = ({
               transition={{ duration: 0.3 }}
             >
               {/* Card Simplificado */}
-              <div className={`relative rounded-xl p-4 md:p-5 border transition-all duration-300 ${isExistingPatient
+              <div className={`relative rounded-2xl p-4 md:p-5 border transition-all duration-300 ${isExistingPatient
                 ? 'bg-green-50 border-green-200'
                 : 'bg-blue-50 border-blue-200'
                 }`}>
@@ -258,7 +258,7 @@ const PatientAccountStep = ({
                     <input
                       type={showPassword ? 'text' : 'password'}
                       {...register('password')}
-                      className={`w-full px-4 py-3 border rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
+                      className={`w-full px-4 py-3 border rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
                         ? 'border-green-200 focus:ring-green-500'
                         : 'border-blue-200 focus:ring-blue-500'
                         }`}
@@ -300,7 +300,7 @@ const PatientAccountStep = ({
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         {...register('confirmPassword')}
-                        className="w-full px-4 py-3 border border-blue-200 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
+                        className="w-full px-4 py-3 border border-blue-200 rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
                         placeholder="Repita a senha"
                         autoComplete="new-password"
                       />
@@ -354,7 +354,7 @@ const PatientAccountStep = ({
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-600 text-sm mt-4 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
+                    className="text-red-600 text-sm mt-4 bg-red-50 px-4 py-2 rounded-2xl border border-red-200"
                   >
                     {passwordError || errors.password?.message}
                   </motion.p>
@@ -363,7 +363,7 @@ const PatientAccountStep = ({
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-red-600 text-sm mt-2 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
+                    className="text-red-600 text-sm mt-2 bg-red-50 px-4 py-2 rounded-2xl border border-red-200"
                   >
                     {errors.confirmPassword.message}
                   </motion.p>
@@ -373,7 +373,7 @@ const PatientAccountStep = ({
           )}
         </AnimatePresence>
       ) : (
-        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-2xl text-sm text-green-800">
           Você está acessando como <span className="font-semibold">{authUser?.email}</span>. Usaremos seu cadastro atual para concluir o agendamento.
         </div>
       )}
@@ -396,7 +396,7 @@ const PatientAccountStep = ({
                 key={option.id}
                 onClick={() => onSelectMeetingPlatform?.(option.id)}
                 aria-pressed={isActive}
-                className={`w-full text-left border rounded-xl p-5 transition-all ${isActive
+                className={`w-full text-left border rounded-2xl p-5 transition-all ${isActive
                   ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
                   : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
                   }`}

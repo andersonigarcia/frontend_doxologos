@@ -265,7 +265,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.professional_id}
                             onChange={(e) => setFormData(prev => ({ ...prev, professional_id: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                             required
                             disabled={!!payment}
                         >
@@ -288,7 +288,7 @@ export function PaymentFormModal({
                                 type="date"
                                 value={formData.period_start}
                                 onChange={(e) => setFormData(prev => ({ ...prev, period_start: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                                 required
                                 disabled={!!payment}
                             />
@@ -301,7 +301,7 @@ export function PaymentFormModal({
                                 type="date"
                                 value={formData.period_end}
                                 onChange={(e) => setFormData(prev => ({ ...prev, period_end: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                                 required
                                 disabled={!!payment}
                             />
@@ -310,7 +310,7 @@ export function PaymentFormModal({
 
                     {/* Valor Calculado */}
                     {formData.professional_id && formData.period_start && formData.period_end && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-blue-900">Valor Calculado</p>
@@ -337,7 +337,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.payment_method}
                             onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                         >
                             <option value="">Selecione</option>
                             <option value="pix">PIX</option>
@@ -356,7 +356,7 @@ export function PaymentFormModal({
                             type="date"
                             value={formData.payment_date}
                             onChange={(e) => setFormData(prev => ({ ...prev, payment_date: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                         />
                     </div>
 
@@ -368,7 +368,7 @@ export function PaymentFormModal({
                         {!formData.payment_proof_url ? (
                             <div className="flex items-center gap-4">
                                 <label className="flex-1 cursor-pointer">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#2d8659] transition-colors">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-[#2d8659] transition-colors">
                                         <div className="flex items-center justify-center gap-2 text-gray-600">
                                             <Upload className="w-5 h-5" />
                                             <span className="text-sm">
@@ -386,7 +386,7 @@ export function PaymentFormModal({
                                 </label>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 bg-gray-50 border rounded-lg p-2">
+                            <div className="flex items-center gap-2 bg-gray-50 border rounded-2xl p-2">
                                 <div className="flex-1 overflow-hidden">
                                     {formData.payment_proof_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                         <div className="relative group">
@@ -434,7 +434,7 @@ export function PaymentFormModal({
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             rows={3}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                             placeholder="Adicione observações sobre este pagamento..."
                         />
                     </div>
@@ -447,7 +447,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.status}
                             onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                         >
                             <option value="pending">Pendente</option>
                             <option value="paid">Pago</option>
@@ -466,7 +466,7 @@ export function PaymentFormModal({
                         </Button>
                         <Button
                             type="submit"
-                            className="bg-[#2d8659] hover:bg-[#236b47]"
+                            className="rounded-full bg-[#2d8659] hover:bg-[#236b47]"
                             disabled={loading || calculatingAmount}
                         >
                             {loading ? (

@@ -96,7 +96,7 @@ export function CostFormModal({ open, onClose, onSuccess, cost }) {
                     <div>
                         <label className="block text-sm font-medium mb-2">Categoria *</label>
                         <select value={formData.category} onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2d8659]" required>
+                            className="w-full px-4 py-2 border rounded-2xl focus:ring-2 focus:ring-[#2d8659]" required>
                             <option value="server">Servidor</option>
                             <option value="marketing">Marketing</option>
                             <option value="tools">Ferramentas</option>
@@ -107,18 +107,18 @@ export function CostFormModal({ open, onClose, onSuccess, cost }) {
                     <div>
                         <label className="block text-sm font-medium mb-2">Descrição *</label>
                         <input type="text" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2d8659]" required />
+                            className="w-full px-4 py-2 border rounded-2xl focus:ring-2 focus:ring-[#2d8659]" required />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">Valor *</label>
                             <input type="number" step="0.01" value={formData.amount} onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2d8659]" required />
+                                className="w-full px-4 py-2 border rounded-2xl focus:ring-2 focus:ring-[#2d8659]" required />
                         </div>
                         <div>
                             <label className="block text-sm font-medium mb-2">Data *</label>
                             <input type="date" value={formData.cost_date} onChange={(e) => setFormData(prev => ({ ...prev, cost_date: e.target.value }))}
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2d8659]" required />
+                                className="w-full px-4 py-2 border rounded-2xl focus:ring-2 focus:ring-[#2d8659]" required />
                         </div>
                     </div>
                     <div>
@@ -131,7 +131,7 @@ export function CostFormModal({ open, onClose, onSuccess, cost }) {
                         <div>
                             <label className="block text-sm font-medium mb-2">Período</label>
                             <select value={formData.recurrence_period} onChange={(e) => setFormData(prev => ({ ...prev, recurrence_period: e.target.value }))}
-                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2d8659]" required>
+                                className="w-full px-4 py-2 border rounded-2xl focus:ring-2 focus:ring-[#2d8659]" required>
                                 <option value="">Selecione</option>
                                 <option value="monthly">Mensal</option>
                                 <option value="quarterly">Trimestral</option>
@@ -141,7 +141,7 @@ export function CostFormModal({ open, onClose, onSuccess, cost }) {
                     )}
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
-                        <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]" disabled={loading}>
+                        <Button type="submit" className="rounded-full bg-[#2d8659] hover:bg-[#236b47]" disabled={loading}>
                             {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : (cost ? 'Atualizar' : 'Adicionar')}
                         </Button>
                     </DialogFooter>

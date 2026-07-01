@@ -46,7 +46,7 @@ const PaymentSummaryStep = ({
     parseFloat(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3 flex items-center justify-center gap-3">
           Confirme seu agendamento
@@ -113,7 +113,7 @@ const PaymentSummaryStep = ({
         </div>
       </div>
 
-      <div className="mb-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100 flex items-start gap-3">
+      <div className="mb-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start gap-3">
         <Zap className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
         <p className="text-sm text-blue-800 leading-relaxed">
           Após o pagamento, você receberá o link da sala de vídeo. A sessão começa pontualmente.
@@ -136,7 +136,7 @@ const PaymentSummaryStep = ({
         })}
       </div>
 
-      <div className="flex flex-col gap-1 mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+      <div className="flex flex-col gap-1 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
         <div className="flex items-center gap-3">
           <input type="checkbox" id="acceptTerms" className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-[#2d8659]" {...acceptTermsField} />
           <label htmlFor="acceptTerms" className="text-sm text-gray-700 font-medium cursor-pointer">
@@ -150,7 +150,7 @@ const PaymentSummaryStep = ({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 mt-6">
-        <Button onClick={onBack} variant="outline">
+        <Button onClick={onBack} variant="outline" className="rounded-full">
           Voltar
         </Button>
         <motion.div
@@ -161,7 +161,7 @@ const PaymentSummaryStep = ({
           <Button
             onClick={onSubmit}
             disabled={!canSubmit || isSubmitting}
-            className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${isSubmitting ? 'cursor-not-allowed opacity-75' : ''
+            className={`w-full rounded-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${isSubmitting ? 'cursor-not-allowed opacity-75' : ''
               }`}
             title={submitButtonTitle}
           >
@@ -183,7 +183,7 @@ const PaymentSummaryStep = ({
           type="button"
           onClick={onSupport}
           variant="outline"
-          className="sm:w-auto flex items-center gap-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
+          className="rounded-full sm:w-auto flex items-center gap-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
         >
           <MessageCircle className="w-5 h-5" />
           Tirar dúvidas no WhatsApp

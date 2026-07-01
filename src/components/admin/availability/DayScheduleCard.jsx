@@ -152,7 +152,7 @@ export const DayScheduleCard = ({
                             onChange={(e) => setNewTime(e.target.value)}
                             onKeyDown={handleKeyDown}
                             autoFocus
-                            className={`flex-1 min-w-0 block w-full px-3 py-1.5 rounded-md border text-sm ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                            className={`flex-1 min-w-0 block w-full px-3 py-1.5 rounded-full border text-sm ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
                                 }`}
                         />
                         <Button

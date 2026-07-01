@@ -116,7 +116,7 @@ const CheckoutSuccessPage = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
-                        className="bg-white rounded-2xl shadow-xl p-8"
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8"
                     >
                         {/* Success Icon */}
                         <div className="text-center mb-8">
@@ -124,7 +124,7 @@ const CheckoutSuccessPage = () => {
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                                className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-4"
+                                className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-green-100 mb-4 shadow-sm ring-4 ring-green-50 animate-pulse"
                             >
                                 <CheckCircle className="w-16 h-16 text-green-600" />
                             </motion.div>
@@ -138,7 +138,7 @@ const CheckoutSuccessPage = () => {
 
                         {/* Payment Details */}
                         {payment && (
-                            <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                            <div className="bg-gray-50 rounded-2xl p-6 mb-6">
                                 <h3 className="font-semibold text-gray-900 mb-4">Detalhes do Pagamento</h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
@@ -165,13 +165,13 @@ const CheckoutSuccessPage = () => {
 
                         {/* Booking Details */}
                         {booking && (
-                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 mb-6 border border-blue-200">
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
                                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                     <Calendar className="w-5 h-5 mr-2 text-blue-600" />
                                     Detalhes da Sua Consulta
                                 </h3>
                                 <div className="space-y-4">
-                                    <div className="bg-white rounded-lg p-4">
+                                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-50">
                                         <div className="flex items-center justify-between mb-3">
                                             <div>
                                                 <p className="font-semibold text-lg text-gray-900">{booking.professional?.name}</p>

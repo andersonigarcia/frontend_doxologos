@@ -2310,43 +2310,43 @@ const AdminPage = () => {
                     {/* Quick Access Links - Apenas para Admin */}
                     {userRole === 'admin' && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                            <Link to="/admin/usuarios" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                            <Link to="/admin/usuarios" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h3 className="text-lg font-semibold mb-1">Gestão de Usuários</h3>
-                                        <p className="text-purple-100 text-sm">Gerenciar contas e permissões</p>
+                                        <p className="text-purple-100 text-sm opacity-90">Gerenciar contas e permissões</p>
                                     </div>
-                                    <Users className="w-10 h-10 opacity-80" />
+                                    <Users className="w-10 h-10 opacity-70" />
                                 </div>
                             </Link>
-                            <Link to="/admin/pagamentos" className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                            <Link to="/admin/pagamentos" className="bg-gradient-to-br from-[#2d8659] to-[#236b47] text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h3 className="text-lg font-semibold mb-1">Pagamentos</h3>
-                                        <p className="text-green-100 text-sm">Gerenciar transações</p>
+                                        <p className="text-green-100 text-sm opacity-90">Gerenciar transações</p>
                                     </div>
-                                    <DollarSign className="w-10 h-10 opacity-80" />
+                                    <DollarSign className="w-10 h-10 opacity-70" />
                                 </div>
                             </Link>
-                            <Link to="/admin/depoimentos" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-6 shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                            <Link to="/admin/depoimentos" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <h3 className="text-lg font-semibold mb-1">Depoimentos</h3>
-                                        <p className="text-blue-100 text-sm">Moderar avaliações</p>
+                                        <p className="text-blue-100 text-sm opacity-90">Moderar avaliações</p>
                                     </div>
-                                    <MessageCircle className="w-10 h-10 opacity-80" />
+                                    <MessageCircle className="w-10 h-10 opacity-70" />
                                 </div>
                             </Link>
                         </div>
                     )}
 
                     <Tabs id="admin-tabs" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="flex overflow-x-auto h-auto justify-start p-1 bg-gray-100 rounded-lg gap-1 no-scrollbar md:flex-wrap">
+                        <TabsList className="flex overflow-x-auto h-auto justify-start p-2 bg-white border border-gray-100 rounded-2xl gap-2 hide-scrollbar mb-6 shadow-sm">
                             {currentTabs.map(tab => (
                                 <TabsTrigger
                                     key={tab.value}
                                     value={tab.value}
-                                    className="flex-shrink-0 min-w-[140px] px-4 py-3 md:flex-1 md:min-w-[120px] data-[state=active]:bg-white data-[state=active]:shadow-sm transition-colors whitespace-nowrap"
+                                    className="flex-shrink-0 min-w-max px-4 py-2.5 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-50 data-[state=active]:bg-[#2d8659] data-[state=active]:text-white data-[state=active]:shadow-md transition-all whitespace-nowrap"
                                 >
                                     <tab.icon className="w-4 h-4 mr-2" />{tab.label}
                                 </TabsTrigger>
@@ -3028,8 +3028,14 @@ const AdminPage = () => {
                                                             };
 
                                                             return (
-                                                                <div key={b.id} className={`relative border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                                    } hover:bg-blue-50 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
+                                                                <div key={b.id} className={`relative bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 ${(isItemLoading('status', b.id) || isItemLoading('edit', b.id)) ? 'opacity-75' : ''}`}>
+                                                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${
+                                                                        (b.status === 'confirmed' || b.status === 'paid') ? 'bg-[#2d8659]' :
+                                                                        b.status === 'pending_payment' ? 'bg-amber-400' :
+                                                                        b.status.includes('cancelled') || b.status === 'no_show_unjustified' ? 'bg-red-400' :
+                                                                        'bg-gray-300'
+                                                                    }`} />
+                                                                    <div className="p-5 pl-7">
 
                                                                     {/* Overlay de Loading com novo componente */}
                                                                     <LoadingOverlay
@@ -3128,76 +3134,30 @@ const AdminPage = () => {
                                                                             </div>
 
                                                                             {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
+                                                                            {/* Exibir dados do Zoom/Meet para consultas confirmadas ou pagas */}
                                                                             {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
-                                                                                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg overflow-hidden">
-                                                                                    {/* Header clicável */}
-                                                                                    <button
-                                                                                        onClick={() => toggleZoomExpansion(b.id)}
-                                                                                        className="w-full p-4 flex items-center justify-between hover:bg-blue-100 transition-colors"
-                                                                                    >
-                                                                                        <h4 className="font-semibold text-blue-900 flex items-center">
-                                                                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                                            </svg>
-                                                                                            Acesso à sala
-                                                                                        </h4>
-                                                                                        {expandedZoomCards[b.id] ? (
-                                                                                            <ChevronUp className="w-5 h-5 text-blue-700" />
-                                                                                        ) : (
-                                                                                            <ChevronDown className="w-5 h-5 text-blue-700" />
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    {/* Conteúdo colapsável com animação */}
-                                                                                    <div
-                                                                                        className={`transition-all duration-300 ease-in-out ${expandedZoomCards[b.id]
-                                                                                            ? 'max-h-96 opacity-100'
-                                                                                            : 'max-h-0 opacity-0'
-                                                                                            } overflow-hidden`}
-                                                                                    >
-                                                                                        <div className="px-4 pb-4 space-y-2 text-sm border-t border-blue-200 pt-3">
-                                                                                            <div>
-                                                                                                <span className="text-gray-600 font-medium">Link da Reunião:</span>
-                                                                                                <a
-                                                                                                    href={b.meeting_link}
-                                                                                                    target="_blank"
-                                                                                                    rel="noopener noreferrer"
-                                                                                                    className="block text-blue-600 hover:text-blue-800 underline break-all"
-                                                                                                >
-                                                                                                    {b.meeting_link}
-                                                                                                </a>
-                                                                                            </div>
+                                                                                <div className="mt-5 pt-5 border-t border-dashed border-gray-200">
+                                                                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                                                                        <div>
+                                                                                            <p className="text-sm font-medium text-gray-900">Acesso à Sala Virtual</p>
                                                                                             {b.meeting_password && (
-                                                                                                <div>
-                                                                                                    <span className="text-gray-600 font-medium">Senha: </span>
-                                                                                                    <span className="font-mono bg-white px-2 py-1 rounded border border-blue-300 text-blue-900">
-                                                                                                        {b.meeting_password}
-                                                                                                    </span>
-                                                                                                </div>
+                                                                                                <p className="text-xs text-gray-500 mt-0.5">Senha: <span className="font-mono text-gray-900">{b.meeting_password}</span></p>
                                                                                             )}
-                                                                                            {b.meeting_start_url && b.meeting_start_url !== b.meeting_link ? (
-                                                                                                <div>
-                                                                                                    <span className="text-gray-600 font-medium">Link do Anfitrião (Zoom):</span>
-                                                                                                    <a
-                                                                                                        href={b.meeting_start_url}
-                                                                                                        target="_blank"
-                                                                                                        rel="noopener noreferrer"
-                                                                                                        className="block text-green-600 hover:text-green-800 underline break-all"
-                                                                                                    >
-                                                                                                        {b.meeting_start_url}
-                                                                                                    </a>
-                                                                                                    <span className="text-xs text-gray-500 italic">
-                                                                                                        ⚠️ Use este link para iniciar a reunião como anfitrião
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                            ) : b.meeting_link?.includes('meet.google.com') ? (
-                                                                                                <div>
-                                                                                                    <span className="text-xs text-gray-500 italic">
-                                                                                                        ℹ️ Google Meet — profissional e paciente usam o mesmo link acima
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                            ) : null}
+                                                                                            {b.meeting_start_url && b.meeting_start_url !== b.meeting_link && (
+                                                                                                <a href={b.meeting_start_url} target="_blank" rel="noopener noreferrer" className="block text-xs text-[#2d8659] hover:text-[#236b47] mt-1 underline">
+                                                                                                    Iniciar como anfitrião (Host)
+                                                                                                </a>
+                                                                                            )}
                                                                                         </div>
+                                                                                        <a
+                                                                                            href={b.meeting_link}
+                                                                                            target="_blank"
+                                                                                            rel="noopener noreferrer"
+                                                                                            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-[#2d8659] hover:bg-[#236b47] text-white text-sm font-medium rounded-full shadow-sm hover:shadow-md transition-all"
+                                                                                        >
+                                                                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                                                            Entrar na Sala Virtual
+                                                                                        </a>
                                                                                     </div>
                                                                                 </div>
                                                                             )}
@@ -3206,7 +3166,7 @@ const AdminPage = () => {
                                                                         <div className="flex gap-3 flex-col w-full lg:ml-4 lg:w-auto lg:items-end">
                                                                             {/* Mudança rápida de status */}
                                                                             <div className="w-full lg:w-48 relative">
-                                                                                <label className="block text-xs text-gray-600 mb-1">
+                                                                                <label className="block text-xs text-gray-500 font-medium mb-1.5">
                                                                                     Status Rápido:
                                                                                     {isItemLoading('status', b.id) && (
                                                                                         <LoadingSpinner size="xs" className="inline-block ml-1 text-[#2d8659]" />
@@ -3217,7 +3177,7 @@ const AdminPage = () => {
                                                                                         value={b.status}
                                                                                         onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
                                                                                         disabled={quickStatusSelectDisabled}
-                                                                                        className={`w-full text-sm px-2 py-1 border rounded focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
+                                                                                        className={`w-full text-sm px-3 py-1.5 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all ${quickStatusSelectDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                                                                                             } ${isItemLoading('status', b.id) ? 'ring-2 ring-[#2d8659] ring-opacity-50' : ''}`}
                                                                                     >
                                                                                         {quickStatusOptions.map((option) => (
@@ -3233,12 +3193,13 @@ const AdminPage = () => {
                                                                                 </LoadingInput>
                                                                             </div>
 
-                                                                            <div className="flex flex-row gap-2">
+                                                                            <div className="flex flex-row gap-2 mt-2">
                                                                                 <Dialog>
                                                                                     <DialogTrigger asChild>
                                                                                         <Button
                                                                                             size="sm"
                                                                                             variant="outline"
+                                                                                            className="rounded-full flex-1 lg:flex-none border-gray-200 text-gray-700 hover:bg-gray-50"
                                                                                             disabled={isAnyItemLoading()}
                                                                                             onClick={() => {
                                                                                                 setEditingBooking(b);
@@ -3473,6 +3434,7 @@ const AdminPage = () => {
                                                                                     Excluir
                                                                                 </Button>
                                                                             </div>
+                                                                            </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -3548,11 +3510,11 @@ const AdminPage = () => {
 
 
                         <TabsContent value="reviews" className="mt-6">
-                            <div className="bg-white rounded-xl shadow-lg p-6">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h2 className="text-2xl font-bold mb-6 flex items-center"><Star className="w-6 h-6 mr-2 text-[#2d8659]" /> Avaliações</h2>
                                 <div className="space-y-4">
                                     {reviews.map(review => (
-                                        <div key={review.id} className="border rounded-lg p-4">
+                                        <div key={review.id} className="bg-white border border-gray-100 shadow-sm rounded-2xl p-5 hover:shadow-md transition-all">
                                             <div className="flex justify-between items-start">
                                                 <div>
                                                     <div className="flex items-center mb-1">
@@ -3563,7 +3525,7 @@ const AdminPage = () => {
                                                 </div>
                                                 {userRole === 'admin' && (
                                                     <div className="flex gap-2">
-                                                        <Button size="icon" variant={review.is_approved ? "default" : "outline"} onClick={() => handleReviewApproval(review.id, !review.is_approved)}>
+                                                        <Button size="icon" className="rounded-full" variant={review.is_approved ? "default" : "outline"} onClick={() => handleReviewApproval(review.id, !review.is_approved)}>
                                                             {review.is_approved ? <ShieldOff className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                                                         </Button>
                                                     </div>
@@ -3932,7 +3894,7 @@ const AdminPage = () => {
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                             <h2 className="text-2xl font-bold mb-6">
                                                 {userRole === 'admin'
                                                     ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
@@ -3947,14 +3909,14 @@ const AdminPage = () => {
                                                         value={professionalFormData.name}
                                                         onChange={e => setProfessionalFormData({ ...professionalFormData, name: e.target.value })}
                                                         placeholder="Ex: Dr. João Silva"
-                                                        className="w-full input"
+                                                        className="w-full input rounded-2xl"
                                                         required
                                                     />
                                                 </div>
 
                                                 <div>
                                                     <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
-                                                    <div className="border rounded-lg p-3 max-h-32 overflow-y-auto bg-gray-50">
+                                                    <div className="border border-gray-200 rounded-2xl p-4 max-h-48 overflow-y-auto bg-gray-50">
                                                         {services.length === 0 ? (
                                                             <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
                                                         ) : (

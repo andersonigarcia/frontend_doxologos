@@ -98,7 +98,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     </h2>
                     <p className="text-gray-600 mt-1">Lucro/Prejuízo e análise de custos</p>
                 </div>
-                <Button onClick={onAddCost} className="bg-[#2d8659] hover:bg-[#236b47]">
+                <Button onClick={onAddCost} className="rounded-full bg-[#2d8659] hover:bg-[#236b47]">
                     <Plus className="w-4 h-4 mr-2" />
                     Adicionar Custo
                 </Button>
@@ -108,15 +108,15 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
             <div className="flex gap-4 items-center">
                 <div className="flex gap-2">
                     <Button variant={period === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('month')}
-                        className={period === 'month' ? 'bg-[#2d8659]' : ''}>
+                        className={`rounded-full ${period === 'month' ? 'bg-[#2d8659]' : ''}`}>
                         Este Mês
                     </Button>
                     <Button variant={period === 'quarter' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('quarter')}
-                        className={period === 'quarter' ? 'bg-[#2d8659]' : ''}>
+                        className={`rounded-full ${period === 'quarter' ? 'bg-[#2d8659]' : ''}`}>
                         Trimestre
                     </Button>
                     <Button variant={period === 'year' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('year')}
-                        className={period === 'year' ? 'bg-[#2d8659]' : ''}>
+                        className={`rounded-full ${period === 'year' ? 'bg-[#2d8659]' : ''}`}>
                         Ano
                     </Button>
                 </div>
@@ -127,7 +127,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2d8659] focus:border-transparent bg-white"
+                        className="px-4 py-1.5 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2d8659] focus:border-transparent bg-gray-50 hover:bg-gray-100 transition-all cursor-pointer"
                     >
                         {availableYears.map(year => (
                             <option key={year} value={year}>
@@ -173,7 +173,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     className="border-l-4 border-l-amber-500 bg-amber-50"
                 />
                 <motion.div className={cn(
-                    'rounded-xl border p-6',
+                    'rounded-2xl border shadow-sm p-6',
                     isProfitable ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                 )}>
                     <div className="flex items-center justify-between mb-2">
@@ -194,7 +194,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
 
             {/* Breakdown de Custos */}
             {Object.keys(costsByCategory).length > 0 && (
-                <div className="bg-white rounded-xl border p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <h3 className="text-lg font-semibold mb-4">Custos por Categoria</h3>
                     <div className="space-y-3">
                         {Object.entries(costsByCategory).map(([category, data]) => {
@@ -217,7 +217,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
 
             {/* Lista de Custos Individuais */}
             {costs.length > 0 ? (
-                <div className="bg-white rounded-xl border p-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                     <h3 className="text-lg font-semibold mb-4">Custos Detalhados</h3>
                     <div className="space-y-2">
                         {costs.map((cost) => (
@@ -225,16 +225,16 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                                 key={cost.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                                className="flex items-center justify-between p-5 border border-gray-100 rounded-2xl bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all"
                             >
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3">
-                                        <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                                        <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
                                             {getCategoryLabel(cost.category)}
                                         </span>
                                         <p className="font-medium">{cost.description}</p>
                                         {cost.is_recurring && (
-                                            <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
                                                 Recorrente
                                             </span>
                                         )}
@@ -249,21 +249,20 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                                     </p>
                                     <div className="flex gap-2">
                                         <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="sm"
+                                            className="rounded-full"
                                             onClick={() => onEditCost(cost)}
-                                            title="Editar Custo"
                                         >
-                                            <Pencil className="w-4 h-4" />
+                                            <Pencil className="w-4 h-4 text-gray-500" />
                                         </Button>
                                         <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="sm"
-                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            className="rounded-full hover:bg-red-50 hover:text-red-600"
                                             onClick={() => onDeleteCost(cost)}
-                                            title="Excluir Custo"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-600" />
                                         </Button>
                                     </div>
                                 </div>
