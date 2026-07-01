@@ -71,17 +71,6 @@ const HeroSection = ({
 
               </Link>
 
-              {/* CTA Secundário - Texto link em mobile, menos proeminente */}
-
-              <Link to="/doacao">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 border-green-500 text-green-600 hover:bg-green-500 hover:text-white w-full sm:w-auto whitespace-nowrap"
-                >
-                  💚 Apoie nossa missão
-                </Button>
-              </Link>
 
 
               {/* Micro-CTA - Scroll suave para "Como Funciona" */}

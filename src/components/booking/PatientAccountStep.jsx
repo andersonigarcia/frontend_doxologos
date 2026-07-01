@@ -59,8 +59,8 @@ const PatientAccountStep = ({
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Confirmação e Dados Pessoais</h2>
-        <p className="text-gray-600 text-lg">Revise os detalhes e preencha seus dados para finalizar</p>
+        <h2 className="text-3xl font-bold mb-3">Falta pouco! Como podemos chamar você?</h2>
+        <p className="text-gray-600 text-lg">Estamos quase lá. Preencha seus dados básicos para finalizarmos o agendamento.</p>
       </div>
 
       {!authUser && (
