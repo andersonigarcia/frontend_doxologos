@@ -9,7 +9,7 @@ class EmailService {
 
     this.apiUrl = `${isNode ? process.env.VITE_SUPABASE_URL : import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`;
     this.apiKey = isNode ? process.env.VITE_SUPABASE_ANON_KEY : import.meta.env.VITE_SUPABASE_ANON_KEY;
-    this.fromEmail = (isNode ? process.env.VITE_FROM_EMAIL : import.meta.env.VITE_FROM_EMAIL) || 'doxologos@doxologos.com.br';
+    this.fromEmail = (isNode ? process.env.VITE_FROM_EMAIL : import.meta.env.VITE_FROM_EMAIL) || 'contato@doxologos.com.br';
     this.fromName = (isNode ? process.env.VITE_FROM_NAME : import.meta.env.VITE_FROM_NAME) || 'Doxologos Psicologia';
     this.enabled = (isNode ? process.env.VITE_ENABLE_EMAIL_NOTIFICATIONS : import.meta.env.VITE_ENABLE_EMAIL_NOTIFICATIONS) !== 'false';
     this.isDev = (isNode ? process.env.VITE_ENVIRONMENT : import.meta.env.VITE_ENVIRONMENT) === 'development';
