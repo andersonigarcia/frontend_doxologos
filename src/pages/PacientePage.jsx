@@ -892,59 +892,51 @@ const PacientePage = () => {
                     )}
                     {hasCreditInfo && (
                         <div className="mb-6">
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                                <div className="flex items-start gap-3">
-                                    <CreditCard className="w-6 h-6 text-emerald-600 mt-1" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-emerald-900">Créditos disponíveis para novas consultas</p>
-                                        <p className="text-sm text-emerald-800 mt-1">
-                                            Você possui <strong>{formatCurrency(availableCreditAmount)}</strong> que pode ser aplicado no próximo agendamento.
-                                        </p>
+                            <div className="bg-white border border-emerald-100 shadow-sm rounded-2xl p-5">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 flex-shrink-0">
+                                            <CreditCard className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500">Saldo em Carteira</p>
+                                            <div className="flex items-baseline gap-2">
+                                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(availableCreditAmount)}</p>
+                                                {creditLoading && <span className="text-xs text-gray-400">Atualizando...</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-gray-500 sm:text-right max-w-xs">
+                                        <p>Aplicado automaticamente no próximo agendamento.</p>
                                         {reservedCreditAmount > 0 && (
-                                            <p className="text-xs text-emerald-700 mt-2">
-                                                {formatCurrency(reservedCreditAmount)} estão reservados enquanto um pagamento está em andamento.
+                                            <p className="text-emerald-600 font-medium mt-1">
+                                                {formatCurrency(reservedCreditAmount)} reservados.
                                             </p>
                                         )}
-                                        {creditLoading && (
-                                            <p className="text-xs text-emerald-600 mt-2">Atualizando informações de crédito...</p>
-                                        )}
-                                        {availableCreditsList.length > 0 && (
-                                            <ul className="mt-3 space-y-2">
-                                                {availableCreditsList.slice(0, 3).map((credit) => {
-                                                    const creditDate = credit.created_at ? new Date(credit.created_at) : null;
-                                                    const formattedDate = creditDate && !Number.isNaN(creditDate.getTime())
-                                                        ? creditDate.toLocaleDateString('pt-BR')
-                                                        : 'Data indisponível';
-                                                    const sourceLabel = credit.source_type === 'cancellation'
-                                                        ? 'Crédito por cancelamento'
-                                                        : credit.source_reason || `Origem: ${credit.source_type || 'manual'}`;
-                                                    const currencyCode = credit.currency || 'BRL';
-                                                    return (
-                                                        <li
-                                                            key={credit.id}
-                                                            className="flex items-center justify-between bg-white/70 border border-emerald-100 rounded-lg px-3 py-2 text-sm text-emerald-900"
-                                                        >
-                                                            <span className="pr-3 truncate">
-                                                                {formattedDate} • {sourceLabel}
-                                                            </span>
-                                                            <span className="font-semibold whitespace-nowrap">
-                                                                {formatCurrency(credit.amount, currencyCode)}
-                                                            </span>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                        {availableCreditsList.length > 3 && (
-                                            <p className="text-xs text-emerald-700 mt-2">
-                                                Você possui {availableCreditsList.length - 3} crédito(s) adicional(is). Todos ficam disponíveis na tela de pagamento.
-                                            </p>
-                                        )}
-                                        <p className="text-xs text-emerald-800 mt-3">
-                                            Durante o checkout, selecione a opção 'Usar crédito' para aplicar o saldo automaticamente.
-                                        </p>
                                     </div>
                                 </div>
+                                {availableCreditsList.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Últimas Movimentações</p>
+                                        <ul className="space-y-2">
+                                            {availableCreditsList.slice(0, 2).map((credit) => {
+                                                const creditDate = credit.created_at ? new Date(credit.created_at) : null;
+                                                const formattedDate = creditDate && !Number.isNaN(creditDate.getTime())
+                                                    ? creditDate.toLocaleDateString('pt-BR')
+                                                    : '';
+                                                const sourceLabel = credit.source_type === 'cancellation'
+                                                    ? 'Cancelamento'
+                                                    : credit.source_reason || 'Crédito';
+                                                return (
+                                                    <li key={credit.id} className="flex items-center justify-between text-sm">
+                                                        <span className="text-gray-600">{formattedDate} • {sourceLabel}</span>
+                                                        <span className="font-medium text-gray-900">{formatCurrency(credit.amount, credit.currency || 'BRL')}</span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -955,13 +947,13 @@ const PacientePage = () => {
                                 Meus Agendamentos ({bookings.length})
                             </h2>
                             {bookings.length > 0 && (
-                                <div className="flex flex-wrap gap-2 items-center">
-                                    <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center w-full sm:w-auto">
+                                    <div className="flex overflow-x-auto pb-2 sm:pb-0 gap-2 w-full sm:w-auto hide-scrollbar">
                                         <Button
                                             onClick={() => handleSort('default')}
                                             variant="outline"
                                             size="sm"
-                                            className={sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                            className={`rounded-full whitespace-nowrap flex-shrink-0 ${sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}`}
                                         >
                                             Padrão
                                         </Button>
@@ -969,7 +961,7 @@ const PacientePage = () => {
                                             onClick={() => handleSort('status')}
                                             variant="outline"
                                             size="sm"
-                                            className={sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                            className={`rounded-full whitespace-nowrap flex-shrink-0 ${sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}`}
                                         >
                                             Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                                         </Button>
@@ -977,26 +969,26 @@ const PacientePage = () => {
                                             onClick={() => handleSort('date')}
                                             variant="outline"
                                             size="sm"
-                                            className={sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                            className={`rounded-full whitespace-nowrap flex-shrink-0 ${sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}`}
                                         >
                                             Data {sortField === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
                                         </Button>
                                     </div>
 
                                     {/* Seletor de itens por página */}
-                                    <div className="flex items-center gap-2 border-l pl-2">
-                                        <label className="text-sm text-gray-600">Itens:</label>
+                                    <div className="flex items-center gap-2 sm:border-l sm:pl-3 w-full sm:w-auto justify-end sm:justify-start">
+                                        <label className="text-sm text-gray-500 font-medium">Exibir:</label>
                                         <select
                                             value={itemsPerPage}
                                             onChange={(e) => {
                                                 setItemsPerPage(Number(e.target.value));
                                                 setCurrentPage(1);
                                             }}
-                                            className="border rounded px-2 py-1 text-sm"
+                                            className="border-gray-200 rounded-lg px-2 py-1 text-sm bg-gray-50 hover:bg-gray-100 transition-colors focus:ring-[#2d8659] focus:border-[#2d8659]"
                                         >
-                                            <option value="5">5</option>
-                                            <option value="10">10</option>
-                                            <option value="20">20</option>
+                                            <option value="5">5 itens</option>
+                                            <option value="10">10 itens</option>
+                                            <option value="20">20 itens</option>
                                         </select>
                                     </div>
                                 </div>
@@ -1023,92 +1015,54 @@ const PacientePage = () => {
                                     const paymentNeedsRetry = latestPaymentStatus === 'rejected' || latestPaymentStatus === 'cancelled';
 
                                     return (
-                                        <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
-                                            <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
+                                        <div key={booking.id} className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 transition-all hover:shadow-lg mb-4">
+                                            <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-4">
                                                 <div>
-                                                    <h3 className="font-bold text-lg">{booking.service.name}</h3>
-                                                    <p className="text-sm text-gray-600">com {booking.professional.name}</p>
+                                                    <h3 className="font-bold text-lg text-gray-900">{booking.service.name}</h3>
+                                                    <p className="text-sm text-gray-500 font-medium mt-0.5">com {booking.professional.name}</p>
                                                 </div>
-                                                <span className={`mt-2 sm:mt-0 px-3 py-1 rounded-full text-sm font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                                    booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                                        booking.status.includes('cancelled') ? 'bg-red-100 text-red-800' :
-                                                            'bg-yellow-100 text-yellow-800'
-                                                    }`}>
+                                                <span className={`mt-3 sm:mt-0 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase border ${
+                                                    booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    booking.status === 'completed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                    booking.status.includes('cancelled') ? 'bg-red-50 text-red-700 border-red-200' :
+                                                    'bg-amber-50 text-amber-700 border-amber-200'
+                                                }`}>
                                                     {booking.status === 'confirmed' ? 'Confirmado' :
                                                         booking.status === 'completed' ? 'Concluído' :
                                                             booking.status.includes('cancelled') ? 'Cancelado' : 'Pendente'}
                                                 </span>
                                             </div>
-                                            <div className="grid md:grid-cols-2 gap-2 text-sm mb-4">
-                                                <p className="flex items-center"><Calendar className="w-4 h-4 mr-2" /> {new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                                <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {booking.booking_time}</p>
+
+                                            {/* Detalhes Estilo Ticket */}
+                                            <div className="bg-gray-50 rounded-xl p-4 flex flex-col md:flex-row gap-4 text-sm mb-5 border border-gray-100">
+                                                <div className="flex items-center text-gray-700">
+                                                    <Calendar className="w-4 h-4 mr-2 text-[#2d8659]" />
+                                                    <span className="font-medium">{new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                                                </div>
+                                                <div className="hidden md:block w-px bg-gray-200"></div>
+                                                <div className="flex items-center text-gray-700">
+                                                    <Clock className="w-4 h-4 mr-2 text-[#2d8659]" />
+                                                    <span className="font-medium">{booking.booking_time}</span>
+                                                </div>
                                             </div>
 
-                                            {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO MINIMIZADA */}
+                                            {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO SIMPLIFICADA */}
                                             {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
-                                                <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg mb-4 overflow-hidden">
-                                                    {/* Cabeçalho sempre visível */}
-                                                    <div className="p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <h4 className="font-semibold text-blue-900 flex items-center">
-                                                                🎥 Consulta Online
-                                                            </h4>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => toggleZoomDetails(booking.id)}
-                                                                className="text-blue-700 hover:text-blue-900"
-                                                            >
-                                                                {expandedZoom[booking.id] ? (
-                                                                    <>
-                                                                        <ChevronUp className="w-4 h-4 mr-1" />
-                                                                        Ocultar
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <ChevronDown className="w-4 h-4 mr-1" />
-                                                                        Ver detalhes
-                                                                    </>
-                                                                )}
-                                                            </Button>
-                                                        </div>
-
-                                                        {/* Botão principal sempre visível */}
-                                                        <div className="mt-3">
-                                                            <a
-                                                                href={booking.meeting_link}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-                                                            >
-                                                                🔗 Entrar na Sala Google Meet
-                                                            </a>
-                                                        </div>
+                                                <div className="mb-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                                    <div>
+                                                        <h4 className="font-semibold text-blue-900 text-sm">🎥 Sala Virtual</h4>
+                                                        {booking.meeting_password && (
+                                                            <p className="text-xs text-blue-700 mt-1">Senha: <strong>{booking.meeting_password}</strong></p>
+                                                        )}
                                                     </div>
-
-                                                    {/* Detalhes expandíveis */}
-                                                    {expandedZoom[booking.id] && (
-                                                        <motion.div
-                                                            initial={{ height: 0, opacity: 0 }}
-                                                            animate={{ height: 'auto', opacity: 1 }}
-                                                            exit={{ height: 0, opacity: 0 }}
-                                                            transition={{ duration: 0.3 }}
-                                                            className="px-4 pb-4 space-y-3"
-                                                        >
-                                                            {booking.meeting_password && (
-                                                                <div className="bg-white p-3 rounded border border-blue-200">
-                                                                    <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
-                                                                    <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
-                                                                        {booking.meeting_password}
-                                                                    </code>
-                                                                </div>
-                                                            )}
-                                                            <div className="text-xs text-blue-800 space-y-1 bg-white p-3 rounded border border-blue-200">
-                                                                <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
-                                                                <p>🌐 Funciona direto no navegador — não precisa instalar nada!</p>
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
+                                                    <a
+                                                        href={booking.meeting_link}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center justify-center w-full md:w-auto px-5 py-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
+                                                    >
+                                                        Entrar na Sala Google Meet
+                                                    </a>
                                                 </div>
                                             )}
 
