@@ -46,7 +46,7 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               </>
             ) : (
               <Link to="/agendamento">
-                <Button className="bg-[#2d8659] hover:bg-[#236b47]">Encontre seu psicólogo</Button>
+                <Button className="bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
               </Link>
             )}
           </div>
@@ -98,7 +98,7 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 />
               </div>
             ) : (
-              <Link to="/agendamento">
+              <Link to="/agendamento" className="block pt-2">
                 <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
               </Link>
             )}
