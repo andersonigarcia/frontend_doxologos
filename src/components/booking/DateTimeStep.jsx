@@ -204,66 +204,7 @@ const DateTimeStep = ({
         </div>
       </div>
 
-      {selectedServiceDetails && (
-        <div className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 p-5 rounded-xl border border-[#2d8659]/20 bg-[#2d8659]/5">
-            <div>
-              <p className="text-sm text-[#2d8659] font-semibold uppercase tracking-wide">Investimento da sessão</p>
-              <p className="text-3xl font-bold text-[#236b47] mt-1">
-                R$ {parseFloat(selectedServiceDetails.price || 0).toLocaleString('pt-BR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </p>
-            </div>
-            <p className="text-sm text-gray-700 md:text-right">
-              O valor é confirmado agora e você só finaliza o pagamento na próxima etapa.
-            </p>
-          </div>
-        </div>
-      )}
 
-      {topTestimonials.length > 0 && (
-        <div className="mb-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <Quote className="w-5 h-5 text-[#2d8659]" />
-              <p className="text-lg font-semibold text-gray-900">Pacientes que já passaram por aqui</p>
-            </div>
-            <p className="text-sm text-gray-600 md:text-right">
-              "Escolhi o horário perfeito e fui super bem atendido" — é isso que ouvimos com frequência.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {topTestimonials.map((testimonial) => {
-              const ratingNumber = Number(testimonial?.rating);
-              const rating = Number.isFinite(ratingNumber) ? Math.min(5, Math.max(1, Math.round(ratingNumber))) : 5;
-              const comment = testimonial?.comment || testimonial?.feedback || 'Atendimento acolhedor, profissional e com resultados reais.';
-              const displayName = testimonial?.bookings?.patient_name || testimonial?.patient_name || 'Paciente atendido';
-              const formattedName = (() => {
-                const parts = displayName.trim().split(' ').filter(Boolean);
-                if (parts.length === 0) return 'Paciente atendido';
-                if (parts.length === 1) return parts[0];
-                return `${parts[0]} ${parts[parts.length - 1][0]}.`;
-              })();
-              const professionalName = testimonial?.professionals?.name || testimonial?.professionals?.[0]?.name;
-
-              return (
-                <div key={testimonial.id} className="p-5 rounded-xl border border-gray-200 bg-white shadow-sm">
-                  <div className="flex items-center gap-1 mb-3">
-                    {Array.from({ length: rating }).map((_, index) => (
-                      <Star key={index} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-gray-700 italic mb-3">“{comment}”</p>
-                  <p className="text-xs text-gray-500 font-semibold uppercase">{formattedName}</p>
-                  {professionalName && <p className="text-xs text-gray-400 mt-1">Atendido por {professionalName}</p>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Quick Pick Buttons */}
       <div className="mb-6">
@@ -416,25 +357,7 @@ const DateTimeStep = ({
                   ⏰ Horários Disponíveis
                 </h3>
 
-                {selectedServiceDetails && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                      <span className="text-gray-700">
-                        Duração do serviço:
-                        <span className="font-semibold text-blue-600 ml-1">
-                          {selectedServiceDetails.duration_minutes >= 60
-                            ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${selectedServiceDetails.duration_minutes % 60 > 0
-                              ? ` ${selectedServiceDetails.duration_minutes % 60}min`
-                              : ''
-                            }`
-                            : `${selectedServiceDetails.duration_minutes} minutos`}
-                        </span>
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1 ml-6">Os horários exibidos garantem tempo suficiente para o atendimento completo.</p>
-                  </div>
-                )}
+
 
                 {isLoadingTimes ? (
                   <div className="flex flex-col items-center justify-center py-12">
@@ -468,15 +391,7 @@ const DateTimeStep = ({
                       </motion.div>
                     )}
 
-                    {/* Contextual Tip */}
-                    <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg flex items-start gap-2">
-                      <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm">
-                        <p className="text-blue-900">
-                          <strong>Dica:</strong> Manhãs (9h-11h) e tardes (14h-16h) geralmente têm mais disponibilidade!
-                        </p>
-                      </div>
-                    </div>
+
 
                     <div className="space-y-4 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
                       {/* Manhã */}

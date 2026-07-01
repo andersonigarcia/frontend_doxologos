@@ -68,37 +68,40 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.08 }}
-              className="group relative bg-white border border-gray-100 hover:border-[#2d8659]/30 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col h-full text-left"
+              className="group relative bg-white border border-gray-100 hover:border-[#2d8659]/30 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col h-full text-center"
             >
               {/* Botão invisível que engloba a imagem e o texto para abrir o modal */}
               <button 
                 type="button" 
                 onClick={() => handleOpenProfile(prof)}
-                className="w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659] flex-1 flex flex-col"
+                className="w-full text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659] flex-1 flex flex-col items-center"
                 aria-label={`Ver perfil de ${prof?.name || 'profissional'}`}
               >
-                <div className="relative h-64 shrink-0 overflow-hidden">
-                  <img
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    alt={prof.name}
-                    src={
-                      prof.image_url ||
-                      'https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face'
-                    }
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  {prof.specialty && (
-                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm text-[#2d8659] text-xs font-semibold tracking-wide uppercase px-3 py-1 rounded-full shadow-sm">
-                      {prof.specialty}
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col flex-1 p-6 pb-2">
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-2xl font-semibold text-gray-900 leading-tight group-hover:text-[#2d8659] transition-colors">{prof.name}</h3>
-                    {prof.crp && <span className="text-sm font-medium text-gray-500">CRP {prof.crp}</span>}
+                <div className="w-full pt-6 pb-2 flex justify-center bg-gradient-to-b from-gray-50/50 to-white">
+                  <div className="relative w-32 h-32 md:w-36 md:h-36 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-md bg-gray-100">
+                    <img
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      alt={prof.name}
+                      src={
+                        prof.image_url ||
+                        'https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face'
+                      }
+                    />
                   </div>
-                  <p className="mt-3 text-sm text-gray-600 leading-relaxed line-clamp-3">
+                </div>
+                <div className="flex flex-col flex-1 p-4 pb-2 w-full items-center">
+                  <div className="flex flex-col gap-1 items-center">
+                    <h3 className="text-lg font-bold text-gray-900 leading-tight group-hover:text-[#2d8659] transition-colors line-clamp-1">{prof.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      {prof.specialty && (
+                        <span className="text-[#2d8659] text-[10px] font-bold tracking-wider uppercase bg-green-50 px-2 py-0.5 rounded-full">
+                          {prof.specialty}
+                        </span>
+                      )}
+                      {prof.crp && <span className="text-xs font-medium text-gray-500">CRP {prof.crp}</span>}
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2">
                     {prof.mini_curriculum ||
                       prof.description ||
                       'Profissional dedicado ao cuidado integral do paciente com acolhimento e ética cristã.'}
@@ -109,14 +112,14 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
                 </div>
               </button>
               
-              <div className="p-6 pt-4 mt-auto border-t border-gray-50 flex flex-col gap-4">
+              <div className="p-4 pt-3 mt-auto border-t border-gray-50 flex flex-col gap-3">
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <span className="bg-green-50 text-[#2d8659] px-2 py-1 rounded-md font-medium">Atendimento online</span>
                   <span className="text-gray-400">Psicologia</span>
                 </div>
                 <Button 
                   onClick={() => handleScheduleClick(prof)}
-                  className="w-full bg-[#2d8659] hover:bg-[#236b46] text-white transition-colors h-11"
+                  className="w-full bg-[#2d8659] hover:bg-[#236b46] text-white transition-colors h-10 text-sm"
                 >
                   <Calendar className="w-4 h-4 mr-2" /> Agendar Consulta
                 </Button>

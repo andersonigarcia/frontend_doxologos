@@ -70,84 +70,9 @@ const StepLoader = () => (
   </div>
 );
 
-// Personalized Greeting Component
-const PersonalizedGreeting = ({ userName }) => {
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return { text: 'Bom dia', emoji: '☀️', color: 'from-yellow-50 to-orange-50', border: 'border-yellow-200' };
-    if (hour < 18) return { text: 'Boa tarde', emoji: '🌤️', color: 'from-blue-50 to-cyan-50', border: 'border-blue-200' };
-    return { text: 'Boa noite', emoji: '🌙', color: 'from-indigo-50 to-purple-50', border: 'border-indigo-200' };
-  };
 
-  const greeting = getGreeting();
 
-  return (
-    <div className={`bg-gradient-to-r ${greeting.color} border ${greeting.border} rounded-lg p-4 mb-6`}>
-      <p className="text-lg font-semibold text-gray-900">
-        {greeting.emoji} {greeting.text}{userName ? `, ${userName}` : ''}!
-      </p>
-      <p className="text-sm text-gray-700">
-        Vamos encontrar o melhor horário para sua consulta.
-      </p>
-    </div>
-  );
-};
 
-// Progress Celebration Component
-const ProgressCelebration = ({ step }) => {
-  const messages = {
-    2: { emoji: '👏', text: 'Ótimo começo!', detail: 'Você está a apenas 3 passos de garantir sua consulta!' },
-    3: { emoji: '🎯', text: 'Quase lá!', detail: 'Falta pouco para concluir seu agendamento!' },
-    4: { emoji: '🎉', text: 'Excelente!', detail: 'Último passo para confirmar sua consulta!' },
-  };
-
-  const message = messages[step];
-  if (!message) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6"
-    >
-      <div className="flex items-center gap-3">
-        <span className="text-3xl">{message.emoji}</span>
-        <div>
-          <p className="font-bold text-green-900">{message.text}</p>
-          <p className="text-sm text-green-700">{message.detail}</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// Welcome Message for First-Time Users
-const WelcomeMessage = ({ isFirstBooking }) => {
-  if (!isFirstBooking) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6"
-    >
-      <div className="flex items-start gap-3">
-        <span className="text-2xl">👋</span>
-        <div>
-          <h4 className="font-bold text-blue-900 mb-1">Bem-vindo à Doxologos!</h4>
-          <p className="text-sm text-blue-800">
-            Estamos felizes em ter você aqui. Vamos tornar seu primeiro agendamento super fácil!
-          </p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-blue-700">
-            <CheckCircle className="w-4 h-4" />
-            <span>Processo 100% online e seguro</span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 // Live Activity Notification (Social Proof)
 const LiveActivity = ({ currentStep }) => {
@@ -1498,8 +1423,7 @@ const AgendamentoPage = () => {
       </header>
       <div className="min-h-screen bg-gray-50 py-12 pt-24">
         <div className="container mx-auto px-4 max-w-4xl">
-          {/* Personalized Greeting */}
-          <PersonalizedGreeting userName={userName} />
+
 
           {step <= progressSteps.length && (
             <BookingStepper
@@ -1511,11 +1435,8 @@ const AgendamentoPage = () => {
             />
           )}
 
-          {/* Welcome Message for First-Time Users */}
-          {step === 1 && <WelcomeMessage isFirstBooking={isFirstBooking} />}
 
-          {/* Progress Celebration */}
-          <ProgressCelebration step={step} />
+
 
           {/* Conteúdo da etapa atual */}
           <Suspense fallback={<StepLoader />}>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle } from 'lucide-react';
+import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle, ShieldCheck } from 'lucide-react';
 import analytics from '@/lib/analytics';
 
 const ProfessionalStep = ({
@@ -364,24 +364,24 @@ const ProfessionalStep = ({
       </div> : ''}
 
 
-      {servicePriceRange && (
-        <div className="mb-8 p-5 bg-gradient-to-r from-[#2d8659]/10 via-white to-blue-50 border border-[#2d8659]/20 rounded-xl">
-          <p className="text-sm font-semibold text-[#2d8659] uppercase tracking-wide mb-1">Investimento transparente</p>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <p className="text-gray-700 text-base md:text-lg">
-              Consultas a partir de
-              <span className="font-bold text-[#2d8659] ml-2">
-                R$ {servicePriceRange.min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-              {servicePriceRange.max !== servicePriceRange.min && (
-                <span className="text-gray-600">
-                  {' '}
-                  e até R$ {servicePriceRange.max.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              )}
-            </p>
-            <p className="text-sm text-gray-600 md:text-right">
-              Você só informa seus dados após confirmar o profissional e horário ideal.
+      {servicePriceRange && stageIndicator === 'service' && (
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 bg-gray-50/80 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-start md:items-center gap-3 md:gap-4">
+            <div className="bg-[#2d8659]/10 p-2.5 rounded-full text-[#2d8659] shrink-0">
+              <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm md:text-base mb-0.5">Agendamento sem compromisso inicial</p>
+              <p className="text-xs md:text-sm text-gray-600">Você só informa seus dados após escolher o profissional e horário ideal.</p>
+            </div>
+          </div>
+          <div className="text-left md:text-right pt-3 md:pt-0 border-t md:border-0 border-gray-200 mt-1 md:mt-0">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Valor das sessões</p>
+            <p className="font-bold text-[#2d8659] text-base md:text-lg">
+              {servicePriceRange.max !== servicePriceRange.min 
+                ? `R$ ${servicePriceRange.min.toLocaleString('pt-BR')} a R$ ${servicePriceRange.max.toLocaleString('pt-BR')}`
+                : `R$ ${servicePriceRange.min.toLocaleString('pt-BR')}`
+              }
             </p>
           </div>
         </div>
@@ -433,90 +433,82 @@ const ProfessionalStep = ({
                   (professional) => professional.services_ids && professional.services_ids.includes(service.id)
                 ).length;
                 const isSelected = selectedService === service.id;
+                const isDisabled = professionalCount === 0;
 
                 return (
                   <button
                     key={service.id}
                     type="button"
-                    onClick={() => handleSelectService(service.id)}
-                    className={`w-full p-4 md:p-6 rounded-xl border-2 transition-all text-left group
-                    active:scale-95 touch-manipulation
-                    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]
-                    ${isSelected
-                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-lg'
-                        : 'border-gray-200 hover:border-[#2d8659] bg-white hover:shadow-md'
+                    disabled={isDisabled}
+                    onClick={() => !isDisabled && handleSelectService(service.id)}
+                    className={`w-full p-3 md:p-4 rounded-xl border transition-all text-left group
+                    ${isDisabled ? 'opacity-60 cursor-not-allowed border-gray-100 bg-gray-50' : 'active:scale-95 touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'}
+                    ${!isDisabled && isSelected
+                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-sm'
+                        : !isDisabled ? 'border-gray-200 hover:border-[#2d8659] bg-white hover:shadow-sm' : ''
                       }`}
                   >
                     {/* Mobile Compact Layout */}
                     <div className="md:hidden">
                       {/* Header: Title + Price */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <h3 className="font-bold text-base text-gray-900 leading-tight flex-1">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <h3 className="font-bold text-sm text-gray-900 leading-tight flex-1 line-clamp-1">
                           {service.name}
                         </h3>
-                        <div className="text-lg font-bold text-[#2d8659] whitespace-nowrap">
+                        <div className="text-sm font-bold text-[#2d8659] whitespace-nowrap">
                           R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
                       </div>
 
                       {/* Info Row - Duration + Professionals */}
-                      <div className="flex items-center gap-4 text-xs text-gray-600 mb-3">
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
                           {service.duration_minutes >= 60
                             ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? `${service.duration_minutes % 60}m` : ''
                             }`
                             : `${service.duration_minutes}min`}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5" />
-                          {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {professionalCount === 0 ? (
+                            <span className="text-gray-300">Indisponível</span>
+                          ) : (
+                            `${professionalCount} prof.`
+                          )}
                         </span>
                       </div>
-
-                      {/* Selection Indicator */}
-                      {isSelected && (
-                        <div className="flex items-center gap-2 text-sm font-semibold text-[#2d8659]">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Selecionado</span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Desktop Layout - Original */}
+                    {/* Desktop Layout - Compact */}
                     <div className="hidden md:block">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                      <div className="flex flex-col h-full justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-sm mb-1 text-gray-900 group-hover:text-[#2d8659] transition-colors line-clamp-2 leading-tight">
                             {service.name}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
+                              <Clock className="w-3.5 h-3.5" />
                               {service.duration_minutes >= 60
                                 ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''
                                 }`
-                                : `${service.duration_minutes}min`}
+                                : `${service.duration_minutes}m`}
                             </span>
                             <span className="flex items-center gap-1">
-                              <User className="w-4 h-4" />
-                              {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
+                              <User className="w-3.5 h-3.5" />
+                              {professionalCount === 0 ? (
+                                <span className="text-gray-400">Indisponível</span>
+                              ) : (
+                                `${professionalCount} prof.`
+                              )}
                             </span>
                           </div>
-                          {service.description && (
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{service.description}</p>
-                          )}
                         </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-2xl font-bold text-[#2d8659]">
-                          R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium transition-opacity ${isSelected
-                          ? 'bg-[#2d8659] text-white opacity-100'
-                          : 'bg-[#2d8659] text-white opacity-0 group-hover:opacity-100'
-                          }`}>
-                          {isSelected ? '✓ Selecionado' : 'Selecionar'}
+                        <div className="flex justify-between items-center mt-1 border-t border-gray-100 pt-2">
+                          <div className="text-base font-bold text-[#2d8659]">
+                            R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </div>
                         </div>
                       </div>
                     </div>
