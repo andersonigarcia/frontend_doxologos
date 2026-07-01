@@ -52,11 +52,34 @@ const fetchActiveEvents = async () => {
 };
 
 const fetchAllProfessionals = async () => {
-  const { data, error } = await supabase.from('professionals').select('*');
-  if (error) throw error;
-  return [...(data || [])].sort((a, b) =>
-    (a?.name || '').localeCompare(b?.name || '', 'pt-BR', { sensitivity: 'base' })
-  );
+  // 1. Busca todos os profissionais
+  const { data: profsData, error: profsError } = await supabase.from('professionals').select('*');
+  if (profsError) throw profsError;
+
+  // 2. Busca todas as agendas
+  const { data: availData, error: availError } = await supabase.from('availability').select('professional_id, available_times');
+  if (availError) throw availError;
+
+  // 3. Verifica quais profissionais possuem pelo menos um horário disponível
+  const availableProfIds = new Set();
+  if (availData) {
+    availData.forEach(avail => {
+      if (avail.available_times && avail.available_times.length > 0) {
+        availableProfIds.add(avail.professional_id);
+      }
+    });
+  }
+
+  // 4. Filtra apenas quem tem agenda
+  let activeProfs = (profsData || []).filter(p => availableProfIds.has(p.id));
+
+  // 5. Embaralha de forma randômica (Fisher-Yates shuffle)
+  for (let i = activeProfs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [activeProfs[i], activeProfs[j]] = [activeProfs[j], activeProfs[i]];
+  }
+
+  return activeProfs;
 };
 
 const fetchHomeTestimonials = async () => {
