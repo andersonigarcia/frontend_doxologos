@@ -178,6 +178,34 @@ CREATE TABLE eventos (
 );
 ```
 
+#### 8. **artigos** 🆕 (v2.2)
+```sql
+CREATE TABLE artigos (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    content TEXT,
+    slug TEXT UNIQUE NOT NULL,
+    cover_image TEXT,
+    author TEXT,
+    published_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'draft', -- draft | published
+    substack_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS: leitura pública para artigos publicados
+ALTER TABLE artigos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can read published articles" ON artigos
+    FOR SELECT USING (status = 'published');
+
+CREATE POLICY "Admins can manage articles" ON artigos
+    FOR ALL USING ((auth.jwt() ->> 'role') = 'admin');
+```
+
+
 ## 🔧 Como Implementar no Supabase
 
 ### Opção 1: **SQL Editor** (Recomendado)
