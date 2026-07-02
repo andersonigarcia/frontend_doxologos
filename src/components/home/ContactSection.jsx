@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Mail, MapPin, MessageCircle } from 'lucide-react';
+import { Phone, Mail, MapPin, MessageCircle, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ContactSection = ({
@@ -30,168 +30,118 @@ const ContactSection = ({
           <p className="text-lg sm:text-xl text-gray-600">Estamos aqui para ajudar você</p>
         </motion.div>
 
-        {/* One-Tap Contact Options - Mobile First */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-12 max-w-4xl mx-auto"
-        >
-          {/* WhatsApp - Prioridade em mobile */}
-          <a
-            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block"
-          >
-            <Button
-              type="button"
-              size="lg"
-              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold
-                py-4 sm:py-3 text-base
-                active:scale-95 transition-all touch-manipulation
-                shadow-md hover:shadow-lg"
-            >
-              <MessageCircle className="w-5 h-5 mr-2" />
-              WhatsApp
-            </Button>
-          </a>
-
-          {/* Telefone - tel: link */}
-          <a
-            href={`tel:${phoneNumber}`}
-            className="block"
-          >
-            <Button
-              type="button"
-              size="lg"
-              variant="outline"
-              className="w-full border-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white
-                py-4 sm:py-3 text-base font-semibold
-                active:scale-95 transition-all touch-manipulation"
-            >
-              <Phone className="w-5 h-5 mr-2" />
-              Ligar Agora
-            </Button>
-          </a>
-
-          {/* Email - mailto: link */}
-          <a
-            href={`mailto:${email}`}
-            className="block"
-          >
-            <Button
-              type="button"
-              size="lg"
-              variant="outline"
-              className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-100
-                py-4 sm:py-3 text-base font-semibold
-                active:scale-95 transition-all touch-manipulation"
-            >
-              <Mail className="w-5 h-5 mr-2" />
-              Email
-            </Button>
-          </a>
-        </motion.div>
-
-        {/* Divider com texto */}
-        <div className="flex items-center gap-4 max-w-4xl mx-auto mb-8 sm:mb-12">
-          <div className="flex-1 h-px bg-gray-300" />
-          <span className="text-sm text-gray-500 font-medium">ou envie uma mensagem</span>
-          <div className="flex-1 h-px bg-gray-300" />
-        </div>
-
         <div className="grid md:grid-cols-2 gap-8 sm:gap-12 max-w-6xl mx-auto">
           <motion.div initial={{ opacity: 0, x: -30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-            <form onSubmit={onSubmit} className="space-y-4 sm:space-y-6">
-              <div>
-                <label className="block text-sm font-medium mb-2">Nome Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => onFieldChange('name', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg 
-                    focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
-                    text-base touch-manipulation"
-                  placeholder="Seu nome"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={onEmailChange}
-                  className={`w-full px-4 py-3 border rounded-lg 
-                    focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
-                    text-base touch-manipulation ${emailError ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  placeholder="seu@email.com"
-                />
-                {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Telefone</label>
-                <input
-                  type="tel"
-                  required
-                  value={formData.phone}
-                  onChange={onPhoneChange}
-                  placeholder="(00) 00000-0000"
-                  maxLength={15}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg 
-                    focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
-                    text-base touch-manipulation"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Mensagem</label>
-                <textarea
-                  required
-                  rows={4}
-                  value={formData.message}
-                  onChange={(e) => onFieldChange('message', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg 
-                    focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
-                    text-base touch-manipulation resize-none"
-                  placeholder="Como podemos ajudar?"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={
-                  isSubmitting ||
-                  emailError ||
-                  !formData.name ||
-                  !formData.email ||
-                  !formData.phone ||
-                  !formData.message
-                }
-                size="lg"
-                className="w-full bg-[#2d8659] hover:bg-[#236b47] 
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  py-4 text-base font-semibold
-                  active:scale-95 transition-all touch-manipulation"
-              >
-                {isSubmitting ? 'Enviando...' : 'Enviar Mensagem'}
-              </Button>
-            </form>
+            <div className="bg-white p-6 sm:p-10 rounded-2xl shadow-lg border border-gray-100">
+              <h3 className="font-bold text-xl sm:text-2xl mb-6 text-gray-900">Mande uma mensagem</h3>
+              <form onSubmit={onSubmit} className="space-y-4 sm:space-y-5">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-gray-700">Nome Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => onFieldChange('name', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50
+                      focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
+                      text-base touch-manipulation transition-colors"
+                    placeholder="Seu nome"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={onEmailChange}
+                    className={`w-full px-4 py-3 border rounded-xl bg-gray-50
+                      focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
+                      text-base touch-manipulation transition-colors ${emailError ? 'border-red-500' : 'border-gray-200'
+                      }`}
+                    placeholder="seu@email.com"
+                  />
+                  {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-gray-700">Telefone</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={onPhoneChange}
+                    placeholder="(00) 00000-0000"
+                    maxLength={15}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50
+                      focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
+                      text-base touch-manipulation transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5 text-gray-700">Mensagem</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={formData.message}
+                    onChange={(e) => onFieldChange('message', e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50
+                      focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent
+                      text-base touch-manipulation resize-none transition-colors"
+                    placeholder="Como podemos ajudar?"
+                  />
+                </div>
+                <div className="pt-2">
+                  <Button
+                    type="submit"
+                    disabled={
+                      isSubmitting ||
+                      emailError ||
+                      !formData.name ||
+                      !formData.email ||
+                      !formData.phone ||
+                      !formData.message
+                    }
+                    size="lg"
+                    className="w-full bg-[#2d8659] hover:bg-[#236b47] 
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                      py-6 text-base font-bold rounded-xl
+                      active:scale-[0.98] transition-all touch-manipulation shadow-md hover:shadow-lg"
+                  >
+                    {isSubmitting ? 'Enviando...' : 'Enviar Mensagem'}
+                  </Button>
+                  <p className="text-center text-xs text-gray-500 mt-4 flex items-center justify-center gap-1.5 font-medium">
+                    <Lock className="w-3.5 h-3.5" /> Seus dados são confidenciais. Retornamos em até 24h.
+                  </p>
+                </div>
+              </form>
+            </div>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6 sm:space-y-8">
-            <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <Phone className="w-6 h-6 text-[#2d8659]" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg mb-1">Telefone</h3>
-                <a href={`tel:${phoneNumber}`} className="text-gray-600 hover:text-[#2d8659] transition-colors">
-                  (31) 97198-2947
-                </a>
-              </div>
+            <div className="bg-[#2d8659] p-6 sm:p-8 rounded-2xl text-white shadow-lg mb-8 relative overflow-hidden">
+              {/* Círculo decorativo */}
+              <div className="absolute -right-6 -top-6 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl pointer-events-none" />
+              
+              <h3 className="font-bold text-xl sm:text-2xl mb-2 flex items-center gap-2">
+                <MessageCircle className="w-6 h-6" />
+                Atendimento Rápido
+              </h3>
+              <p className="text-green-50 mb-6 text-sm sm:text-base leading-relaxed">
+                Precisa de uma resposta rápida? Fale com a nossa equipe diretamente pelo WhatsApp.
+              </p>
+              <a
+                href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full"
+              >
+                <Button className="w-full bg-white text-[#2d8659] hover:bg-green-50 font-bold text-base py-6 rounded-xl transition-all shadow-sm">
+                  Chamar no WhatsApp
+                </Button>
+              </a>
             </div>
+
+            <div className="space-y-6">
             <div className="flex items-start space-x-4">
               <div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0">
                 <Mail className="w-6 h-6 text-[#2d8659]" />
@@ -212,10 +162,22 @@ const ContactSection = ({
                 <p className="text-gray-600">100% Online - Presença global: onde você estiver, nós atendemos.</p>
               </div>
             </div>
-            <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm">
-              <h3 className="font-bold text-lg mb-2">Horário de Atendimento</h3>
-              <p className="text-gray-600 text-sm sm:text-base">Segunda a Sexta: 8h às 22h</p>
-              <p className="text-gray-600 text-sm sm:text-base">Sábado: 8h às 14h</p>
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 className="font-bold text-lg mb-2">Horário de Atendimento</h3>
+                <p className="text-gray-600 text-sm sm:text-base">Segunda a Sexta: 8h às 22h</p>
+                <p className="text-gray-600 text-sm sm:text-base">Sábado: 8h às 14h</p>
+              </div>
+
+              {/* Emergency Alert Box */}
+              <div className="bg-amber-50 border border-amber-200 p-4 sm:p-5 rounded-xl mt-6 shadow-sm">
+                <h3 className="font-bold text-amber-800 text-sm sm:text-base mb-1.5 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Aviso Importante
+                </h3>
+                <p className="text-amber-700 text-xs sm:text-sm leading-relaxed">
+                  Não realizamos atendimento de emergência. Em caso de crise aguda, ligue imediatamente para o <strong>188 (CVV)</strong> ou procure o pronto-socorro mais próximo.
+                </p>
+              </div>
             </div>
           </motion.div>
         </div>
