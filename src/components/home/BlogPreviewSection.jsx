@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, BookOpen, Calendar } from 'lucide-react';
+import { ArrowRight, BookOpen, Calendar, Rss } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -146,6 +146,34 @@ const BlogPreviewSection = () => {
                 </Link>
               </motion.div>
             ))}
+          </div>
+        )}
+
+        {/* CTA Newsletter (Lead Capture) */}
+        {!loading && artigos.length > 0 && (
+          <div className="mt-16 bg-[#2d8659] rounded-2xl p-8 md:p-10 text-center text-white shadow-lg relative overflow-hidden">
+            {/* Elemento decorativo de fundo */}
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 opacity-10">
+              <Rss className="w-48 h-48" />
+            </div>
+            
+            <div className="relative z-10 max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-left">
+                <h3 className="text-2xl font-bold mb-2">Gostou das reflexões?</h3>
+                <p className="text-green-100 max-w-xl">
+                  Inscreva-se na nossa newsletter gratuita e receba novos artigos semanalmente, direto no seu e-mail.
+                </p>
+              </div>
+              <a
+                href="https://doxologosoficial.substack.com/subscribe"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center gap-2 bg-white text-[#2d8659] font-bold px-6 py-3 rounded-xl hover:bg-green-50 transition-colors shadow-sm"
+              >
+                Inscrever-se gratuitamente
+                <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
           </div>
         )}
       </div>

@@ -312,6 +312,8 @@ const HomePage = () => {
 
         <ProfessionalsCarousel professionals={professionals} />
 
+        <BlogPreviewSection />
+
         <TestimonialsSection
           testimonials={testimonials}
           isLoading={testimonialsLoading}
@@ -319,8 +321,6 @@ const HomePage = () => {
         />
 
         <FaqSection faqs={faqs} />
-
-        <BlogPreviewSection />
 
         <ContactSection
           formData={formData}
