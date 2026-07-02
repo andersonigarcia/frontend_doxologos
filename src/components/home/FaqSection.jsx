@@ -12,15 +12,14 @@ const FaqSection = ({ faqs = [] }) => {
     return null;
   }
 
-  // Filtrar FAQs baseado na busca
   const filteredFaqs = useMemo(() => {
     if (!searchQuery.trim()) return faqs;
 
     const query = searchQuery.toLowerCase();
     return faqs.filter(
       (faq) =>
-        faq.question.toLowerCase().includes(query) ||
-        faq.answer.toLowerCase().includes(query)
+        (faq.question && faq.question.toLowerCase().includes(query)) ||
+        (faq.answer && faq.answer.toLowerCase().includes(query))
     );
   }, [faqs, searchQuery]);
 
@@ -129,9 +128,9 @@ const FaqSection = ({ faqs = [] }) => {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                       >
-                        <p className="px-4 sm:px-6 pb-4 sm:pb-6 text-gray-600 leading-relaxed text-sm sm:text-base">
-                          {faq.answer}
-                        </p>
+                        <div className="px-4 sm:px-6 pb-4 sm:pb-6 text-gray-600 leading-relaxed text-sm sm:text-base">
+                          {faq.content ? faq.content : <p>{faq.answer}</p>}
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -167,13 +166,28 @@ const FaqSection = ({ faqs = [] }) => {
             </p>
             <Button
               onClick={() => {
-                const element = document.getElementById('contato');
-                element?.scrollIntoView({ behavior: 'smooth' });
+                window.open('https://wa.me/5531971982947', '_blank');
               }}
               className="bg-[#2d8659] hover:bg-[#236b47]
-                active:scale-95 transition-all touch-manipulation"
+                active:scale-95 transition-all touch-manipulation gap-2"
             >
-              Entre em Contato
+              Fale conosco no WhatsApp
+            </Button>
+          </div>
+        )}
+
+        {/* CTA Geral do FAQ */}
+        {!searchQuery && (
+          <div className="mt-16 text-center max-w-2xl mx-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Ainda tem alguma dúvida?</h3>
+            <p className="text-gray-600 mb-6">Nossa equipe está pronta para ajudar você a entender melhor nossos serviços e iniciar sua jornada de cuidado.</p>
+            <Button
+              onClick={() => {
+                window.open('https://wa.me/5531971982947', '_blank');
+              }}
+              className="bg-[#2d8659] hover:bg-[#236b47] active:scale-95 transition-all text-base px-8 py-6 rounded-xl shadow-md gap-2"
+            >
+              Falar com a Equipe no WhatsApp
             </Button>
           </div>
         )}

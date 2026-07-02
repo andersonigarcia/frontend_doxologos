@@ -52,19 +52,58 @@ const videos = [
 ];
 
 const faqs = [
-  { question: 'Como funciona o atendimento online?', answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do pagamento, você receberá o link da sala virtual. Cada sessão tem duração média de 50 minutos, tempo ideal para um atendimento terapêutico efetivo.' },
-  { question: 'Como faço para agendar?', answer: 'Basta acessar nossa página de agendamento, escolher o profissional, serviço e horário de sua preferência. Após o pagamento, você receberá a confirmação por email.' },
-  { question: 'Vocês aceitam convênios?', answer: 'Atualmente trabalhamos apenas com atendimento particular, mas fornecemos recibos para reembolso junto ao seu convênio. Caso necessário, realize o agendamento e entre com contato pelo email contato@doxologos.com.br informando seu convênio.' },
-  { question: 'É possível remarcar uma consulta?', answer: 'Sim, você pode remarcar com até 24 horas de antecedência através da sua Área do Paciente ou entrando em contato conosco.' },
-  { question: 'A Doxologos atende apenas pessoas cristãs?', answer: 'Não. Embora nossos profissionais sejam psicólogos cristãos, atendemos pessoas de todas as crenças e convicções. Nosso compromisso é oferecer um ambiente de respeito, empatia e acolhimento para todos.' },
-  { question: 'Os psicólogos da Doxologos falam sobre religião durante as sessões?', answer: 'Os psicólogos podem falar sobre religião na sessão se o tema for relevante para o bem-estar do paciente. Este assunto pode ser abordado com total respeito, sem julgamentos ou proselitismo, focando sempre em como a religião se relaciona com as questões emocionais do paciente.' },
-  { question: 'O que significa ser atendido por um psicólogo cristão?', answer: 'Significa ser atendido por um profissional que, além de qualificado nas ciências psicológicas, agirá honestamente quanto aos valores cristãos em sua prática, oferecendo uma perspectiva que integra fé e ciência.' },
-  { question: 'Eu preciso ser cristão para me beneficiar das terapias da Doxologos?', answer: 'Não. Nossos serviços são voltados para qualquer pessoa que busque um atendimento que respeite a espiritualidade e promova o bem-estar, independentemente de sua crença.' },
-  { question: 'As sessões de terapia são diferentes das tradicionais?', answer: 'Nossas sessões seguem práticas psicológicas contemporâneas, mas têm a vantagem de incluir, quando solicitado pelo paciente, uma perspectiva que valoriza o aspecto espiritual e ético.' },
-  { question: 'Posso escolher um profissional que atenda mais às minhas necessidades?', answer: 'Sim, na Doxologos, você pode conhecer o perfil dos nossos psicólogos e escolher aquele que melhor atenda às suas necessidades e expectativas.' },
-  { question: 'Quais são as abordagens terapêuticas dos especialistas da Doxologos?', answer: 'Nossos profissionais utilizam diversas abordagens, como terapia cognitivo-comportamental (TCC), fenomenologia, psicanálise, terapia humanista e outras práticas contemporâneas. Todas as abordagens podem, se desejado, ser combinadas com uma visão que respeita a espiritualidade e valores cristãos.' },
-  { question: 'Como posso agendar minha primeira consulta?', answer: 'Basta acessar nosso site, selecionar o profissional de sua preferência e agendar a consulta no horário que for mais conveniente para você.' },
-  { question: ' As terapias têm custo acessível?', answer: 'Sim, na Doxologos nos comprometemos a oferecer atendimento de alta qualidade a preços justos, garantindo que mais pessoas possam cuidar da sua saúde mental.' }
+  { 
+    question: 'Como faço para agendar uma consulta?', 
+    answer: 'Basta acessar nossa página de agendamento, escolher o profissional, o serviço e o horário ideal para você. Após o pagamento, você receberá a confirmação por email.',
+    content: (
+      <div className="space-y-4">
+        <p>Basta acessar nossa página de agendamento, escolher o profissional, o serviço e o horário ideal para você. Após o pagamento, você receberá a confirmação por email.</p>
+        <Link to="/agendamento" className="inline-flex items-center text-[#2d8659] font-bold hover:underline">
+          Agendar minha primeira consulta <span className="ml-1">→</span>
+        </Link>
+      </div>
+    )
+  },
+  { 
+    question: 'Como funciona o atendimento online?', 
+    answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do agendamento, o link da sala virtual ficará disponível na sua Área do Paciente. Cada sessão dura em média 50 minutos.',
+  },
+  { 
+    question: 'A Doxologos atende apenas pessoas cristãs?', 
+    answer: 'Não. Nossos serviços são voltados para qualquer pessoa, independentemente de sua crença. Oferecemos um ambiente de respeito, empatia e acolhimento para todos, focando no seu bem-estar emocional.',
+  },
+  { 
+    question: 'A religião é abordada durante as sessões?', 
+    answer: 'A religião ou espiritualidade será abordada na sessão apenas se o tema for relevante para você e se for algo que você deseja trazer. Nossos profissionais respeitam a fé do paciente, focando sempre em como ela se relaciona com suas questões emocionais, sem julgamentos ou proselitismo.',
+  },
+  { 
+    question: 'Quais são as abordagens terapêuticas utilizadas?', 
+    answer: 'Nossos psicólogos utilizam diversas abordagens fundamentadas cientificamente, como Terapia Cognitivo-Comportamental (TCC), Fenomenologia, Psicanálise e Humanista. Você pode verificar a abordagem específica no perfil de cada profissional antes de agendar.',
+    content: (
+      <div className="space-y-4">
+        <p>Nossos psicólogos utilizam diversas abordagens fundamentadas cientificamente, como Terapia Cognitivo-Comportamental (TCC), Fenomenologia, Psicanálise e Humanista. Você pode verificar a abordagem específica no perfil de cada profissional antes de agendar.</p>
+        <a href="#profissionais" className="inline-flex items-center text-[#2d8659] font-bold hover:underline">
+          Conhecer os profissionais <span className="ml-1">→</span>
+        </a>
+      </div>
+    )
+  },
+  { 
+    question: 'Vocês aceitam convênios médicos?', 
+    answer: 'Atualmente trabalhamos apenas com atendimento particular. No entanto, fornecemos recibos válidos que podem ser utilizados para solicitar reembolso junto ao seu convênio, caso o seu plano ofereça essa opção.',
+    content: (
+      <div className="space-y-4">
+        <p>Atualmente trabalhamos apenas com atendimento particular. No entanto, fornecemos recibos válidos que podem ser utilizados para solicitar reembolso junto ao seu convênio, caso o seu plano ofereça essa opção.</p>
+        <p className="text-sm border-l-4 border-gray-200 pl-3 italic text-gray-500">
+          Dica: Consulte as regras de reembolso diretamente com a sua operadora de saúde.
+        </p>
+      </div>
+    )
+  },
+  { 
+    question: 'É possível remarcar uma consulta?', 
+    answer: 'Sim, você pode remarcar com até 24 horas de antecedência através da sua Área do Paciente. Imprevistos de última hora podem ser conversados diretamente com o profissional.',
+  }
 ];
 
 const atendimentoSteps = [
