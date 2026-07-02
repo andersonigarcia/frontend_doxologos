@@ -54,7 +54,7 @@ export default function RecuperarSenhaPage() {
             className="text-center mb-8"
           >
             <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
-              <Heart className="w-8 h-8 fill-[#2d8659]" />
+              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
               Doxologos
             </Link>
           </motion.div>

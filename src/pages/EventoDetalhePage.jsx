@@ -689,7 +689,7 @@ const EventoDetalhePage = () => {
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-8 h-8 text-[#2d8659]" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <Link to="/">
@@ -732,7 +732,7 @@ const EventoDetalhePage = () => {
             <div className="min-h-screen bg-gray-50">
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2"><Heart className="w-8 h-8 text-[#2d8659]" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
+                        <Link to="/" className="flex items-center space-x-2"><img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
                         <Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link>
                     </nav>
                 </header>

@@ -440,7 +440,7 @@ const DepoimentoPage = () => {
                                 <p className="text-gray-600 text-sm">contato@doxologos.com.br</p>
                             </Card>
                             <Card className="p-6">
-                                <Heart className="w-8 h-8 text-[#2d8659] mx-auto mb-3" />
+                                <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                                 <h3 className="font-semibold mb-2">Presencialmente</h3>
                                 <p className="text-gray-600 text-sm">Durante sua consulta</p>
                             </Card>

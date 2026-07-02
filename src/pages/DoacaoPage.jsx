@@ -59,7 +59,7 @@ const DoacaoPage = () => {
             impact: "R$ 200 = Manutenção de equipamentos"
         },
         {
-            icon: <Heart className="w-8 h-8 text-[#2d8659]" />,
+            icon: <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />,
             title: "Programas Sociais",
             description: "Desenvolvemos programas de prevenção e educação em saúde mental para a comunidade.",
             impact: "R$ 100 = Material educativo"
@@ -103,7 +103,7 @@ const DoacaoPage = () => {
                 <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-                            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center space-x-4">
