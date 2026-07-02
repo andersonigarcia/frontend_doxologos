@@ -22,6 +22,7 @@ import TrustIndicatorsSection from '@/components/home/TrustIndicatorsSection';
 import AnxietyGuideModal from '@/components/home/AnxietyGuideModal';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import BlogPreviewSection from '@/components/home/BlogPreviewSection.jsx';
 
 const videos = [
   {
@@ -319,6 +320,8 @@ const HomePage = () => {
 
         <FaqSection faqs={faqs} />
 
+        <BlogPreviewSection />
+
         <ContactSection
           formData={formData}
           emailError={emailError}
@@ -353,6 +356,7 @@ const HomePage = () => {
                 <a href="#inicio" className="block text-gray-400 hover:text-white transition-colors">Início</a>
                 <Link to="/quem-somos" className="block text-gray-400 hover:text-white transition-colors">Quem Somos</Link>
                 <a href="#profissionais" className="block text-gray-400 hover:text-white transition-colors">Profissionais</a>
+                <Link to="/artigos" className="block text-gray-400 hover:text-white transition-colors">Blog</Link>
                 <Link to="/agendamento" className="block text-gray-400 hover:text-white transition-colors">Agendamento</Link>
               </div>
             </div>

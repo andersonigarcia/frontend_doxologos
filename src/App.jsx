@@ -42,6 +42,8 @@ const AdminUsuariosPage = lazy(() => import('@/pages/AdminUsuariosPage'));
 const TermosCondicoesPage = lazy(() => import('@/pages/TermosCondicoesPage'));
 const FloatingWhatsAppButton = lazy(() => import('@/components/FloatingWhatsAppButton'));
 const ManagementDashboardPage = lazy(() => import('@/pages/ManagementDashboardPage'));
+const BlogPage = lazy(() => import('@/pages/BlogPage'));
+const ArticlePage = lazy(() => import('@/pages/ArticlePage'));
 
 // PERF (P-02): QueryClient com staleTime e gcTime para evitar refetches desnecessários
 const queryClient = new QueryClient({
@@ -141,6 +143,16 @@ function AppContent() {
           <Route path="/redefinir-senha" element={
             <PageErrorBoundary pageName="Redefinir Senha">
               <RedefinirSenhaPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/artigos" element={
+            <PageErrorBoundary pageName="Blog">
+              <BlogPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/artigos/:slug" element={
+            <PageErrorBoundary pageName="Artigo">
+              <ArticlePage />
             </PageErrorBoundary>
           } />
           <Route path="/quem-somos" element={

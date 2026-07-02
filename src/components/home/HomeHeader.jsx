@@ -14,6 +14,8 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
     { href: '#contato', label: 'Contato' },
   ];
 
+  const blogNavItem = { to: '/artigos', label: 'Blog' };
+
   return (
     <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
       <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
@@ -29,6 +31,12 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 {item.label}
               </a>
             ))}
+            <Link
+              to={blogNavItem.to}
+              className="text-gray-700 hover:text-[#2d8659] transition-colors font-medium"
+            >
+              {blogNavItem.label}
+            </Link>
             {!user && (
               <>
                 <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">
@@ -76,6 +84,9 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 {item.label}
               </a>
             ))}
+            <Link to={blogNavItem.to} className="block text-gray-700 hover:text-[#2d8659] font-medium" role="menuitem">
+              {blogNavItem.label}
+            </Link>
             {!user && (
               <>
                 <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">

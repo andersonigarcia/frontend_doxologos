@@ -13,7 +13,8 @@ import {
     Settings,
     Receipt,
     ClipboardList,
-    LineChart
+    LineChart,
+    Newspaper
 } from 'lucide-react';
 
 /**
@@ -35,6 +36,7 @@ export const tabsConfig = {
         { value: 'event-registrations', label: 'Inscrições', icon: ClipboardList },
         { value: 'refunds', label: 'Reembolsos', icon: Receipt },
         { value: 'settings', label: 'Configurações', icon: Settings },
+        { value: 'blog', label: 'Blog / Artigos', icon: Newspaper },
     ],
     professional: [
         { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },

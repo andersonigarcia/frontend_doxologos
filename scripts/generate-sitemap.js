@@ -37,26 +37,47 @@ async function generateSitemap() {
       const supabase = createClient(supabaseUrl, supabaseKey);
       
       const nowIso = new Date().toISOString();
-      const { data: events, error } = await supabase
+      const { data: events, error: eventsError } = await supabase
         .from('eventos')
         .select('link_slug, updated_at')
         .eq('status', 'aberto')
         .eq('ativo', true)
         .gt('data_limite_inscricao', nowIso);
 
-      if (error) {
-        console.error('❌ Erro ao buscar eventos do Supabase:', error.message);
+      if (eventsError) {
+        console.error('❌ Erro ao buscar eventos do Supabase:', eventsError.message);
       } else if (events && events.length > 0) {
         console.log(`✅ ${events.length} evento(s) encontrado(s).`);
-        dynamicRoutes = events.map(event => ({
+        dynamicRoutes.push(...events.map(event => ({
           loc: `/evento/${event.link_slug}`,
           lastmod: event.updated_at ? event.updated_at.split('T')[0] : new Date().toISOString().split('T')[0],
           changefreq: 'weekly',
           priority: '0.8'
-        }));
+        })));
       } else {
         console.log('ℹ️ Nenhum evento ativo encontrado no banco para o sitemap.');
       }
+
+      // Fetch Artigos do Blog
+      const { data: artigos, error: artigosError } = await supabase
+        .from('artigos')
+        .select('slug, updated_at')
+        .eq('status', 'published');
+
+      if (artigosError) {
+        console.error('❌ Erro ao buscar artigos do Supabase:', artigosError.message);
+      } else if (artigos && artigos.length > 0) {
+        console.log(`✅ ${artigos.length} artigo(s) encontrado(s).`);
+        dynamicRoutes.push(...artigos.map(artigo => ({
+          loc: `/artigos/${artigo.slug}`,
+          lastmod: artigo.updated_at ? artigo.updated_at.split('T')[0] : new Date().toISOString().split('T')[0],
+          changefreq: 'monthly',
+          priority: '0.7'
+        })));
+      } else {
+        console.log('ℹ️ Nenhum artigo publicado encontrado no banco para o sitemap.');
+      }
+
     } catch (err) {
       console.error('❌ Erro durante a execução da consulta ao Supabase:', err.message);
     }
