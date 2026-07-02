@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserBadge from '@/components/UserBadge';
 
@@ -26,10 +26,12 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
-            {navigationItems.map((item) => (
-              <a key={item.href} href={item.href} className="text-gray-700 hover:text-[#2d8659] transition-colors">
-                {item.label}
-              </a>
+            {navigationItems
+              .filter((item) => !['Início', 'Depoimentos', 'Contato'].includes(item.label))
+              .map((item) => (
+                <a key={item.href} href={item.href} className="text-gray-700 hover:text-[#2d8659] transition-colors font-medium">
+                  {item.label}
+                </a>
             ))}
             <Link
               to={blogNavItem.to}
@@ -38,14 +40,9 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               {blogNavItem.label}
             </Link>
             {!user && (
-              <>
-                <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">
-                  Área do Paciente
-                </Link>
-                <Link to="/admin" className="text-gray-600 hover:text-[#2d8659] transition-colors text-sm">
-                  Sou Profissional
-                </Link>
-              </>
+              <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors font-medium">
+                Área do Paciente
+              </Link>
             )}
             {user ? (
               <>
@@ -54,7 +51,10 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               </>
             ) : (
               <Link to="/agendamento">
-                <Button className="bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
+                <Button className="bg-[#2d8659] hover:bg-[#236b47] flex items-center gap-2 shadow-sm">
+                  <Calendar className="w-4 h-4" />
+                  Agendar Consulta
+                </Button>
               </Link>
             )}
           </div>
@@ -88,14 +88,9 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               {blogNavItem.label}
             </Link>
             {!user && (
-              <>
-                <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
-                  Área do Paciente
-                </Link>
-                <Link to="/admin" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
-                  Sou Profissional
-                </Link>
-              </>
+              <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659] font-medium" role="menuitem">
+                Área do Paciente
+              </Link>
             )}
             {user ? (
               <div className="border-t border-gray-200 pt-4">
@@ -110,7 +105,10 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
               </div>
             ) : (
               <Link to="/agendamento" className="block pt-2">
-                <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
+                <Button className="w-full bg-[#2d8659] hover:bg-[#236b47] flex items-center justify-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Agendar Consulta
+                </Button>
               </Link>
             )}
           </motion.div>
