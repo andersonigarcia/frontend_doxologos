@@ -8,24 +8,16 @@ import {
   CheckCircle, 
   Clock,
   BarChart3,
-  Zap,
-  Eye,
-  MousePointer,
-  Timer,
-  Wifi
+  Zap
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import analytics from '@/lib/analytics';
 import webVitalsMonitor from '@/lib/webVitals';
 
 const AnalyticsDashboard = ({ adminMode = false }) => {
-  const [realTimeData, setRealTimeData] = useState({
-    activeUsers: 0,
-    pageViews: 0,
-    events: 0,
-    conversions: 0,
-    errors: 0
-  });
+  // NOTA: dados de tempo real (usuários ativos, conversões) requerem integração
+  // com GA4 Real-Time API. Não são simulados para evitar false positives.
+  const realTimeData = null; // integração GA4 pendente
 
   const [performanceData, setPerformanceData] = useState({
     vitals: {},
@@ -33,7 +25,6 @@ const AnalyticsDashboard = ({ adminMode = false }) => {
     score: 0
   });
 
-  const [recentEvents, setRecentEvents] = useState([]);
   const [isConnected, setIsConnected] = useState(false);
   const intervalRef = useRef();
 
@@ -56,7 +47,7 @@ const AnalyticsDashboard = ({ adminMode = false }) => {
 
   const updateDashboard = async () => {
     try {
-      // Obter snapshot de Web Vitals
+      // Atualizar apenas dados reais: Web Vitals coletados pelo webVitals.js
       const vitalsSnapshot = webVitalsMonitor.getVitalsSnapshot();
       const report = webVitalsMonitor.generateReport();
       
@@ -66,28 +57,8 @@ const AnalyticsDashboard = ({ adminMode = false }) => {
         score: calculatePerformanceScore(vitalsSnapshot)
       });
 
-      // Simular dados em tempo real (em produção, viria do GA4 Real-Time API)
-      setRealTimeData(prev => ({
-        activeUsers: Math.floor(Math.random() * 10) + 1,
-        pageViews: prev.pageViews + Math.floor(Math.random() * 5),
-        events: prev.events + Math.floor(Math.random() * 3),
-        conversions: prev.conversions + (Math.random() > 0.8 ? 1 : 0),
-        errors: prev.errors + (Math.random() > 0.9 ? 1 : 0)
-      }));
-
-      // Adicionar evento recente
-      const eventTypes = ['page_view', 'form_start', 'video_play', 'booking_step', 'error'];
-      const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-      
-      setRecentEvents(prev => [
-        {
-          id: Date.now(),
-          type: randomEvent,
-          timestamp: new Date(),
-          data: { page: window.location.pathname }
-        },
-        ...prev.slice(0, 9) // Manter apenas os 10 mais recentes
-      ]);
+      // Dados de tempo real (usuários ativos, eventos) requerem GA4 Real-Time API.
+      // Não são simulados — métricas falsas causam decisões incorretas.
 
     } catch (error) {
       console.error('Erro ao atualizar dashboard:', error);
@@ -183,43 +154,16 @@ const AnalyticsDashboard = ({ adminMode = false }) => {
         </div>
       </div>
 
-      {/* Métricas em Tempo Real */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <MetricCard
-          title="Usuários Ativos"
-          value={realTimeData.activeUsers}
-          icon={<Users className="w-6 h-6" />}
-          color="blue"
-          trend="+12%"
-        />
-        <MetricCard
-          title="Visualizações"
-          value={realTimeData.pageViews}
-          icon={<Eye className="w-6 h-6" />}
-          color="green"
-          trend="+5%"
-        />
-        <MetricCard
-          title="Eventos"
-          value={realTimeData.events}
-          icon={<MousePointer className="w-6 h-6" />}
-          color="purple"
-          trend="+8%"
-        />
-        <MetricCard
-          title="Conversões"
-          value={realTimeData.conversions}
-          icon={<TrendingUp className="w-6 h-6" />}
-          color="green"
-          trend="+15%"
-        />
-        <MetricCard
-          title="Erros"
-          value={realTimeData.errors}
-          icon={<AlertTriangle className="w-6 h-6" />}
-          color="red"
-          trend="-3%"
-        />
+      {/* Métricas em Tempo Real — requer integração GA4 Real-Time API */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Dados de tempo real não disponíveis</p>
+          <p className="text-xs text-amber-700 mt-1">
+            Métricas como usuários ativos, eventos e conversões em tempo real requerem integração com a GA4 Real-Time API.
+            Os dados abaixo (Web Vitals) são coletados diretamente pelo navegador e são reais.
+          </p>
+        </div>
       </div>
 
       {/* Web Vitals */}
@@ -278,25 +222,12 @@ const AnalyticsDashboard = ({ adminMode = false }) => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {recentEvents.map((event) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                >
-                  <span className="text-sm font-medium">{event.type}</span>
-                  <span className="text-xs text-gray-500">
-                    {formatEventTime(event.timestamp)}
-                  </span>
-                </motion.div>
-              ))}
-              {recentEvents.length === 0 && (
-                <div className="text-center text-gray-500 py-4">
-                  Aguardando eventos...
-                </div>
-              )}
+            <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+              <Activity className="w-8 h-8 text-gray-300" />
+              <p className="text-sm text-gray-500 font-medium">Integração GA4 pendente</p>
+              <p className="text-xs text-gray-400">
+                Eventos em tempo real estarão disponíveis após configuração da GA4 Real-Time API.
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -283,9 +283,18 @@ const AgendamentoPage = () => {
   }, []);
 
   // Analytics and Error Tracking Hooks
-  const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
+  const { trackBookingStart, trackBookingStep, trackBookingCompleted, trackBookingAbandonment } = useBookingTracking();
   const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
   const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
+
+  // Disparar início do funil no carregamento da página
+  useEffect(() => {
+    try {
+      trackBookingStart();
+    } catch (err) {
+      console.warn('Erro ao disparar trackBookingStart:', err);
+    }
+  }, [trackBookingStart]);
 
   // Prefetch availability data for next step to improve performance
   useEffect(() => {
@@ -392,6 +401,8 @@ const AgendamentoPage = () => {
     }
 
     // Se chegou aqui, pode prosseguir
+    // Registrar step 5: usuário chegou ao resumo de pagamento
+    trackBookingStep(5, { step_name: 'payment_summary' });
     setStep(5);
   };
 
@@ -1157,6 +1168,19 @@ const AgendamentoPage = () => {
       // 6. Redirecionar para checkout
       console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
 
+      // Registrar conversão de funil: booking criado com sucesso
+      try {
+        trackBookingCompleted({
+          id: bookingId,
+          professionalId: selectedProfessional,
+          serviceId: selectedService,
+          amount: valorConsulta
+        });
+      } catch (trackingError) {
+        // Não bloquear o fluxo se o tracking falhar
+        console.warn('⚠️ [handleBooking] Erro no tracking (não crítico):', trackingError);
+      }
+
       // Redirecionar para página de checkout
       navigate(`/checkout?booking_id=${bookingId}`);
 
@@ -1184,7 +1208,7 @@ const AgendamentoPage = () => {
             selectedProfessional={selectedProfessional}
             onSelectService={handleServiceSelect}
             onSelectProfessional={handleProfessionalSelect}
-            onNext={() => setStep(2)}
+            onNext={() => { trackBookingStep(2, { step_name: 'professional_selected', professionalId: selectedProfessional, serviceId: selectedService }); setStep(2); }}
             availability={availability}
             displayMode="service-only"
           />
@@ -1200,7 +1224,7 @@ const AgendamentoPage = () => {
             onSelectService={handleServiceSelect}
             onSelectProfessional={handleProfessionalSelect}
             onBack={() => setStep(1)}
-            onNext={() => setStep(3)}
+            onNext={() => { trackBookingStep(3, { step_name: 'datetime_step', professionalId: selectedProfessional, serviceId: selectedService }); setStep(3); }}
             availability={availability}
             displayMode="professional-only"
           />
@@ -1227,7 +1251,7 @@ const AgendamentoPage = () => {
             isLoadingTimes={isLoadingSlots}
             topTestimonials={topTestimonials}
             onBack={() => setStep(2)}
-            onNext={() => setStep(4)}
+            onNext={() => { trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService }); setStep(4); }}
           />
         );
       case 4:

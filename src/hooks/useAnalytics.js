@@ -15,12 +15,16 @@ export const usePageTracking = (pageName, pageTitle) => {
     analytics.trackPageView(finalPath, title);
 
     // 2. Supabase Native Analytics (Fase 3 do Dashboard Gerencial)
-    supabase.from('page_views').insert([{
-      path: finalPath,
-      session_id: analytics.sessionId || 'unknown'
-    }]).then(({ error }) => {
-      if (error) console.error('Erro ao registrar page view:', error.message);
-    });
+    // Não registrar rotas /admin* para evitar que tráfego interno polua métricas de usuários
+    const isAdminRoute = finalPath.startsWith('/admin');
+    if (!isAdminRoute) {
+      supabase.from('page_views').insert([{
+        path: finalPath,
+        session_id: analytics.sessionId || 'unknown'
+      }]).then(({ error }) => {
+        if (error) console.error('Erro ao registrar page view:', error.message);
+      });
+    }
     
   }, [location.pathname, pageName, pageTitle]);
 };
@@ -109,6 +113,15 @@ export const useFormTracking = (formName) => {
 export const useBookingTracking = () => {
   const trackEvent = useEventTracking();
 
+  // Disparado quando o usuário abre a página de agendamento (step inicial)
+  const trackBookingStart = useCallback(() => {
+    analytics.trackFunnelStep('booking', 1, { step_name: 'page_open' });
+    trackEvent('booking_start', {
+      event_category: 'Booking Flow',
+      event_label: 'Step 1 - Início'
+    });
+  }, [trackEvent]);
+
   const trackBookingStep = useCallback((step, data = {}) => {
     analytics.trackBookingStep(step, data.professionalId, data.serviceId);
     analytics.trackFunnelStep('booking', step, data);
@@ -128,6 +141,7 @@ export const useBookingTracking = () => {
   }, [trackEvent]);
 
   return {
+    trackBookingStart,
     trackBookingStep,
     trackBookingCompleted,
     trackBookingAbandonment

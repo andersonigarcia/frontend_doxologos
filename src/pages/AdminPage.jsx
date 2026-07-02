@@ -2309,7 +2309,16 @@ const AdminPage = () => {
 
                     {/* Quick Access Links - Apenas para Admin */}
                     {userRole === 'admin' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <Link to="/admin/dashboard" className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-1">Dashboard Gerencial</h3>
+                                        <p className="text-indigo-100 text-sm opacity-90">Funil, faturamento e conversões</p>
+                                    </div>
+                                    <LayoutDashboard className="w-10 h-10 opacity-70" />
+                                </div>
+                            </Link>
                             <Link to="/admin/usuarios" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
                                 <div className="flex items-center justify-between">
                                     <div>
