@@ -42,6 +42,14 @@ const CheckoutPage = () => {
     const [showExistingPaymentModal, setShowExistingPaymentModal] = useState(false);
     const [shouldForceNewPayment, setShouldForceNewPayment] = useState(false);
     const [stopMonitoring, setStopMonitoring] = useState(null); // Função para parar monitoramento
+    const [payerEmail, setPayerEmail] = useState(''); // E-mail editável pelo usuário no checkout
+    const [payerEmailError, setPayerEmailError] = useState(''); // Mensagem de erro do campo e-mail
+
+    // Helper de validação de e-mail (RFC básico + domínio com pelo menos 2 chars)
+    const isValidEmail = (email) => {
+        if (!email || typeof email !== 'string') return false;
+        return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
+    };
 
     const buildLogContext = (extra = {}) => ({
         bookingId: bookingId || null,
@@ -525,11 +533,39 @@ const CheckoutPage = () => {
                 ? `Consulta Online - Agendamento ${referenceId}`
                 : (inscricao?.evento?.titulo || tituloParam || `Pagamento de Evento - Inscrição ${referenceId}`);
 
+            // O e-mail prioriza o que o usuário digitou no campo editável do checkout;
+            // em seguida, cai nos fallbacks da sessão/banco.
+            const resolvedEmail = payerEmail.trim()
+                || session?.user?.email
+                || booking?.patient_email
+                || inscricao?.email
+                || '';
+
             const payerInfo = {
-                email: session?.user?.email || booking?.patient_email || inscricao?.email || '',
+                email: resolvedEmail,
                 first_name: session?.user?.user_metadata?.full_name?.split(' ')[0] || booking?.patient_name?.split(' ')[0] || inscricao?.nome?.split(' ')[0] || '',
                 last_name: session?.user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || booking?.patient_name?.split(' ').slice(1).join(' ') || inscricao?.nome?.split(' ').slice(1).join(' ') || ''
             };
+
+            // ─── Validação de e-mail ───────────────────────────────────────────
+            // Bloqueia o pagamento antes de bater na API do Mercado Pago,
+            // evitando o erro 400 "payer.email must be valid email" (código 4050).
+            if (!isValidEmail(payerInfo.email)) {
+                const emailDisplay = payerInfo.email ? `"${payerInfo.email}"` : '(vazio)';
+                setPayerEmailError(
+                    `O e-mail ${emailDisplay} é inválido. Corrija-o acima para continuar.`
+                );
+                toast({
+                    variant: 'destructive',
+                    title: 'E-mail inválido',
+                    description: `O e-mail ${emailDisplay} não é válido. Por favor, corrija o campo acima.`
+                });
+                setProcessing(false);
+                return;
+            }
+
+            // Limpar erro de e-mail se estava marcado
+            setPayerEmailError('');
 
             // Preparar dados do pagamento
             const paymentData = {
@@ -632,10 +668,20 @@ const CheckoutPage = () => {
 
         } catch (error) {
             logger.error('CheckoutPage.handlePayment:error', error, buildLogContext());
+
+            // Extrair mensagem amigável: evitar JSON bruto do MP no toast
+            let friendlyMsg = error.message || 'Não foi possível processar o pagamento. Tente novamente.';
+            if (friendlyMsg.includes('payer.email must be valid email') || friendlyMsg.includes('4050')) {
+                friendlyMsg = 'O e-mail informado é inválido. Por favor, corrija o campo de e-mail e tente novamente.';
+                setPayerEmailError('E-mail inválido — corrija antes de pagar.');
+            } else if (friendlyMsg.includes('Mercado Pago API error') || friendlyMsg.includes('bad_request')) {
+                friendlyMsg = 'Não foi possível processar o pagamento. Verifique seus dados e tente novamente.';
+            }
+
             toast({
                 variant: 'destructive',
                 title: 'Erro ao processar pagamento',
-                description: error.message
+                description: friendlyMsg
             });
         } finally {
             setProcessing(false);
@@ -923,6 +969,57 @@ const CheckoutPage = () => {
                                         )}
                                     </div>
                                 )}
+                            </Card>
+                        )}
+
+                        {/* Campo de e-mail do pagador — editável para corrigir e-mails inválidos */}
+                        {!creditCoversTotal && (
+                            <Card className="p-6 mb-6">
+                                <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                    E-mail para confirmação
+                                </h2>
+                                <p className="text-xs text-gray-500 mb-3">
+                                    Usado pelo Mercado Pago para confirmar o pagamento. Se o e-mail estiver errado, corrija-o aqui.
+                                </p>
+                                <div className="relative">
+                                    <input
+                                        id="payer-email-input"
+                                        type="email"
+                                        autoComplete="email"
+                                        placeholder="seu@email.com"
+                                        value={payerEmail}
+                                        onChange={(e) => {
+                                            setPayerEmail(e.target.value);
+                                            if (payerEmailError) setPayerEmailError('');
+                                        }}
+                                        disabled={processing}
+                                        className={`w-full px-4 py-2 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 ${
+                                            payerEmailError
+                                                ? 'border-red-400 bg-red-50 focus:ring-red-300'
+                                                : 'border-gray-300 focus:ring-[#2d8659]/40'
+                                        }`}
+                                    />
+                                    {payerEmailError && (
+                                        <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+                                            {payerEmailError}
+                                        </p>
+                                    )}
+                                </div>
+                                {/* Prévia do e-mail que será usado caso o campo esteja vazio */}
+                                {!payerEmail && (() => {
+                                    const fallback = booking?.patient_email || inscricao?.email || '';
+                                    if (!fallback) return null;
+                                    return (
+                                        <p className="mt-2 text-xs text-gray-400">
+                                            E-mail do cadastro: <span className="font-mono">{fallback}</span>
+                                            {!isValidEmail(fallback) && (
+                                                <span className="ml-2 text-red-500 font-semibold">⚠ inválido — preencha o campo acima</span>
+                                            )}
+                                        </p>
+                                    );
+                                })()}
                             </Card>
                         )}
 

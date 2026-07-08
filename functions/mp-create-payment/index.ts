@@ -83,6 +83,20 @@ serve(async (req) => {
       email: booking.patient_email
     };
 
+    // Validação de formato de e-mail (defesa em profundidade)
+    // Evita chamar a API do MP com e-mail inválido, o que causaria erro 400/4050.
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!payerData.email || !emailRegex.test(payerData.email.trim())) {
+      console.error('❌ payer.email inválido:', payerData.email);
+      return new Response(
+        JSON.stringify({
+          error: 'E-mail do pagador inválido',
+          details: `O e-mail "${payerData.email ?? ''}" não é um endereço válido. Corrija o cadastro e tente novamente.`
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Criar pagamento PIX no Mercado Pago
     console.log('🔵 Creating PIX payment in Mercado Pago...');
     
