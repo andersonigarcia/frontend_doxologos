@@ -30,6 +30,7 @@ import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 import UserBadge from '@/components/UserBadge';
 import EventRegistrationsDashboard from '@/components/admin/EventRegistrationsDashboard';
+import BlogManagementDashboard from '@/components/admin/BlogManagementDashboard';
 // Fase 5 - Dashboard Profissional
 import { DashboardCard } from '@/components/shared/DashboardCard';
 import { StatCard } from '@/components/common/StatCard';
@@ -5397,44 +5398,7 @@ const AdminPage = () => {
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="blog" className="mt-6">
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                            <Newspaper className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                            Gestão do Blog (Substack)
-                                        </h2>
-                                        <div className="bg-gray-50 border rounded-lg p-6 flex flex-col md:flex-row md:items-center justify-between">
-                                            <div>
-                                                <h3 className="font-semibold text-lg mb-2">Sincronização de Artigos</h3>
-                                                <p className="text-gray-600 text-sm mb-4 md:mb-0">
-                                                    Puxe os artigos mais recentes do seu Substack e salve no banco de dados para melhorar o SEO da plataforma.
-                                                </p>
-                                            </div>
-                                            <Button 
-                                                onClick={async () => {
-                                                    try {
-                                                        toast({ title: 'Sincronizando...', description: 'Buscando artigos do Substack.' });
-                                                        const { data: { session } } = await supabase.auth.getSession();
-                                                        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-substack-manual`, {
-                                                            method: 'POST',
-                                                            headers: {
-                                                                'Authorization': `Bearer ${session.access_token}`,
-                                                                'Content-Type': 'application/json'
-                                                            },
-                                                            body: JSON.stringify({ substackUrl: 'https://doxologosoficial.substack.com/feed' })
-                                                        });
-                                                        const json = await res.json();
-                                                        if (!res.ok) throw new Error(json.error || 'Erro desconhecido');
-                                                        toast({ title: 'Sincronização concluída!', description: `Novos: ${json.stats?.novos || 0} | Atualizados: ${json.stats?.atualizados || 0}` });
-                                                    } catch (e) {
-                                                        toast({ variant: 'destructive', title: 'Erro na Sincronização', description: e.message });
-                                                    }
-                                                }}
-                                                className="bg-[#2d8659] hover:bg-[#236b47]"
-                                            >
-                                                Sincronizar Agora
-                                            </Button>
-                                        </div>
-                                    </div>
+                                    <BlogManagementDashboard />
                                 </TabsContent>
                             )
                         }

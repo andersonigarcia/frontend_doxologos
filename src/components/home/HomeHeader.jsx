@@ -7,11 +7,11 @@ import UserBadge from '@/components/UserBadge';
 
 const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMenuOpen, onToggleMenu }) => {
   const navigationItems = [
-    { href: '#inicio', label: 'Início' },
-    ...(activeEventsCount > 0 ? [{ href: '#eventos', label: 'Eventos' }] : []),
-    { href: '#profissionais', label: 'Profissionais' },
-    { href: '#depoimentos', label: 'Depoimentos' },
-    { href: '#contato', label: 'Contato' },
+    { href: '/#inicio', label: 'Início' },
+    ...(activeEventsCount > 0 ? [{ href: '/#eventos', label: 'Eventos' }] : []),
+    { href: '/#profissionais', label: 'Profissionais' },
+    { href: '/#depoimentos', label: 'Depoimentos' },
+    { href: '/#contato', label: 'Contato' },
   ];
 
   const blogNavItem = { to: '/artigos', label: 'Blog' };
