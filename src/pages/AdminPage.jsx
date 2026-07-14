@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
@@ -29,29 +29,29 @@ import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 import UserBadge from '@/components/UserBadge';
-import EventRegistrationsDashboard from '@/components/admin/EventRegistrationsDashboard';
-import BlogManagementDashboard from '@/components/admin/BlogManagementDashboard';
+const EventRegistrationsDashboard = lazy(() => import('@/components/admin/EventRegistrationsDashboard'));
+const BlogManagementDashboard = lazy(() => import('@/components/admin/BlogManagementDashboard'));
 // Fase 5 - Dashboard Profissional
 import { DashboardCard } from '@/components/shared/DashboardCard';
 import { StatCard } from '@/components/common/StatCard';
 import { TimelineView } from '@/components/common/TimelineView';
 import { QuickActions } from '@/components/common/QuickActions';
-import { RevenueChart } from '@/components/admin/RevenueChart';
-import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
-import { PatientList } from '@/components/admin/PatientList';
-import { PatientDetailsModal } from '@/components/admin/PatientDetailsModal';
-import { FinancialDashboard } from '@/components/admin/FinancialDashboard';
-import { ProfessionalPaymentsList } from '@/components/admin/ProfessionalPaymentsList';
-import { PaymentFormModal } from '@/components/admin/PaymentFormModal';
-import { PaymentDetailsModal } from '@/components/admin/PaymentDetailsModal';
-import { ProfitLossDashboard } from '@/components/admin/ProfitLossDashboard';
-import { LedgerTable } from '@/components/admin/LedgerTable';
-import { LedgerStats } from '@/components/admin/LedgerStats';
-import { LedgerCharts } from '@/components/admin/LedgerCharts';
-import { DashboardGrowth } from '@/components/admin/growth/DashboardGrowth';
-import { AvailabilityManager } from '@/components/admin/availability/AvailabilityManager';
-import { CostFormModal } from '@/components/admin/CostFormModal';
-import RefundRequestDashboard from '@/components/admin/RefundRequestDashboard';
+const RevenueChart = lazy(() => import('@/components/admin/RevenueChart').then(m => ({ default: m.RevenueChart })));
+const AppointmentCalendar = lazy(() => import('@/components/admin/AppointmentCalendar').then(m => ({ default: m.AppointmentCalendar })));
+const PatientList = lazy(() => import('@/components/admin/PatientList').then(m => ({ default: m.PatientList })));
+const PatientDetailsModal = lazy(() => import('@/components/admin/PatientDetailsModal').then(m => ({ default: m.PatientDetailsModal })));
+const FinancialDashboard = lazy(() => import('@/components/admin/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })));
+const ProfessionalPaymentsList = lazy(() => import('@/components/admin/ProfessionalPaymentsList').then(m => ({ default: m.ProfessionalPaymentsList })));
+const PaymentFormModal = lazy(() => import('@/components/admin/PaymentFormModal').then(m => ({ default: m.PaymentFormModal })));
+const PaymentDetailsModal = lazy(() => import('@/components/admin/PaymentDetailsModal').then(m => ({ default: m.PaymentDetailsModal })));
+const ProfitLossDashboard = lazy(() => import('@/components/admin/ProfitLossDashboard').then(m => ({ default: m.ProfitLossDashboard })));
+const LedgerTable = lazy(() => import('@/components/admin/LedgerTable').then(m => ({ default: m.LedgerTable })));
+const LedgerStats = lazy(() => import('@/components/admin/LedgerStats').then(m => ({ default: m.LedgerStats })));
+const LedgerCharts = lazy(() => import('@/components/admin/LedgerCharts').then(m => ({ default: m.LedgerCharts })));
+const DashboardGrowth = lazy(() => import('@/components/admin/growth/DashboardGrowth').then(m => ({ default: m.DashboardGrowth })));
+const AvailabilityManager = lazy(() => import('@/components/admin/availability/AvailabilityManager').then(m => ({ default: m.AvailabilityManager })));
+const CostFormModal = lazy(() => import('@/components/admin/CostFormModal').then(m => ({ default: m.CostFormModal })));
+const RefundRequestDashboard = lazy(() => import('@/components/admin/RefundRequestDashboard'));
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
@@ -2365,6 +2365,7 @@ const AdminPage = () => {
 
                         {/* Dashboard Tab - Profissionais */}
                         <TabsContent value="dashboard" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <div className="space-y-6">
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
@@ -2538,9 +2539,11 @@ const AdminPage = () => {
                                     </div>
                                 )}
                             </div>
-                        </TabsContent>
+                        </Suspense>
+</TabsContent>
 
                         <TabsContent value="bookings" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
 
                             <div className="bg-white rounded-xl shadow-lg p-6">
                                 <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -3494,9 +3497,11 @@ const AdminPage = () => {
                                     </>
                                 )}
                             </div>
-                        </TabsContent>
+                        </Suspense>
+</TabsContent>
 
                         <TabsContent value="availability" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <AvailabilityManager
                                 userRole={userRole}
                                 professionals={professionals}
@@ -3516,10 +3521,12 @@ const AdminPage = () => {
                                 handleDeleteBlockedDate={handleDeleteBlockedDate}
                                 professionalBlockedDates={professionalBlockedDates}
                             />
-                        </TabsContent>
+                        </Suspense>
+</TabsContent>
 
 
                         <TabsContent value="reviews" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                 <h2 className="text-2xl font-bold mb-6 flex items-center"><Star className="w-6 h-6 mr-2 text-[#2d8659]" /> Avaliações</h2>
                                 <div className="space-y-4">
@@ -3545,13 +3552,15 @@ const AdminPage = () => {
                                     ))}
                                 </div>
                             </div>
-                        </TabsContent>
+                        </Suspense>
+</TabsContent>
 
 
                         {/* Patients Tab - Professional View Only */}
                         {
                             isProfessionalView && (
                                 <TabsContent value="patients" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                                         <div className="flex items-center gap-3 mb-6">
                                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -3579,7 +3588,8 @@ const AdminPage = () => {
                                         }}
                                         onSaveNotes={handleSavePatientNotes}
                                     />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
@@ -3587,12 +3597,15 @@ const AdminPage = () => {
                         {
                             isProfessionalView && (
                                 <TabsContent value="financeiro" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <FinancialDashboard professionalId={currentProfessional?.id} />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
                         <TabsContent value="payments" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <ProfessionalPaymentsList
                                 key={paymentRefreshKey}
                                 onCreatePayment={(payment = null) => {
@@ -3704,12 +3717,14 @@ const AdminPage = () => {
                                 payment={selectedPayment}
                                 bookings={paymentBookings}
                             />
-                        </TabsContent>
+                        </Suspense>
+</TabsContent>
 
                         {/* P&L Dashboard Tab - Admin Only */}
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="profit-loss" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <ProfitLossDashboard
                                         onAddCost={() => {
                                             setSelectedCost(null);
@@ -3802,7 +3817,8 @@ const AdminPage = () => {
                                             </AlertDialogFooter>
                                         </AlertDialogContent>
                                     </AlertDialog>
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
@@ -3810,16 +3826,19 @@ const AdminPage = () => {
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="livro-caixa" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <LedgerStats />
                                     <LedgerCharts />
                                     <LedgerTable />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
                         {
                             (userRole === 'admin' || userRole === 'professional') && (
                                 <TabsContent value="professionals" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                         <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                             <h2 className="text-2xl font-bold mb-6 flex items-center">
@@ -4255,7 +4274,8 @@ const AdminPage = () => {
                                             </form>
                                         </div>
                                     )}
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
@@ -4264,6 +4284,7 @@ const AdminPage = () => {
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="services" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                         <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                             <h2 className="text-2xl font-bold mb-6 flex items-center"><Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços</h2>
@@ -4453,13 +4474,15 @@ const AdminPage = () => {
                                             </form>
                                         </div>
                                     </div>
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="events" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                         <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                             <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
@@ -5265,7 +5288,8 @@ const AdminPage = () => {
                                             </form>
                                         </div>
                                     </div>
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
@@ -5273,16 +5297,20 @@ const AdminPage = () => {
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="growth" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <DashboardGrowth />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="event-registrations" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <EventRegistrationsDashboard events={events} userRole={userRole} />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
 
@@ -5290,6 +5318,7 @@ const AdminPage = () => {
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="testimonials" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="bg-white rounded-xl shadow-lg p-8">
                                         <div className="text-center mb-8">
                                             <h2 className="text-2xl font-bold mb-4 flex items-center justify-center">
@@ -5367,19 +5396,23 @@ const AdminPage = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="refunds" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <RefundRequestDashboard />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="settings" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="bg-white rounded-xl shadow-lg p-6">
                                         <h2 className="text-2xl font-bold mb-6 flex items-center">
                                             <Settings className="w-6 h-6 mr-2 text-[#2d8659]" />
@@ -5392,14 +5425,17 @@ const AdminPage = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="blog" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <BlogManagementDashboard />
-                                </TabsContent>
+                                </Suspense>
+</TabsContent>
                             )
                         }
                     </Tabs >
