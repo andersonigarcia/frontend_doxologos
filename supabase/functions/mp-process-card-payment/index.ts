@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
 
-    const { token, amount, installments, description, payer, booking_id, inscricao_id } = body;
+    const { token, amount, installments, description, payer, booking_id, inscricao_id, payment_method_id } = body;
 
     if (!token || !amount) {
       return new Response(
@@ -70,7 +70,10 @@ Deno.serve(async (req) => {
       transaction_amount: transactionAmount,
       installments: Number(installments) || 1,
       description: description || 'Consulta Doxologos',
-      payment_method_id: 'master', // será detectado automaticamente pelo token
+      // payment_method_id: bandeira real do cartão detectada pelo SDK do MP no frontend
+      // (visa, master, elo, hipercard, etc.). Não pode ser hardcoded — o MP rejeita se não
+      // corresponder ao cartão tokenizado.
+      payment_method_id: payment_method_id || 'master',
       payer: {
         email: payer?.email || 'contato@doxologos.com.br',
         identification: payer?.identification || {}

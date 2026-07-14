@@ -236,6 +236,10 @@ const CheckoutDirectPage = () => {
             // Enviar para Edge Function processar pagamento
             const paymentData = {
                 token: token.id,
+                // Bandeira real do cartão detectada pelo SDK do MP (visa, master, elo, etc.)
+                // Obrigatório: o Mercado Pago rejeita o pagamento se payment_method_id
+                // não corresponder ao cartão tokenizado.
+                payment_method_id: token.payment_method_id,
                 amount: amount,
                 installments: parseInt(installments),
                 description: type === 'evento'

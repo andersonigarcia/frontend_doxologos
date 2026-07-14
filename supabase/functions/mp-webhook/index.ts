@@ -57,12 +57,17 @@ async function verifySignature(req: Request, bodyText: string, secret: string): 
 }
 
 function getUrlParam(req: Request, param: string): string {
-  // Helper to get nested params from URL or body, strictly needed for MP manifest generation
-  // Implementation simplified for now as MP sends ID in query often for notifications? 
-  // Actually MP sends ID in the BODY for webhooks usually.
-  // The manifest construction documentation usually refers to the data.id in the URL query params OR body.
-  // Let's rely on the Double Check strategy as primary security for now if this complex signature fails.
-  return "";
+  // O Mercado Pago envia o data.id tanto no body quanto como query param na URL.
+  // O manifest de assinatura usa o data.id da query string da notification_url.
+  try {
+    const url = new URL(req.url);
+    if (param === 'data.id') {
+      return url.searchParams.get('data.id') || url.searchParams.get('id') || '';
+    }
+    return url.searchParams.get(param) || '';
+  } catch {
+    return '';
+  }
 }
 
 
@@ -105,6 +110,21 @@ serve(async (req: Request) => {
     bodyJson = JSON.parse(bodyText);
   } catch (e) {
     return new Response('Invalid JSON', { status: 400 });
+  }
+
+  // Verificação de assinatura HMAC do Mercado Pago.
+  // Quando MP_WEBHOOK_SECRET está configurado (produção), rejeita requisições com assinatura inválida.
+  // Quando não está configurado, apenas loga aviso e continua (modo permissivo para ambientes de teste).
+  if (MP_WEBHOOK_SECRET) {
+    const signatureValid = await verifySignature(req, bodyText, MP_WEBHOOK_SECRET);
+    if (!signatureValid) {
+      console.warn('⚠️ [M-06] Assinatura do webhook inválida. Requisição rejeitada.');
+      // Atualizar log antes de rejeitar (best-effort, não temos logId ainda)
+      return new Response('Unauthorized', { status: 401 });
+    }
+    console.log('✅ Assinatura do webhook MP verificada com sucesso.');
+  } else {
+    console.warn('⚠️ MP_WEBHOOK_SECRET não configurado — assinatura não verificada. Configure em produção.');
   }
 
   // Log to database

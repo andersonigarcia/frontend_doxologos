@@ -141,14 +141,11 @@ export class PaymentOrchestrator {
                             statusDetail: statusUpdate.statusDetail
                         });
 
-                        // Callback de erro
-                        if (onError) {
-                            onError({
-                                status: statusUpdate.status,
-                                statusDetail: statusUpdate.statusDetail,
-                                message: this.getErrorMessage(statusUpdate)
-                            });
-                        }
+                        // Não chamar onError aqui: o onStatusChange já foi disparado acima
+                        // e a página (CheckoutDirectPage) possui tratamento próprio para
+                        // rejected/cancelled/timeout com mensagens amigáveis e navegacão.
+                        // Chamar onError em adição causaria double-toast (dois banners
+                        // sobrepostos) e exibiria o código técnico sobre a mensagem amigável.
                     }
                 }
             );
@@ -183,15 +180,15 @@ export class PaymentOrchestrator {
     }
 
     /**
-     * Retorna mensagem de erro amigável baseada no status
+     * Retorna mensagem de erro amigável baseada no status e status_detail do MP
      * @param {Object} statusUpdate - Atualização de status
-     * @returns {string} - Mensagem amigável
+     * @returns {string} - Mensagem amigável para o usuário
      */
     getErrorMessage(statusUpdate) {
         const { status, statusDetail } = statusUpdate;
 
         if (status === 'timeout') {
-            return 'O tempo de confirmação expirou. Por favor, verifique se o pagamento foi processado.';
+            return 'O tempo de confirmação expirou. Por favor, verifique seu e-mail ou entre em contato conosco.';
         }
 
         if (status === 'cancelled') {
@@ -199,9 +196,41 @@ export class PaymentOrchestrator {
         }
 
         if (status === 'rejected') {
-            return statusDetail
-                ? `Pagamento rejeitado: ${statusDetail}`
-                : 'O pagamento foi rejeitado. Tente outro método de pagamento.';
+            // Mapeamento dos códigos de rejeição do Mercado Pago para mensagens amigáveis.
+            // Ref: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/response-handling/collection-results
+            const rejectionMessages = {
+                cc_rejected_high_risk:
+                    'Pagamento recusado por motivos de segurança. Por favor, tente outro cartão ou entre em contato com seu banco.',
+                cc_rejected_insufficient_amount:
+                    'Saldo insuficiente no cartão. Verifique o limite disponível ou use outro cartão.',
+                cc_rejected_bad_filled_card_number:
+                    'Número do cartão inválido. Verifique e tente novamente.',
+                cc_rejected_bad_filled_date:
+                    'Data de validade inválida. Verifique e tente novamente.',
+                cc_rejected_bad_filled_security_code:
+                    'Código de segurança (CVV) inválido. Verifique e tente novamente.',
+                cc_rejected_bad_filled_other:
+                    'Dados do cartão inválidos. Verifique as informações e tente novamente.',
+                cc_rejected_blacklist:
+                    'Cartão não autorizado pelo banco. Entre em contato com seu banco ou use outro cartão.',
+                cc_rejected_call_for_authorize:
+                    'Pagamento não autorizado. Ligue para o número no verso do seu cartão para autorizar a transação.',
+                cc_rejected_card_disabled:
+                    'Cartão desativado. Entre em contato com seu banco para reativá-lo.',
+                cc_rejected_card_error:
+                    'Erro ao processar o cartão. Tente novamente ou use outro cartão.',
+                cc_rejected_duplicated_payment:
+                    'Pagamento duplicado detectado. Verifique se a cobrança já foi realizada antes de tentar novamente.',
+                cc_rejected_invalid_installments:
+                    'Número de parcelas não permitido para este cartão. Altere as parcelas e tente novamente.',
+                cc_rejected_max_attempts:
+                    'Número máximo de tentativas atingido. Aguarde alguns minutos ou use outro cartão.',
+                cc_rejected_other_reason:
+                    'Pagamento não autorizado pelo banco. Use outro cartão ou entre em contato com seu banco.'
+            };
+
+            return rejectionMessages[statusDetail]
+                || 'Pagamento não autorizado. Tente outro método de pagamento ou entre em contato com seu banco.';
         }
 
         return 'Não foi possível processar o pagamento. Tente novamente.';

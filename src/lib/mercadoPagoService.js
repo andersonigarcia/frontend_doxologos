@@ -665,7 +665,13 @@ export class MercadoPagoService {
                 success: result?.success !== false && normalizedStatus === 'approved'
             });
 
-            if (normalizedStatus && normalizedStatus !== 'approved') {
+            // Falhas terminais: rejected e cancelled → retornar imediatamente como erro
+            // in_process e pending NÃO são falhas — o cartão está em análise antifraude.
+            // Nesse caso, retornamos success: true para que o polling do CardPaymentStrategy
+            // aguarde a resolução sem exibir mensagem de erro ao usuário.
+            const isTerminalFailure = normalizedStatus === 'rejected' || normalizedStatus === 'cancelled';
+
+            if (normalizedStatus && isTerminalFailure) {
                 const fallbackMessage = friendlyMessage
                     || result?.message
                     || result?.error

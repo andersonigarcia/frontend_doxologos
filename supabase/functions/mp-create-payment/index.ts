@@ -65,7 +65,13 @@ serve(async (req) => {
     }
 
     const isBookingPayment = Boolean(booking_id);
-    const referenceId = booking_id || inscricao_id;
+    // Para inscrições de eventos, o external_reference precisa ter o prefixo EVENTO_
+    // para que o mp-webhook possa distingui-las de agendamentos de consulta (bookings).
+    const referenceId = booking_id
+      ? booking_id
+      : inscricao_id
+        ? `EVENTO_${inscricao_id}`
+        : null;
 
     let booking = null;
     let inscricao = null;
