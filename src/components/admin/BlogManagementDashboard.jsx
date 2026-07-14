@@ -23,38 +23,33 @@ const BlogManagementDashboard = () => {
         fetchArticles();
     }, []);
 
-    // Helper: chama a edge function admin-update-article com o token do admin
     const callAdminEdgeFunction = async (body) => {
-        // Padrão idêntico ao AdminUsuariosPage (que funciona com admin-list-users)
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
-        
-        console.log('[BlogMgmt] session check:', { 
-            hasSession: !!sessionData?.session, 
-            hasToken: !!accessToken,
-            tokenPrefix: accessToken?.substring(0, 20) 
+        const { data, error } = await supabase.functions.invoke('admin-update-article', {
+            body: body
         });
 
-        if (!accessToken) throw new Error('Sessão expirada. Faça login novamente.');
-
-        const res = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-article`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
+        if (error) {
+            console.error('[BlogMgmt] Edge function error:', error);
+            // supabase.functions.invoke retorna o erro no objeto error
+            // Se foi lançado pelo Deno (ex: new Response(JSON.stringify({error: ...})))
+            // o body do erro geralmente vem no contexto.
+            
+            let errorMsg = 'Erro desconhecido na operação';
+            try {
+                // Tenta fazer parse do erro se for um HttpError
+                if (error.context && typeof error.context.json === 'function') {
+                    const errorJson = await error.context.json();
+                    errorMsg = errorJson.details ? `${errorJson.error} - ${errorJson.details}` : (errorJson.error || error.message);
+                } else {
+                    errorMsg = error.message || 'Erro ao chamar função';
+                }
+            } catch (e) {
+                errorMsg = error.message;
             }
-        );
-
-        const json = await res.json();
-        if (!res.ok) {
-            const errorMsg = json.details ? `${json.error} - ${json.details}` : (json.error || 'Erro desconhecido na operação');
             throw new Error(errorMsg);
         }
-        return json;
+
+        return data;
     };
 
     const fetchArticles = async () => {
@@ -80,23 +75,24 @@ const BlogManagementDashboard = () => {
             setSyncing(true);
             toast({ title: 'Sincronizando...', description: 'Buscando artigos do Substack.' });
             
-            const { data: sessionData } = await supabase.auth.getSession();
-            const accessToken = sessionData?.session?.access_token;
-            const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-substack-manual`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ substackUrl: 'https://doxologosoficial.substack.com/feed' })
+            const { data, error } = await supabase.functions.invoke('sync-substack-manual', {
+                body: { substackUrl: 'https://doxologosoficial.substack.com/feed' }
             });
             
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || 'Erro desconhecido na sincronização');
+            if (error) {
+                let errorMsg = 'Erro desconhecido na sincronização';
+                if (error.context && typeof error.context.json === 'function') {
+                    const errorJson = await error.context.json();
+                    errorMsg = errorJson.error || error.message;
+                } else {
+                    errorMsg = error.message;
+                }
+                throw new Error(errorMsg);
+            }
             
             toast({ 
                 title: 'Sincronização concluída!', 
-                description: `Novos: ${json.stats?.novos || 0} | Atualizados: ${json.stats?.atualizados || 0}` 
+                description: `Novos: ${data.stats?.novos || 0} | Atualizados: ${data.stats?.atualizados || 0}` 
             });
             
             // Reload list

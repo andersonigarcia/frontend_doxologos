@@ -121,7 +121,7 @@ export function useAdminData({ user, userRole }) {
         // --- Montar promises condicionais por role ---
         let reviewsPromise;
         if (isAdmin) {
-            reviewsPromise = supabase.from('reviews').select(reviewSelect).order('created_at', { ascending: false });
+            reviewsPromise = supabase.from('reviews').select(reviewSelect).order('created_at', { ascending: false }).range(0, 99);
         } else if (professionalFilterId) {
             reviewsPromise = (async () => {
                 const [directRes, bookingRes] = await Promise.all([
@@ -141,7 +141,8 @@ export function useAdminData({ user, userRole }) {
                         `)
                         .eq('is_approved', true)
                         .eq('bookings.professional_id', professionalFilterId)
-                        .order('created_at', { ascending: false }),
+                        .order('created_at', { ascending: false })
+                        .range(0, 99),
                 ]);
                 const firstError = directRes.error || bookingRes.error || null;
                 const merged = [...(directRes.data || []), ...(bookingRes.data || [])];
@@ -155,16 +156,16 @@ export function useAdminData({ user, userRole }) {
         }
 
         const eventsPromise = isAdmin
-            ? supabase.from('eventos').select('*').order('data_inicio', { ascending: false })
+            ? supabase.from('eventos').select('*').order('data_inicio', { ascending: false }).range(0, 99)
             : professionalFilterId
-                ? supabase.from('eventos').select('*').eq('professional_id', professionalFilterId).order('data_inicio', { ascending: false })
+                ? supabase.from('eventos').select('*').eq('professional_id', professionalFilterId).order('data_inicio', { ascending: false }).range(0, 99)
                 : Promise.resolve({ data: [], error: null });
 
         const bookingsSelect = '*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(id, name, price, duration_minutes, professional_payout)';
         const bookingsPromise = isAdmin
-            ? supabase.from('bookings').select(bookingsSelect)
+            ? supabase.from('bookings').select(bookingsSelect).order('booking_date', { ascending: false }).order('booking_time', { ascending: false }).range(0, 99)
             : professionalFilterId
-                ? supabase.from('bookings').select(bookingsSelect).eq('professional_id', professionalFilterId)
+                ? supabase.from('bookings').select(bookingsSelect).eq('professional_id', professionalFilterId).order('booking_date', { ascending: false }).order('booking_time', { ascending: false }).range(0, 99)
                 : Promise.resolve({ data: [], error: null });
 
         const servicesPromise = supabase.from('services').select('*');
