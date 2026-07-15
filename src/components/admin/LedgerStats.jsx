@@ -34,7 +34,7 @@ export function LedgerStats() {
             let cash = 0;
             let revenue = 0;
 
-            data.forEach(entry => {
+            (data || []).forEach(entry => {
                 // M-01: centavos para evitar erros de float
                 const cents = toCents(entry.amount);
 

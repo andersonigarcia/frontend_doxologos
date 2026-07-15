@@ -23,7 +23,8 @@ export function usePlatformCosts(startDate = null, endDate = null, category = nu
             let query = supabase
                 .from('platform_costs')
                 .select('*')
-                .order('cost_date', { ascending: false });
+                .order('cost_date', { ascending: false })
+                .limit(10000);
 
             if (startDate) query = query.gte('cost_date', startDate);
             if (endDate) query = query.lte('cost_date', endDate);

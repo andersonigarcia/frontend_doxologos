@@ -38,7 +38,8 @@ export function LedgerCharts() {
                 .eq('account_code', 'CASH_BANK')
                 .gte('created_at', startDate.toISOString())
                 .lte('created_at', endDate.toISOString())
-                .order('created_at', { ascending: true });
+                .order('created_at', { ascending: true })
+                .limit(10000);
 
             if (error) throw error;
 
@@ -46,7 +47,9 @@ export function LedgerCharts() {
             const grouped = {};
 
             // Initialize all dates in range to 0 to show gaps
-            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+            let maxIterations = 5000;
+            for (let d = new Date(startDate); d <= endDate && maxIterations > 0; d.setDate(d.getDate() + 1)) {
+                maxIterations--;
                 const dateKey = d.toISOString().split('T')[0];
                 grouped[dateKey] = {
                     date: dateKey,
