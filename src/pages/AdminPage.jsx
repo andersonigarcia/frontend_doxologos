@@ -64,15 +64,16 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
 const SettingsToggle = () => {
-    const { settings, updateSetting, loading } = useSystemSettings();
+    const { settings, updateSetting, loading, error } = useSystemSettings();
 
     if (loading) return <div className="text-sm text-gray-500">Carregando configurações...</div>;
+    if (error) return <div className="text-sm text-red-500">Não foi possível carregar configurações.</div>;
 
     return (
         <div className="flex items-center space-x-2">
             <Switch
                 id="lead-magnet-toggle"
-                checked={settings.lead_magnet_enabled}
+                checked={settings.lead_magnet_enabled ?? false}
                 onCheckedChange={(checked) => updateSetting('lead_magnet_enabled', checked)}
             />
             <Label htmlFor="lead-magnet-toggle" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">

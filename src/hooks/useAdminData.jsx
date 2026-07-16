@@ -86,6 +86,7 @@ export function useAdminData({ user, userRole }) {
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
+        try {
         const isAdmin = userRole === 'admin';
         const professionalId = user?.id;
 
@@ -306,7 +307,11 @@ export function useAdminData({ user, userRole }) {
         setBlockedDates(blockedDatesRes.data || []);
         setReviews(isAdmin ? reviewsWithProfessionals : reviewsWithProfessionals.filter((r) => r.is_approved));
         setAvailability(availabilityMap);
-        setLoading(false);
+        } catch (err) {
+            secureLog.error('Erro crítico ao carregar dados do admin:', err?.message ?? err);
+        } finally {
+            setLoading(false);
+        }
     }, [user, userRole]);
 
     useEffect(() => {
