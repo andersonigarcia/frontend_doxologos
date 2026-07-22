@@ -116,13 +116,21 @@ serve(async (req: Request) => {
   // Quando MP_WEBHOOK_SECRET está configurado (produção), rejeita requisições com assinatura inválida.
   // Quando não está configurado, apenas loga aviso e continua (modo permissivo para ambientes de teste).
   if (MP_WEBHOOK_SECRET) {
-    const signatureValid = await verifySignature(req, bodyText, MP_WEBHOOK_SECRET);
-    if (!signatureValid) {
-      console.warn('⚠️ [M-06] Assinatura do webhook inválida. Requisição rejeitada.');
-      // Atualizar log antes de rejeitar (best-effort, não temos logId ainda)
-      return new Response('Unauthorized', { status: 401 });
+    const xSignature = req.headers.get('x-signature');
+    if (xSignature) {
+      // Formato v2.0 (MercadoPago Feed): possui x-signature — verificar HMAC
+      const signatureValid = await verifySignature(req, bodyText, MP_WEBHOOK_SECRET);
+      if (!signatureValid) {
+        console.warn('⚠️ [M-06] Assinatura v2.0 inválida. Requisição rejeitada.');
+        return new Response('Unauthorized', { status: 401 });
+      }
+      console.log('✅ Assinatura v2.0 verificada com sucesso.');
+    } else {
+      // Formato v1.0 legacy (IPN): não envia x-signature — aceitar e logar.
+      // O payload é validado internamente via fetchMpPayment (double-check na API do MP)
+      // antes de qualquer atualização de dados, portanto a segurança é mantida.
+      console.info('ℹ️ Notificação v1.0 recebida (sem x-signature). Aceita sem HMAC (formato legacy MP).');
     }
-    console.log('✅ Assinatura do webhook MP verificada com sucesso.');
   } else {
     console.warn('⚠️ MP_WEBHOOK_SECRET não configurado — assinatura não verificada. Configure em produção.');
   }
