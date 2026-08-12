@@ -24,21 +24,35 @@ class EmailService {
     }
   }
 
+  sanitizeSubject(subject) {
+    if (!subject) return 'Notificacao Doxologos';
+    // Remove emojis, quebras de linha e caracteres especiais de controle que corrompem cabeçalhos MIME no Hostinger SMTP
+    return subject
+      .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+      .replace(/[\r\n\t]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   async sendEmail({ to, subject, html, replyTo = null, cc = null, attachments = null, type = 'notification' }) {
     if (!this.enabled) {
       console.log('⚠️ Emails desabilitados');
       return { success: true, messageId: 'disabled', disabled: true };
     }
 
+    const cleanSubject = this.sanitizeSubject(subject);
+
     try {
       console.log('📧 Enviando email via Supabase Edge Function:', {
-        to, cc, subject, type,
+        to, cc, subject: cleanSubject, type,
         hasAttachments: !!attachments && attachments.length > 0
       });
 
       const emailPayload = {
         from: { email: this.fromEmail, name: this.fromName },
-        to, subject, html,
+        to,
+        subject: cleanSubject,
+        html,
         replyTo: replyTo || this.fromEmail
       };
 
