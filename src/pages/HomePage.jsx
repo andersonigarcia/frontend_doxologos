@@ -21,6 +21,7 @@ import ComoFuncionaSection from '@/components/home/ComoFuncionaSection';
 import TrustIndicatorsSection from '@/components/home/TrustIndicatorsSection';
 import AnxietyGuideModal from '@/components/home/AnxietyGuideModal';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import BlogPreviewSection from '@/components/home/BlogPreviewSection.jsx';
 
@@ -379,14 +380,13 @@ const HomePage = () => {
         showAfterScroll={300}
       />
 
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-[#1b3c37] text-[#f0ebe1] py-12 border-t border-[#132d29]">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             {/* Coluna 1: Marca e Redes Sociais */}
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
-                <span className="text-2xl font-bold">Doxologos</span>
+                <DoxologosLogo variant="white" className="h-10 w-auto" />
               </div>
               <p className="text-gray-400 mb-6">Cuidado integral para sua saúde mental com ética cristã.</p>
               <div className="flex space-x-4">

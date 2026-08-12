@@ -16,7 +16,18 @@ module.exports = {
 			},
 		},
 		extend: {
+			fontFamily: {
+				serif: ['Trust', 'Cormorant Garamond', 'Playfair Display', 'Georgia', 'serif'],
+				sans: ['Neue Haas Grotesk', 'Plus Jakarta Sans', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+			},
 			colors: {
+				brand: {
+					petroleum: '#1b3c37',
+					sage: '#9bab9b',
+					offwhite: '#f0ebe1',
+					graphite: '#262624',
+					sand: '#c9baa3',
+				},
 				border: 'hsl(var(--border))',
 				input: 'hsl(var(--input))',
 				ring: 'hsl(var(--ring))',

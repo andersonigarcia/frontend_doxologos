@@ -51,24 +51,24 @@ const BlogPreviewSection = () => {
         {/* Cabeçalho da seção */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 bg-[#2d8659]/10 text-[#2d8659] px-3 py-1 rounded-full text-sm font-medium mb-3">
-              <BookOpen className="w-4 h-4" />
+            <div className="inline-flex items-center gap-2 bg-[#1b3c37]/10 text-[#1b3c37] px-3 py-1 rounded-full text-sm font-medium mb-3">
+              <BookOpen className="w-4 h-4 text-[#1b3c37]" />
               Do nosso Blog
             </div>
             <h2
               id="blog-preview-title"
-              className="text-3xl sm:text-4xl font-extrabold text-gray-900"
+              className="font-serif text-3xl sm:text-4xl font-extrabold text-[#1b3c37]"
             >
               Reflexões para o seu{' '}
-              <span className="text-[#2d8659]">bem-estar</span>
+              <span className="gradient-text">bem-estar</span>
             </h2>
-            <p className="mt-2 text-gray-500 max-w-xl">
+            <p className="mt-2 text-[#262624]/80 max-w-xl">
               Artigos sobre saúde mental, fé e crescimento pessoal escritos pelos nossos especialistas.
             </p>
           </div>
           <Link
             to="/artigos"
-            className="group inline-flex items-center gap-2 text-[#2d8659] font-semibold hover:text-[#236b47] transition-colors shrink-0"
+            className="group inline-flex items-center gap-2 text-[#1b3c37] font-semibold hover:text-[#132d29] transition-colors shrink-0"
           >
             Ver todos os artigos
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -79,14 +79,14 @@ const BlogPreviewSection = () => {
         {loading ? (
           <div className="grid gap-6 md:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse">
-                <div className="h-48 bg-gray-200" />
+              <div key={i} className="bg-white rounded-2xl overflow-hidden shadow-sm animate-pulse border border-[#e4ded5]">
+                <div className="h-48 bg-[#f4efe6]" />
                 <div className="p-6 space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-1/3" />
-                  <div className="h-5 bg-gray-200 rounded w-full" />
-                  <div className="h-5 bg-gray-200 rounded w-3/4" />
-                  <div className="h-4 bg-gray-200 rounded w-full" />
-                  <div className="h-4 bg-gray-200 rounded w-2/3" />
+                  <div className="h-4 bg-[#f4efe6] rounded w-1/3" />
+                  <div className="h-5 bg-[#f4efe6] rounded w-full" />
+                  <div className="h-5 bg-[#f4efe6] rounded w-3/4" />
+                  <div className="h-4 bg-[#f4efe6] rounded w-full" />
+                  <div className="h-4 bg-[#f4efe6] rounded w-2/3" />
                 </div>
               </div>
             ))}
@@ -103,10 +103,10 @@ const BlogPreviewSection = () => {
               >
                 <Link
                   to={`/artigos/${artigo.slug}`}
-                  className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100 h-full"
+                  className="group flex flex-col bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 border border-[#e4ded5] h-full"
                 >
                   {/* Imagem de capa */}
-                  <div className="h-48 overflow-hidden bg-[#2d8659]/10 relative">
+                  <div className="h-48 overflow-hidden bg-[#1b3c37]/10 relative">
                     {artigo.cover_image_url ? (
                       <img
                         src={artigo.cover_image_url}
@@ -116,7 +116,7 @@ const BlogPreviewSection = () => {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <BookOpen className="w-12 h-12 text-[#2d8659]/30" />
+                        <BookOpen className="w-12 h-12 text-[#1b3c37]/30" />
                       </div>
                     )}
                     {/* Overlay sutil no hover */}

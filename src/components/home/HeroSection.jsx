@@ -33,29 +33,29 @@ const HeroSection = ({
             transition={{ duration: 0.8 }}
             className="order-2 md:order-1"
           >
-            {/* Título Mobile-Optimized - Mais curto e direto */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight" id="hero-title">
+            {/* Título Mobile-Optimized - Editorial Serif */}
+            <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight text-[#1b3c37]" id="hero-title">
               <span className="block sm:inline">Cuidado Integral para sua</span>{' '}
               <span className="gradient-text block sm:inline">Saúde Mental</span>
             </h1>
 
             {/* Subtítulo - Mais conciso para mobile */}
-            <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8 leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-[#262624]/85 mb-6 sm:mb-8 leading-relaxed">
               Cuidamos da sua saúde mental com um olhar atento ao que torna você único e ao que dá sentido à sua vida! Oferecemos uma abordagem integral, que une ciência e fé para promover uma transformação profunda e duradoura.
             </p>
 
             {/* Trust Badges Inline - Mobile First */}
             <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6 sm:mb-8 text-sm sm:text-base">
-              <div className="flex items-center gap-1.5 text-gray-700">
-                <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d8659]" />
+              <div className="flex items-center gap-1.5 text-[#1b3c37]">
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-[#1b3c37]" />
                 <span className="font-medium">CRP Registrado</span>
               </div>
-              <div className="flex items-center gap-1.5 text-gray-700">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d8659]" />
+              <div className="flex items-center gap-1.5 text-[#1b3c37]">
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#1b3c37]" />
                 <span className="font-medium">LGPD</span>
               </div>
-              <div className="flex items-center gap-1.5 text-gray-700">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#2d8659]" />
+              <div className="flex items-center gap-1.5 text-[#1b3c37]">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#1b3c37]" />
                 <span className="font-medium">100+ Consultas</span>
               </div>
             </div>
@@ -64,7 +64,7 @@ const HeroSection = ({
             <div className="flex flex-col sm:flex-row gap-4">
               {/* CTA Primário - Full width em mobile, destaque máximo */}
               <Link to="/agendamento" >
-                <Button size="lg" className="bg-[#2d8659] hover:bg-[#236b47] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap">
+                <Button size="lg" className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap shadow-md hover:shadow-lg transition-all">
                   <Calendar className="w-5 h-5 mr-2" />
                   Encontre seu psicólogo
                 </Button>

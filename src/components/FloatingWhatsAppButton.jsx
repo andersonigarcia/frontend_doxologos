@@ -24,7 +24,7 @@ const FloatingWhatsAppButton = ({ isHidden = false }) => {
       target="_blank"
       rel="noopener noreferrer"
       onClick={handleClick}
-      className="fixed bottom-24 right-6 md:bottom-28 bg-[#2d8659] text-white p-4 rounded-full shadow-xl flex items-center justify-center z-50 cursor-pointer focus:outline-none focus:ring-4 focus:ring-green-200"
+      className="fixed bottom-24 right-6 md:bottom-28 bg-[#1b3c37] text-[#f0ebe1] p-4 rounded-full shadow-xl flex items-center justify-center z-50 cursor-pointer focus:outline-none focus:ring-4 focus:ring-[#9bab9b]/40"
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}

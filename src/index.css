@@ -3,49 +3,130 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fontes Oficiais Doxologos (Trust & Neue Haas Grotesk) */
+@font-face {
+  font-family: 'Trust';
+  src: url('/fonts/Trust-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trust';
+  src: url('/fonts/Trust-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trust';
+  src: url('/fonts/Trust-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Trust';
+  src: url('/fonts/Trust-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/fonts/NeueHaasGrotesk-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/fonts/NeueHaasGrotesk-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk';
+  src: url('/fonts/NeueHaasGrotesk-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk Display';
+  src: url('/fonts/NeueHaasGroteskDisplay-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk Display';
+  src: url('/fonts/NeueHaasGroteskDisplay-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Neue Haas Grotesk Display';
+  src: url('/fonts/NeueHaasGroteskDisplay-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
-    /* Backgrounds e foregrounds base */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Backgrounds e foregrounds base (Off-white + Grafite) */
+    --background: 40 30% 96%;          /* #f8f6f0 - Off-white ultra suave para tela */
+    --foreground: 60 3% 14%;           /* #262624 - Grafite institucional */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 60 3% 14%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 60 3% 14%;
     
-    /* Paleta Verde Monocromático Otimizada */
-    --primary: 155 50% 35%;           /* #2d8659 - Verde principal (calma, equilíbrio) */
-    --primary-hover: 155 50% 28%;     /* #236b47 - Verde hover (mais escuro) */
-    --primary-light: 155 45% 53%;     /* #5ab380 - Verde suave (destaques sutis) */
-    --primary-ultra-light: 155 45% 95%; /* #e8f5ee - Background verde claro */
-    --primary-foreground: 0 0% 100%;
+    /* Paleta Doxologos Oficial */
+    --primary: 171 38% 17%;           /* #1b3c37 - Verde Petróleo Profundo (solidez, confiança) */
+    --primary-hover: 171 42% 12%;     /* #132d29 - Verde Petróleo mais escuro */
+    --primary-light: 120 10% 64%;     /* #9bab9b - Verde Sálvia (sensibilidade, humanidade) */
+    --primary-ultra-light: 40 33% 94%; /* #f4efe6 - Background Off-white quente suave */
+    --primary-foreground: 40 33% 95%; /* #f0ebe1 - Texto em botões primários */
     
-    /* Accent roxo para CTAs especiais e premium */
-    --accent: 258 90% 66%;            /* #8b5cf6 - Roxo suave (sofisticação) */
-    --accent-foreground: 0 0% 100%;
+    /* Accent Areia Mineral para CTAs especiais e destaques acolhedores */
+    --accent: 36 27% 71%;            /* #c9baa3 - Areia Mineral */
+    --accent-foreground: 60 3% 14%;
     
     /* Cores de estado para feedback consistente */
-    --success: 158 64% 52%;           /* #10b981 - Verde sucesso */
+    --success: 158 64% 42%;           /* #128a62 - Verde sucesso sóbrio */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;            /* #f59e0b - Âmbar alertas */
+    --warning: 38 85% 45%;            /* #d97706 - Âmbar alertas */
     --warning-foreground: 0 0% 100%;
-    --error: 0 84% 60%;               /* #ef4444 - Vermelho erros */
+    --error: 0 72% 51%;               /* #dc2626 - Vermelho erros */
     --error-foreground: 0 0% 100%;
     
-    /* Secundário e muted (cinzas) */
-    --secondary: 155 45% 96%;         /* Verde ultra claro para backgrounds */
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Secundário e muted (Verde Sálvia Suave & Areia) */
+    --secondary: 120 12% 93%;         /* #edf0ed - Verde sálvia ultra claro */
+    --secondary-foreground: 171 38% 17%;
+    --muted: 36 20% 92%;              /* #f2eee8 - Areia ultra suave */
+    --muted-foreground: 60 3% 40%;
     
     /* Destructive (usando error) */
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
     /* Borders e inputs */
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 155 50% 35%;
+    --border: 36 18% 86%;             /* #e4ded5 - Borda areia suave */
+    --input: 36 18% 86%;
+    --ring: 171 38% 17%;
     --radius: 0.5rem;
   }
 }
@@ -55,47 +136,51 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    @apply bg-background text-foreground font-sans;
+    font-family: 'Neue Haas Grotesk', 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  h1, h2, h3, .font-serif-trust {
+    font-family: 'Trust', 'Cormorant Garamond', 'Playfair Display', 'Georgia', serif;
   }
 }
 
 @layer components {
   .input {
-    @apply w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-[#2d8659] focus:border-transparent focus:bg-white transition-colors;
+    @apply w-full px-4 py-3 border border-[#e4ded5] rounded-lg bg-[#fcfbfa] focus:ring-2 focus:ring-[#1b3c37] focus:border-transparent focus:bg-white transition-colors;
   }
 }
 
 .gradient-text {
-  background: linear-gradient(135deg, #2d8659 0%, #5ab380 100%);
+  background: linear-gradient(135deg, #1b3c37 0%, #406b62 60%, #9bab9b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .hero-gradient {
-  background: linear-gradient(135deg, rgba(45, 134, 89, 0.1) 0%, rgba(90, 179, 128, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(27, 60, 55, 0.06) 0%, rgba(155, 171, 155, 0.1) 100%);
 }
 
-/* Classes utilitárias para nova paleta */
+/* Classes utilitárias para a nova paleta Doxologos */
 .bg-primary-light {
-  background-color: #5ab380;
+  background-color: #9bab9b;
 }
 
 .bg-primary-ultra-light {
-  background-color: #e8f5ee;
+  background-color: #f4efe6;
 }
 
 .text-primary-light {
-  color: #5ab380;
+  color: #9bab9b;
 }
 
 .bg-accent {
-  background-color: #8b5cf6;
+  background-color: #c9baa3;
 }
 
 .text-accent {
-  color: #8b5cf6;
+  color: #c9baa3;
 }
 
 .bg-success {

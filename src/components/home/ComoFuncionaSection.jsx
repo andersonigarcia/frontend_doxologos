@@ -178,7 +178,7 @@ const ComoFuncionaSection = () => {
                                     {currentStep < steps.length - 1 ? (
                                         <button
                                             onClick={nextStep}
-                                            className="flex-1 py-3 px-6 rounded-lg bg-[#2d8659] text-white font-semibold
+                                            className="flex-1 py-3 px-6 rounded-lg bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold
                         active:scale-95 transition-all touch-manipulation shadow-md"
                                         >
                                             Próximo
@@ -187,7 +187,7 @@ const ComoFuncionaSection = () => {
                                     ) : (
                                         <button
                                             onClick={() => handleStepClick('/agendamento')}
-                                            className="flex-1 py-3 px-6 rounded-lg bg-[#2d8659] text-white font-semibold
+                                            className="flex-1 py-3 px-6 rounded-lg bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold
                         active:scale-95 transition-all touch-manipulation shadow-md"
                                         >
                                             <Calendar className="w-5 h-5 inline mr-2" />
@@ -199,7 +199,7 @@ const ComoFuncionaSection = () => {
                         </AnimatePresence>
 
                         {/* Dica de swipe */}
-                        <p className="text-center text-sm text-gray-500 mt-4">
+                        <p className="text-center text-sm text-[#262624]/60 mt-4">
                             👆 Deslize para navegar entre os passos
                         </p>
                     </div>
@@ -216,15 +216,15 @@ const ComoFuncionaSection = () => {
                             transition={{ delay: index * 0.1 }}
                             type="button"
                             onClick={() => handleStepClick(step.target)}
-                            className="text-center p-6 rounded-xl hover:shadow-lg transition-shadow bg-white w-full 
-                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                            className="text-center p-6 rounded-2xl hover:shadow-md transition-all bg-white border border-[#e4ded5] w-full 
+                focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b3c37]"
                             aria-label={`Ir para ${step.title}`}
                         >
                             <div className={`w-16 h-16 bg-gradient-to-br ${colorClasses[step.color]} rounded-full flex items-center justify-center mx-auto mb-4 shadow-md`}>
                                 {React.createElement(step.icon, { className: "w-8 h-8 text-white" })}
                             </div>
-                            <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                            <p className="text-gray-600">{step.description}</p>
+                            <h3 className="font-serif text-xl font-bold mb-2 text-[#1b3c37]">{step.title}</h3>
+                            <p className="text-[#262624]/80 leading-relaxed text-sm">{step.description}</p>
                         </motion.button>
                     ))}
                 </div>
@@ -234,7 +234,7 @@ const ComoFuncionaSection = () => {
                     <Button
                         onClick={() => handleStepClick('/agendamento')}
                         size="lg"
-                        className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6 shadow-lg"
+                        className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-lg py-6 shadow-md"
                     >
                         <Calendar className="w-5 h-5 mr-2" />
                         Pular e Agendar Agora

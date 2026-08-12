@@ -102,7 +102,7 @@ const FaqSection = ({ faqs = [] }) => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
-                  className="bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                  className="bg-white border border-[#e4ded5] rounded-xl shadow-sm hover:border-[#1b3c37]/30 transition-shadow"
                 >
                   <button
                     onClick={() => toggleFaq(index)}
@@ -110,11 +110,11 @@ const FaqSection = ({ faqs = [] }) => {
                       active:scale-[0.99] transition-transform touch-manipulation"
                     aria-expanded={openIndex === index}
                   >
-                    <span className="font-bold text-base sm:text-lg text-gray-900 pr-2">
+                    <span className="font-serif font-bold text-base sm:text-lg text-[#1b3c37] pr-2">
                       {faq.question}
                     </span>
                     <ChevronDown
-                      className={`w-5 h-5 text-gray-600 flex-shrink-0 transition-transform duration-300 ${openIndex === index ? 'rotate-180' : ''
+                      className={`w-5 h-5 text-[#1b3c37] flex-shrink-0 transition-transform duration-300 ${openIndex === index ? 'rotate-180' : ''
                         }`}
                     />
                   </button>
@@ -128,7 +128,7 @@ const FaqSection = ({ faqs = [] }) => {
                         transition={{ duration: 0.3 }}
                         className="overflow-hidden"
                       >
-                        <div className="px-4 sm:px-6 pb-4 sm:pb-6 text-gray-600 leading-relaxed text-sm sm:text-base">
+                        <div className="px-4 sm:px-6 pb-4 sm:pb-6 text-[#262624]/85 leading-relaxed text-sm sm:text-base">
                           {faq.content ? faq.content : <p>{faq.answer}</p>}
                         </div>
                       </motion.div>
@@ -147,7 +147,7 @@ const FaqSection = ({ faqs = [] }) => {
               onClick={() => setShowAll((prev) => !prev)}
               variant="outline"
               size="lg"
-              className="border-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white
+              className="border-2 border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f0ebe1]
                 px-6 sm:px-8 py-3 sm:py-4 text-base
                 active:scale-95 transition-all touch-manipulation"
             >
@@ -160,15 +160,15 @@ const FaqSection = ({ faqs = [] }) => {
 
         {/* CTA de contato se não encontrar */}
         {searchQuery && filteredFaqs.length === 0 && (
-          <div className="text-center mt-8 p-6 bg-gray-50 rounded-lg">
-            <p className="text-gray-600 mb-4">
+          <div className="text-center mt-8 p-6 bg-[#f4efe6] rounded-xl border border-[#e4ded5]">
+            <p className="text-[#262624]/80 mb-4">
               Não encontrou o que procurava?
             </p>
             <Button
               onClick={() => {
                 window.open('https://wa.me/5531971982947', '_blank');
               }}
-              className="bg-[#2d8659] hover:bg-[#236b47]
+              className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1]
                 active:scale-95 transition-all touch-manipulation gap-2"
             >
               Fale conosco no WhatsApp
@@ -179,13 +179,13 @@ const FaqSection = ({ faqs = [] }) => {
         {/* CTA Geral do FAQ */}
         {!searchQuery && (
           <div className="mt-16 text-center max-w-2xl mx-auto">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Ainda tem alguma dúvida?</h3>
-            <p className="text-gray-600 mb-6">Nossa equipe está pronta para ajudar você a entender melhor nossos serviços e iniciar sua jornada de cuidado.</p>
+            <h3 className="font-serif text-xl font-bold text-[#1b3c37] mb-2">Ainda tem alguma dúvida?</h3>
+            <p className="text-[#262624]/80 mb-6">Nossa equipe está pronta para ajudar você a entender melhor nossos serviços e iniciar sua jornada de cuidado.</p>
             <Button
               onClick={() => {
                 window.open('https://wa.me/5531971982947', '_blank');
               }}
-              className="bg-[#2d8659] hover:bg-[#236b47] active:scale-95 transition-all text-base px-8 py-6 rounded-xl shadow-md gap-2"
+              className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] active:scale-95 transition-all text-base px-8 py-6 rounded-xl shadow-md gap-2"
             >
               Falar com a Equipe no WhatsApp
             </Button>

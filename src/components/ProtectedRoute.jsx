@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { motion } from 'framer-motion';
 import { Lock, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 /**
  * Formulário de login embutido — exibido quando o usuário tenta acessar uma rota
@@ -37,11 +38,10 @@ const EmbeddedLoginForm = () => {
         <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
           <div className="flex items-center justify-between gap-3">
             <Link to="/" className="flex items-center space-x-2">
-              <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 md:w-8 h-7 md:h-8" />
-              <span className="text-xl md:text-2xl font-bold gradient-text">Doxologos</span>
+              <DoxologosLogo className="h-8 md:h-9 w-auto" />
             </Link>
             <Link to="/">
-              <Button variant="outline" className="border-[#2d8659] text-[#2d8659] text-sm md:text-base">
+              <Button variant="outline" className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f0ebe1] text-sm md:text-base">
                 <ArrowLeft className="w-4 h-4 mr-1 md:mr-2" /> Voltar
               </Button>
             </Link>

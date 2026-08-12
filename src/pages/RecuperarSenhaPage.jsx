@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { isValidEmail } from '@/lib/securityUtils';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 export default function RecuperarSenhaPage() {
   const { resetPassword } = useAuth();
@@ -53,9 +54,8 @@ export default function RecuperarSenhaPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
-              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
-              Doxologos
+            <Link to="/" className="inline-flex items-center gap-2">
+              <DoxologosLogo className="h-10 w-auto" />
             </Link>
           </motion.div>
 
@@ -161,43 +161,36 @@ export default function RecuperarSenhaPage() {
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                       <p className="text-xs text-blue-800">
                         <strong>🔒 Proteção de segurança:</strong> Por motivos de segurança, você só pode solicitar 
-                        recuperação de senha a cada 1 hora por email.
+                        recuperação de senha a cada 1 hora.
                       </p>
                     </div>
 
                     <Button
                       type="submit"
-                      className="w-full bg-[#2d8659] hover:bg-[#236b47]"
-                      disabled={loading || !email.trim()}
+                      className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1]"
                     >
-                      {loading ? 'Enviando...' : 'Enviar Link de Recuperação'}
+                      {loading ? 'Enviando...' : 'Enviar instruções'}
                     </Button>
 
-                    <div className="text-center text-sm text-gray-600">
-                      Lembrou sua senha?{' '}
-                      <Link to="/area-do-paciente" className="text-[#2d8659] hover:underline font-medium">
-                        Fazer login
+                    <div className="text-center mt-4">
+                      <Link to="/area-do-paciente" className="text-[#1b3c37] hover:underline font-medium">
+                        Voltar para Login
                       </Link>
                     </div>
                   </form>
                 )}
+
+                <div className="mt-6 pt-6 border-t text-center">
+                  <Link
+                    to="/"
+                    className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#1b3c37] transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar para a página inicial
+                  </Link>
+                </div>
               </CardContent>
             </Card>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mt-6 text-center"
-            >
-              <Link
-                to="/"
-                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#2d8659] transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Voltar para o site
-              </Link>
-            </motion.div>
           </motion.div>
         </div>
       </div>

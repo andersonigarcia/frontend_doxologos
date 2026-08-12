@@ -31,7 +31,7 @@ const TestimonialsSection = ({ testimonials = [], isLoading, onLeaveTestimonial 
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d8659] mx-auto mb-4" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1b3c37] mx-auto mb-4" />
             <p className="text-gray-500 text-lg">Carregando depoimentos...</p>
           </div>
         ) : testimonials.length > 0 ? (
@@ -56,19 +56,19 @@ const TestimonialsSection = ({ testimonials = [], isLoading, onLeaveTestimonial 
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
-                  className="bg-white p-8 rounded-xl hover:shadow-lg transition-shadow h-full"
+                  className="bg-white p-8 rounded-2xl border border-[#e4ded5] hover:shadow-md transition-shadow h-full"
                 >
                   <div className="flex mb-4">
                     {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="w-5 h-5 text-yellow-500 fill-current" />
+                      <Star key={i} className="w-5 h-5 text-amber-500 fill-current" />
                     ))}
                   </div>
-                  <p className="text-gray-700 mb-4 italic">"{testimonial.comment}"</p>
+                  <p className="text-[#262624]/90 mb-4 italic leading-relaxed">"{testimonial.comment}"</p>
                   <div className="space-y-1">
-                    <p className="font-bold text-[#2d8659]">- {patientName}</p>
+                    <p className="font-bold text-[#1b3c37]">- {patientName}</p>
                     {professionalName && (
-                      <p className="text-sm text-gray-600">
-                        Atendido por <span className="font-semibold text-[#2d8659]">{professionalName}</span>
+                      <p className="text-sm text-[#262624]/70">
+                        Atendido por <span className="font-semibold text-[#1b3c37]">{professionalName}</span>
                       </p>
                     )}
                   </div>
@@ -78,20 +78,20 @@ const TestimonialsSection = ({ testimonials = [], isLoading, onLeaveTestimonial 
           />
         ) : (
           <div className="text-center py-16">
-            <div className="bg-blue-50 rounded-lg p-8 max-w-2xl mx-auto">
-              <MessageCircle className="w-16 h-16 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Seja o Primeiro a Compartilhar</h3>
-              <p className="text-gray-600 mb-6">
+            <div className="bg-[#f4efe6] rounded-2xl p-8 max-w-2xl mx-auto border border-[#e4ded5]">
+              <MessageCircle className="w-16 h-16 text-[#1b3c37] mx-auto mb-4" />
+              <h3 className="font-serif text-xl font-semibold text-[#1b3c37] mb-2">Seja o Primeiro a Compartilhar</h3>
+              <p className="text-[#262624]/80 mb-6">
                 Ainda não temos depoimentos públicos, mas você pode ser o primeiro! Compartilhe sua experiência conosco.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={onLeaveTestimonial} className="bg-[#2d8659] hover:bg-[#236b47]">
+                <Button onClick={onLeaveTestimonial} className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1]">
                   <MessageCircle className="w-4 h-4 mr-2" />
                   Deixar Depoimento
                 </Button>
                 <Button
                   variant="outline"
-                  className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659] hover:text-white"
+                  className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f0ebe1]"
                   onClick={handleContactScroll}
                 >
                   Entre em Contato

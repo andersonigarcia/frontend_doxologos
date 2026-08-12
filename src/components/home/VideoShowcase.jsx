@@ -53,18 +53,18 @@ const VideoShowcase = ({
   return (
     <div className="relative" ref={videoRef}>
       <div
-        className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#2d8659]/10 to-[#2d8659]/20 relative group"
+        className="aspect-video w-full rounded-2xl shadow-2xl overflow-hidden mb-4 bg-gradient-to-br from-[#1b3c37]/10 to-[#1b3c37]/20 relative group"
         role="region"
         aria-label="Player de vídeo principal"
       >
         {isVideoLoading && (
           <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-10">
             <motion.div
-              className="w-12 h-12 border-4 border-[#2d8659] border-t-transparent rounded-full"
+              className="w-12 h-12 border-4 border-[#1b3c37] border-t-transparent rounded-full"
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             />
-            <span className="ml-3 text-[#2d8659] font-semibold">Carregando vídeo...</span>
+            <span className="ml-3 text-[#1b3c37] font-semibold">Carregando vídeo...</span>
           </div>
         )}
 
@@ -168,8 +168,8 @@ const VideoShowcase = ({
           <motion.div
             key={video.id}
             className={`aspect-video w-full rounded-lg overflow-hidden relative group border-2 transition-all duration-500 cursor-pointer ${safeCurrentVideo.id === video.id
-              ? 'border-[#2d8659] shadow-2xl scale-105 bg-gradient-to-br from-green-50 to-green-100'
-              : 'border-transparent hover:border-green-200 hover:shadow-xl'
+              ? 'border-[#1b3c37] shadow-2xl scale-105 bg-gradient-to-br from-[#f4efe6] to-[#edf0ed]'
+              : 'border-transparent hover:border-[#9bab9b]/50 hover:shadow-xl'
               }`}
             onClick={() => playVideoInline(video.videoId)}
             onKeyDown={(e) => e.key === 'Enter' && playVideoInline(video.videoId)}

@@ -102,14 +102,14 @@ const ContactSection = ({
                       !formData.message
                     }
                     size="lg"
-                    className="w-full bg-[#2d8659] hover:bg-[#236b47] 
+                    className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1]
                       disabled:opacity-50 disabled:cursor-not-allowed
                       py-6 text-base font-bold rounded-xl
                       active:scale-[0.98] transition-all touch-manipulation shadow-md hover:shadow-lg"
                   >
                     {isSubmitting ? 'Enviando...' : 'Enviar Mensagem'}
                   </Button>
-                  <p className="text-center text-xs text-gray-500 mt-4 flex items-center justify-center gap-1.5 font-medium">
+                  <p className="text-center text-xs text-[#262624]/60 mt-4 flex items-center justify-center gap-1.5 font-medium">
                     <Lock className="w-3.5 h-3.5" /> Seus dados são confidenciais. Retornamos em até 24h.
                   </p>
                 </div>
@@ -118,15 +118,15 @@ const ContactSection = ({
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="space-y-6 sm:space-y-8">
-            <div className="bg-[#2d8659] p-6 sm:p-8 rounded-2xl text-white shadow-lg mb-8 relative overflow-hidden">
+            <div className="bg-[#1b3c37] p-6 sm:p-8 rounded-2xl text-[#f0ebe1] shadow-lg mb-8 relative overflow-hidden">
               {/* Círculo decorativo */}
-              <div className="absolute -right-6 -top-6 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute -right-6 -top-6 w-32 h-32 bg-[#9bab9b] opacity-20 rounded-full blur-2xl pointer-events-none" />
               
-              <h3 className="font-bold text-xl sm:text-2xl mb-2 flex items-center gap-2">
+              <h3 className="font-serif font-bold text-xl sm:text-2xl mb-2 flex items-center gap-2 text-[#f0ebe1]">
                 <MessageCircle className="w-6 h-6" />
                 Atendimento Rápido
               </h3>
-              <p className="text-green-50 mb-6 text-sm sm:text-base leading-relaxed">
+              <p className="text-[#f0ebe1]/85 mb-6 text-sm sm:text-base leading-relaxed">
                 Precisa de uma resposta rápida? Fale com a nossa equipe diretamente pelo WhatsApp.
               </p>
               <a
@@ -135,7 +135,7 @@ const ContactSection = ({
                 rel="noopener noreferrer"
                 className="block w-full"
               >
-                <Button className="w-full bg-white text-[#2d8659] hover:bg-green-50 font-bold text-base py-6 rounded-xl transition-all shadow-sm">
+                <Button className="w-full bg-[#f0ebe1] text-[#1b3c37] hover:bg-white font-bold text-base py-6 rounded-xl transition-all shadow-sm">
                   Chamar no WhatsApp
                 </Button>
               </a>
@@ -143,19 +143,19 @@ const ContactSection = ({
 
             <div className="space-y-6">
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <Mail className="w-6 h-6 text-[#2d8659]" />
+              <div className="w-12 h-12 bg-[#1b3c37]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <Mail className="w-6 h-6 text-[#1b3c37]" />
               </div>
               <div>
-                <h3 className="font-bold text-lg mb-1">Email</h3>
-                <a href={`mailto:${email}`} className="text-gray-600 hover:text-[#2d8659] transition-colors break-all">
+                <h3 className="font-serif font-bold text-lg mb-1 text-[#1b3c37]">Email</h3>
+                <a href={`mailto:${email}`} className="text-[#262624]/80 hover:text-[#1b3c37] transition-colors break-all">
                   contato@doxologos.com.br
                 </a>
               </div>
             </div>
             <div className="flex items-start space-x-4">
-              <div className="w-12 h-12 bg-[#2d8659]/10 rounded-full flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-6 h-6 text-[#2d8659]" />
+              <div className="w-12 h-12 bg-[#1b3c37]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-6 h-6 text-[#1b3c37]" />
               </div>
               <div>
                 <h3 className="font-bold text-lg mb-1">Atendimento</h3>

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 export default function RedefinirSenhaPage() {
   const { updatePassword, user } = useAuth();
@@ -196,14 +197,13 @@ export default function RedefinirSenhaPage() {
 
         <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
           <div className="w-full max-w-md">
-            <motion.div
+            <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-center mb-8"
             >
-              <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
-                <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
-                Doxologos
+              <Link to="/" className="inline-flex items-center gap-2">
+                <DoxologosLogo className="h-10 w-auto" />
               </Link>
             </motion.div>
 

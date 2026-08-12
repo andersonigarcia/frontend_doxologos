@@ -75,7 +75,7 @@ const StickyBottomCTA = ({
                             <Link to={ctaLink} className="flex-1">
                                 <Button
                                     size="lg"
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-semibold shadow-md
+                                    className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold shadow-md
                     h-14 text-base sm:text-lg
                     active:scale-95 transition-transform
                     touch-manipulation" // Otimização touch

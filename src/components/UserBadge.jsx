@@ -117,7 +117,7 @@ const UserBadge = ({
           className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer ${compact ? 'flex-col text-center' : ''}`}
         >
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#2d8659] to-[#1d5c3b] flex items-center justify-center text-white font-bold flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#1b3c37] to-[#132d29] flex items-center justify-center text-[#f0ebe1] font-bold flex-shrink-0">
             {displayName.charAt(0).toUpperCase()}
           </div>
 
@@ -141,11 +141,11 @@ const UserBadge = ({
 
         {/* Logout Button */}
         {showLogoutButton && (
-          <div className="px-3">
+          <div className="px-3 pt-2">
             <Button
               onClick={onLogout}
               variant="outline"
-              className="w-full border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/10 justify-center"
+              className="w-full border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37]/10"
               size="sm"
             >
               <LogOut className="w-4 h-4 mr-2" />
@@ -166,7 +166,7 @@ const UserBadge = ({
         className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
       >
         {/* Avatar */}
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#2d8659] to-[#1d5c3b] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1b3c37] to-[#132d29] flex items-center justify-center text-[#f0ebe1] font-bold text-sm flex-shrink-0">
           {displayName.charAt(0).toUpperCase()}
         </div>
 
@@ -193,7 +193,7 @@ const UserBadge = ({
         <Button
           onClick={onLogout}
           variant="outline"
-          className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/10 h-9"
+          className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37]/10 h-9"
           size="sm"
         >
           <LogOut className="w-4 h-4 mr-1" />
