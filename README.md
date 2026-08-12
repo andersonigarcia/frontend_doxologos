@@ -2,7 +2,10 @@
 
 > SPA React + Vite com Supabase como BaaS. Oferece agendamento, pagamentos (PIX e cartão via Mercado Pago), videoconferência (Google Meet / Zoom), e gestão administrativa completa.
 
-📐 **Decisões técnicas e modelo de dados:** [ARCH.md](./ARCH.md)
+📐 **Decisões técnicas e modelo de dados:** [ARCH.md](./ARCH.md)  
+🧠 **Squad Multiagente & Inteligência do Projeto:** [.squad/README.md](./.squad/README.md)  
+📚 **Documentação Técnica Completa:** [docs/README.md](./docs/README.md)  
+
 
 ---
 
