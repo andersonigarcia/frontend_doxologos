@@ -291,14 +291,14 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>Psicólogo Cristão Online | Terapia que Une Ciência e Fé | Doxologos</title>
+        <title>Psicologia de Espiritualidade Cristã Online | Terapia que Une Ciência e Fé | Doxologos</title>
         <meta
           name="description"
-          content="Encontre seu psicólogo cristão online. Equipe especializada em terapia que integra ciência e fé. Primeira consulta em até 24h. Atendimento 100% online para todo o Brasil."
+          content="Psicologia de espiritualidade cristã online. Equipe especializada em terapia que integra ciência e fé. Primeira consulta em até 24h. Atendimento 100% online para todo o Brasil."
         />
         <link rel="canonical" href="https://doxologos.com.br" />
-        <meta property="og:title" content="Psicólogo Cristão Online | Terapia que Une Ciência e Fé | Doxologos" />
-        <meta property="og:description" content="Encontre seu psicólogo cristão online. Equipe especializada em terapia que integra ciência e fé. Primeira consulta em até 24h. Atendimento 100% online para todo o Brasil." />
+        <meta property="og:title" content="Psicologia de Espiritualidade Cristã Online | Terapia que Une Ciência e Fé | Doxologos" />
+        <meta property="og:description" content="Psicologia de espiritualidade cristã online. Equipe especializada em terapia que integra ciência e fé. Primeira consulta em até 24h. Atendimento 100% online para todo o Brasil." />
         <meta property="og:url" content="https://doxologos.com.br" />
         <meta property="og:type" content="website" />
         <script type="application/ld+json">
