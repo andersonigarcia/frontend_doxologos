@@ -11,3 +11,6 @@ Sempre que iniciar uma **nova sessão de chat** com a IA, forneça os arquivos a
 3. **`03_SQUAD_MEMORY.md`**: O diário de bordo. A própria IA sugerirá atualizações para este arquivo sempre que um novo padrão for definido, garantindo que ela não repita erros no futuro.
 
 Consulte o arquivo **`PROMPT_TEMPLATES.md`** para ver exemplos práticos de como "conversar" com o Squad no dia a dia.
+
+## 📚 Documentação Técnica Aprofundada
+Para guias técnicos detalhados de deploy, troubleshooting, variáveis de ambiente, integrações de pagamento e acessibilidade, consulte a pasta [`docs/`](../docs/README.md).

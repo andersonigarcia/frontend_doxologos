@@ -1,52 +1,80 @@
-# 💬 MODELOS DE PROMPTS PARA O DIA A DIA
+# 💬 MODELOS DE PROMPTS PARA O DIA A DIA (PRODUÇÃO & EVOLUÇÃO)
 
-Utilize os modelos abaixo (copiando e colando no chat) para interagir com o Squad e extrair o melhor resultado em diferentes momentos do projeto.
-
----
-
-### 1. Kickoff Rápido (Discovery e Protótipo)
-**Use quando quiser criar a interface primeiro para aprovação com o cliente/stakeholders.**
-
-> "Squad, precisamos da funcionalidade de **[Agendamento de Consultas]**. 
-> Requisitos: O paciente deve ver os horários livres, escolher um e reservar. 
-> Pulemos direto para a **Etapa 2 (Protótipo Navegável)**. Crie o componente React visual usando Mocks de dados (sem conectar em API real por enquanto) para que eu mostre ao cliente hoje à tarde para aprovação."
+Utilize os modelos abaixo (copiando e colando no chat) para interagir com o Squad e garantir execuções seguras em produção.
 
 ---
 
-### 2. Kickoff Completo (Backend e Integração)
-**Use quando o protótipo for aprovado e for a hora de escrever código pesado de backend.**
+### 1. Investigação de Bug/Incidente em Produção (Hotfix Protocol)
+**Use quando ocorrer uma falha em ambiente de produção (Checkout, Zoom, Emails, Auth).**
 
-> "O Protótipo do **[Agendamento de Consultas]** foi aprovado pelo cliente!
-> Vamos seguir com as **Etapas 3 e 4**. Backend Specialist, construa as rotas no FastAPI. Frontend Specialist, remova os Mocks do protótipo e conecte com os endpoints reais criados."
-
----
-
-### 3. Refatoração para Transição de Fase (MVP -> Tração)
-**Use quando trocar a Fase do `02_PROJECT_CONTEXT.md`.**
-
-> "Squad, mudamos para a Fase 2 (Tração). Revise o código atual do módulo **[Nome do Módulo/Arquivo]**. 
-> O Arquiteto e o Backend Specialist devem apontar onde estão os pontos fracos atuais, adicionar validações Pydantic mais restritas e aplicar tratamento de exceções adequado para essa nova fase de estabilidade."
+> "Squad, ocorreu um incidente em produção no fluxo de **[ex: Checkout Mercado Pago / Agendamento]**.
+> Erro / Comportamento observado: **[COLE O LOG OU DESCRIÇÃO AQUI]**.
+> SRE e Backend Specialist: Investiguem silenciosamente a causa raiz sem alterar código precipitadamente. 
+> Respeitem o protocolo de Hotfix, verifiquem se há impacto em transações em andamento e proponham a correção garantindo 100% de compatibilidade regressiva."
 
 ---
 
-### 4. Foco em Resolução de Bugs Específicos
-**Use para investigar um erro sem perder o foco na segurança.**
+### 2. Nova Feature ou Evolução Segura (Feature Flag & Modularidade)
+**Use para introduzir novas funcionalidades em ambiente ativo.**
 
-> "Backend Specialist e DevOps, estou recebendo o erro **[COLE O LOG DO ERRO AQUI]** ao tentar fazer o deploy/executar a rota X. 
-> Analisem a causa raiz baseada na nossa stack atual (FastAPI + PostgreSQL). Forneçam a solução de código focando em resiliência e me digam se isso gera algum impacto de segurança."
+> "Squad, precisamos implementar a nova funcionalidade de **[Nome da Feature]**.
+> PM e Frontend Specialist: Criem o fluxo isolado em componentes React com suporte a Feature Flag ou toggle de configuração.
+> Backend Specialist & DBA: Desenvolvam a Edge Function em Deno e as tabelas com políticas RLS no Supabase sem quebrar schemas existentes."
 
 ---
 
-### 5. Code Review (Revisão de Código)
-**Use antes de aceitar um Pull Request ou fazer commit de código grande.**
+### 3. Migração de Banco de Dados Zero-Downtime (SQL Migration)
+**Use ao alterar tabelas existentes em produção.**
 
-> "Tech Lead e SRE, façam um Code Review rígido do código abaixo. 
-> Busquem por falhas de performance, falta de tipagem, possíveis vulnerabilidades de segurança e verifiquem se está aderente ao Clean Code e aos padrões da nossa `03_SQUAD_MEMORY.md`. 
+> "DBA e Tech Lead, precisamos alterar a estrutura da tabela **[Nome da Tabela]** para suportar **[Novo Requisito]**.
+> Apliquem o padrão *Expand & Contract*: criem o script SQL de migração mantendo compatibilidade com requisições legadas. Garantam que todas as políticas RLS estejam configuradas e não incluam nenhuma instrução `DROP` destrutiva."
+
+---
+
+### 4. Audit de Pre-Release & Definition of Done (DoD)
+**Use antes de autorizar o deploy de um novo pacote/release.**
+
+> "QA e Tech Lead, façam a auditoria final de Pre-Release para as alterações no módulo **[Nome do Módulo]**.
+> Executem a validação do Definition of Done (DoD): garantam que `npm run build` compila sem erros, rodem os testes unitários (`npm test`), validem a segurança RLS e certifiquem-se de que não há dados PII expostos nos logs."
+
+---
+
+### 5. Code Review & Compliance LGPD/HIPAA
+**Use antes de aprovar commits em módulos sensíveis de prontuário/paciente.**
+
+> "Tech Lead e Security Engineer, façam um Code Review rígido no código abaixo.
+> Verifiquem conformidade com LGPD/HIPAA, higienização de inputs com Zod, ausência de credenciais expostas e adesão às ADRs do nosso [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).
 > [COLE O CÓDIGO AQUI]"
 
 ---
 
-### 6. Gatilho de Auto-Refinamento (Forçando a atualização da Memória)
-**Use após tomarem uma boa decisão juntos.**
+### 6. Estratégia de Growth, SEO e Marketing de Conteúdo (Substack)
+**Use para atrair tráfego orgânico e otimizar posicionamento no Google/Substack.**
 
-> "Excelente solução, Squad. Tech Lead, execute a **Etapa 6** do nosso processo. Escreva e salve a atualização no arquivo `03_SQUAD_MEMORY.md` registrando essa decisão arquitetural que acabamos de tomar sobre **[Tema da Decisão]**."
+> "Digital Growth Specialist e Copywriter, precisamos criar uma campanha de atração orgânica sobre o tema **[Tema de Saúde Mental / Psicologia]**.
+> Criem o rascunho do artigo para o Substack com meta tags SEO de alto volume de busca, definam a estrutura da landing page de conversão e ajustem as tags Open-Graph para compartilhamento nas redes sociais."
+
+---
+
+### 7. Design System, UX e Acessibilidade (WCAG 2.1)
+**Use ao criar ou refatorar interfaces para garantir alta estética e acessibilidade.**
+
+> "UI/UX Designer e Frontend Specialist, revisem o componente **[Nome do Componente]**.
+> Garantam aderência ao Design System Doxologos (TailwindCSS + Radix UI), contraste de cores WCAG 2.1 AA, navegação fluida via teclado, suporte a leitores de tela e animações suaves com Framer Motion."
+
+---
+
+### 8. Análise de Funil de Conversão e Inteligência de Negócio (BI)
+**Use para analisar métricas financeiras, taxa de rejeição e conversão do checkout.**
+
+> "Data Analytics BI Analyst e PM, analisem o desempenho do funil de checkout do Mercado Pago e os dados do GA4.
+> Apontem onde estão os principais pontos de fricção entre a seleção de horários e a conclusão do pagamento PIX/Cartão. Proponham testes A/B e melhorias de CRO para aumentar a taxa de conversão."
+
+---
+
+### 9. Gatilho de Auto-Refinamento (Registro de ADR)
+**Use após tomar uma decisão importante com o Squad.**
+
+> "Excelente solução, Squad. Tech Lead, execute a **Etapa 6** do nosso processo. Escreva e salve a atualização no arquivo [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md) registrando essa decisão arquitetural que acabamos de tomar sobre **[Tema da Decisão]**."
+
+
