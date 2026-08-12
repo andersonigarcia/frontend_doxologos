@@ -83,12 +83,15 @@ const CheckoutPage = () => {
         return refreshed.session ?? session;
     };
 
+    const isPixHighlightEnabled = isFeatureEnabled('CRO_DEFAULT_PIX_HIGHLIGHT');
+
     const paymentMethods = [
         {
             id: 'pix',
             name: 'PIX',
             icon: <Smartphone className="w-6 h-6" />,
-            description: 'Aprovação imediata',
+            description: isPixHighlightEnabled ? '⚡ Aprovação imediata (3s)' : 'Aprovação imediata',
+            badge: isPixHighlightEnabled ? 'Mais rápido' : null,
             available: true
         },
         {

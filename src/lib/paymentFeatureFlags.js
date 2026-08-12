@@ -24,6 +24,10 @@ export const PAYMENT_FEATURE_FLAGS = {
     // Fase 4 - Dia 10: Expiração automática ✅ ATIVADO
     PAYMENT_AUTO_EXPIRATION: true,
 
+    // Otimização de Conversão (CRO) ✅ ATIVADO
+    CRO_IMPLICIT_TERMS: true,
+    CRO_DEFAULT_PIX_HIGHLIGHT: true,
+
     // Recursos adicionais (ativar após estabilização)
     PAYMENT_RETRY_LOGIC: false,
     PAYMENT_CIRCUIT_BREAKER: false,

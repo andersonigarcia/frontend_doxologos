@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Calendar, Check, CheckCircle, Clock, CreditCard, MessageCircle, Shield, User, Zap } from 'lucide-react';
+import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 
 const PaymentSummaryStep = ({
   professionals = [],
@@ -20,6 +21,9 @@ const PaymentSummaryStep = ({
   canSubmit,
   submitButtonTitle,
 }) => {
+  const isImplicitTerms = isFeatureEnabled('CRO_IMPLICIT_TERMS');
+  const effectiveCanSubmit = isImplicitTerms ? true : canSubmit;
+
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
   const formattedDate = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
@@ -136,31 +140,33 @@ const PaymentSummaryStep = ({
         })}
       </div>
 
-      <div className="flex flex-col gap-1 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-        <div className="flex items-center gap-3">
-          <input type="checkbox" id="acceptTerms" className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-[#2d8659]" {...acceptTermsField} />
-          <label htmlFor="acceptTerms" className="text-sm text-gray-700 font-medium cursor-pointer">
-            Li e concordo com os{' '}
-            <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
-              Termos e Condições
-            </a>
-          </label>
+      {!isImplicitTerms && (
+        <div className="flex flex-col gap-1 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="acceptTerms" className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-[#2d8659]" {...acceptTermsField} />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-700 font-medium cursor-pointer">
+              Li e concordo com os{' '}
+              <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                Termos e Condições
+              </a>
+            </label>
+          </div>
+          {acceptTermsError && <p className="text-red-500 text-sm ml-8 mt-1">{acceptTermsError}</p>}
         </div>
-        {acceptTermsError && <p className="text-red-500 text-sm ml-8 mt-1">{acceptTermsError}</p>}
-      </div>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 mt-6">
         <Button onClick={onBack} variant="outline" className="rounded-full">
           Voltar
         </Button>
         <motion.div
-          whileHover={!isSubmitting && canSubmit ? { scale: 1.02, y: -1 } : {}}
-          whileTap={!isSubmitting && canSubmit ? { scale: 0.98 } : {}}
+          whileHover={!isSubmitting && effectiveCanSubmit ? { scale: 1.02, y: -1 } : {}}
+          whileTap={!isSubmitting && effectiveCanSubmit ? { scale: 0.98 } : {}}
           className="flex-1"
         >
           <Button
             onClick={onSubmit}
-            disabled={!canSubmit || isSubmitting}
+            disabled={!effectiveCanSubmit || isSubmitting}
             className={`w-full rounded-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${isSubmitting ? 'cursor-not-allowed opacity-75' : ''
               }`}
             title={submitButtonTitle}
@@ -189,6 +195,15 @@ const PaymentSummaryStep = ({
           Tirar dúvidas no WhatsApp
         </Button>
       </div>
+
+      {isImplicitTerms && (
+        <p className="text-center text-xs text-gray-500 mt-4 leading-relaxed">
+          Ao clicar em &quot;Ir para Pagamento&quot;, você declara que leu e concorda expressamente com nossos{' '}
+          <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+            Termos e Condições
+          </a>.
+        </p>
+      )}
     </motion.div>
   );
 };
