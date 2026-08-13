@@ -70,5 +70,11 @@
     3. Rastreamento estrito de eventos no Google Analytics 4 (conversões de agendamento, formulários e cliques de WhatsApp).
   - *Consequências:* Melhor posicionamento orgânico no Google, conformidade legal de acessibilidade e inteligência de negócios para tomada de decisão.
 
+- **Data (2026-08-13):** **Arquitetura IA-First Multiagente Reorganizada em 6 Pilares de Domínio (22 Especialidades).**
+  - *Contexto:* A evolução da plataforma Doxologos exigia cobrir todo o ciclo de vida da aplicação (benchmarking de mercado, PO/regras de negócio, UX research/writing, testes E2E Playwright, compliance LGPD/CFP, emissão fiscal NFS-e, gestão de margem/ledger e retenção/CRM) sem inchaço de prompt desestruturado.
+  - *Decisão:* Estruturar o Squad em 6 Pilares de Domínio (Estratégia/Produto, Design/UX, Engenharia, Qualidade/SRE/Perf, Finanças/Pagamentos/Fiscal e Governança/Legal/DPO) com 5 Gatekeepers de Validação Cruzada (*Pre-Flight Checks*) obrigatórios antes de produções.
+  - *Consequências:* Cobertura completa de todas as etapas de negócio e engenharia, eliminação de gargalos legais e fiscais, e garantia de zero regressão em produção.
+
+
 
 
