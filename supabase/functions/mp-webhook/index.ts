@@ -135,10 +135,39 @@ serve(async (req: Request) => {
     console.warn('⚠️ MP_WEBHOOK_SECRET não configurado — assinatura não verificada. Configure em produção.');
   }
 
-  // Log to database
+function sanitizeForLog(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(sanitizeForLog);
+
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const lowerKey = key.toLowerCase();
+    if (
+      lowerKey.includes('card') ||
+      lowerKey.includes('cvv') ||
+      lowerKey.includes('security_code') ||
+      lowerKey.includes('password') ||
+      lowerKey.includes('token')
+    ) {
+      sanitized[key] = '***REDACTED***';
+    } else if (lowerKey.includes('email') && typeof value === 'string') {
+      const [user, domain] = value.split('@');
+      sanitized[key] = user ? `${user.substring(0, 2)}***@${domain || ''}` : '***@***';
+    } else if (lowerKey.includes('phone') && typeof value === 'string') {
+      sanitized[key] = value.length > 4 ? `***${value.slice(-4)}` : '***';
+    } else if (typeof value === 'object') {
+      sanitized[key] = sanitizeForLog(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
+  // Log to database (com saneamento PII)
   const logEntry = {
     provider: 'mercadopago',
-    payload: bodyJson,
+    payload: sanitizeForLog(bodyJson),
     status: 'pending',
     signature: req.headers.get('x-signature')
   };
@@ -148,6 +177,7 @@ serve(async (req: Request) => {
     .insert(logEntry)
     .select()
     .single();
+
 
   const logId = logData?.id;
 

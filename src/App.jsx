@@ -44,6 +44,8 @@ const FloatingWhatsAppButton = lazy(() => import('@/components/FloatingWhatsAppB
 const ManagementDashboardPage = lazy(() => import('@/pages/ManagementDashboardPage'));
 const BlogPage = lazy(() => import('@/pages/BlogPage'));
 const ArticlePage = lazy(() => import('@/pages/ArticlePage'));
+const LgpdCookieBanner = lazy(() => import('@/components/common/LgpdCookieBanner'));
+
 
 // PERF (P-02): QueryClient com staleTime e gcTime para evitar refetches desnecessários
 const queryClient = new QueryClient({
@@ -252,10 +254,12 @@ function AppContent() {
       <Toaster />
       <Suspense fallback={null}>
         <FloatingWhatsAppButton isHidden={shouldHideWhatsApp} />
+        <LgpdCookieBanner />
       </Suspense>
     </div>
   );
 }
+
 
 function App() {
   return (

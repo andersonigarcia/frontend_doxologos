@@ -1,21 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Helper seguro para leitura de variáveis de ambiente compatível com Vite (import.meta) e Jest/Node (process.env)
-let importMetaEnv = {};
-try {
-  importMetaEnv = (new Function('return import.meta.env')()) || {};
-} catch (e) {}
-
-const processEnv = (typeof process !== 'undefined' && process.env) || {};
-const isTestEnv = processEnv.NODE_ENV === 'test';
+// Configurações do Supabase - REQUER variáveis de ambiente
+const isTestEnv = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test';
 
 const supabaseUrl = isTestEnv
   ? 'https://tests.supabase.local'
-  : (importMetaEnv.VITE_SUPABASE_URL || processEnv.VITE_SUPABASE_URL || 'https://tests.supabase.local');
+  : (import.meta.env.VITE_SUPABASE_URL || (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL) || 'https://ppwjtvzrhvjinsutrjwk.supabase.co');
 
 const supabaseAnonKey = isTestEnv
   ? 'mock-anon-key-for-tests'
-  : (importMetaEnv.VITE_SUPABASE_ANON_KEY || processEnv.VITE_SUPABASE_ANON_KEY || 'mock-anon-key-for-tests');
+  : (import.meta.env.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) || '');
+
 
 
 // Validação de configuração obrigatória
@@ -26,7 +21,8 @@ if (!supabaseUrl || (supabaseUrl !== 'https://tests.supabase.local' && !supabase
 }
 
 // Log das configurações (apenas em desenvolvimento)
-if (importMetaEnv.DEV) {
+if (import.meta.env?.DEV) {
+
   console.log('🔗 Supabase Config:', {
     url: supabaseUrl,
     hasAnonKey: !!supabaseAnonKey,

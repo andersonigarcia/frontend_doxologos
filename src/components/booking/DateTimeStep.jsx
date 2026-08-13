@@ -300,7 +300,12 @@ const DateTimeStep = ({
                     key={dateString}
                     type="button"
                     onClick={() => !disabled && onSelectDate?.(dateString)}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && onSelectDate?.(dateString)}
                     disabled={disabled}
+                    aria-label={`Dia ${date.getDate()} de ${currentMonth.toLocaleDateString('pt-BR', { month: 'long' })}${isToday ? ', Hoje' : ''}${disabled ? ', indisponível' : ''}`}
+                    aria-selected={isSelected}
+                    aria-disabled={disabled}
+                    role="gridcell"
                     className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all ${disabled
                       ? 'text-gray-300 cursor-not-allowed bg-gray-50'
                       : isSelected
@@ -316,6 +321,7 @@ const DateTimeStep = ({
                     {isToday && !isSelected && <span className="text-[9px] text-blue-600 font-bold">Hoje</span>}
                   </motion.button>
                 );
+
               })}
             </div>
 
@@ -410,7 +416,12 @@ const DateTimeStep = ({
                                   key={time}
                                   type="button"
                                   onClick={() => !disabled && onSelectTime?.(time)}
+                                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && onSelectTime?.(time)}
                                   disabled={disabled}
+                                  role="radio"
+                                  aria-checked={selectedTime === time}
+                                  aria-disabled={disabled}
+                                  aria-label={`Horário ${time} da manhã${disabled ? ', ocupado' : ''}`}
                                   className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
                                     : selectedTime === time
@@ -421,6 +432,7 @@ const DateTimeStep = ({
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
                                   title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
                                 >
+
                                   <div className="text-base">{time}</div>
                                   {!disabled && selectedTime !== time && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
