@@ -33,6 +33,7 @@ import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 import { useBookingData } from '@/hooks/booking/useBookingData';
 import { usePatientForm, formatPhoneNumber, validateEmail } from '@/hooks/booking/usePatientForm';
+import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import BookingStepper from '@/components/booking/BookingStepper';
 
 // Lazy load heavy components for better performance
@@ -472,10 +473,10 @@ const AgendamentoPage = () => {
     patientData.phone,
   ]);
 
-  const canSubmitBooking = useMemo(
-    () => canProceedToSummary && Boolean(patientData.acceptTerms),
-    [canProceedToSummary, patientData.acceptTerms]
-  );
+  const canSubmitBooking = useMemo(() => {
+    const termsOk = isFeatureEnabled('CRO_IMPLICIT_TERMS') || Boolean(patientData.acceptTerms);
+    return canProceedToSummary && termsOk;
+  }, [canProceedToSummary, patientData.acceptTerms]);
 
   const submitButtonTitle = useMemo(() => {
     if (!authUser) {
@@ -487,7 +488,7 @@ const AgendamentoPage = () => {
       }
     }
 
-    if (!patientData.acceptTerms) {
+    if (!isFeatureEnabled('CRO_IMPLICIT_TERMS') && !patientData.acceptTerms) {
       return 'Aceite os termos e condições';
     }
 
@@ -747,8 +748,8 @@ const AgendamentoPage = () => {
     setIsSubmitting(true);
     setPasswordError('');
 
-    // Validar aceitação dos termos
-    if (!patientData.acceptTerms) {
+    // Validar aceitação dos termos (bypass quando CRO_IMPLICIT_TERMS estiver ativo)
+    if (!isFeatureEnabled('CRO_IMPLICIT_TERMS') && !patientData.acceptTerms) {
       toast({
         variant: 'destructive',
         title: 'Aceite os termos',
