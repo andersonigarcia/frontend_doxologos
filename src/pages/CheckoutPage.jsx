@@ -44,6 +44,7 @@ const CheckoutPage = () => {
     const [stopMonitoring, setStopMonitoring] = useState(null); // Função para parar monitoramento
     const [payerEmail, setPayerEmail] = useState(''); // E-mail editável pelo usuário no checkout
     const [payerEmailError, setPayerEmailError] = useState(''); // Mensagem de erro do campo e-mail
+    const [acceptedTcle, setAcceptedTcle] = useState(false); // Aceite do TCLE Telepsicologia / CFP Resolução 11/2018
 
     // Helper de validação de e-mail (RFC básico + domínio com pelo menos 2 chars)
     const isValidEmail = (email) => {
@@ -476,9 +477,19 @@ const CheckoutPage = () => {
         // Nota: eventos de click passam objeto event, então verificamos estritamente se é true
         const force = forceParam === true;
 
+        if (!acceptedTcle) {
+            toast({
+                variant: 'destructive',
+                title: 'Consentimento Necessário',
+                description: 'Você precisa aceitar os termos de consentimento (TCLE/CFP) para prosseguir com o pagamento.'
+            });
+            return;
+        }
+
         if (processing) return;
         setProcessing(true);
         setPaymentStatus(null);
+
 
         try {
             logger.info('CheckoutPage.handlePayment:start', buildLogContext({
@@ -1149,13 +1160,36 @@ const CheckoutPage = () => {
                             </Card>
                         )}
 
+                        {/* Consentimento TCLE / CFP Resolução 11/2018 */}
+                        {!pixPayment && (
+                            <Card className="p-4 mb-4 border-amber-200 bg-amber-50/50">
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        id="tcle-checkbox"
+                                        data-testid="tcle-checkbox"
+                                        checked={acceptedTcle}
+                                        onChange={(e) => setAcceptedTcle(e.target.checked)}
+                                        className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
+                                    />
+                                    <span className="text-xs text-amber-900 leading-relaxed">
+                                        Li e concordo com o <strong>Termo de Consentimento Livre e Esclarecido (TCLE) de Atendimento Psicológico Online</strong> (Resolução CFP nº 11/2018) e com a <strong>Política de Cancelamento e Reagendamento</strong> (com até 24h de antecedência). Entendo que meus dados clínicos e de atendimento estão protegidos por sigilo profissional e pela LGPD.{' '}
+                                        <Link to="/termos" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
+                                            Ver termos completos
+                                        </Link>
+                                    </span>
+                                </label>
+                            </Card>
+                        )}
+
                         {creditCoversTotal ? (
                             <Button
                                 onClick={handlePayment}
-                                disabled={processing}
+                                disabled={processing || !acceptedTcle}
                                 size="lg"
                                 className="w-full bg-[#2d8659] hover:bg-[#236b47]"
                             >
+
                                 {processing ? (
                                     <>
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
@@ -1183,6 +1217,7 @@ const CheckoutPage = () => {
                                                 navigate(`/checkout-direct?${params.toString()}`);
                                             }}
                                             size="lg"
+                                            disabled={processing || !acceptedTcle}
                                             className="w-full bg-[#2d8659] hover:bg-[#236b47]"
                                         >
                                             <CreditCard className="w-5 h-5 mr-2" />
@@ -1195,7 +1230,7 @@ const CheckoutPage = () => {
 
                                         <Button
                                             onClick={handlePayment}
-                                            disabled={processing}
+                                            disabled={processing || !acceptedTcle}
                                             size="lg"
                                             variant="outline"
                                             className="w-full"
@@ -1218,10 +1253,11 @@ const CheckoutPage = () => {
                                 {selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card' && (
                                     <Button
                                         onClick={handlePayment}
-                                        disabled={processing}
+                                        disabled={processing || !acceptedTcle}
                                         size="lg"
                                         className="w-full bg-[#2d8659] hover:bg-[#236b47]"
                                     >
+
                                         {processing ? (
                                             <>
                                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>

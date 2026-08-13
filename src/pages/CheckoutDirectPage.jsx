@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { CreditCard, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -19,6 +19,7 @@ const CheckoutDirectPage = () => {
     const inscricaoId = searchParams.get('inscricao_id');
     const emailParam = searchParams.get('email');
     const valorParam = searchParams.get('valor');
+    const tituloParam = searchParams.get('titulo');
 
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
@@ -35,6 +36,7 @@ const CheckoutDirectPage = () => {
     const [docType, setDocType] = useState('CPF');
     const [docNumber, setDocNumber] = useState('');
     const [payerEmail, setPayerEmail] = useState('');
+    const [acceptedTcle, setAcceptedTcle] = useState(false); // Aceite do TCLE Telepsicologia / CFP Resolução 11/2018
 
     // Mercado Pago
     const [mp, setMp] = useState(null);
@@ -170,6 +172,15 @@ const CheckoutDirectPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        if (!acceptedTcle) {
+            toast({
+                variant: 'destructive',
+                title: 'Consentimento Necessário',
+                description: 'Você precisa aceitar os termos de consentimento (TCLE/CFP) para prosseguir com o pagamento.'
+            });
+            return;
+        }
+
         if (!mp) {
             toast({
                 variant: 'destructive',
@@ -178,6 +189,7 @@ const CheckoutDirectPage = () => {
             });
             return;
         }
+
 
         setProcessing(true);
 
@@ -496,10 +508,30 @@ const CheckoutDirectPage = () => {
                                     </select>
                                 </div>
 
+                                {/* Consentimento TCLE / CFP Resolução 11/2018 */}
+                                <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            id="tcle-checkbox-direct"
+                                            data-testid="tcle-checkbox"
+                                            checked={acceptedTcle}
+                                            onChange={(e) => setAcceptedTcle(e.target.checked)}
+                                            className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
+                                        />
+                                        <span className="text-xs text-amber-900 leading-relaxed">
+                                            Li e concordo com o <strong>Termo de Consentimento Livre e Esclarecido (TCLE) de Atendimento Psicológico Online</strong> (Resolução CFP nº 11/2018) e com a <strong>Política de Cancelamento e Reagendamento</strong> (com até 24h de antecedência). Entendo que meus dados clínicos e de atendimento estão protegidos por sigilo profissional e pela LGPD.{' '}
+                                            <Link to="/termos" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
+                                                Ver termos completos
+                                            </Link>
+                                        </span>
+                                    </label>
+                                </div>
+
                                 <Button
                                     type="submit"
-                                    disabled={processing}
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] py-6 text-lg"
+                                    disabled={processing || !acceptedTcle}
+                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] py-6 text-lg disabled:opacity-50"
                                 >
                                     {processing ? (
                                         'Processando...'
@@ -511,6 +543,7 @@ const CheckoutDirectPage = () => {
                                     )}
                                 </Button>
                             </form>
+
                         </Card>
                     </div>
 

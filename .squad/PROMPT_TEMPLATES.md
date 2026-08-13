@@ -110,3 +110,18 @@ Utilize os modelos abaixo (copiando e colando no chat) para interagir com o Squa
 > 
 > **Resultado esperado:** Apresentem um relatório com (a) Diagnóstico Atual por Pilar, (b) Lista de Vulnerabilidades/Gargalos Priorizados por Gravidade (Alta/Média/Baixa) e (c) Plano de Ação Imediato com os Pre-Flight Checks para correção."
 
+### 13. Diagnostico completo
+**Use para diagnostico completo da aplicação
+
+Squad Multiagente Doxologos, acionem os 6 Pilares de Domínio para executar uma Auditoria e Diagnóstico 360° Completo na aplicação atual (https://novo.doxologos.com.br / base de código).
+
+Exijo uma avaliação minuciosa cobrindo os seguintes aspectos por pilar:
+
+1. 🎯 Estratégia & Produto (PO/BA/Growth): Mapeiem o funil de agendamento e checkout. Onde estão os gargalos de conversão? O produto atende aos padrões dos principais concorrentes de saúde mental (Zenklub/Doctoralia)? Como está nossa retenção e controle de no-show?
+2. 🎨 UX, Design & Microcopy (UX Researcher/Writer): Avaliem a usabilidade, acessibilidade (WCAG 2.1 AA) e clareza das microcopies defensivas/humanizadas no checkout e formulários. Há atritos na jornada do paciente ou psicólogo?
+3. ⚙️ Engenharia & Banco (Tech Lead/DBA): Inspecionem a qualidade do código React/Vite e Edge Functions em Deno. As tabelas do Supabase possuem políticas RLS ativas? Há dívidas técnicas estruturais ou riscos de quebra de contrato?
+4. 🛡️ Qualidade, SRE, AppSec & Performance (QA/AppSec/SRE/Perf): Inspecionem os testes automatizados, vulnerabilidades OWASP Top 10, latência de Edge Functions e Core Web Vitals (LCP < 2.5s). Há qualquer risco de vazamento de PII em logs do sistema?
+5. 💰 Finanças, Pagamentos & Fiscal (Controller/Payments/Fiscal): Inspecionem a resiliência do checkout Mercado Pago (PIX inline/Cartão), a reconciliação idempotente de webhooks, a integridade do Ledger de repasses e a prontidão para emissão automatizada de NFS-e.
+6. ⚖️ Governança, Compliance & DPO (Legal/Privacy/Data): Verifiquem o consentimento informado dos pacientes, conformidade com a LGPD e resoluções do Conselho Federal de Psicologia (CFP). Os dados sensíveis estão protegidos?
+
+Resultado esperado: Apresentem um relatório com (a) Diagnóstico Atual por Pilar, (b) Lista de Vulnerabilidades/Gargalos Priorizados por Gravidade (Alta/Média/Baixa) e (c) Plano de Ação Imediato com os Pre-Flight Checks para correção.
