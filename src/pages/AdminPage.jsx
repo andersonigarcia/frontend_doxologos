@@ -151,7 +151,7 @@ const AdminPage = () => {
     const [serviceFormData, setServiceFormData] = useState({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' });
 
     const [isEditingProfessional, setIsEditingProfessional] = useState(false);
-    const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '' });
+    const [professionalFormData, setProfessionalFormData] = useState({ id: null, name: '', services_ids: [], email: '', password: '', mini_curriculum: '', description: '', image_url: '', whatsapp: '', phone: '' });
 
 
     const [professionalAvailability, setProfessionalAvailability] = useState({});
@@ -537,13 +537,17 @@ const AdminPage = () => {
                     return {
                         ...prev,
                         email: currentProfessional.email || prev.email,
-                        services_ids: currentProfessional.services_ids || prev.services_ids || []
+                        services_ids: currentProfessional.services_ids || prev.services_ids || [],
+                        whatsapp: currentProfessional.whatsapp || prev.whatsapp || '',
+                        phone: currentProfessional.phone || prev.phone || ''
                     };
                 }
                 return {
                     ...currentProfessional,
                     password: '',
-                    services_ids: currentProfessional.services_ids || []
+                    services_ids: currentProfessional.services_ids || [],
+                    whatsapp: currentProfessional.whatsapp || '',
+                    phone: currentProfessional.phone || ''
                 };
             });
         }
@@ -650,7 +654,9 @@ const AdminPage = () => {
 
                 const updates = {
                     ...profData,
-                    services_ids: Array.isArray(profData.services_ids) ? profData.services_ids : []
+                    services_ids: Array.isArray(profData.services_ids) ? profData.services_ids : [],
+                    whatsapp: profData.whatsapp || profData.phone || '',
+                    phone: profData.phone || profData.whatsapp || ''
                 };
 
                 const { error } = await supabase
@@ -846,7 +852,9 @@ const AdminPage = () => {
                 const professionalPayload = {
                     ...profData,
                     services_ids: Array.isArray(profData.services_ids) ? profData.services_ids : [],
-                    user_id: createdUserId
+                    user_id: createdUserId,
+                    whatsapp: profData.whatsapp || profData.phone || '',
+                    phone: profData.phone || profData.whatsapp || ''
                 };
 
                 const { error: profError } = await supabase
@@ -1529,7 +1537,9 @@ const AdminPage = () => {
                 mini_curriculum: '',
                 description: '',
                 image_url: '',
-                personal_meet_link: ''
+                personal_meet_link: '',
+                whatsapp: '',
+                phone: ''
             });
             return;
         }
@@ -1603,7 +1613,9 @@ const AdminPage = () => {
         setProfessionalFormData({
             ...prof,
             password: '',
-            services_ids: prof.services_ids || []
+            services_ids: prof.services_ids || [],
+            whatsapp: prof.whatsapp || '',
+            phone: prof.phone || ''
         });
     };
     const handleDeleteProfessional = async (profId) => {
@@ -3840,184 +3852,194 @@ const AdminPage = () => {
                         {
                             (userRole === 'admin' || userRole === 'professional') && (
                                 <TabsContent value="professionals" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
-                                            <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                                <Users className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                                {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
-                                            </h2>
-                                            <div className="space-y-4">
-                                                {professionals.map((prof, index) => (
-                                                    <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                                                        } hover:bg-blue-50`}>
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="flex-1">
-                                                                <div className="flex items-center gap-3 mb-3">
-                                                                    {prof.image_url && (
-                                                                        <img
-                                                                            src={prof.image_url}
-                                                                            alt={prof.name}
-                                                                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
-                                                                        />
-                                                                    )}
-                                                                    <div>
-                                                                        <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
-                                                                        {prof.email && (
-                                                                            <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                                                                                📧 {prof.email}
-                                                                            </p>
+                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                                <h2 className="text-2xl font-bold mb-6 flex items-center">
+                                                    <Users className="w-6 h-6 mr-2 text-[#2d8659]" />
+                                                    {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
+                                                </h2>
+                                                <div className="space-y-4">
+                                                    {professionals.map((prof, index) => (
+                                                        <div key={prof.id} className={`border rounded-lg p-6 hover:shadow-md transition-all ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                                            } hover:bg-blue-50`}>
+                                                            <div className="flex justify-between items-start">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-3 mb-3">
+                                                                        {prof.image_url && (
+                                                                            <img
+                                                                                src={prof.image_url}
+                                                                                alt={prof.name}
+                                                                                className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                                                            />
                                                                         )}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                                    <div>
-                                                                        <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
-                                                                        {prof.services_ids && prof.services_ids.length > 0 ? (
-                                                                            <div className="flex flex-wrap gap-1">
-                                                                                {prof.services_ids.map(serviceId => {
-                                                                                    const service = services.find(s => s.id === serviceId);
-                                                                                    return service ? (
-                                                                                        <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                                            {service.name}
-                                                                                        </span>
-                                                                                    ) : null;
-                                                                                })}
-                                                                            </div>
-                                                                        ) : (
-                                                                            <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {prof.mini_curriculum && (
                                                                         <div>
-                                                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
-                                                                            <p className="text-sm text-gray-600 line-clamp-3">
-                                                                                {prof.mini_curriculum.length > 150
-                                                                                    ? `${prof.mini_curriculum.substring(0, 150)}...`
-                                                                                    : prof.mini_curriculum
-                                                                                }
-                                                                            </p>
+                                                                            <h3 className="font-bold text-lg text-gray-900">{prof.name}</h3>
+                                                                            {prof.email && (
+                                                                                <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                                                                    📧 {prof.email}
+                                                                                </p>
+                                                                            )}
+                                                                            {(prof.whatsapp || prof.phone) && (
+                                                                                <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                                                                    📱 {prof.whatsapp || prof.phone}
+                                                                                </p>
+                                                                            )}
                                                                         </div>
+                                                                    </div>
+
+                                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                                        <div>
+                                                                            <h4 className="text-sm font-medium text-gray-700 mb-2">Serviços</h4>
+                                                                            {prof.services_ids && prof.services_ids.length > 0 ? (
+                                                                                <div className="flex flex-wrap gap-1">
+                                                                                    {prof.services_ids.map(serviceId => {
+                                                                                        const service = services.find(s => s.id === serviceId);
+                                                                                        return service ? (
+                                                                                            <span key={serviceId} className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                                                {service.name}
+                                                                                            </span>
+                                                                                        ) : null;
+                                                                                    })}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="text-orange-500 text-sm">Nenhum serviço atribuído</span>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {prof.mini_curriculum && (
+                                                                            <div>
+                                                                                <h4 className="text-sm font-medium text-gray-700 mb-2">Minicurrículo</h4>
+                                                                                <p className="text-sm text-gray-600 line-clamp-3">
+                                                                                    {prof.mini_curriculum.length > 150
+                                                                                        ? `${prof.mini_curriculum.substring(0, 150)}...`
+                                                                                        : prof.mini_curriculum
+                                                                                    }
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="flex gap-2 ml-4">
+                                                                    <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
+                                                                        <Edit className="w-4 h-4" />
+                                                                    </Button>
+                                                                    {userRole === 'admin' && (
+                                                                        <Button
+                                                                            size="icon"
+                                                                            variant="ghost"
+                                                                            onClick={() => handleDeleteProfessional(prof.id)}
+                                                                            className="hover:bg-red-50"
+                                                                            title="Excluir profissional"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4 text-red-500" />
+                                                                        </Button>
                                                                     )}
                                                                 </div>
-                                                            </div>
-
-                                                            <div className="flex gap-2 ml-4">
-                                                                <Button size="icon" variant="ghost" onClick={() => handleEditProfessional(prof)} title="Editar profissional">
-                                                                    <Edit className="w-4 h-4" />
-                                                                </Button>
-                                                                {userRole === 'admin' && (
-                                                                    <Button
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        onClick={() => handleDeleteProfessional(prof.id)}
-                                                                        className="hover:bg-red-50"
-                                                                        title="Excluir profissional"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4 text-red-500" />
-                                                                    </Button>
-                                                                )}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                            <h2 className="text-2xl font-bold mb-6">
-                                                {userRole === 'admin'
-                                                    ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
-                                                    : 'Editar Meu Perfil'
-                                                }
-                                            </h2>
-                                            <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
-                                                    <input
-                                                        name="name"
-                                                        value={professionalFormData.name}
-                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, name: e.target.value })}
-                                                        placeholder="Ex: Dr. João Silva"
-                                                        className="w-full input rounded-2xl"
-                                                        required
-                                                    />
+                                                    ))}
                                                 </div>
+                                            </div>
+                                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                                <h2 className="text-2xl font-bold mb-6">
+                                                    {userRole === 'admin'
+                                                        ? (isEditingProfessional ? 'Editar Profissional' : 'Novo Profissional')
+                                                        : 'Editar Meu Perfil'
+                                                    }
+                                                </h2>
+                                                <form onSubmit={handleProfessionalSubmit} className="space-y-4 text-sm">
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
+                                                        <input
+                                                            name="name"
+                                                            value={professionalFormData.name}
+                                                            onChange={e => setProfessionalFormData({ ...professionalFormData, name: e.target.value })}
+                                                            placeholder="Ex: Dr. João Silva"
+                                                            className="w-full input rounded-2xl"
+                                                            required
+                                                        />
+                                                    </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
-                                                    <div className="border border-gray-200 rounded-2xl p-4 max-h-48 overflow-y-auto bg-gray-50">
-                                                        {services.length === 0 ? (
-                                                            <p className="text-xs text-gray-500">Nenhum serviço cadastrado</p>
-                                                        ) : (
-                                                            services.map(service => (
-                                                                <label key={service.id} className="flex items-center space-x-2 mb-2 cursor-pointer hover:bg-gray-100 p-1 rounded">
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Serviços que Atende</label>
+                                                        <div className="border border-gray-200 rounded-2xl p-4 max-h-48 overflow-y-auto bg-gray-50">
+                                                            {services.map(service => (
+                                                                <label key={service.id} className="flex items-center space-x-2 py-1 cursor-pointer hover:bg-gray-100 px-2 rounded">
                                                                     <input
                                                                         type="checkbox"
-                                                                        checked={professionalFormData.services_ids.includes(service.id)}
-                                                                        onChange={(e) => {
-                                                                            const serviceId = service.id;
-                                                                            const currentServices = professionalFormData.services_ids;
-
+                                                                        checked={professionalFormData.services_ids?.includes(service.id)}
+                                                                        onChange={e => {
+                                                                            const currentServices = professionalFormData.services_ids || [];
                                                                             if (e.target.checked) {
                                                                                 setProfessionalFormData({
                                                                                     ...professionalFormData,
-                                                                                    services_ids: [...currentServices, serviceId]
+                                                                                    services_ids: [...currentServices, service.id]
                                                                                 });
                                                                             } else {
                                                                                 setProfessionalFormData({
                                                                                     ...professionalFormData,
-                                                                                    services_ids: currentServices.filter(id => id !== serviceId)
+                                                                                    services_ids: currentServices.filter(id => id !== service.id)
                                                                                 });
                                                                             }
                                                                         }}
-                                                                        className="rounded"
+                                                                        className="checkbox"
                                                                     />
-                                                                    <span className="text-sm">{service.name}</span>
-                                                                    <span className="text-xs text-gray-500">R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                                    <span>{service.name} (R$ {service.price})</span>
                                                                 </label>
-                                                            ))
-                                                        )}
+                                                            ))}
+                                                        </div>
+                                                        <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
                                                     </div>
-                                                    <p className="text-xs text-gray-500 mt-1">Selecione um ou mais serviços que este profissional pode atender</p>
-                                                </div>
 
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
-                                                    <input
-                                                        name="email"
-                                                        value={professionalFormData.email}
-                                                        onChange={e => setProfessionalFormData({ ...professionalFormData, email: e.target.value })}
-                                                        type="email"
-                                                        placeholder="joao@clinica.com"
-                                                        className="w-full input"
-                                                        disabled={userRole === 'admin' && isEditingProfessional}
-                                                        required
-                                                    />
-                                                </div>
-
-                                                {(userRole === 'admin' || !isEditingProfessional) && (
                                                     <div>
-                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Email</label>
                                                         <input
-                                                            name="password"
-                                                            value={professionalFormData.password}
-                                                            onChange={e => setProfessionalFormData({ ...professionalFormData, password: e.target.value })}
-                                                            type="password"
-                                                            placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'}
+                                                            name="email"
+                                                            value={professionalFormData.email}
+                                                            onChange={e => setProfessionalFormData({ ...professionalFormData, email: e.target.value })}
+                                                            type="email"
+                                                            placeholder="joao@clinica.com"
                                                             className="w-full input"
-                                                            required={!isEditingProfessional}
+                                                            disabled={userRole === 'admin' && isEditingProfessional}
+                                                            required
                                                         />
-                                                        {isEditingProfessional && userRole === 'admin' && (
-                                                            <p className="text-xs text-gray-500 mt-1">{`Deixe em branco para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
-                                                        )}
                                                     </div>
-                                                )}
 
-                                                <div>
-                                                    <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">WhatsApp / Celular (com DDD)</label>
+                                                        <input
+                                                            name="whatsapp"
+                                                            value={professionalFormData.whatsapp || professionalFormData.phone || ''}
+                                                            onChange={e => setProfessionalFormData({ ...professionalFormData, whatsapp: e.target.value, phone: e.target.value })}
+                                                            type="text"
+                                                            placeholder="5531999999999"
+                                                            className="w-full input"
+                                                        />
+                                                        <p className="text-xs text-gray-500 mt-1">Utilizado para receber notificações urgentes de agendamento</p>
+                                                    </div>
 
+                                                    {(userRole === 'admin' || !isEditingProfessional) && (
+                                                        <div>
+                                                            <label className="block text-xs font-medium mb-1 text-gray-600">Senha</label>
+                                                            <input
+                                                                name="password"
+                                                                value={professionalFormData.password}
+                                                                onChange={e => setProfessionalFormData({ ...professionalFormData, password: e.target.value })}
+                                                                type="password"
+                                                                placeholder={isEditingProfessional ? 'Defina uma nova senha (opcional)' : '******'}
+                                                                className="w-full input"
+                                                                required={!isEditingProfessional}
+                                                            />
+                                                            {isEditingProfessional && userRole === 'admin' && (
+                                                                <p className="text-xs text-gray-500 mt-1">{`Deixe em blank para manter a senha atual (mínimo ${MIN_PROFESSIONAL_PASSWORD_LENGTH} caracteres).`}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    <div>
+                                                        <label className="block text-xs font-medium mb-1 text-gray-600">Foto do Profissional</label>
                                                     {/* Upload de arquivo local */}
                                                     <div className="mb-3">
                                                         <input

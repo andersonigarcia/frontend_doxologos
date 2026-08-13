@@ -1170,7 +1170,18 @@ const AgendamentoPage = () => {
 
         console.log('📧 Enviando email para:', normalizedPatientEmail);
         await emailManager.sendBookingConfirmation(bookingDetails);
-        console.log('✅ Email de confirmação enviado com sucesso!');
+
+        // Se for agendamento para o mesmo dia (<= 4h), disparar notificação urgente para o profissional e cópia para o backoffice
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (selectedDate === todayStr) {
+          console.log('🚨 Enviando notificação URGENTE para profissional e backoffice...');
+          await emailManager.sendUrgentProfessionalNotification({
+            ...bookingDetails,
+            professional_email: professionalDetails?.email
+          });
+        }
+
+        console.log('✅ Email de confirmação e alertas enviados com sucesso!');
       } catch (emailError) {
         // Não bloquear o fluxo se o email falhar
         console.error('⚠️ Erro ao enviar email (não crítico):', emailError);

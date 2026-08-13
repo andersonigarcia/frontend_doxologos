@@ -1116,6 +1116,57 @@ export class EmailTemplates {
     `;
     return this.baseTemplate(content, `Atualização sobre Reembolso - ${evento.titulo}`);
   }
+
+  urgentProfessionalNotification(data) {
+    const { professional_name, patient_name, service_name, appointment_date, appointment_time, meeting_link } = data;
+    const dateFmt = this.formatDate(appointment_date);
+    const content = `
+      <div style="background: #fef2f2; border: 2px solid #ef4444; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+        <h2 style="color: #dc2626; margin: 0 0 10px 0; font-size: 20px;">🚨 [URGENTE] Novo Agendamento para HOJE</h2>
+        <p style="margin: 0; color: #991b1b; font-weight: 600;">Este atendimento está confirmado e ocorrerá dentro de poucas horas.</p>
+      </div>
+
+      <p style="font-size: 16px; color: #374151;">Olá, <strong>${this.sanitizeForHtml(professional_name)}</strong>,</p>
+      <p style="font-size: 15px; color: #4b5563;">Você recebeu um novo agendamento de última hora para hoje. Por favor, verifique os detalhes abaixo:</p>
+
+      <div class="info-box">
+        <p><strong>👤 Paciente:</strong> ${this.sanitizeForHtml(patient_name)}</p>
+        <p><strong>🩺 Serviço:</strong> ${this.sanitizeForHtml(service_name)}</p>
+        <p><strong>📅 Data:</strong> ${dateFmt} (HOJE)</p>
+        <p><strong>⏰ Horário:</strong> ${this.sanitizeForHtml(appointment_time)}</p>
+        ${meeting_link ? `<p><strong>🔗 Sala de Atendimento:</strong> <a href="${meeting_link}" target="_blank" style="color: ${this.brandColor};">${meeting_link}</a></p>` : ''}
+      </div>
+
+      <p style="font-size: 14px; color: #6b7280;">Por favor, acesse seu painel profissional para mais detalhes. Caso haja algum imprevisto, entre em contato imediatamente com o suporte Doxologos no WhatsApp (31) 97198-2947.</p>
+    `;
+    return this.baseTemplate(content, `🚨 URGENTE: Novo Agendamento para HOJE às ${appointment_time}`);
+  }
+
+  expiredSlotRecovery(data) {
+    const { patient_name, service_name, professional_name, appointment_date, appointment_time, booking_url } = data;
+    const dateFmt = this.formatDate(appointment_date);
+    const content = `
+      <div style="background: #fffbe6; border: 1px solid #ffe58f; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+        <h2 style="color: #d48806; margin: 0 0 10px 0; font-size: 18px;">⏰ Seu tempo de reserva de pagamento expirou</h2>
+        <p style="margin: 0; color: #8c6b00;">Como o pagamento PIX não foi concluído em 15 minutos, o horário foi desreservado para permitir que outros pacientes possam agendar.</p>
+      </div>
+
+      <p style="font-size: 16px; color: #374151;">Olá, <strong>${this.sanitizeForHtml(patient_name)}</strong>,</p>
+      <p style="font-size: 15px; color: #4b5563;">Tentamos reservar sua consulta com <strong>${this.sanitizeForHtml(professional_name)}</strong> para ${dateFmt} às ${this.sanitizeForHtml(appointment_time)}, mas o tempo limite de pagamento venceu.</p>
+
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${booking_url || this.baseUrl + '/agendamento'}" class="btn">
+          🗓️ Escolher Outro Horário ou Tentar Novamente
+        </a>
+      </div>
+
+      <div class="info-box">
+        <p>Precisa de ajuda com o pagamento ou dúvidas sobre a consulta?</p>
+        <p>Fale diretamente com nossa equipe no WhatsApp: <strong>(31) 97198-2947</strong></p>
+      </div>
+    `;
+    return this.baseTemplate(content, `⏰ Seu tempo de pagamento expirou - Doxologos`);
+  }
 }
 
 export default new EmailTemplates();

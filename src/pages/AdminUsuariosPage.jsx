@@ -40,7 +40,8 @@ const AdminUsuariosPage = () => {
   const [editFormData, setEditFormData] = useState({
     email: '',
     full_name: '',
-    role: 'patient'
+    role: 'patient',
+    whatsapp: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -147,10 +148,12 @@ const AdminUsuariosPage = () => {
 
   const handleEditClick = (userData) => {
     setSelectedUser(userData);
+    const profData = professionals.find(p => p.id === userData.id);
     setEditFormData({
       email: userData.email,
       full_name: userData.full_name,
-      role: userData.role
+      role: userData.role,
+      whatsapp: profData?.whatsapp || profData?.phone || ''
     });
     setEditDialogOpen(true);
   };
@@ -204,7 +207,9 @@ const AdminUsuariosPage = () => {
             .from('professionals')
             .update({
               name: editFormData.full_name,
-              email: editFormData.email
+              email: editFormData.email,
+              whatsapp: editFormData.whatsapp,
+              phone: editFormData.whatsapp
             })
             .eq('id', selectedUser.id);
           
@@ -217,6 +222,8 @@ const AdminUsuariosPage = () => {
               id: selectedUser.id,
               name: editFormData.full_name,
               email: editFormData.email,
+              whatsapp: editFormData.whatsapp,
+              phone: editFormData.whatsapp,
               specialty: 'Psicologia Clínica'
             }]);
           
@@ -595,6 +602,21 @@ const AdminUsuariosPage = () => {
                 <option value="admin">Administrador</option>
               </select>
             </div>
+
+            {editFormData.role === 'professional' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  WhatsApp do Profissional (com DDD)
+                </label>
+                <input
+                  type="text"
+                  placeholder="5531999999999"
+                  value={editFormData.whatsapp}
+                  onChange={(e) => setEditFormData({ ...editFormData, whatsapp: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+            )}
 
             <DialogFooter>
               <Button
