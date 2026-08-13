@@ -45,6 +45,7 @@ const PaymentSummaryStep = lazy(() => import('@/components/booking/PaymentSummar
 import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
 
 const MIN_PASSWORD_LENGTH = 8;
+const MIN_BOOKING_ADVANCE_HOURS = 4;
 // Removido o generateGoogleMeetLink, pois gerava salas aleatórias inválidas. Passamos a usar o link pessoal do profissional.
 
 // Skeleton Loader for lazy-loaded components
@@ -665,6 +666,15 @@ const AgendamentoPage = () => {
       }
     }
 
+    // Filtrar horários com antecedência mínima (prevenção visual no calendário)
+    const minAdvanceTime = new Date();
+    minAdvanceTime.setHours(minAdvanceTime.getHours() + MIN_BOOKING_ADVANCE_HOURS);
+
+    times = times.filter((timeStr) => {
+      const slotDateTime = new Date(`${selectedDate}T${timeStr}:00`);
+      return slotDateTime >= minAdvanceTime;
+    });
+
     return times;
   };
 
@@ -781,12 +791,12 @@ const AgendamentoPage = () => {
     }
 
     const minimumAdvance = new Date();
-    minimumAdvance.setHours(minimumAdvance.getHours() + 24);
+    minimumAdvance.setHours(minimumAdvance.getHours() + MIN_BOOKING_ADVANCE_HOURS);
     if (selectedDateTime < minimumAdvance) {
       toast({
         variant: 'destructive',
         title: 'Antecedência mínima',
-        description: 'Consultas precisam ser agendadas com pelo menos 24 horas de antecedência.'
+        description: `Consultas precisam ser agendadas com pelo menos ${MIN_BOOKING_ADVANCE_HOURS} horas de antecedência.`
       });
       setIsSubmitting(false);
       return;
