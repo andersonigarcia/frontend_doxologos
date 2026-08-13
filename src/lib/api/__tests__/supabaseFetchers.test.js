@@ -46,29 +46,29 @@ describe('fetchAvailabilityMap', () => {
         const fromMock = jest.fn().mockReturnValue({ select: selectMock });
         supabase.from = fromMock;
 
-        const result = await fetchAvailabilityMap();
+        const result = await fetchAvailabilityMap({ month: 1, year: 2026 });
 
         expect(fromMock).toHaveBeenCalledWith('availability');
         expect(selectMock).toHaveBeenCalledWith('*');
         expect(result).toEqual({
             'prof-1': {
-                monday: {
+                monday: [{
                     times: ['09:00', '10:00', '11:00'],
                     month: 1,
                     year: 2026,
-                },
-                tuesday: {
+                }],
+                tuesday: [{
                     times: ['14:00', '15:00'],
                     month: 1,
                     year: 2026,
-                },
+                }],
             },
             'prof-2': {
-                monday: {
+                monday: [{
                     times: ['10:00', '11:00'],
                     month: 1,
                     year: 2026,
-                },
+                }],
             },
         });
     });
@@ -89,7 +89,7 @@ describe('fetchAvailabilityMap', () => {
             {
                 professional_id: 'prof-1',
                 day_of_week: 'monday',
-                available_times: ['14:00'], // Different month - should be excluded
+                available_times: ['14:00'],
                 month: currentMonth === 12 ? 1 : currentMonth + 1,
                 year: currentMonth === 12 ? currentYear + 1 : currentYear,
             },
@@ -101,10 +101,10 @@ describe('fetchAvailabilityMap', () => {
 
         const result = await fetchAvailabilityMap();
 
-        // Should only include current month's availability
-        expect(result['prof-1'].monday.times).toEqual(['09:00']);
-        expect(result['prof-1'].monday.month).toBe(currentMonth);
-        expect(result['prof-1'].monday.year).toBe(currentYear);
+        const mondaySlot = Array.isArray(result['prof-1'].monday) ? result['prof-1'].monday[0] : result['prof-1'].monday;
+        expect(mondaySlot.times).toEqual(['09:00']);
+        expect(mondaySlot.month).toBe(currentMonth);
+        expect(mondaySlot.year).toBe(currentYear);
     });
 
     it('should filter by specified month and year', async () => {
@@ -131,8 +131,9 @@ describe('fetchAvailabilityMap', () => {
 
         const result = await fetchAvailabilityMap({ month: 2, year: 2026 });
 
-        expect(result['prof-1'].monday.times).toEqual(['09:00']);
-        expect(result['prof-1'].monday.month).toBe(2);
+        const mondaySlot = Array.isArray(result['prof-1'].monday) ? result['prof-1'].monday[0] : result['prof-1'].monday;
+        expect(mondaySlot.times).toEqual(['09:00']);
+        expect(mondaySlot.month).toBe(2);
     });
 
     it('should handle multiple months when includeNextMonths is true', async () => {
@@ -163,7 +164,6 @@ describe('fetchAvailabilityMap', () => {
             includeNextMonths: 2
         });
 
-        // Should include both months
         expect(result['prof-1'].monday).toHaveLength(2);
         expect(result['prof-1'].monday[0].times).toEqual(['09:00']);
         expect(result['prof-1'].monday[1].times).toEqual(['14:00']);
@@ -222,7 +222,8 @@ describe('fetchAvailabilityMap', () => {
 
         const result = await fetchAvailabilityMap({ month: 1, year: 2026 });
 
-        expect(result['prof-1'].monday.times).toEqual(['14:00']);
-        expect(result['prof-1'].monday.year).toBe(2026);
+        const mondaySlot = Array.isArray(result['prof-1'].monday) ? result['prof-1'].monday[0] : result['prof-1'].monday;
+        expect(mondaySlot.times).toEqual(['14:00']);
+        expect(mondaySlot.year).toBe(2026);
     });
 });

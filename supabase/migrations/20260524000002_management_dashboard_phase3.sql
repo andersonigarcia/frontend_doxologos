@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS public.page_views (
 ALTER TABLE public.page_views ENABLE ROW LEVEL SECURITY;
 
 -- Políticas de RLS
+DROP POLICY IF EXISTS "Allow inserts for anyone" ON public.page_views;
+DROP POLICY IF EXISTS "Allow select for admins" ON public.page_views;
+
 -- Permitir inserção para anônimos e autenticados (qualquer um pode gerar page view)
 CREATE POLICY "Allow inserts for anyone" ON public.page_views
     FOR INSERT 
@@ -25,6 +28,7 @@ CREATE POLICY "Allow select for admins" ON public.page_views
         (auth.jwt() ->> 'role') = 'admin' OR 
         (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
     );
+
 
 -- Função RPC para buscar estatísticas de acesso (Top Páginas)
 CREATE OR REPLACE FUNCTION get_page_views_stats(days_limit integer DEFAULT 30)

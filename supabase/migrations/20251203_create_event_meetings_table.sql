@@ -87,6 +87,10 @@ on conflict (evento_id) do update set
 
 alter table public.event_meetings enable row level security;
 
+drop policy if exists event_meetings_backend_rw on public.event_meetings;
+drop policy if exists event_meetings_admin_select on public.event_meetings;
+drop policy if exists event_meetings_confirmed_attendee_select on public.event_meetings;
+
 -- Allow service role (and other trusted backend roles) full access
 create policy event_meetings_backend_rw on public.event_meetings
 for all
@@ -113,3 +117,4 @@ using (
 );
 
 commit;
+

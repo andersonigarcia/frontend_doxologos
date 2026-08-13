@@ -504,8 +504,32 @@ serve(async (req: Request) => {
       }
     }
 
+    // ========================================
+    // 4. AUTOMATED NFS-E EMISSION (BHISS PBH)
+    // ========================================
+    if (isPositiveStatus) {
+      try {
+        console.log(`🧾 Triggering automated NFS-e emission for payment ${paymentId}...`);
+        const { error: nfseInvokeError } = await supabase.functions.invoke('emit-nfse', {
+          body: {
+            booking_id: bookingId,
+            inscricao_id: externalRef && externalRef.startsWith('EVENTO_') ? externalRef.replace('EVENTO_', '') : null,
+            payment_id: ledgerTransactionId
+          }
+        });
+        if (nfseInvokeError) {
+          console.error('⚠️ Warning: Automatic NFS-e emission invocation failed:', nfseInvokeError);
+        } else {
+          console.log('✅ NFS-e emission triggered successfully.');
+        }
+      } catch (nfseErr) {
+        console.error('⚠️ Non-fatal error triggering NFS-e:', nfseErr);
+      }
+    }
+
     // Update Log
     if (logId) await supabase.from('webhook_logs').update({ status: 'success' }).eq('id', logId);
+
 
     return new Response('OK', { status: 200 });
 

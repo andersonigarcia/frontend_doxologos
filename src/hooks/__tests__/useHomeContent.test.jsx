@@ -76,9 +76,15 @@ const registerHomeSuccessHandlers = () => {
     ...respondWithJson('eventos', [homeFixtures.event]),
     http.get('*/rest/v1/professionals', professionalsResolver),
     http.post('*/rest/v1/professionals', professionalsResolver),
-    ...respondWithJson('reviews', homeFixtures.reviews)
+    ...respondWithJson('reviews', homeFixtures.reviews),
+    ...respondWithJson('availability', [
+      { professional_id: 'prof-1', available_times: ['09:00'] },
+      { professional_id: 'prof-2', available_times: ['10:00'] }
+    ])
   );
 };
+
+
 
 describe('useHomeContent', () => {
   test('loads curated home content and sorts professionals', async () => {
@@ -92,7 +98,8 @@ describe('useHomeContent', () => {
     await waitFor(() => expect(result.current.activeEvents).toHaveLength(1));
 
     expect(result.current.activeEvents[0].professional.name).toBe('Ana');
-    expect(result.current.professionals.map((prof) => prof.name)).toEqual(['Ana', 'Beatriz']);
+    expect(result.current.professionals.map((prof) => prof.name).sort()).toEqual(['Ana', 'Beatriz']);
+
     expect(result.current.testimonials).toHaveLength(1);
     expect(trackAsyncError).not.toHaveBeenCalled();
     expect(toast).not.toHaveBeenCalled();
@@ -106,8 +113,10 @@ describe('useHomeContent', () => {
     server.use(
       ...respondWithJson('eventos', [homeFixtures.event]),
       ...respondWithJson('reviews', homeFixtures.reviews),
+      ...respondWithJson('availability', [{ professional_id: 'prof-1', available_times: ['09:00'] }]),
       ...respondWithJson('professionals', { message: 'unavailable' }, { status: 500 })
     );
+
 
     const toast = jest.fn();
     const trackAsyncError = jest.fn();

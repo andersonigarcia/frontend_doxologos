@@ -10,9 +10,10 @@
  * A assinatura pública do hook é idêntica à anterior para evitar breaking changes.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
+
 
 // ---------- fetchers puros (testáveis isoladamente) ----------
 
@@ -114,31 +115,41 @@ export function useHomeContent({ toast, trackAsyncError } = {}) {
   const eventsQuery = useQuery({
     queryKey: ['events', 'active'],
     queryFn: fetchActiveEvents,
-    onError: (err) => {
-      trackAsyncError?.(err, 'fetch_events');
-    },
   });
 
   const professionalsQuery = useQuery({
     queryKey: ['professionals'],
     queryFn: fetchAllProfessionals,
-    onError: (err) => {
-      trackAsyncError?.(err, 'fetch_professionals');
-      notify({
-        variant: 'destructive',
-        title: 'Erro ao carregar profissionais',
-        description: err.message,
-      });
-    },
   });
 
   const testimonialsQuery = useQuery({
     queryKey: ['reviews', { scope: 'home' }],
     queryFn: fetchHomeTestimonials,
-    onError: (err) => {
-      trackAsyncError?.(err, 'fetch_reviews');
-    },
   });
+
+  useEffect(() => {
+    if (eventsQuery.error) {
+      trackAsyncError?.(eventsQuery.error, 'fetch_events');
+    }
+  }, [eventsQuery.error, trackAsyncError]);
+
+  useEffect(() => {
+    if (professionalsQuery.error) {
+      trackAsyncError?.(professionalsQuery.error, 'fetch_professionals');
+      notify({
+        variant: 'destructive',
+        title: 'Erro ao carregar profissionais',
+        description: professionalsQuery.error.message,
+      });
+    }
+  }, [professionalsQuery.error, trackAsyncError, notify]);
+
+  useEffect(() => {
+    if (testimonialsQuery.error) {
+      trackAsyncError?.(testimonialsQuery.error, 'fetch_reviews');
+    }
+  }, [testimonialsQuery.error, trackAsyncError]);
+
 
   // refreshHomeContent invalida e re-fetcha todos os dados da home
   const refreshHomeContent = useCallback(() => {

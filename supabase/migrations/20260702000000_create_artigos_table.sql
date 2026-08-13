@@ -18,9 +18,13 @@ CREATE TABLE IF NOT EXISTS public.artigos (
 -- Enable RLS
 ALTER TABLE public.artigos ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public can view published artigos" ON public.artigos;
+DROP POLICY IF EXISTS "Admins can manage artigos" ON public.artigos;
+
 -- Public can read published articles
 CREATE POLICY "Public can view published artigos" ON public.artigos
     FOR SELECT USING (status = 'published');
+
 
 -- Admins can manage articles (Insert/Update/Delete)
 CREATE POLICY "Admins can manage artigos" ON public.artigos

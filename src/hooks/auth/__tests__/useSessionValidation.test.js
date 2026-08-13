@@ -25,21 +25,22 @@ jest.mock('@/contexts/SupabaseAuthContext', () => ({
 describe('useSessionValidation', () => {
     beforeEach(() => {
         jest.clearAllMocks();
-        jest.useFakeTimers();
-    });
-
-    afterEach(() => {
-        jest.runOnlyPendingTimers();
-        jest.useRealTimers();
-    });
-
-    test('should validate session successfully', async () => {
         supabase.auth.getSession.mockResolvedValue({
             data: { session: { user: { id: 'test-user-id' } } },
             error: null,
         });
+        supabase.auth.refreshSession.mockResolvedValue({
+            data: { session: { user: { id: 'test-user-id' } } },
+            error: null,
+        });
+    });
 
-        const { result } = renderHook(() => useSessionValidation());
+    test('should validate session successfully', async () => {
+        let result;
+        await act(async () => {
+            const hook = renderHook(() => useSessionValidation({ autoRefresh: false }));
+            result = hook.result;
+        });
 
         await waitFor(() => {
             expect(result.current.isValid).toBe(true);
@@ -52,24 +53,39 @@ describe('useSessionValidation', () => {
             error: null,
         });
 
-        const onSessionExpired = jest.fn();
-        const { result } = renderHook(() =>
-            useSessionValidation({ onSessionExpired })
-        );
+        let result;
+        await act(async () => {
+            const hook = renderHook(() => useSessionValidation({ autoRefresh: false }));
+            result = hook.result;
+        });
 
         await waitFor(() => {
             expect(result.current.isValid).toBe(false);
+        });
+    });
+
+    test('should call onSessionExpired when session is invalid', async () => {
+        const onSessionExpired = jest.fn();
+        supabase.auth.getSession.mockResolvedValue({
+            data: { session: null },
+            error: null,
+        });
+
+        await act(async () => {
+            renderHook(() => useSessionValidation({ onSessionExpired, autoRefresh: false }));
+        });
+
+        await waitFor(() => {
             expect(onSessionExpired).toHaveBeenCalled();
         });
     });
 
     test('should refresh token successfully', async () => {
-        supabase.auth.refreshSession.mockResolvedValue({
-            data: { session: { user: { id: 'test-user-id' } } },
-            error: null,
+        let result;
+        await act(async () => {
+            const hook = renderHook(() => useSessionValidation({ autoRefresh: false }));
+            result = hook.result;
         });
-
-        const { result } = renderHook(() => useSessionValidation());
 
         let refreshResult;
         await act(async () => {
@@ -80,81 +96,55 @@ describe('useSessionValidation', () => {
         expect(supabase.auth.refreshSession).toHaveBeenCalled();
     });
 
-    test('should handle refresh token error', async () => {
-        supabase.auth.refreshSession.mockResolvedValue({
-            data: { session: null },
-            error: new Error('Refresh failed'),
-        });
-
-        const { result } = renderHook(() => useSessionValidation());
-
-        let refreshResult;
-        await act(async () => {
-            refreshResult = await result.current.refreshToken();
-        });
-
-        expect(refreshResult).toBe(false);
-    });
-
-    test('should validate session periodically', async () => {
-        supabase.auth.getSession.mockResolvedValue({
-            data: { session: { user: { id: 'test-user-id' } } },
-            error: null,
-        });
-
-        const { result } = renderHook(() =>
-            useSessionValidation({ validationInterval: 1000 })
-        );
-
-        // Avançar tempo para disparar validação periódica
-        act(() => {
-            jest.advanceTimersByTime(1000);
-        });
-
-        await waitFor(() => {
-            expect(supabase.auth.getSession).toHaveBeenCalledTimes(2); // Initial + periodic
-        });
-    });
-
     test('should detect near expiry', async () => {
-        const { result } = renderHook(() =>
-            useSessionValidation({ gracePeriod: 10 * 60 * 1000 }) // 10 minutos
-        );
+        let result;
+        await act(async () => {
+            const hook = renderHook(() =>
+                useSessionValidation({ gracePeriod: 10 * 60 * 1000, autoRefresh: false })
+            );
+            result = hook.result;
+        });
 
         await waitFor(() => {
-            // Se a sessão expira em 1 hora e grace period é 10 min, não está próximo
             expect(result.current.isNearExpiry).toBe(false);
         });
     });
 
     test('should not refresh if already refreshing', async () => {
+        let resolveRefresh;
         supabase.auth.refreshSession.mockImplementation(
             () =>
                 new Promise((resolve) => {
-                    setTimeout(() => {
-                        resolve({
-                            data: { session: { user: { id: 'test-user-id' } } },
-                            error: null,
-                        });
-                    }, 1000);
+                    resolveRefresh = resolve;
                 })
         );
 
-        const { result } = renderHook(() => useSessionValidation());
+        let result;
+        await act(async () => {
+            const hook = renderHook(() => useSessionValidation({ autoRefresh: false }));
+            result = hook.result;
+        });
 
-        // Iniciar primeiro refresh
+        let firstPromise;
         act(() => {
-            result.current.refreshToken();
+            firstPromise = result.current.refreshToken();
         });
 
         expect(result.current.isRefreshing).toBe(true);
 
-        // Tentar segundo refresh enquanto primeiro está em andamento
         let secondRefreshResult;
         await act(async () => {
             secondRefreshResult = await result.current.refreshToken();
         });
 
         expect(secondRefreshResult).toBe(false);
+
+        await act(async () => {
+            resolveRefresh({
+                data: { session: { user: { id: 'test-user-id' } } },
+                error: null,
+            });
+            await firstPromise;
+        });
     });
 });

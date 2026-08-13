@@ -1,29 +1,39 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Configurações do Supabase - REQUER variáveis de ambiente
-const supabaseUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
-  (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL) ||
-  'https://tests.supabase.local';
+// Helper seguro para leitura de variáveis de ambiente compatível com Vite (import.meta) e Jest/Node (process.env)
+let importMetaEnv = {};
+try {
+  importMetaEnv = (new Function('return import.meta.env')()) || {};
+} catch (e) {}
 
-const supabaseAnonKey = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ||
-  (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) ||
-  'mock-anon-key-for-tests';
+const processEnv = (typeof process !== 'undefined' && process.env) || {};
+const isTestEnv = processEnv.NODE_ENV === 'test';
+
+const supabaseUrl = isTestEnv
+  ? 'https://tests.supabase.local'
+  : (importMetaEnv.VITE_SUPABASE_URL || processEnv.VITE_SUPABASE_URL || 'https://tests.supabase.local');
+
+const supabaseAnonKey = isTestEnv
+  ? 'mock-anon-key-for-tests'
+  : (importMetaEnv.VITE_SUPABASE_ANON_KEY || processEnv.VITE_SUPABASE_ANON_KEY || 'mock-anon-key-for-tests');
+
 
 // Validação de configuração obrigatória
-if (!supabaseUrl || supabaseUrl === 'https://tests.supabase.local' ? false : !supabaseAnonKey) {
+if (!supabaseUrl || (supabaseUrl !== 'https://tests.supabase.local' && !supabaseAnonKey)) {
   const errorMsg = '❌ ERRO: Variáveis de ambiente do Supabase não configuradas. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY';
   console.error(errorMsg);
   throw new Error(errorMsg);
 }
 
 // Log das configurações (apenas em desenvolvimento)
-if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
+if (importMetaEnv.DEV) {
   console.log('🔗 Supabase Config:', {
     url: supabaseUrl,
     hasAnonKey: !!supabaseAnonKey,
     keyPrefix: supabaseAnonKey ? supabaseAnonKey.substring(0, 20) + '...' : ''
   });
 }
+
 
 // Cliente Supabase com configurações de segurança aprimoradas
 const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
