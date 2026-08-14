@@ -308,9 +308,76 @@ const ProfessionalStep = ({
     trackBookingEvent('view_professionals', { via: 'cta' });
   };
 
+  const [selectedServiceCategory, setSelectedServiceCategory] = useState('all');
+
+  const serviceCategories = [
+    { id: 'all', label: 'Todos' },
+    { id: 'individual', label: 'Para Você (Individual)' },
+    { id: 'casal_familia', label: 'Casal & Família' },
+    { id: 'jovens_idosos', label: 'Crianças, Jovens & Idosos' },
+    { id: 'carreira_testes', label: 'Carreira & Avaliações' },
+  ];
+
+  const getServiceCategory = (serviceName) => {
+    const nameLower = (serviceName || '').toLowerCase();
+    if (nameLower.includes('casal') || nameLower.includes('familiar')) {
+      return 'casal_familia';
+    }
+    if (nameLower.includes('criança') || nameLower.includes('adolescente') || nameLower.includes('idoso')) {
+      return 'jovens_idosos';
+    }
+    if (nameLower.includes('empresarial') || nameLower.includes('vocacional') || nameLower.includes('recrutamento') || nameLower.includes('escolar') || nameLower.includes('avaliação')) {
+      return 'carreira_testes';
+    }
+    return 'individual';
+  };
+
+  const servicesWithDetails = useMemo(() => {
+    return services.map((service) => {
+      const professionalCount = professionals.filter(
+        (professional) => professional.services_ids && professional.services_ids.includes(service.id)
+      ).length;
+      return {
+        ...service,
+        professionalCount,
+        category: getServiceCategory(service.name)
+      };
+    });
+  }, [services, professionals]);
+
+  const maxProfCount = useMemo(() => {
+    if (!servicesWithDetails.length) return 0;
+    return Math.max(...servicesWithDetails.map(s => s.professionalCount));
+  }, [servicesWithDetails]);
+
+  const filteredAndSortedServices = useMemo(() => {
+    let list = servicesWithDetails;
+
+    // Filtrar por categoria selecionada
+    if (selectedServiceCategory !== 'all') {
+      list = list.filter((s) => s.category === selectedServiceCategory);
+    }
+
+    // Ordenação Inteligente:
+    // 1. Serviços com profissionais disponíveis primeiro
+    // 2. Por volume de profissionais atendendo (decrescente)
+    return [...list].sort((a, b) => {
+      if (a.professionalCount > 0 && b.professionalCount === 0) return -1;
+      if (a.professionalCount === 0 && b.professionalCount > 0) return 1;
+      return b.professionalCount - a.professionalCount;
+    });
+  }, [servicesWithDetails, selectedServiceCategory]);
+
   const handleSelectService = (serviceId) => {
     onSelectService?.(serviceId);
     trackBookingEvent('select_service', { serviceId });
+
+    // Auto-advance de zero-fricção: avança automaticamente após 250ms de animação do clique
+    if (isServiceOnly) {
+      setTimeout(() => {
+        onNext?.();
+      }, 250);
+    }
   };
 
   const handleContinue = () => {
@@ -426,14 +493,35 @@ const ProfessionalStep = ({
               </div>
             </div> */}
 
+            {/* Category Chips Bar */}
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2 md:m-0 md:px-0 md:flex-wrap md:justify-center">
+              {serviceCategories.map((cat) => {
+                const isActive = selectedServiceCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedServiceCategory(cat.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      isActive
+                        ? 'bg-[#2d8659] text-white border-[#2d8659] shadow-sm'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-[#2d8659] hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Service Cards - Vertical Stack (Mobile) / Grid (Desktop) */}
             <div className="space-y-3 md:space-y-0 md:grid md:gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {services.map((service, index) => {
-                const professionalCount = professionals.filter(
-                  (professional) => professional.services_ids && professional.services_ids.includes(service.id)
-                ).length;
+              {filteredAndSortedServices.map((service) => {
+                const professionalCount = service.professionalCount;
                 const isSelected = selectedService === service.id;
                 const isDisabled = professionalCount === 0;
+                const isTopPopular = maxProfCount > 0 && professionalCount === maxProfCount;
+                const isPopular = !isTopPopular && professionalCount >= 7;
 
                 return (
                   <button
@@ -441,13 +529,25 @@ const ProfessionalStep = ({
                     type="button"
                     disabled={isDisabled}
                     onClick={() => !isDisabled && handleSelectService(service.id)}
-                    className={`w-full p-3 md:p-4 rounded-xl border transition-all text-left group
-                    ${isDisabled ? 'opacity-60 cursor-not-allowed border-gray-100 bg-gray-50' : 'active:scale-95 touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'}
+                    className={`relative w-full p-3.5 md:p-4 rounded-xl border transition-all text-left group
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' : 'active:scale-95 touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'}
                     ${!isDisabled && isSelected
-                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-sm'
+                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-sm ring-1 ring-[#2d8659]'
                         : !isDisabled ? 'border-gray-200 hover:border-[#2d8659] bg-white hover:shadow-sm' : ''
                       }`}
                   >
+                    {/* Badge Social Proof */}
+                    {isTopPopular && (
+                      <span className="absolute -top-2.5 right-3 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs tracking-wide">
+                        ⭐ Mais Procurado
+                      </span>
+                    )}
+                    {isPopular && (
+                      <span className="absolute -top-2.5 right-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs tracking-wide">
+                        Popular
+                      </span>
+                    )}
+
                     {/* Mobile Compact Layout */}
                     <div className="md:hidden">
                       {/* Header: Title + Price */}
@@ -917,20 +1017,24 @@ const ProfessionalStep = ({
         </div>
       )}
 
-      <div className="mt-8 flex flex-wrap gap-4">
-        {onBack && (
-          <Button onClick={onBack} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />Voltar
-          </Button>
-        )}
-        <Button
-          disabled={!canContinue}
-          className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleContinue}
-        >
-          Continuar
-        </Button>
-      </div>
+      {(!isServiceOnly || onBack) && (
+        <div className="mt-8 flex flex-wrap gap-4">
+          {onBack && (
+            <Button onClick={onBack} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />Voltar
+            </Button>
+          )}
+          {!isServiceOnly && (
+            <Button
+              disabled={!canContinue}
+              className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleContinue}
+            >
+              Continuar
+            </Button>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 };
