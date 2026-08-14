@@ -7,12 +7,23 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, ExternalLink, Heart, ArrowLeft, Video, Lock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { fetchEventMeeting } from '@/services/eventAccessService';
+import { registerCheckIn, sendHeartbeat } from '@/services/eventPresenceService';
 import emailService from '@/lib/emailService';
 import emailTemplates from '@/lib/emailTemplates';
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, PlayCircle } from 'lucide-react';
+
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|live\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = String(url).match(regExp);
+  if (match && match[2] && match[2].length === 11) {
+    return `https://www.youtube-nocookie.com/embed/${match[2]}?autoplay=1&modestbranding=1&rel=0`;
+  }
+  return null;
+}
 
 export default function MinhasInscricoesPage() {
   const { user } = useAuth();
@@ -484,18 +495,15 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
-                      {/* Link Zoom (somente se confirmado) */}
+                      {/* Link Zoom ou YouTube Embed (somente se confirmado) */}
                       {showZoomLink && (
-                        <div className="mb-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                        <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm">
                           <div className="flex items-start gap-3">
                             <Video className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
                             <div className="flex-1">
-                              <h3 className="font-semibold text-green-900 mb-2">
-                                🎥 Sala Zoom do Evento
+                              <h3 className="font-semibold text-green-900 mb-1 flex items-center gap-2">
+                                🔴 Transmissão da Sala do Evento
                               </h3>
-                              <p className="text-sm text-green-800 mb-3">
-                                Acesse a sala Zoom no dia e horário do evento:
-                              </p>
                               {/* Link Release Check */}
                               {(() => {
                                 const eventDate = new Date(inscricao.eventos.data_inicio);
@@ -505,22 +513,58 @@ export default function MinhasInscricoesPage() {
                                 const now = new Date();
 
                                 const isReleased = now >= releaseTime;
+                                const youtubeEmbedUrl = getYouTubeEmbedUrl(meetingInfo.meetingLink);
 
                                 if (isReleased) {
+                                  if (youtubeEmbedUrl) {
+                                    return (
+                                      <div className="mt-3 space-y-3">
+                                        <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg border border-gray-200 bg-black">
+                                          <iframe
+                                            src={youtubeEmbedUrl}
+                                            title={evento.titulo}
+                                            className="w-full h-full border-0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                          />
+                                        </div>
+                                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-green-800 bg-green-100/80 px-3 py-2 rounded-md">
+                                          <span className="flex items-center gap-1 font-medium">
+                                            <PlayCircle className="w-4 h-4 text-green-700 animate-pulse" />
+                                            Transmissão Exclusiva Doxologos — Presença em tempo real ativa
+                                          </span>
+                                          <a
+                                            href={meetingInfo.meetingLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline hover:text-green-950 font-medium"
+                                          >
+                                            Abrir no YouTube ↗
+                                          </a>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
                                   return (
-                                    <a
-                                      href={meetingInfo.meetingLink}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                                    >
-                                      <ExternalLink className="w-4 h-4" />
-                                      Acessar Sala Zoom
-                                    </a>
+                                    <div className="mt-2">
+                                      <p className="text-sm text-green-800 mb-3">
+                                        Acesse a sala no dia e horário do evento:
+                                      </p>
+                                      <a
+                                        href={meetingInfo.meetingLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                        Acessar Sala do Evento
+                                      </a>
+                                    </div>
                                   );
                                 } else {
                                   return (
-                                    <div className="bg-white/60 rounded px-3 py-2 text-sm text-green-800 border border-green-200 inline-block">
+                                    <div className="bg-white/60 rounded px-3 py-2 text-sm text-green-800 border border-green-200 inline-block mt-2">
                                       <span className="font-semibold block mb-1">🔒 Link Protegido</span>
                                       Disponível a partir das {releaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({releaseMinutes} min antes do início)
                                     </div>

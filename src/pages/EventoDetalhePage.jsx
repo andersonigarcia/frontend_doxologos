@@ -334,60 +334,85 @@ const EventoDetalhePage = () => {
             }
 
             // ========================================
-            // VALIDAÇÃO DE VAGAS DISPONÍVEIS
+            // REGISTRAR INSCRIÇÃO NO EVENTO (RESERVA ATÔMICA)
             // ========================================
-            if (event.vagas_disponiveis && event.vagas_disponiveis > 0) {
-                const { count: vagasOcupadas, error: countError } = await supabase
-                    .from('inscricoes_eventos')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('evento_id', event.id)
-                    .eq('status', 'confirmed');
+            let inscricao;
 
-                if (countError) {
-                    logger.error('EventoDetalhePage.handleRegistration:vagas-count-error', countError, buildLogContext({ eventId: event.id }));
-                }
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('reserve_event_spot', {
+                p_evento_id: event.id,
+                p_user_id: userId,
+                p_patient_name: patientData.name.trim(),
+                p_patient_email: trimmedEmail,
+                p_patient_phone: patientData.phone.trim() || null
+            });
 
-                if (vagasOcupadas >= event.vagas_disponiveis) {
+            if (!rpcError && rpcResult) {
+                if (!rpcResult.success) {
                     toast({
                         variant: "destructive",
-                        title: "Evento esgotado! 😢",
-                        description: "Todas as vagas foram preenchidas. Entre em contato para lista de espera."
+                        title: "Não foi possível concluir a inscrição",
+                        description: rpcResult.error || "Todas as vagas foram preenchidas."
                     });
                     setIsProcessing(false);
                     return;
                 }
 
-                logger.info('EventoDetalhePage.handleRegistration:vagas', buildLogContext({
-                    vagasRestantes: event.vagas_disponiveis - vagasOcupadas,
-                    totalVagas: event.vagas_disponiveis
-                }));
-            }
+                // Buscar o registro da inscrição criada/existente
+                const { data: fetchedInscricao } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('*')
+                    .eq('id', rpcResult.inscricao_id)
+                    .single();
 
-            // ========================================
-            // REGISTRAR INSCRIÇÃO NO EVENTO
-            // ========================================
-            const statusInicial = event.valor === 0 ? 'confirmed' : 'pending';
-            const paymentStatusInicial = event.valor === 0 ? null : 'pending';
-
-            const { data: inscricaoData, error } = await supabase.from('inscricoes_eventos').insert([
-                {
-                    evento_id: event.id,
-                    user_id: userId,
-                    patient_name: patientData.name.trim(),
-                    patient_email: trimmedEmail,
-                    status: statusInicial, // 'confirmed' (gratuito) ou 'pending' (pago)
-                    payment_status: paymentStatusInicial, // null (gratuito) ou 'pending' (pago)
-                    valor_pago: event.valor || 0
+                inscricao = fetchedInscricao;
+            } else {
+                // Fallback para inserção padrão caso a RPC ainda não esteja implantada
+                if (rpcError) {
+                    logger.warn('EventoDetalhePage.handleRegistration:rpc-reserve-fallback', buildLogContext({ message: rpcError.message }));
                 }
-            ]).select();
 
-            if (error) {
-                toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
-                setIsProcessing(false);
-                return;
+                if (event.vagas_disponiveis && event.vagas_disponiveis > 0) {
+                    const { count: vagasOcupadas } = await supabase
+                        .from('inscricoes_eventos')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('evento_id', event.id)
+                        .in('status', ['confirmed', 'pending']);
+
+                    if (vagasOcupadas >= event.vagas_disponiveis) {
+                        toast({
+                            variant: "destructive",
+                            title: "Evento esgotado! 😢",
+                            description: "Todas as vagas foram preenchidas."
+                        });
+                        setIsProcessing(false);
+                        return;
+                    }
+                }
+
+                const statusInicial = event.valor === 0 ? 'confirmed' : 'pending';
+                const paymentStatusInicial = event.valor === 0 ? null : 'pending';
+
+                const { data: inscricaoData, error } = await supabase.from('inscricoes_eventos').insert([
+                    {
+                        evento_id: event.id,
+                        user_id: userId,
+                        patient_name: patientData.name.trim(),
+                        patient_email: trimmedEmail,
+                        status: statusInicial,
+                        payment_status: paymentStatusInicial,
+                        valor_pago: event.valor || 0
+                    }
+                ]).select();
+
+                if (error) {
+                    toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
+                    setIsProcessing(false);
+                    return;
+                }
+
+                inscricao = inscricaoData[0];
             }
 
-            const inscricao = inscricaoData[0];
             logger.success('EventoDetalhePage.handleRegistration:inscricao-created', buildLogContext({ inscricaoId: inscricao.id }));
 
             // ========================================
