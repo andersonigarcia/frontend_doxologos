@@ -70,12 +70,15 @@
     3. Rastreamento estrito de eventos no Google Analytics 4 (conversões de agendamento, formulários e cliques de WhatsApp).
   - *Consequências:* Melhor posicionamento orgânico no Google, conformidade legal de acessibilidade e inteligência de negócios para tomada de decisão.
 
-- **Data (2026-08-14):** **Distribuição Equitativa (Fair Share) de Atendimentos & Remoção do Ranking 'Mais Indicado'.**
-  - *Contexto:* Existia o filtro 'Mais indicado' na seleção de profissionais que buscava um atributo `rating >= 4.8` inexistente (gerando tela vazia). Além disso, ranquear psicólogos violava a diretriz de produto da Doxologos de promover visibilidade democrática e igualitária entre todos os profissionais credenciados.
+- **Data (2026-08-14):** **Reformulação de UX/DX & Replicação Trimestral de Disponibilidade de Agenda dos Psicólogos.**
+  - *Contexto:* Psicólogos relatavam complexidade no cadastro de horários de atendimento e reclamações de que alterações "não refletiam na plataforma" quando esqueciam de selecionar e salvar os meses subsequentes.
   - *Decisão:* 
-    1. Remover o filtro fantasma 'Mais indicado' e substituí-lo pelo filtro de conveniência real '🌙 Atendimento Noturno' em `ProfessionalStep.jsx`.
-    2. Implementar ordenação com Rotatividade Equitativa (Fair Share tie-breaker) para garantir que profissionais com igual nível de disponibilidade compartilhem a primeira exposição sem privilégio estático de banco.
-  - *Consequências:* Eliminação do bug de lista vazia no agendamento, prevenção do churn de psicólogos novatos e alinhamento total com os preceitos éticos do CFP.
+    1. Redesenhar `DayScheduleCard.jsx` adicionando presets de turno em 1 clique (Manhã: 08-12h, Tarde: 13-18h, Noite: 18-22h, Dia Todo: 08-18h) e gerador por faixa com intervalos configuráveis (30/45/60 min).
+    2. Adicionar botão **"🚀 Replicar para Próximos 3 Meses"** em `AvailabilityManager.jsx` com modal de confirmação visual e handler em `AdminPage.jsx` que replica a grade nos 3 meses vigentes (com tratamento de virada de ano).
+    3. Implementar detecção de estado rascunho (*Dirty State*), **Sticky Save Bar** (Barra Flutuante de Salvamento) e alerta de proteção `beforeunload` para impedir a perda silenciosa de alterações.
+    4. Garantir a normalização de horários (`HH:MM`) em 24h para compatibilidade total com os filtros de agendamento de pacientes.
+  - *Consequências:* Redução drástica do tempo de configuração de agenda de 10 minutos para 10 segundos, eliminação de agendas vazias nos meses seguintes e satisfação plena dos psicólogos.
+
 
 
 

@@ -918,7 +918,8 @@ const AdminPage = () => {
         }
     };
 
-    const handleSaveAvailability = async () => {
+    const handleSaveAvailability = async (options = {}) => {
+        const replicateMonths = options?.replicateMonths || false;
         const professionalId = userRole === 'admin'
             ? selectedAvailProfessional
             : selectedAvailProfessional || professionals[0]?.id;
@@ -930,60 +931,90 @@ const AdminPage = () => {
 
         await withLoading('saveAvailability', async () => {
             try {
-                // 1. Primeiro, deletar registros existentes para este profissional no mês/ano selecionados
-                const { error: deleteError } = await supabase
-                    .from('availability')
-                    .delete()
-                    .eq('professional_id', professionalId)
-                    .eq('month', selectedMonth)
-                    .eq('year', selectedYear);
-
-                if (deleteError) {
-                    secureLog.error('Erro ao limpar disponibilidade existente:', deleteError?.message || deleteError);
-                    secureLog.debug('Detalhes do erro ao limpar disponibilidade existente', deleteError);
-                    toast({ variant: "destructive", title: "Erro ao atualizar disponibilidade", description: deleteError.message });
-                    return;
+                // Determina a lista de [mês, ano] para salvar (1 mês ou 3 meses se replicateMonths = true)
+                const targetPeriods = [];
+                if (replicateMonths) {
+                    for (let i = 0; i < 3; i++) {
+                        let m = selectedMonth + i;
+                        let y = selectedYear;
+                        if (m > 12) {
+                            m = m - 12;
+                            y = y + 1;
+                        }
+                        targetPeriods.push({ month: m, year: y });
+                    }
+                } else {
+                    targetPeriods.push({ month: selectedMonth, year: selectedYear });
                 }
 
-                // 2. Inserir novos registros apenas para dias com horários
-                const availabilityToInsert = [];
-                for (const day in professionalAvailability) {
-                    const times = professionalAvailability[day];
-                    if (times && times.length > 0) {
-                        // Validar e limpar horários
-                        const validTimes = times
-                            .filter(time => time && time.trim() !== '')
-                            .map(time => time.trim())
-                            .filter((time, index, array) => array.indexOf(time) === index); // Remove duplicatas
+                const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
-                        if (validTimes.length > 0) {
-                            availabilityToInsert.push({
-                                professional_id: professionalId,
-                                day_of_week: day,
-                                available_times: validTimes,
-                                month: selectedMonth,
-                                year: selectedYear
-                            });
+                for (const period of targetPeriods) {
+                    // 1. Deletar registros existentes para este profissional no mês/ano específico
+                    const { error: deleteError } = await supabase
+                        .from('availability')
+                        .delete()
+                        .eq('professional_id', professionalId)
+                        .eq('month', period.month)
+                        .eq('year', period.year);
+
+                    if (deleteError) {
+                        secureLog.error('Erro ao limpar disponibilidade existente:', deleteError?.message || deleteError);
+                        toast({ variant: "destructive", title: "Erro ao atualizar disponibilidade", description: deleteError.message });
+                        return;
+                    }
+
+                    // 2. Montar lista de inserção com horários limpos e normalizados (08:00)
+                    const availabilityToInsert = [];
+                    for (const day in professionalAvailability) {
+                        const times = professionalAvailability[day];
+                        if (times && times.length > 0) {
+                            const validTimes = times
+                                .filter(time => time && typeof time === 'string' && time.trim() !== '')
+                                .map(time => {
+                                    const trimmed = time.trim();
+                                    return trimmed.length === 4 ? `0${trimmed}` : trimmed;
+                                })
+                                .filter((time, index, array) => array.indexOf(time) === index); // Remove duplicatas
+
+                            if (validTimes.length > 0) {
+                                availabilityToInsert.push({
+                                    professional_id: professionalId,
+                                    day_of_week: day,
+                                    available_times: validTimes,
+                                    month: period.month,
+                                    year: period.year
+                                });
+                            }
+                        }
+                    }
+
+                    // 3. Inserir novos registros
+                    if (availabilityToInsert.length > 0) {
+                        const { error: insertError } = await supabase
+                            .from('availability')
+                            .insert(availabilityToInsert);
+
+                        if (insertError) {
+                            secureLog.error('Erro ao inserir disponibilidade:', insertError?.message || insertError);
+                            toast({ variant: "destructive", title: "Erro ao salvar disponibilidade", description: insertError.message });
+                            return;
                         }
                     }
                 }
 
-                // 3. Inserir novos registros se houver
-                if (availabilityToInsert.length > 0) {
-                    const { error: insertError } = await supabase
-                        .from('availability')
-                        .insert(availabilityToInsert);
-
-                    if (insertError) {
-                        secureLog.error('Erro ao inserir disponibilidade:', insertError?.message || insertError);
-                        secureLog.debug('Detalhes do erro ao inserir disponibilidade', insertError);
-                        toast({ variant: "destructive", title: "Erro ao salvar disponibilidade", description: insertError.message });
-                        return;
-                    }
+                if (replicateMonths) {
+                    toast({
+                        title: '🚀 Agenda replicada com sucesso!',
+                        description: `Sua disponibilidade foi salva e replicada para os próximos 3 meses.`
+                    });
+                } else {
+                    toast({
+                        title: 'Disponibilidade salva!',
+                        description: `Agenda de ${monthNames[selectedMonth]}/${selectedYear} atualizada com sucesso.`
+                    });
                 }
 
-                const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-                toast({ title: `Disponibilidade de ${monthNames[selectedMonth]}/${selectedYear} atualizada com sucesso!` });
                 await fetchAllData();
             } catch (error) {
                 secureLog.error('Erro inesperado ao salvar disponibilidade:', error?.message || error);
