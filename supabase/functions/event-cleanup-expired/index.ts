@@ -2,6 +2,7 @@
 // Env expected: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 // Purpose: Cancel pending event registrations and bookings (15 min for same-day bookings, 24h for standard).
 
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -9,7 +10,7 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-export default async function handler(req: Request) {
+serve(async (req: Request) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
@@ -158,4 +159,4 @@ export default async function handler(req: Request) {
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
-}
+});
