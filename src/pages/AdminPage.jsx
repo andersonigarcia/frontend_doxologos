@@ -4909,7 +4909,7 @@ const AdminPage = () => {
                                                 );
                                             })}
                                         </div>
-                                        <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <div className="lg:col-span-7 bg-white rounded-xl shadow-lg p-6">
                                             <h2 className="text-2xl font-bold mb-6">{isEditingEvent ? 'Editar Evento' : 'Novo Evento'}</h2>
                                             <form onSubmit={handleEventSubmit} className="space-y-6 text-sm">
                                                 <section className="rounded-2xl border border-gray-100 bg-gray-50/60 p-5 space-y-4">
