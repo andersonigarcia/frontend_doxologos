@@ -1,19 +1,27 @@
-# 📅 Sistema de Agendamentos
+# 📅 Sistema de Agendamentos (v3.2)
 
-> **Status**: ✅ Implementado  
-> **Funcionalidade**: Agendamento e reagendamento de consultas
+> **Status**: ✅ Implementado em Produção  
+> **Última Atualização**: Agosto de 2026
 
 ---
 
-## 📋 Funcionalidades
+## 📋 Funcionalidades Core & Regras de Negócio (v3.2)
 
-- ✅ Agendamento de consultas
-- ✅ Reagendamento
-- ✅ Cancelamento
-- ✅ Verificação de disponibilidade
-- ✅ Integração com pagamentos
-- ✅ Integração com Zoom
-- ✅ Emails automáticos
+- ✅ **Agendamento Online 24/7:** Seleção de serviço, psicólogo, data e horário com auto-advance de zero fricção.
+- ✅ **Matriz de Tolerância Dinâmica de Pendência:** Expiração inteligente de reservas não pagas para liberar a agenda do psicólogo:
+  - Consultas em menos de 3h: expiram em **15 minutos**.
+  - Consultas entre 3h e 24h: expiram em **30 minutos**.
+  - Consultas em mais de 24h: expiram em **60 minutos**.
+- ✅ **Descarte de Slots On-The-Fly (`useBookedSlots.js`):** Reservas pendentes cuja tolerância expirou são ignoradas instantaneamente na busca de disponibilidade antes mesmo da cron job.
+- ✅ **Gestão de Disponibilidade dos Psicólogos (v3.1):**
+  - Presets de Turnos em 1 clique (Manhã: 08-12h, Tarde: 13-18h, Noite: 18-22h, Dia Todo: 08-18h).
+  - Botão **"🚀 Replicar para Próximos 3 Meses"** em `AvailabilityManager.jsx`.
+  - Sticky Save Bar (Barra Flutuante de Salvamento) e proteção contra perda acidental de rascunho (*Dirty State*).
+- ✅ **Filtros Rápidos e UX Mobile (v3.1):**
+  - Chips de 1 linha sem quebra de texto (`whitespace-nowrap`) e ícones nativos Lucide SVG (Hoje, TCC, Logoterapia, Psicanálise, Noturno).
+  - Grid de horários em 2 colunas responsivas (`grid-cols-2`) para smartphones.
+- ✅ **Reagendamento & Cancelamento:** Com política de aviso prévio (24h) e geração automática de Crédito Financeiro.
+- ✅ **Integração Zoom OAuth & E-mails SMTP:** Links individuais e lembretes automáticos.
 
 ---
 

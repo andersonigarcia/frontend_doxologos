@@ -1,8 +1,8 @@
 # 📚 Documentação - Doxologos Psicologia
 
 > **Sistema de Gestão de Clínica de Psicologia**  
-> **Versão**: 2.2  
-> **Última Atualização**: Julho de 2026
+> **Versão**: 3.2  
+> **Última Atualização**: Agosto de 2026
 
 ---
 
@@ -10,14 +10,15 @@
 
 Sistema completo para gestão de clínica de psicologia com:
 
-- ✅ Agendamento online
-- ✅ Pagamentos (PIX, Cartão, Boleto)
-- ✅ Integração Zoom
-- ✅ Sistema de emails
-- ✅ Área do paciente
-- ✅ Painel administrativo
-- ✅ Eventos e workshops
-- ✅ Blog integrado (Substack)
+- ✅ Agendamento online 24/7 com tolerância dinâmica de pendências
+- ✅ Pagamentos (PIX inline mobile-first, Cartão Direto sem redirect, Boleto, Créditos Financeiros)
+- ✅ Gestão de disponibilidade dos psicólogos com replicação trimestral (v3.1)
+- ✅ Otimização de conversão mobile e formulários nativos iOS/Android (v3.1)
+- ✅ Painel administrativo com Data Table de alta densidade e DRE/Ledger reconciliado (v3.2)
+- ✅ Integração Zoom OAuth Server-to-Server
+- ✅ Sistema de emails transacionais SMTP Hostinger
+- ✅ Área do paciente e painel administrativo do profissional
+- ✅ Eventos, workshops e blog integrado (Substack)
 
 ---
 

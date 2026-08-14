@@ -85,11 +85,31 @@ Revisão completa da HomePage com foco em UX e marketing de conversão, cobrindo
 
 ---
 
-## 🔄 Histórico de Mudanças
+## 📱 Mobile CRO & Redesign de Filtros (Agosto 2026 - v3.1)
 
-### v2.2 (Jul 2026)
-- Implementação completa das melhorias descritas acima
+### O que mudou
+
+- **Orquestração de Flutuantes (Z-Index):** O Botão Flutuante do WhatsApp (`FloatingWhatsAppButton.jsx`) foi ajustado com offset responsivo (`bottom-[88px] md:bottom-28`) e z-index (`z-40`) para eliminar colisão com a barra sticky de agendamento e o banner LGPD em celulares.
+- **Formulários Nativos iOS/Android:** Adicionados `inputMode="email"`, `inputMode="numeric"` e `autoComplete` nativos para preenchimento com 1 toque no cadastro do paciente.
+- **Redesign dos Filtros Rápidos (`ProfessionalStep.jsx`):**
+  - Removida a quebra de texto interna que deformava os botões em ovais.
+  - Implementadas pílulas compactas de 1 linha (`whitespace-nowrap flex-shrink-0`) com cantos arredondados (`rounded-full`).
+  - Ícones vetoriais SVG Lucide nativos (Hoje: `Zap`, TCC: `Brain`, Logoterapia: `Sprout`, Psicanálise: `MessageCircle`, Noturno: `Moon`).
+  - Destaque ativo em tom verde escuro corporativo (`#1b3c37`) e rolagem horizontal suave por deslize (`no-scrollbar scroll-smooth`).
+- **Checkout PIX Mobile-First (`CheckoutPage.jsx`):**
+  - Destaque primário de 100% da largura para o botão "Copiar Código PIX Copia e Cola" com orientação amigável.
+  - QR Code recolhível em menu sanfona explicativo.
 
 ---
 
-**Última atualização**: Julho de 2026
+## 🔄 Histórico de Mudanças
+
+### v3.1 / v3.2 (Agosto 2026)
+- Mobile Conversion Hardening, Redesign dos Filtros Rápidos e PIX Mobile.
+
+### v2.2 (Jul 2026)
+- Implementação completa das melhorias da HomePage descritas acima.
+
+---
+
+**Última atualização**: Agosto de 2026
