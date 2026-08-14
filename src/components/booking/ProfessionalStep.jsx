@@ -176,9 +176,25 @@ const ProfessionalStep = ({
       },
     },
     {
-      id: 'top-rated',
-      label: 'Mais indicado',
-      predicate: (professional) => Number(professional.rating || 0) >= 4.8,
+      id: 'night-slots',
+      label: '🌙 Atendimento Noturno',
+      predicate: (professional) => {
+        const profAvail = availability[professional.id];
+        if (!profAvail) return false;
+        return Object.values(profAvail).some((dayData) => {
+          let times = [];
+          if (Array.isArray(dayData)) {
+            times = dayData.flatMap((entry) => (entry?.times ? entry.times : (typeof entry === 'string' ? [entry] : [])));
+          } else if (dayData?.times && Array.isArray(dayData.times)) {
+            times = dayData.times;
+          }
+          return times.some((t) => {
+            const timeStr = typeof t === 'string' ? t : (t?.time || '');
+            const hour = parseInt(timeStr.split(':')[0], 10);
+            return !isNaN(hour) && hour >= 18;
+          });
+        });
+      },
     },
   ], [availability]);
 
@@ -194,7 +210,7 @@ const ProfessionalStep = ({
     );
   }, [activeFilters, availableProfessionals, quickFilterDefinitions]);
 
-  // Sort professionals: available first, then by next available slot dynamically starting from TODAY
+  // Sort professionals: available first, then by next available slot dynamically starting from TODAY, with Fair Share Rotation
   const sortedProfessionals = useMemo(() => {
     return [...filteredProfessionals].sort((a, b) => {
       const aHasAvail = professionalHasAvailability(a);
@@ -223,12 +239,16 @@ const ProfessionalStep = ({
           // Then compare times - ensure they are strings
           const aTime = String(aNext.time || '');
           const bTime = String(bNext.time || '');
-          return aTime.localeCompare(bTime);
+          const timeDiff = aTime.localeCompare(bTime);
+          if (timeDiff !== 0) return timeDiff;
+
+          // Rotatividade Equitativa (Fair Share tie-breaker): usa o ID do profissional para alternar exibição justa
+          return (a.id || '').localeCompare(b.id || '');
         }
       }
 
       // Keep original order for professionals without availability
-      return 0;
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [filteredProfessionals, availability]);
 

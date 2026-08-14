@@ -70,14 +70,13 @@
     3. Rastreamento estrito de eventos no Google Analytics 4 (conversões de agendamento, formulários e cliques de WhatsApp).
   - *Consequências:* Melhor posicionamento orgânico no Google, conformidade legal de acessibilidade e inteligência de negócios para tomada de decisão.
 
-- **Data (2026-08-14):** **Central de Resiliência Fiscal & Gestão de Erros de NFS-e (PBH / BHISS Digital).**
-  - *Contexto:* Falhas de emissão automatizada de NFS-e (por instabilidades no WebService SOAP da prefeitura ou CPF/CNPJ do tomador ausente/inválido) deixavam registros em erro sem interface de diagnóstico ou re-emissão.
+- **Data (2026-08-14):** **Distribuição Equitativa (Fair Share) de Atendimentos & Remoção do Ranking 'Mais Indicado'.**
+  - *Contexto:* Existia o filtro 'Mais indicado' na seleção de profissionais que buscava um atributo `rating >= 4.8` inexistente (gerando tela vazia). Além disso, ranquear psicólogos violava a diretriz de produto da Doxologos de promover visibilidade democrática e igualitária entre todos os profissionais credenciados.
   - *Decisão:* 
-    1. Criar migration SQL `20260814_enhance_nfse_resilience.sql` com colunas de `retry_count`, `error_category` (`VALIDATION_ERROR`, `PREFEITURA_OFFLINE`, `AUTH_ERROR`, `SYSTEM_ERROR`), `tomador_endereco` e auditoria de correção.
-    2. Atualizar a Edge Function `emit-nfse` para suportar `update_and_retry` (override de dados do tomador pelo admin), `retry` simples e `mark_manual_resolved`.
-    3. Criar Edge Function `retry-failed-nfse` para retentativa assíncrona automatizada de erros de infraestrutura (`PREFEITURA_OFFLINE`, max 3 tentativas).
-    4. Implementar dashboard React `NfseResilienceDashboard.jsx` com KPIs, tabela filtrável e modal interativo de avaliação, correção de CPF/dados e reenvio, integrado às telas `/admin` e `/pagamentos`.
-  - *Consequências:* Eliminação do passivo fiscal por falha de emissão, governança financeira completa e retenção da trilha de auditoria sem duplicidade de imposto (ISS/Simples).
+    1. Remover o filtro fantasma 'Mais indicado' e substituí-lo pelo filtro de conveniência real '🌙 Atendimento Noturno' em `ProfessionalStep.jsx`.
+    2. Implementar ordenação com Rotatividade Equitativa (Fair Share tie-breaker) para garantir que profissionais com igual nível de disponibilidade compartilhem a primeira exposição sem privilégio estático de banco.
+  - *Consequências:* Eliminação do bug de lista vazia no agendamento, prevenção do churn de psicólogos novatos e alinhamento total com os preceitos éticos do CFP.
+
 
 
 
