@@ -128,18 +128,59 @@ const ProfessionalStep = ({
     };
   };
 
-  const quickFilterDefinitions = [
+  const dayMappingKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  const getProfessionalApproach = (professional) => {
+    const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+    if (text.includes('logoterapia') || text.includes('logoterapeuta')) return '🌱 Logoterapia';
+    if (text.includes('tcc') || text.includes('cognitivo-comportamental') || text.includes('cognitiva')) return '🧠 TCC (Cognitiva)';
+    if (text.includes('psicanálise') || text.includes('psicanalítica') || text.includes('psicanalista')) return '🗣️ Psicanálise';
+    if (text.includes('humanista') || text.includes('centrada na pessoa') || text.includes('gestalt')) return '🤝 Humanista / Gestalt';
+    if (text.includes('sistêmica') || text.includes('família')) return '👨‍👩‍👧 Sistêmica';
+    return null;
+  };
+
+  const quickFilterDefinitions = useMemo(() => [
     {
-      id: 'available',
-      label: 'Disponível esta semana',
-      predicate: (professional) => professionalHasAvailability(professional),
+      id: 'available-today',
+      label: '⚡ Disponível Hoje',
+      predicate: (professional) => {
+        const nextSlot = getNextAvailableSlot(professional);
+        if (!nextSlot) return false;
+        const todayKey = dayMappingKeys[new Date().getDay()];
+        return nextSlot.day?.toLowerCase() === todayKey;
+      },
+    },
+    {
+      id: 'logoterapia',
+      label: 'Logoterapia',
+      predicate: (professional) => {
+        const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+        return text.includes('logoterapia') || text.includes('logoterapeuta');
+      },
+    },
+    {
+      id: 'tcc',
+      label: 'TCC (Cognitiva)',
+      predicate: (professional) => {
+        const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+        return text.includes('tcc') || text.includes('cognitivo-comportamental') || text.includes('cognitiva');
+      },
+    },
+    {
+      id: 'psicanalise',
+      label: 'Psicanálise',
+      predicate: (professional) => {
+        const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+        return text.includes('psicanálise') || text.includes('psicanalítica') || text.includes('psicanalista');
+      },
     },
     {
       id: 'top-rated',
       label: 'Mais indicado',
       predicate: (professional) => Number(professional.rating || 0) >= 4.8,
     },
-  ];
+  ], [availability]);
 
   const filteredProfessionals = useMemo(() => {
     if (!activeFilters.length) {
@@ -153,7 +194,7 @@ const ProfessionalStep = ({
     );
   }, [activeFilters, availableProfessionals, quickFilterDefinitions]);
 
-  // Sort professionals: available first, then by next available slot
+  // Sort professionals: available first, then by next available slot dynamically starting from TODAY
   const sortedProfessionals = useMemo(() => {
     return [...filteredProfessionals].sort((a, b) => {
       const aHasAvail = professionalHasAvailability(a);
@@ -168,11 +209,17 @@ const ProfessionalStep = ({
         const aNext = getNextAvailableSlot(a);
         const bNext = getNextAvailableSlot(b);
         if (aNext && bNext) {
-          // Compare days first
-          const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-          const aDayIndex = dayOrder.indexOf(aNext.day);
-          const bDayIndex = dayOrder.indexOf(bNext.day);
+          // Dynamic day order starting from TODAY's weekday index
+          const todayIdx = new Date().getDay();
+          const dynamicDayOrder = [];
+          for (let i = 0; i < 7; i++) {
+            dynamicDayOrder.push(dayMappingKeys[(todayIdx + i) % 7]);
+          }
+
+          const aDayIndex = dynamicDayOrder.indexOf(aNext.day?.toLowerCase());
+          const bDayIndex = dynamicDayOrder.indexOf(bNext.day?.toLowerCase());
           if (aDayIndex !== bDayIndex) return aDayIndex - bDayIndex;
+
           // Then compare times - ensure they are strings
           const aTime = String(aNext.time || '');
           const bTime = String(bNext.time || '');
@@ -374,6 +421,18 @@ const ProfessionalStep = ({
 
     // Auto-advance de zero-fricção: avança automaticamente após 250ms de animação do clique
     if (isServiceOnly) {
+      setTimeout(() => {
+        onNext?.();
+      }, 250);
+    }
+  };
+
+  const handleSelectProfessional = (profId) => {
+    onSelectProfessional?.(profId);
+    trackBookingEvent('select_professional', { professionalId: profId });
+
+    // Auto-advance na escolha do profissional: avança para o Calendário (Etapa 3) em 250ms
+    if (isProfessionalOnly) {
       setTimeout(() => {
         onNext?.();
       }, 250);
@@ -764,11 +823,13 @@ const ProfessionalStep = ({
                   {sortedAvailable.map((professional) => {
                     const isSelectable = professionalHasAvailability(professional);
                     const nextSlot = getNextAvailableSlot(professional);
+                    const approachTag = getProfessionalApproach(professional);
+
                     return (
                       <button
                         key={professional.id}
                         type="button"
-                        onClick={() => isSelectable && onSelectProfessional?.(professional.id)}
+                        onClick={() => isSelectable && handleSelectProfessional(professional.id)}
                         disabled={!isSelectable}
                         role="option"
                         aria-selected={selectedProfessional === professional.id}
@@ -834,9 +895,16 @@ const ProfessionalStep = ({
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
-                              {professional.name}
-                            </h4>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h4 className="font-bold text-xl text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                                {professional.name}
+                              </h4>
+                              {approachTag && (
+                                <span className="inline-block bg-[#2d8659]/10 text-[#2d8659] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#2d8659]/20">
+                                  {approachTag}
+                                </span>
+                              )}
+                            </div>
                             {professional.mini_curriculum && (
                               <p className="text-sm text-gray-600 mb-3">
                                 {professional.mini_curriculum.length > 120
