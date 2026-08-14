@@ -53,6 +53,7 @@ const DashboardGrowth = lazy(() => import('@/components/admin/growth/DashboardGr
 const AvailabilityManager = lazy(() => import('@/components/admin/availability/AvailabilityManager').then(m => ({ default: m.AvailabilityManager })));
 const CostFormModal = lazy(() => import('@/components/admin/CostFormModal').then(m => ({ default: m.CostFormModal })));
 const RefundRequestDashboard = lazy(() => import('@/components/admin/RefundRequestDashboard'));
+const NfseResilienceDashboard = lazy(() => import('@/components/admin/NfseResilienceDashboard'));
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
@@ -3846,6 +3847,16 @@ const AdminPage = () => {
                                     <LedgerTable />
                                 </Suspense>
 </TabsContent>
+                            )
+                        }
+
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="nfse" className="mt-6">
+                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                        <NfseResilienceDashboard />
+                                    </Suspense>
+                                </TabsContent>
                             )
                         }
 

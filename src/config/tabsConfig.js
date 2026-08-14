@@ -14,12 +14,13 @@ import {
     Receipt,
     ClipboardList,
     LineChart,
-    Newspaper
+    Newspaper,
+    Building2
 } from 'lucide-react';
 
 /**
  * Configuração de tabs do painel administrativo por role
- * Atualizado: 2025-12-20 21:45
+ * Atualizado: 2026-08-14 05:00
  */
 export const tabsConfig = {
     admin: [
@@ -28,6 +29,7 @@ export const tabsConfig = {
         { value: 'payments', label: 'Pagamentos', icon: DollarSign },
         { value: 'profit-loss', label: 'Lucro/Prejuízo', icon: TrendingUp },
         { value: 'livro-caixa', label: 'Livro Caixa', icon: FileText },
+        { value: 'nfse', label: 'Resiliência NFS-e', icon: Building2 },
         { value: 'professionals', label: 'Profissionais', icon: Users },
         { value: 'services', label: 'Serviços', icon: Briefcase },
         { value: 'availability', label: 'Disponibilidade', icon: Clock },

@@ -6,7 +6,7 @@ import {
     CreditCard, DollarSign, TrendingUp, AlertCircle, CheckCircle, 
     Clock, Filter, Download, RefreshCw, Eye, ArrowLeft,
     ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RotateCcw,
-    UploadCloud, Loader2
+    UploadCloud, Loader2, Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -452,11 +452,22 @@ const PaymentsPage = () => {
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             Voltar para Admin
                         </Link>
-                        <h1 className="text-4xl font-bold mb-2 flex items-center">
-                            <CreditCard className="w-10 h-10 mr-3 text-[#2d8659]" />
-                            Gerenciamento de Pagamentos
-                        </h1>
-                        <p className="text-gray-600">Acompanhe e gerencie todos os pagamentos da plataforma</p>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-4xl font-bold mb-2 flex items-center">
+                                    <CreditCard className="w-10 h-10 mr-3 text-[#2d8659]" />
+                                    Gerenciamento de Pagamentos
+                                </h1>
+                                <p className="text-gray-600">Acompanhe e gerencie todos os pagamentos da plataforma</p>
+                            </div>
+                            <Link 
+                                to="/admin" 
+                                className="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-all shadow-sm self-start sm:self-auto"
+                            >
+                                <Building2 className="w-4 h-4" />
+                                <span>Central de Resiliência NFS-e</span>
+                            </Link>
+                        </div>
                     </div>
 
                     {/* Cards de Estatísticas */}
