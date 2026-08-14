@@ -3062,7 +3062,11 @@ const AdminPage = () => {
                                                                                                         rel="noopener noreferrer"
                                                                                                         className="bg-emerald-50 text-[#2d8659] border border-emerald-200 px-2 py-1 rounded-md text-[11px] font-bold hover:bg-emerald-100 transition-colors"
                                                                                                     >
-                                                                                                        Zoom
+                                                                                                        {b.meeting_link.toLowerCase().includes('meet.google.com') || b.meeting_link.toLowerCase().includes('google')
+                                                                                                            ? 'Google Meet'
+                                                                                                            : b.meeting_link.toLowerCase().includes('zoom')
+                                                                                                                ? 'Zoom'
+                                                                                                                : 'Sala Virtual'}
                                                                                                     </a>
                                                                                                 )}
                                                                                                 <Dialog>
@@ -4769,8 +4773,8 @@ const AdminPage = () => {
                             userRole === 'admin' && (
                                 <TabsContent value="events" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                                        <div className="lg:col-span-5 bg-white rounded-xl shadow-lg p-6">
                                             <h2 className="text-2xl font-bold mb-6 flex items-center"><Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos</h2>
                                             {events.map((event, index) => {
                                                 const dataInicio = new Date(event.data_inicio);
@@ -5007,7 +5011,7 @@ const AdminPage = () => {
                                                     <div className="grid gap-4 md:grid-cols-2">
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Início</label>
-                                                            <div className="space-y-2">
+                                                            <div className="grid grid-cols-2 gap-2">
                                                                 <div>
                                                                     <input
                                                                         type="date"
@@ -5050,7 +5054,7 @@ const AdminPage = () => {
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Data/Hora Fim</label>
-                                                            <div className="space-y-2">
+                                                            <div className="grid grid-cols-2 gap-2">
                                                                 <div>
                                                                     <input
                                                                         type="date"
@@ -5091,7 +5095,7 @@ const AdminPage = () => {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="grid gap-4 md:grid-cols-2">
+                                                    <div className="grid gap-4 md:grid-cols-3">
                                                         <div>
                                                             <label className="block text-xs font-medium text-gray-600 mb-1">Limite de participantes</label>
                                                             <input

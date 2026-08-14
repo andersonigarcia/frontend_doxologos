@@ -1061,7 +1061,11 @@ const PacientePage = () => {
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center justify-center w-full md:w-auto px-5 py-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
                                                     >
-                                                        Entrar na Sala Google Meet
+                                                        {booking.meeting_link.toLowerCase().includes('zoom')
+                                                            ? 'Entrar na Sala Zoom'
+                                                            : booking.meeting_link.toLowerCase().includes('meet.google.com') || booking.meeting_link.toLowerCase().includes('google')
+                                                            ? 'Entrar na Sala Google Meet'
+                                                            : 'Entrar na Sala Virtual'}
                                                     </a>
                                                 </div>
                                             )}

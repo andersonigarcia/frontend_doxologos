@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, Calendar, Check, Clock, Download, Eye, X, Plus, Filter, Trash2 } from 'lucide-react';
+import { DollarSign, Calendar, Check, Clock, Download, Eye, X, Plus, Filter, Trash2, Search, CheckCircle2, User, Edit3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     AlertDialog,
@@ -18,12 +18,6 @@ import { cn } from '@/lib/utils';
 
 /**
  * ProfessionalPaymentsList - Lista de pagamentos aos profissionais
- * 
- * @param {Object} props
- * @param {Function} props.onCreatePayment - Callback para criar novo pagamento
- * @param {Function} props.onViewDetails - Callback para ver detalhes
- * @param {Function} props.onMarkAsPaid - Callback para marcar como pago
- * @param {string} props.className - Classes CSS adicionais
  */
 export function ProfessionalPaymentsList({
     onCreatePayment,
@@ -51,40 +45,43 @@ export function ProfessionalPaymentsList({
         return new Date(date).toLocaleDateString('pt-BR');
     };
 
+    const getInitials = (name) => {
+        if (!name) return 'PR';
+        const parts = name.trim().split(' ').filter(Boolean);
+        if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    };
+
     const getStatusBadge = (status) => {
-        const badges = {
-            pending: {
-                label: 'Pendente',
-                className: 'bg-orange-100 text-orange-800 border-orange-200'
-            },
-            paid: {
-                label: 'Pago',
-                className: 'bg-green-100 text-green-800 border-green-200'
-            },
-            cancelled: {
-                label: 'Cancelado',
-                className: 'bg-gray-100 text-gray-800 border-gray-200'
-            }
-        };
-
-        const badge = badges[status] || badges.pending;
-
+        if (status === 'paid') {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-200 shadow-2xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Pago
+                </span>
+            );
+        }
+        if (status === 'pending') {
+            return (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100/80 text-amber-800 border border-amber-200 shadow-2xs">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Pendente
+                </span>
+            );
+        }
         return (
-            <span className={cn(
-                'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border',
-                badge.className
-            )}>
-                {badge.label}
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                Cancelado
             </span>
         );
     };
 
     const getPaymentMethodLabel = (method) => {
         const methods = {
-            pix: 'PIX',
-            transferencia: 'Transferência',
-            dinheiro: 'Dinheiro',
-            outro: 'Outro'
+            pix: '⚡ PIX',
+            transferencia: '🏦 Transferência',
+            dinheiro: '💵 Dinheiro',
+            outro: '💳 Outro'
         };
         return methods[method] || method || '-';
     };
@@ -113,6 +110,7 @@ export function ProfessionalPaymentsList({
     };
 
     const payments = filteredPayments();
+    const allCount = pendingPayments.length + paidPayments.length;
 
     if (loading) {
         return (
@@ -132,15 +130,17 @@ export function ProfessionalPaymentsList({
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 p-6"
+                    className="bg-gradient-to-br from-amber-50/80 to-amber-100/60 rounded-2xl border border-amber-200/80 p-6 shadow-sm flex items-center justify-between"
                 >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-orange-600 mb-1">Pagamentos Pendentes</p>
-                            <p className="text-3xl font-bold text-orange-900">{formatCurrency(totalPending)}</p>
-                            <p className="text-xs text-orange-600 mt-1">{pendingPayments.length} pagamento(s)</p>
-                        </div>
-                        <Clock className="w-12 h-12 text-orange-400" />
+                    <div>
+                        <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1">Pagamentos Pendentes</p>
+                        <p className="text-3xl font-extrabold text-amber-950">{formatCurrency(totalPending)}</p>
+                        <p className="text-xs font-medium text-amber-700 mt-1 flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" /> {pendingPayments.length} repasse(s) a liberar
+                        </p>
+                    </div>
+                    <div className="p-3.5 bg-amber-200/50 rounded-2xl text-amber-700">
+                        <Clock className="w-8 h-8" />
                     </div>
                 </motion.div>
 
@@ -148,77 +148,96 @@ export function ProfessionalPaymentsList({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200 p-6"
+                    className="bg-gradient-to-br from-emerald-50/80 to-emerald-100/60 rounded-2xl border border-emerald-200/80 p-6 shadow-sm flex items-center justify-between"
                 >
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-green-600 mb-1">Pagamentos Realizados</p>
-                            <p className="text-3xl font-bold text-green-900">{formatCurrency(totalPaid)}</p>
-                            <p className="text-xs text-green-600 mt-1">{paidPayments.length} pagamento(s)</p>
-                        </div>
-                        <Check className="w-12 h-12 text-green-400" />
+                    <div>
+                        <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">Pagamentos Realizados</p>
+                        <p className="text-3xl font-extrabold text-emerald-950">{formatCurrency(totalPaid)}</p>
+                        <p className="text-xs font-medium text-emerald-700 mt-1 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> {paidPayments.length} repasse(s) efetuados
+                        </p>
+                    </div>
+                    <div className="p-3.5 bg-emerald-200/50 rounded-2xl text-emerald-700">
+                        <CheckCircle2 className="w-8 h-8" />
                     </div>
                 </motion.div>
             </div>
 
             {/* Filtros e Ações */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <DollarSign className="w-6 h-6 text-[#2d8659]" />
+                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <DollarSign className="w-5 h-5 text-[#2d8659]" />
                             Pagamentos aos Profissionais
                         </h2>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Gerencie pagamentos e histórico de repasses
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Gerencie o fluxo de repasses e histórico financeiro dos psicólogos.
                         </p>
                     </div>
 
                     <Button
                         onClick={() => onCreatePayment()}
-                        className="bg-[#2d8659] hover:bg-[#236b47]"
+                        className="bg-[#2d8659] hover:bg-[#236b47] text-white rounded-xl shadow-sm px-5 font-semibold text-xs h-10"
                     >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="w-4 h-4 mr-1.5" />
                         Novo Pagamento
                     </Button>
                 </div>
 
-                {/* Filtros */}
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="flex gap-2">
-                        <Button
-                            variant={statusFilter === 'all' ? 'default' : 'outline'}
-                            size="sm"
+                {/* Filtros de Aba e Busca */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                    <div className="flex items-center gap-1.5 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+                        <button
+                            type="button"
                             onClick={() => setStatusFilter('all')}
-                            className={`rounded-full ${statusFilter === 'all' ? 'bg-[#2d8659] hover:bg-[#236b47]' : ''}`}
+                            className={cn(
+                                'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all',
+                                statusFilter === 'all'
+                                    ? 'bg-white text-slate-900 shadow-xs'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            )}
                         >
-                            Todos
-                        </Button>
-                        <Button
-                            variant={statusFilter === 'pending' ? 'default' : 'outline'}
-                            size="sm"
+                            Todos ({allCount})
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => setStatusFilter('pending')}
-                            className={`rounded-full ${statusFilter === 'pending' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
+                            className={cn(
+                                'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5',
+                                statusFilter === 'pending'
+                                    ? 'bg-amber-500 text-white shadow-xs'
+                                    : 'text-amber-700 hover:text-amber-900'
+                            )}
                         >
-                            Pendentes
-                        </Button>
-                        <Button
-                            variant={statusFilter === 'paid' ? 'default' : 'outline'}
-                            size="sm"
+                            Pendentes ({pendingPayments.length})
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => setStatusFilter('paid')}
-                            className={`rounded-full ${statusFilter === 'paid' ? 'bg-[#2d8659] hover:bg-[#236b47]' : ''}`}
+                            className={cn(
+                                'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5',
+                                statusFilter === 'paid'
+                                    ? 'bg-[#2d8659] text-white shadow-xs'
+                                    : 'text-emerald-700 hover:text-emerald-900'
+                            )}
                         >
-                            Pagos
-                        </Button>
+                            Pagos ({paidPayments.length})
+                        </button>
                     </div>
 
-                    <input
-                        type="text"
-                        placeholder="Buscar profissional..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="flex-1 px-5 py-2 text-sm border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all"
-                    />
+                    <div className="relative flex-1 sm:max-w-xs">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por profissional ou email..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-[#2d8659]/30 focus:border-[#2d8659] transition-all font-medium"
+                        />
+                    </div>
                 </div>
 
                 {/* Lista de Pagamentos */}
@@ -228,7 +247,7 @@ export function ProfessionalPaymentsList({
                         title="Nenhum pagamento encontrado"
                         description={
                             statusFilter === 'pending'
-                                ? "Não há pagamentos pendentes no momento"
+                                ? "Não há repasses pendentes no momento"
                                 : statusFilter === 'paid'
                                     ? "Nenhum pagamento foi realizado ainda"
                                     : "Crie um novo pagamento para começar"
@@ -241,117 +260,125 @@ export function ProfessionalPaymentsList({
                     />
                 ) : (
                     <div className="space-y-3">
-                        {payments.map((payment, index) => (
-                            <motion.div
-                                key={payment.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="relative bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200 p-5 pl-6"
-                            >
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <h3 className="font-semibold text-gray-900">
-                                                {payment.professional?.name || 'Profissional não encontrado'}
-                                            </h3>
-                                            {getStatusBadge(payment.status)}
-                                        </div>
+                        {payments.map((payment, index) => {
+                            const isPaid = payment.status === 'paid';
+                            const profName = payment.professional?.name || 'Profissional não encontrado';
+                            const initials = getInitials(profName);
 
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
-                                            <div className="flex items-center gap-1">
-                                                <Calendar className="w-4 h-4" />
-                                                <span>
-                                                    {formatDate(payment.period_start)} - {formatDate(payment.period_end)}
-                                                </span>
+                            return (
+                                <motion.div
+                                    key={payment.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: index * 0.04 }}
+                                    className={cn(
+                                        "group bg-white border border-slate-200/90 shadow-2xs rounded-2xl p-4 sm:p-5 transition-all duration-200 hover:shadow-md hover:border-slate-300 relative overflow-hidden",
+                                        isPaid ? "border-l-4 border-l-emerald-500" : "border-l-4 border-l-amber-500"
+                                    )}
+                                >
+                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                        {/* Informações do Profissional e Detalhes */}
+                                        <div className="flex items-start gap-4">
+                                            {/* Avatar do Profissional */}
+                                            <div className={cn(
+                                                "w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-sm shrink-0 border shadow-2xs mt-0.5",
+                                                isPaid 
+                                                    ? "bg-emerald-50 text-emerald-800 border-emerald-200/80" 
+                                                    : "bg-amber-50 text-amber-800 border-amber-200/80"
+                                            )}>
+                                                {initials}
                                             </div>
-                                            <div>
-                                                <span className="font-medium">{payment.total_bookings}</span> consulta(s)
-                                            </div>
-                                            {payment.payment_method && (
-                                                <div>
-                                                    Método: {getPaymentMethodLabel(payment.payment_method)}
+
+                                            <div className="space-y-1.5">
+                                                <div className="flex flex-wrap items-center gap-2.5">
+                                                    <h3 className="font-bold text-slate-900 text-base group-hover:text-[#2d8659] transition-colors">
+                                                        {profName}
+                                                    </h3>
+                                                    {getStatusBadge(payment.status)}
                                                 </div>
-                                            )}
+
+                                                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                                                    <span className="inline-flex items-center gap-1 bg-slate-100/80 text-slate-700 px-2.5 py-1 rounded-lg font-medium">
+                                                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                        {formatDate(payment.period_start)} — {formatDate(payment.period_end)}
+                                                    </span>
+
+                                                    <span className="inline-flex items-center gap-1 bg-slate-100/80 text-slate-700 px-2.5 py-1 rounded-lg font-medium">
+                                                        <strong>{payment.total_bookings}</strong> {payment.total_bookings === 1 ? 'consulta' : 'consultas'}
+                                                    </span>
+
+                                                    {payment.payment_method && (
+                                                        <span className="inline-flex items-center gap-1 bg-indigo-50/80 text-indigo-800 px-2.5 py-1 rounded-lg font-bold border border-indigo-100">
+                                                            {getPaymentMethodLabel(payment.payment_method)}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {payment.payment_date && (
+                                                    <p className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                                        Pago em: {formatDate(payment.payment_date)}
+                                                    </p>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        {payment.payment_date && (
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Pago em: {formatDate(payment.payment_date)}
-                                            </p>
-                                        )}
-                                    </div>
+                                        {/* Valor e Ações */}
+                                        <div className="flex items-center justify-between lg:justify-end gap-5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+                                            <div className="text-left lg:text-right">
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Valor do Repasse</span>
+                                                <p className="text-2xl font-extrabold text-[#2d8659]">
+                                                    {formatCurrency(payment.total_amount)}
+                                                </p>
+                                            </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-right">
-                                            <p className="text-2xl font-bold text-[#2d8659]">
-                                                {formatCurrency(payment.total_amount)}
-                                            </p>
-                                        </div>
-
-                                        <div className="flex gap-2 mt-2 md:mt-0">
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="rounded-full"
-                                                onClick={() => onViewDetails(payment)}
-                                                title="Ver Detalhes"
-                                            >
-                                                <Eye className="w-4 h-4" />
-                                            </Button>
-
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="rounded-full"
-                                                onClick={() => onCreatePayment(payment)}
-                                                title="Editar Pagamento"
-                                            >
-                                                <span className="sr-only">Editar</span>
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    width="16"
-                                                    height="16"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    className="w-4 h-4"
+                                            <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200/60">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onViewDetails(payment)}
+                                                    className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white shadow-2xs transition-all"
+                                                    title="Ver Detalhes do Repasse"
                                                 >
-                                                    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-                                                </svg>
-                                            </Button>
+                                                    <Eye className="w-4 h-4" />
+                                                </button>
 
-                                            {payment.status === 'pending' && (
-                                                <Button
-                                                    size="sm"
-                                                    className="rounded-full bg-emerald-600 hover:bg-emerald-700"
-                                                    onClick={() => onMarkAsPaid(payment)}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onCreatePayment(payment)}
+                                                    className="p-2 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-white shadow-2xs transition-all"
+                                                    title="Editar Dados do Repasse"
                                                 >
-                                                    <Check className="w-4 h-4 mr-1" />
-                                                    Marcar Pago
-                                                </Button>
-                                            )}
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
 
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="rounded-full text-red-600 hover:text-red-700 hover:bg-red-50 border-gray-200"
-                                                onClick={() => {
-                                                    setPaymentToDelete(payment);
-                                                    setDeleteConfirmOpen(true);
-                                                }}
-                                                title="Excluir Pagamento"
-                                            >
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                                {payment.status === 'pending' && (
+                                                    <Button
+                                                        size="sm"
+                                                        className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 ml-1 shadow-xs"
+                                                        onClick={() => onMarkAsPaid(payment)}
+                                                    >
+                                                        <Check className="w-3.5 h-3.5 mr-1" />
+                                                        Pagar
+                                                    </Button>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setPaymentToDelete(payment);
+                                                        setDeleteConfirmOpen(true);
+                                                    }}
+                                                    className="p-2 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-all"
+                                                    title="Excluir Repasse"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

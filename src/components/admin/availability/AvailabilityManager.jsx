@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CalendarX, Clock, Calendar as CalendarIcon, Save, Sparkles, AlertCircle, RefreshCw, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DayScheduleCard } from './DayScheduleCard';
@@ -30,6 +30,7 @@ export const AvailabilityManager = ({
     const [isReplicateModalOpen, setIsReplicateModalOpen] = useState(false);
     const [initialStateSnapshot, setInitialStateSnapshot] = useState(JSON.stringify(professionalAvailability));
     const [isDirty, setIsDirty] = useState(false);
+    const isAwaitingFetchRef = useRef(true);
 
     const dayKeys = [
         { key: 'monday', label: 'Segunda-feira' },
@@ -41,16 +42,24 @@ export const AvailabilityManager = ({
         { key: 'sunday', label: 'Domingo' }
     ];
 
-    // Atualiza snapshot quando troca de mês/ano/profissional
+    // Quando troca de profissional, mês ou ano: marca que os dados da API ainda estão sendo buscados
     useEffect(() => {
-        setInitialStateSnapshot(JSON.stringify(professionalAvailability));
+        isAwaitingFetchRef.current = true;
         setIsDirty(false);
-    }, [selectedMonth, selectedYear, selectedAvailProfessional]);
+    }, [selectedAvailProfessional, selectedMonth, selectedYear]);
 
-    // Detecta se houve alteração nos horários comparando com o snapshot inicial
+    // Sempre que professionalAvailability atualiza:
+    // - Se estávamos aguardando o carregamento da API (troca de seleção), atualiza o snapshot inicial do profissional e mantém o balão oculto.
+    // - Se NÃO estávamos aguardando (edição do usuário nos horários), compara com o snapshot para exibir/ocultar o balão.
     useEffect(() => {
         const currentString = JSON.stringify(professionalAvailability);
-        setIsDirty(currentString !== initialStateSnapshot);
+        if (isAwaitingFetchRef.current) {
+            setInitialStateSnapshot(currentString);
+            setIsDirty(false);
+            isAwaitingFetchRef.current = false;
+        } else {
+            setIsDirty(currentString !== initialStateSnapshot);
+        }
     }, [professionalAvailability, initialStateSnapshot]);
 
     // Alerta antes de fechar a aba se houver alterações não salvas

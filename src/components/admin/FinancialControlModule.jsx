@@ -25,6 +25,14 @@ export function FinancialControlModule({
 }) {
   const { settings } = useSystemSettings();
   const [subTab, setSubTab] = useState('dre'); // 'dre', 'reconcile', 'ledger', 'refunds'
+  
+  // Período DRE (Default: Mês e Ano atuais)
+  const currentMonthNum = new Date().getMonth() + 1;
+  const currentYearNum = new Date().getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthNum);
+  const [selectedYear, setSelectedYear] = useState(currentYearNum);
+
+  const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
   const formatBrl = (val) => {
     const num = Number(val) || 0;
@@ -35,9 +43,21 @@ export function FinancialControlModule({
   const nfseTaxRate = (Number(settings.nfse_estimated_tax_rate_pct) || 6.00) / 100;
   const defaultRetentionPct = Number(settings.platform_default_retention_pct) || 40;
 
-  // Cálculos da DRE Consolidada
-  const gmv = financialData?.monthlyRevenue || bookings.reduce((acc, b) => acc + (Number(b.valor_consulta || b.service?.price || 0)), 0);
-  const payoutTotal = bookings.reduce((acc, b) => acc + (Number(b.valor_repasse_profissional || b.service?.professional_payout || b.valor_consulta || 0)), 0);
+  // Filtrar agendamentos pelo período selecionado
+  const filteredBookings = bookings.filter((b) => {
+    if (!b.booking_date) return true;
+    const dateStr = String(b.booking_date);
+    const bookingYear = parseInt(dateStr.substring(0, 4), 10);
+    const bookingMonth = parseInt(dateStr.substring(5, 7), 10);
+
+    if (selectedYear !== 'all' && bookingYear !== Number(selectedYear)) return false;
+    if (selectedMonth !== 'all' && bookingMonth !== Number(selectedMonth)) return false;
+    return true;
+  });
+
+  // Cálculos da DRE Consolidada com base no período filtrado
+  const gmv = filteredBookings.reduce((acc, b) => acc + (Number(b.valor_consulta || b.service?.price || 0)), 0);
+  const payoutTotal = filteredBookings.reduce((acc, b) => acc + (Number(b.valor_repasse_profissional || b.service?.professional_payout || b.valor_consulta || 0)), 0);
   const estimatedMpFees = gmv * mpFeeRate;
   const estimatedNfseTaxes = gmv * nfseTaxRate;
   const platformGrossMargin = Math.max(0, gmv - payoutTotal);
@@ -93,18 +113,68 @@ export function FinancialControlModule({
       {/* RENDERIZADOR SUB-TAB: DRE CONSOLIDADA */}
       {subTab === 'dre' && (
         <div className="space-y-6">
+          {/* SELETOR DE PERÍODO DRE */}
+          <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 block">
+                  Período de Referência do DRE
+                </span>
+                <span className="text-xs text-emerald-700">
+                  {selectedMonth === 'all'
+                    ? `Acumulado ${selectedYear === 'all' ? 'Histórico Total' : selectedYear}`
+                    : `${monthNames[selectedMonth]} de ${selectedYear}`}
+                  <strong className="ml-2 bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full text-[11px]">
+                    {filteredBookings.length} {filteredBookings.length === 1 ? 'consulta' : 'consultas'}
+                  </strong>
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                className="bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
+              >
+                <option value="all">Todos os Meses (Acumulado)</option>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {monthNames[i + 1]}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                className="bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
+              >
+                <option value="all">Todos os Anos</option>
+                {[2024, 2025, 2026, 2027].map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {/* CARDS RESUMO DRE */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="p-4 bg-white border border-slate-200 rounded-xl">
               <span className="text-xs font-semibold text-slate-500 uppercase">Receita Bruta (GMV)</span>
               <p className="text-xl font-extrabold text-slate-900 mt-1">{formatBrl(gmv)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Total faturado no período</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Total faturado {selectedMonth === 'all' ? (selectedYear === 'all' ? 'no histórico' : `em ${selectedYear}`) : `em ${monthNames[selectedMonth]}/${selectedYear}`}
+              </p>
             </Card>
 
             <Card className="p-4 bg-white border border-slate-200 rounded-xl">
               <span className="text-xs font-semibold text-slate-500 uppercase">Repasse Profissionais</span>
               <p className="text-xl font-extrabold text-slate-900 mt-1">{formatBrl(payoutTotal)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Devido aos psicólogos</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Devido aos psicólogos no período</p>
             </Card>
 
             <Card className="p-4 bg-white border border-slate-200 rounded-xl">
@@ -122,9 +192,14 @@ export function FinancialControlModule({
 
           {/* TABELA DRE SINTÉTICA */}
           <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-slate-900 text-base mb-4 border-b border-slate-100 pb-3 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-600" />
-              Demonstrativo de Resultado do Exercício (DRE Gerencial)
+            <h3 className="font-bold text-slate-900 text-base mb-4 border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-600" />
+                Demonstrativo de Resultado do Exercício (DRE Gerencial)
+              </div>
+              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full w-fit">
+                📅 Período: {selectedMonth === 'all' ? (selectedYear === 'all' ? 'Histórico Geral' : `Ano ${selectedYear}`) : `${monthNames[selectedMonth]} / ${selectedYear}`}
+              </span>
             </h3>
 
             <div className="divide-y divide-slate-100 text-sm">

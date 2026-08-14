@@ -21,7 +21,10 @@ import {
     Edit,
     ChevronLeft,
     ChevronRight,
-    Filter
+    Filter,
+    Calendar,
+    Building2,
+    Plus
 } from 'lucide-react';
 import {
     AlertDialog,
@@ -157,25 +160,25 @@ export function LedgerTable({ className = '' }) {
 
     const getAccountParams = (code) => {
         const map = {
-            'CASH_BANK': { label: 'Conta Banco / Caixa', variant: 'outline' },
-            'REVENUE_GROSS': { label: 'Receita Bruta (Legado)', variant: 'secondary' },
-            'REVENUE_SERVICE': { label: 'Receita Plataforma', variant: 'success' },
-            'LIABILITY_PROFESSIONAL': { label: 'A Pagar (Profissional)', variant: 'warning' },
-            'EXPENSE_FEE': { label: 'Taxas', variant: 'destructive' },
-            'EXPENSE_OPERATIONAL': { label: 'Despesas', variant: 'destructive' },
-            'EQUITY_ADJUSTMENT': { label: 'Ajuste Capital', variant: 'default' }
+            'CASH_BANK': { label: 'Conta Banco / Caixa', bgClass: 'bg-blue-50 text-blue-800 border-blue-200' },
+            'REVENUE_GROSS': { label: 'Receita Bruta (Legado)', bgClass: 'bg-purple-50 text-purple-800 border-purple-200' },
+            'REVENUE_SERVICE': { label: 'Receita Plataforma', bgClass: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+            'LIABILITY_PROFESSIONAL': { label: 'A Pagar (Profissional)', bgClass: 'bg-amber-50 text-amber-800 border-amber-200' },
+            'EXPENSE_FEE': { label: 'Taxas Gateway', bgClass: 'bg-rose-50 text-rose-800 border-rose-200' },
+            'EXPENSE_OPERATIONAL': { label: 'Despesas Operacionais', bgClass: 'bg-rose-50 text-rose-800 border-rose-200' },
+            'EQUITY_ADJUSTMENT': { label: 'Ajuste Capital', bgClass: 'bg-indigo-50 text-indigo-800 border-indigo-200' }
         };
-        return map[code] || { label: code, variant: 'outline' };
+        return map[code] || { label: code, bgClass: 'bg-slate-100 text-slate-700 border-slate-200' };
     };
 
     const getTypeParams = (type) => {
         if (type === 'DEBIT') return {
-            color: 'text-green-700 bg-green-50 border-green-200',
+            color: 'text-emerald-800 bg-emerald-100/80 border-emerald-200 font-bold',
             icon: ArrowDownCircle,
             label: 'Entrada (+)'
         };
         return {
-            color: 'text-gray-700 bg-gray-50 border-gray-200',
+            color: 'text-slate-700 bg-slate-100/90 border-slate-200/90 font-semibold',
             icon: ArrowUpCircle,
             label: 'Saída/Obrigação (-)'
         };
@@ -185,16 +188,13 @@ export function LedgerTable({ className = '' }) {
         try {
             toast({ title: 'Aguarde', description: 'Gerando arquivo de exportação...' });
 
-            // Fetch ALL matching records for export (ignoring pagination)
             let query = supabase
                 .from('payment_ledger_entries')
                 .select('*')
                 .order('created_at', { ascending: false });
 
             query = buildQuery(query);
-
             const { data, error } = await query;
-
             if (error) throw error;
 
             if (!data || data.length === 0) {
@@ -202,10 +202,7 @@ export function LedgerTable({ className = '' }) {
                 return;
             }
 
-            // CSV Header
             const headers = ['Data', 'Descrição', 'Conta', 'Cod. Conta', 'Tipo', 'Valor', 'Fonte', 'ID Transação'];
-
-            // CSV Rows
             const rows = data.map(entry => [
                 new Date(entry.created_at).toLocaleString('pt-BR'),
                 `"${(entry.description || '').replace(/"/g, '""')}"`,
@@ -217,13 +214,11 @@ export function LedgerTable({ className = '' }) {
                 entry.transaction_id
             ]);
 
-            // Combine
             const csvContent = [
                 headers.join(';'),
                 ...rows.map(row => row.join(';'))
             ].join('\n');
 
-            // Download
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
@@ -234,7 +229,6 @@ export function LedgerTable({ className = '' }) {
             document.body.removeChild(link);
 
             toast({ title: 'Sucesso', description: 'Exportação concluída.' });
-
         } catch (error) {
             console.error('Export error:', error);
             toast({ variant: 'destructive', title: 'Erro', description: 'Falha na exportação.' });
@@ -245,52 +239,59 @@ export function LedgerTable({ className = '' }) {
 
     return (
         <Card className={className}>
-            <CardHeader>
+            <CardHeader className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <CardTitle className="flex items-center gap-2 text-xl">
-                            <FileText className="w-5 h-5 text-gray-500" />
+                        <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
+                            <FileText className="w-5 h-5 text-[#2d8659]" />
                             Livro Caixa (Ledger)
                         </CardTitle>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Registro contábil de todas as movimentações financeiras
+                        <p className="text-xs text-slate-500 mt-1">
+                            Registro contábil de todas as movimentações financeiras da plataforma.
                         </p>
                     </div>
                     <div className="flex gap-2">
-                        <Button size="sm" onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
-                            + Lançamento
+                        <Button size="sm" onClick={handleCreate} className="bg-[#2d8659] hover:bg-[#236b47] text-white rounded-xl shadow-xs font-semibold text-xs h-9 px-4">
+                            <Plus className="w-4 h-4 mr-1.5" />
+                            Novo Lançamento
                         </Button>
-                        <Button variant="outline" size="sm" onClick={handleExport}>
-                            <Download className="w-4 h-4 mr-2" />
-                            Exportar
+                        <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl border-slate-200 hover:bg-slate-50 font-semibold text-xs h-9">
+                            <Download className="w-4 h-4 mr-1.5" />
+                            Exportar CSV
                         </Button>
                     </div>
                 </div>
 
-                {/* Filters Area */}
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+                {/* Área de Filtros Refinada */}
+                <div className="mt-4 p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Início</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" /> Início
+                        </label>
                         <Input
                             type="date"
-                            className="bg-white"
+                            className="bg-white border-slate-200 rounded-xl text-xs h-9 focus:ring-2 focus:ring-[#2d8659]/30"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                         />
                     </div>
                     <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Fim</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" /> Fim
+                        </label>
                         <Input
                             type="date"
-                            className="bg-white"
+                            className="bg-white border-slate-200 rounded-xl text-xs h-9 focus:ring-2 focus:ring-[#2d8659]/30"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                         />
                     </div>
                     <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Conta</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400" /> Conta
+                        </label>
                         <select
-                            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 cursor-pointer"
                             value={accountFilter}
                             onChange={(e) => setAccountFilter(e.target.value)}
                         >
@@ -303,13 +304,15 @@ export function LedgerTable({ className = '' }) {
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">Tipo</label>
+                        <label className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                            <Filter className="w-3.5 h-3.5 text-slate-400" /> Tipo
+                        </label>
                         <select
-                            className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 cursor-pointer"
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
                         >
-                            <option value="">Todos</option>
+                            <option value="">Todos os Tipos</option>
                             <option value="DEBIT">Entradas (Debit)</option>
                             <option value="CREDIT">Saídas (Credit)</option>
                         </select>
@@ -317,85 +320,87 @@ export function LedgerTable({ className = '' }) {
                 </div>
             </CardHeader>
 
-            <CardContent>
-                <div className="rounded-md border">
+            <CardContent className="px-6 pb-6">
+                <div className="rounded-2xl border border-slate-200/90 overflow-hidden shadow-2xs">
                     <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Data</TableHead>
-                                <TableHead>Descrição</TableHead>
-                                <TableHead>Conta</TableHead>
-                                <TableHead>Tipo</TableHead>
-                                <TableHead className="text-right">Valor</TableHead>
-                                <TableHead className="w-[100px]"></TableHead>
+                        <TableHeader className="bg-slate-50/90">
+                            <TableRow className="border-b border-slate-200">
+                                <TableHead className="text-[11px] font-bold text-slate-500 uppercase py-3">Data & Hora</TableHead>
+                                <TableHead className="text-[11px] font-bold text-slate-500 uppercase py-3">Descrição</TableHead>
+                                <TableHead className="text-[11px] font-bold text-slate-500 uppercase py-3">Conta Contábil</TableHead>
+                                <TableHead className="text-[11px] font-bold text-slate-500 uppercase py-3">Tipo</TableHead>
+                                <TableHead className="text-[11px] font-bold text-slate-500 uppercase py-3 text-right">Valor</TableHead>
+                                <TableHead className="w-[80px] py-3"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-gray-500">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <RefreshCw className="w-4 h-4 animate-spin" />
-                                            Carregando registros...
+                                    <TableCell colSpan={6} className="text-center h-28 text-slate-500">
+                                        <div className="flex items-center justify-center gap-2 text-xs font-semibold">
+                                            <RefreshCw className="w-4 h-4 animate-spin text-[#2d8659]" />
+                                            Carregando registros contábeis...
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : entries.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24 text-gray-500">
-                                        Nenhum registro encontrado com os filtros selecionados.
+                                    <TableCell colSpan={6} className="text-center h-28 text-slate-500 text-xs">
+                                        Nenhum registro contábil encontrado para os filtros selecionados.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 entries.map((entry) => {
                                     const typeInfo = getTypeParams(entry.entry_type);
+                                    const accInfo = getAccountParams(entry.account_code);
                                     const TypeIcon = typeInfo.icon;
                                     const isManual = entry.metadata?.source === 'manual_reconciliation';
 
                                     return (
-                                        <TableRow key={entry.id}>
-                                            <TableCell className="font-medium text-xs text-gray-600">
+                                        <TableRow key={entry.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100">
+                                            <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap py-3.5">
                                                 {formatDate(entry.created_at)}
                                             </TableCell>
-                                            <TableCell>{entry.description}</TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant={getAccountParams(entry.account_code).variant}
-                                                    className="font-normal text-xs whitespace-nowrap"
-                                                >
-                                                    {getAccountParams(entry.account_code).label}
-                                                </Badge>
+                                            <TableCell className="text-xs font-semibold text-slate-800 py-3.5 max-w-xs truncate" title={entry.description}>
+                                                {entry.description}
                                             </TableCell>
-                                            <TableCell>
-                                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${typeInfo.color}`}>
-                                                    <TypeIcon className="w-3 h-3 mr-1" />
+                                            <TableCell className="py-3.5">
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold border shadow-2xs ${accInfo.bgClass}`}>
+                                                    {accInfo.label}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-3.5">
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] border ${typeInfo.color}`}>
+                                                    <TypeIcon className="w-3.5 h-3.5 mr-1 shrink-0" />
                                                     {typeInfo.label}
                                                 </span>
                                             </TableCell>
-                                            <TableCell className="text-right font-medium">
-                                                {formatCurrency(entry.amount)}
+                                            <TableCell className={`text-right font-extrabold text-xs py-3.5 ${entry.entry_type === 'DEBIT' ? 'text-emerald-700' : 'text-slate-800'}`}>
+                                                {entry.entry_type === 'DEBIT' ? '+ ' : ''}{formatCurrency(entry.amount)}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="py-3.5 text-right">
                                                 {isManual && (
-                                                    <div className="flex gap-2 justify-end">
+                                                    <div className="flex gap-1 justify-end">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-gray-500 hover:text-blue-600"
+                                                            className="h-7 w-7 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
                                                             onClick={() => handleEdit(entry)}
+                                                            title="Editar Lançamento Manual"
                                                         >
-                                                            <Edit className="w-4 h-4" />
+                                                            <Edit className="w-3.5 h-3.5" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-8 w-8 text-gray-500 hover:text-red-600"
+                                                            className="h-7 w-7 text-rose-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
                                                             onClick={() => {
                                                                 setEntryToDelete(entry);
                                                                 setIsDeleteAlertOpen(true);
                                                             }}
+                                                            title="Excluir Lançamento"
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <Trash2 className="w-3.5 h-3.5" />
                                                         </Button>
                                                     </div>
                                                 )}
@@ -408,36 +413,37 @@ export function LedgerTable({ className = '' }) {
                     </Table>
                 </div>
 
-                {/* Pagination Controls */}
-                <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-gray-500">
-                        Total: <strong>{totalCount}</strong> registros
+                {/* Paginação Estilizada */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4 pt-2">
+                    <div className="text-xs text-slate-500 font-medium">
+                        Total de <strong>{totalCount}</strong> lançamentos registrados
                     </div>
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-xl border-slate-200 text-xs font-semibold h-8"
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1 || loading}
                         >
-                            <ChevronLeft className="w-4 h-4 mr-1" />
+                            <ChevronLeft className="w-3.5 h-3.5 mr-1" />
                             Anterior
                         </Button>
-                        <span className="text-sm font-medium px-2">
+                        <span className="text-xs font-bold text-slate-700 px-2">
                             Página {page} de {totalPages || 1}
                         </span>
                         <Button
                             variant="outline"
                             size="sm"
+                            className="rounded-xl border-slate-200 text-xs font-semibold h-8"
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                             disabled={page >= totalPages || loading}
                         >
                             Próximo
-                            <ChevronRight className="w-4 h-4 ml-1" />
+                            <ChevronRight className="w-3.5 h-3.5 ml-1" />
                         </Button>
                     </div>
                 </div>
-
             </CardContent>
 
             <ManualLedgerEntryModal

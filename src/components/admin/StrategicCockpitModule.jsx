@@ -232,7 +232,7 @@ export function StrategicCockpitModule({
               <input
                 type="range"
                 min="5"
-                max="40"
+                max="60"
                 step="1"
                 value={simTakeRatePct}
                 onChange={(e) => setSimTakeRatePct(Number(e.target.value))}
