@@ -76,11 +76,15 @@ const TermosCondicoesPage = () => {
                 <p><strong>b)</strong> Você pode encerrar o processo a qualquer momento. O profissional poderá pontuar e oferecer um feedback, mas a decisão final é sempre sua. Em hipótese alguma você será induzido ou pressionado a continuar o processo terapêutico.</p>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">9. Faltas e Cancelamentos</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">9. Faltas, Cancelamentos e Reembolso de Pacotes</h2>
               <div className="space-y-2 mb-6">
-                <p><strong>a)</strong> O não comparecimento à sessão, sem aviso prévio de menos 24 horas, não será reembolsado.</p>
-                <p><strong>b)</strong> Casos excepcionais justificáveis deverão ser comunicados à administração da plataforma pelo e-mail: contato@doxologos.com.br.</p>
+                <p><strong>a)</strong> O não comparecimento à sessão sem aviso prévio de no mínimo 24 horas não será reembolsado, sendo o horário considerado disponibilizado e reservado na agenda do profissional.</p>
+                <p><strong>b)</strong> No caso de contratação de <strong>Pacotes de Consultas (Agendamentos Múltiplos)</strong>, o paciente poderá solicitar o cancelamento e reembolso parcial do saldo não utilizado a qualquer momento.</p>
+                <p><strong>c)</strong> O reembolso corresponderá a <strong>80% do valor restante das sessões elegíveis</strong> (agendadas para mais de 24 horas de antecedência). A retenção de 20% destina-se a cobrir despesas administrativas, bancárias, tributárias e operacionais da plataforma.</p>
+                <p><strong>d)</strong> Consultas agendadas para as próximas 24 horas em relação ao pedido de cancelamento são consideradas confirmadas e não reembolsáveis.</p>
+                <p><strong>e)</strong> Casos excepcionais justificáveis deverão ser comunicados à administração da plataforma pelo e-mail: contato@doxologos.com.br.</p>
               </div>
+
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">10. Comunicação e Confirmação</h2>
               <p className="mb-6">

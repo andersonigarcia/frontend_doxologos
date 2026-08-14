@@ -34,18 +34,19 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { booking_id, inscricao_id, payment_id, action = 'emit' } = body;
+    const { booking_id, inscricao_id, package_id, payment_id, action = 'emit' } = body;
 
-    if (!booking_id && !inscricao_id && !payment_id) {
+    if (!booking_id && !inscricao_id && !package_id && !payment_id) {
       return new Response(
-        JSON.stringify({ error: 'É necessário fornecer booking_id, inscricao_id ou payment_id' }),
+        JSON.stringify({ error: 'É necessário fornecer booking_id, inscricao_id, package_id ou payment_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // 1. Verificação de Idempotência: Checar se já existe NFS-e emitida para esta transação
     let existingQuery = supabase.from('nfse_emissions').select('*');
-    if (booking_id) existingQuery = existingQuery.eq('booking_id', booking_id);
+    if (package_id) existingQuery = existingQuery.eq('payment_id', payment_id || package_id);
+    else if (booking_id) existingQuery = existingQuery.eq('booking_id', booking_id);
     else if (inscricao_id) existingQuery = existingQuery.eq('inscricao_id', inscricao_id);
     else if (payment_id) existingQuery = existingQuery.eq('payment_id', payment_id);
 
@@ -68,7 +69,7 @@ serve(async (req: Request) => {
       );
     }
 
-    // 2. Busca e Consolidação de Dados da Consulta / Evento
+    // 2. Busca e Consolidação de Dados da Consulta / Pacote / Evento
     let amount = 0;
     let tomadorNome = '';
     let tomadorEmail = '';
@@ -78,12 +79,33 @@ serve(async (req: Request) => {
     let targetBookingId = booking_id || null;
     let targetInscricaoId = inscricao_id || null;
 
-    if (booking_id) {
+    if (package_id) {
+      const { data: pkg, error: pError } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', package_id)
+        .single();
+
+      if (pError || !pkg) {
+        return new Response(
+          JSON.stringify({ error: `Pacote ${package_id} não encontrado` }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // REGRA FISCAL: Emissão calculada sobre o valor de repasse ao profissional (ex: R$ 90 x N sessões)
+      amount = pkg.professional_repasse_total || (pkg.gross_amount * 0.60);
+      tomadorNome = pkg.patient_name || 'Paciente Doxologos';
+      tomadorEmail = pkg.patient_email || '';
+      tomadorDocument = cleanDocument(pkg.patient_cpf);
+      discriminacao = `Prestação de serviços de consultas psicológicas online em pacote (${pkg.total_sessions} sessões) - Plataforma Doxologos Psicologia. Valor total de repasse dos serviços prestados. Código de Serviço BHISS PBH: 04.01.01.`;
+    } else if (booking_id) {
       const { data: booking, error: bError } = await supabase
         .from('bookings')
         .select(`
           id,
           valor_consulta,
+          valor_repasse_profissional,
           patient_name,
           patient_email,
           patient_cpf,
@@ -102,7 +124,8 @@ serve(async (req: Request) => {
         );
       }
 
-      amount = booking.valor_consulta || booking.service?.price || 0;
+      // REGRA FISCAL: Emissão calculada sobre o valor de repasse ao profissional (R$ 90,00)
+      amount = booking.valor_repasse_profissional || (booking.valor_consulta ? booking.valor_consulta * 0.60 : 90);
       tomadorNome = booking.patient_name || 'Paciente Doxologos';
       tomadorEmail = booking.patient_email || '';
       tomadorDocument = cleanDocument(booking.patient_cpf);
@@ -110,7 +133,8 @@ serve(async (req: Request) => {
       const profName = booking.professional?.name || 'Psicólogo Credenciado';
 
       discriminacao = `Prestação de serviços de consulta psicológica online - Plataforma Doxologos Psicologia. Atendimento com ${profName} em ${booking.booking_date || ''}. Código de Serviço BHISS PBH: 04.01.01 (Serviços de Psicologia). Isento de retenção de ISS na fonte conforme enquadramento Simples Nacional.`;
-    } else if (inscricao_id) {
+    }
+ else if (inscricao_id) {
       const { data: inscricao, error: iError } = await supabase
         .from('inscricoes_eventos')
         .select(`

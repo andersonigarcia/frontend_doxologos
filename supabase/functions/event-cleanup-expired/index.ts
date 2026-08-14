@@ -56,24 +56,53 @@ export default async function handler(req: Request) {
             eventCount = idsToCancel.length;
         }
 
-        // 2. Limpeza de Agendamentos (Bookings): 15min para consultas no mesmo dia, 24h para demais
+        // 2. Limpeza de Agendamentos (Bookings) e Pacotes Pendentes:
+        // Regra Dinâmica por Antecedência da Consulta:
+        // - Antecedência < 12h (ou mesmo dia): 15 minutos (15 * 60 * 1000)
+        // - Antecedência 12h a 48h: 2 horas (2 * 60 * 60 * 1000)
+        // - Antecedência > 48h: 6 horas (6 * 60 * 60 * 1000)
         const { data: pendingBookings } = await supabase
             .from('bookings')
-            .select('id, patient_email, patient_name, booking_date, booking_time, created_at')
+            .select('id, package_id, patient_email, patient_name, booking_date, booking_time, created_at')
             .or('status.eq.pending,payment_status.eq.pending');
 
         const expiredBookingIds: string[] = [];
+        const affectedPackageIds = new Set<string>();
 
         if (pendingBookings && pendingBookings.length > 0) {
+            const nowMs = Date.now();
+
             for (const b of pendingBookings) {
-                const isSameDay = b.booking_date === todayStr;
-                const createdAtTime = new Date(b.created_at).getTime();
+                const createdAtMs = new Date(b.created_at).getTime();
 
-                // 15 minutos para same-day, 24h para agendamentos futuros
-                const limitTime = isSameDay ? (Date.now() - 15 * 60 * 1000) : (Date.now() - 24 * 60 * 60 * 1000);
+                // Formatar data/hora agendada da consulta
+                let bookingTimeStr = b.booking_time || '00:00';
+                if (bookingTimeStr.length === 5) bookingTimeStr += ':00';
+                const bookingDateTimeMs = new Date(`${b.booking_date}T${bookingTimeStr}`).getTime();
 
-                if (createdAtTime < limitTime) {
+                // Antecedência da consulta em relação ao momento de criação
+                const leadTimeMs = bookingDateTimeMs - createdAtMs;
+
+                // Janela de tolerância para pagamento conforme antecedência
+                let allowedWindowMs: number;
+                if (leadTimeMs < 12 * 60 * 60 * 1000) {
+                    // Menos de 12h de antecedência (ou mesmo dia) -> 15 minutos
+                    allowedWindowMs = 15 * 60 * 1000;
+                } else if (leadTimeMs < 48 * 60 * 60 * 1000) {
+                    // Entre 12h e 48h de antecedência -> 2 horas
+                    allowedWindowMs = 2 * 60 * 60 * 1000;
+                } else {
+                    // Mais de 48h de antecedência -> 6 horas
+                    allowedWindowMs = 6 * 60 * 60 * 1000;
+                }
+
+                const expiredAtMs = createdAtMs + allowedWindowMs;
+
+                if (nowMs > expiredAtMs) {
                     expiredBookingIds.push(b.id);
+                    if (b.package_id) {
+                        affectedPackageIds.add(b.package_id);
+                    }
                 }
             }
         }
@@ -91,14 +120,30 @@ export default async function handler(req: Request) {
             bookingCount = expiredBookingIds.length;
         }
 
-        console.log(`✅ Limpeza concluída: ${eventCount} eventos e ${bookingCount} agendamentos liberados.`);
+        // 3. Limpeza de Pacotes Pendentes Expirados
+        let packageCount = 0;
+        if (affectedPackageIds.size > 0) {
+            const packageIdList = Array.from(affectedPackageIds);
+            await supabase
+                .from('packages')
+                .update({
+                    status: 'cancelled',
+                    updated_at: new Date().toISOString()
+                })
+                .in('id', packageIdList)
+                .eq('status', 'pending');
+            packageCount = packageIdList.length;
+        }
+
+        console.log(`✅ Limpeza concluída: ${eventCount} eventos, ${bookingCount} agendamentos e ${packageCount} pacotes liberados.`);
 
         return new Response(
             JSON.stringify({
                 success: true,
                 message: 'Cleanup completed successfully',
                 expired_events: eventCount,
-                expired_bookings: bookingCount
+                expired_bookings: bookingCount,
+                expired_packages: packageCount
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

@@ -5,9 +5,10 @@ import { isFeatureEnabled } from './paymentFeatureFlags.js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const buildPaymentLogContext = ({ booking_id, inscricao_id, amount, description, payment_method_id }) => ({
+const buildPaymentLogContext = ({ booking_id, inscricao_id, package_id, amount, description, payment_method_id }) => ({
     bookingId: booking_id || null,
     inscricaoId: inscricao_id || null,
+    packageId: package_id || null,
     amount,
     description,
     paymentMethod: payment_method_id || 'pix'
@@ -72,7 +73,8 @@ export class MercadoPagoService {
      * Cria um pagamento PIX direto no Mercado Pago
      * Retorna QR Code para pagamento inline (sem redirecionamento)
      * @param {Object} paymentData - Dados do pagamento
-     * @param {string} paymentData.booking_id - ID do agendamento
+     * @param {string} paymentData.booking_id - ID do agendamento (opcional)
+     * @param {string} paymentData.package_id - ID do pacote (opcional)
      * @param {number} paymentData.amount - Valor a ser pago
      * @param {string} paymentData.description - Descrição do pagamento
      * @param {Object} paymentData.payer - Dados do pagador
@@ -82,23 +84,26 @@ export class MercadoPagoService {
      */
     static async createPixPayment(paymentData, options = {}) {
         try {
-            const { booking_id, inscricao_id, amount, description, payer } = paymentData;
+            const { booking_id, inscricao_id, package_id, amount, description, payer } = paymentData;
             const { idempotencyKey } = options;
 
-            if ((!booking_id && !inscricao_id) || !amount) {
-                throw new Error('booking_id ou inscricao_id e amount são obrigatórios');
+            if ((!booking_id && !inscricao_id && !package_id) || !amount) {
+                throw new Error('booking_id, inscricao_id ou package_id e amount são obrigatórios');
             }
 
-            const referenceId = booking_id || inscricao_id;
+            const referenceId = booking_id || inscricao_id || package_id;
 
             // Chamar Edge Function para criar pagamento PIX
             const payload = {
                 ...(booking_id ? { booking_id } : {}),
                 ...(inscricao_id ? { inscricao_id } : {}),
+                ...(package_id ? { package_id } : {}),
                 amount,
-                description: description || (booking_id
-                    ? `Consulta Online - Agendamento ${referenceId}`
-                    : `Pagamento de Evento - Inscrição ${referenceId}`),
+                description: description || (package_id
+                    ? `Pacote de Consultas - Pacote ${package_id}`
+                    : booking_id
+                        ? `Consulta Online - Agendamento ${referenceId}`
+                        : `Pagamento de Evento - Inscrição ${referenceId}`),
                 payer: payer || {},
                 payment_method_id: 'pix'
             };

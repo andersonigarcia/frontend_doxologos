@@ -9,7 +9,8 @@ export function LedgerStats() {
     const [stats, setStats] = useState({
         liabilityBalance: 0,
         cashBalance: 0,
-        revenueTotal: 0
+        revenueTotal: 0,
+        escrowBalance: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -22,7 +23,6 @@ export function LedgerStats() {
             setLoading(true);
 
             // Fetch all ledger entries
-            // In a real production app with millions of rows, this should be a Postgres View or Materialized View
             const { data, error } = await supabase
                 .from('payment_ledger_entries')
                 .select('account_code, entry_type, amount')
@@ -33,9 +33,9 @@ export function LedgerStats() {
             let liability = 0;
             let cash = 0;
             let revenue = 0;
+            let escrow = 0;
 
             (data || []).forEach(entry => {
-                // M-01: centavos para evitar erros de float
                 const cents = toCents(entry.amount);
 
                 if (entry.account_code === 'LIABILITY_PROFESSIONAL') {
@@ -48,16 +48,22 @@ export function LedgerStats() {
                     if (entry.entry_type === 'CREDIT') cash -= cents;
                 }
 
-                if (entry.account_code === 'REVENUE_SERVICE' || entry.account_code === 'REVENUE_GROSS') {
+                if (entry.account_code === 'REVENUE_SERVICE' || entry.account_code === 'REVENUE_GROSS' || entry.account_code === 'REVENUE_CANCELLATION_FEE') {
                     if (entry.entry_type === 'CREDIT') revenue += cents;
                     if (entry.entry_type === 'DEBIT') revenue -= cents;
+                }
+
+                if (entry.account_code === 'PACKAGE_ESCROW') {
+                    if (entry.entry_type === 'CREDIT') escrow += cents;
+                    if (entry.entry_type === 'DEBIT') escrow -= cents;
                 }
             });
 
             setStats({
                 liabilityBalance: fromCents(liability),
                 cashBalance: fromCents(cash),
-                revenueTotal: fromCents(revenue)
+                revenueTotal: fromCents(revenue),
+                escrowBalance: fromCents(escrow)
             });
 
         } catch (error) {
@@ -66,6 +72,7 @@ export function LedgerStats() {
             setLoading(false);
         }
     };
+
 
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -82,12 +89,12 @@ export function LedgerStats() {
     }
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             {/* Âmbar — obrigação (liability): dinheiro a pagar ao profissional */}
             <div className="bg-amber-50 p-6 rounded-xl border border-amber-200 border-l-4 border-l-amber-500 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-500">Obrigação com Profissionais</p>
+                        <p className="text-sm font-medium text-gray-500">Obrigação Profissionais</p>
                         <Tooltip content="Valor total (histórico) que a plataforma deve repassar aos profissionais.">
                             <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
                         </Tooltip>
@@ -97,7 +104,25 @@ export function LedgerStats() {
                 <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.liabilityBalance)}</h3>
                 <p className="text-xs text-amber-700 mt-1 flex items-center">
                     <TrendingUp className="w-3 h-3 mr-1" />
-                    Valor pendente de repasse
+                    Pendente de repasse
+                </p>
+            </div>
+
+            {/* Roxo — Custódia de Pacotes */}
+            <div className="bg-purple-50 p-6 rounded-xl border border-purple-200 border-l-4 border-l-purple-500 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-500">Custódia de Pacotes</p>
+                        <Tooltip content="Valor acumulado de pacotes recebidos que ainda possuem sessões pendentes de realização.">
+                            <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                        </Tooltip>
+                    </div>
+                    <Wallet className="w-5 h-5 text-purple-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900">{formatCurrency(stats.escrowBalance)}</h3>
+                <p className="text-xs text-purple-700 mt-1 flex items-center">
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    Sessões diferidas
                 </p>
             </div>
 
@@ -105,7 +130,7 @@ export function LedgerStats() {
             <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 border-l-4 border-l-blue-500 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-500">Saldo em Caixa (Estimado)</p>
+                        <p className="text-sm font-medium text-gray-500">Saldo em Caixa</p>
                         <Tooltip content="Estimativa baseada apenas nas Entradas e Saídas registradas neste livro caixa.">
                             <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
                         </Tooltip>
@@ -123,8 +148,8 @@ export function LedgerStats() {
             <div className="bg-emerald-50 p-6 rounded-xl border border-emerald-200 border-l-4 border-l-emerald-500 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-500">Receita de Serviços (Plataforma)</p>
-                        <Tooltip content="Total acumulado que a plataforma ganhou com taxas de serviço.">
+                        <p className="text-sm font-medium text-gray-500">Receita da Plataforma</p>
+                        <Tooltip content="Total acumulado que a plataforma ganhou com taxas de serviço e retidos de cancelamento.">
                             <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
                         </Tooltip>
                     </div>
@@ -139,3 +164,4 @@ export function LedgerStats() {
         </div>
     );
 }
+

@@ -18,7 +18,12 @@ import {
   Lightbulb,
   MessageCircle,
   AlertCircle,
+  Sparkles,
+  X,
+  Check,
 } from 'lucide-react';
+
+
 
 const DateTimeStep = ({
   professionals = [],
@@ -28,6 +33,10 @@ const DateTimeStep = ({
   selectedTime,
   onSelectDate,
   onSelectTime,
+  selectedSlots = [],
+  onToggleSlot,
+  onRemoveSlot,
+  onClearSlots,
   currentMonth,
   onPrevMonth,
   onNextMonth,
@@ -42,6 +51,7 @@ const DateTimeStep = ({
   onBack,
   onNext,
 }) => {
+
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
 
   // Swipe gesture state
@@ -246,7 +256,84 @@ const DateTimeStep = ({
         </div>
       </div>
 
+      {/* Carrinho de Agendamento Múltiplo / Pacote de Sessões */}
+      <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 rounded-xl border-2 border-emerald-300/70 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-emerald-200/60">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-emerald-600 text-white rounded-lg shrink-0 mt-0.5">
+              <Sparkles className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                Agendamento Múltiplo (Pacote de Sessões)
+                {selectedSlots.length > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-extrabold bg-emerald-600 text-white rounded-full">
+                    {selectedSlots.length} {selectedSlots.length === 1 ? 'Sessão' : 'Sessões'}
+                  </span>
+                )}
+              </h3>
+              <p className="text-xs text-gray-600 mt-0.5">
+                Selecione uma ou mais datas/horários para garantir sua agenda inteira com pagamento único.
+              </p>
+            </div>
+          </div>
+          {selectedSlots.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClearSlots}
+              className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+            >
+              Limpar ({selectedSlots.length})
+            </Button>
+          )}
+        </div>
+
+        {/* Lista de Sessões Selecionadas */}
+        {selectedSlots.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {selectedSlots.map((slot, index) => (
+                <div
+                  key={`${slot.date}-${slot.time}`}
+                  className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-xs text-xs font-semibold text-gray-800 animate-in fade-in"
+                >
+                  <span className="text-emerald-700 font-bold">Sessão {index + 1}:</span>
+                  <span>
+                    {new Date(`${slot.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {slot.time}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveSlot?.(index)}
+                    className="text-gray-400 hover:text-red-600 transition-colors ml-1 p-0.5 rounded"
+                    title="Remover sessão do pacote"
+                    aria-label={`Remover sessão do dia ${slot.date}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Resumo Financeiro do Pacote */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-emerald-200/50 text-xs font-medium text-gray-700 gap-1">
+              <span>
+                Total de Consultas: <strong className="text-emerald-800">{selectedSlots.length}x</strong> ({selectedServiceDetails?.name || 'Psicoterapia'})
+              </span>
+              <span className="text-sm font-bold text-emerald-900">
+                Total do Pacote: R$ {(selectedSlots.length * parseFloat(selectedServiceDetails?.price || 150)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-emerald-800/80 italic flex items-center gap-1.5">
+            💡 Clique em uma ou mais datas no calendário e selecione os horários abaixo para formar seu pacote.
+          </p>
+        )}
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
+
         <div>
           <div
             ref={calendarRef}
@@ -411,34 +498,42 @@ const DateTimeStep = ({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {timePeriods.manha.map((time) => {
                               const disabled = bookedSlots.includes(time);
+                              const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
                               return (
                                 <motion.button
                                   key={time}
                                   type="button"
-                                  onClick={() => !disabled && onSelectTime?.(time)}
-                                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && onSelectTime?.(time)}
+                                  onClick={() => {
+                                    if (!disabled) {
+                                      onSelectTime?.(time);
+                                      onToggleSlot?.({ date: selectedDate, time });
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+                                      onSelectTime?.(time);
+                                      onToggleSlot?.({ date: selectedDate, time });
+                                    }
+                                  }}
                                   disabled={disabled}
-                                  role="radio"
-                                  aria-checked={selectedTime === time}
+                                  role="checkbox"
+                                  aria-checked={isSlotSelected}
                                   aria-disabled={disabled}
-                                  aria-label={`Horário ${time} da manhã${disabled ? ', ocupado' : ''}`}
+                                  aria-label={`Horário ${time} da manhã${disabled ? ', ocupado' : isSlotSelected ? ', selecionado no pacote' : ''}`}
                                   className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                                    : selectedTime === time
-                                      ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                    : isSlotSelected
+                                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
                                       : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
                                     }`}
                                   whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
-                                  title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                                  title={disabled ? 'Horário não disponível' : `Adicionar/remover ${time} no pacote`}
                                 >
-
-                                  <div className="text-base">{time}</div>
-                                  {!disabled && selectedTime !== time && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                      <Clock className="w-4 h-4" />
-                                    </div>
-                                  )}
+                                  <div className="text-base flex items-center justify-center gap-1.5">
+                                    {isSlotSelected && <Check className="w-4 h-4" />}
+                                    {time}
+                                  </div>
                                   {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
                                 </motion.button>
                               );
@@ -458,28 +553,42 @@ const DateTimeStep = ({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {timePeriods.tarde.map((time) => {
                               const disabled = bookedSlots.includes(time);
+                              const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
                               return (
                                 <motion.button
                                   key={time}
                                   type="button"
-                                  onClick={() => !disabled && onSelectTime?.(time)}
+                                  onClick={() => {
+                                    if (!disabled) {
+                                      onSelectTime?.(time);
+                                      onToggleSlot?.({ date: selectedDate, time });
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+                                      onSelectTime?.(time);
+                                      onToggleSlot?.({ date: selectedDate, time });
+                                    }
+                                  }}
                                   disabled={disabled}
+                                  role="checkbox"
+                                  aria-checked={isSlotSelected}
+                                  aria-disabled={disabled}
+                                  aria-label={`Horário ${time} da tarde${disabled ? ', ocupado' : isSlotSelected ? ', selecionado no pacote' : ''}`}
                                   className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                                    : selectedTime === time
-                                      ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                    : isSlotSelected
+                                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
                                       : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
                                     }`}
                                   whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
-                                  title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                                  title={disabled ? 'Horário não disponível' : `Adicionar/remover ${time} no pacote`}
                                 >
-                                  <div className="text-base">{time}</div>
-                                  {!disabled && selectedTime !== time && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                      <Clock className="w-4 h-4" />
-                                    </div>
-                                  )}
+                                  <div className="text-base flex items-center justify-center gap-1.5">
+                                    {isSlotSelected && <Check className="w-4 h-4" />}
+                                    {time}
+                                  </div>
                                   {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
                                 </motion.button>
                               );
@@ -499,28 +608,42 @@ const DateTimeStep = ({
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {timePeriods.noite.map((time) => {
                               const disabled = bookedSlots.includes(time);
+                              const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
                               return (
                                 <motion.button
                                   key={time}
                                   type="button"
-                                  onClick={() => !disabled && onSelectTime?.(time)}
+                                  onClick={() => {
+                                    if (!disabled) {
+                                      onSelectTime?.(time);
+                                      onToggleSlot?.({ date: selectedDate, time });
+                                    }
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
+                                      onSelectTime?.(time);
+                                      onToggleSlot?.({ date: selectedDate, time });
+                                    }
+                                  }}
                                   disabled={disabled}
+                                  role="checkbox"
+                                  aria-checked={isSlotSelected}
+                                  aria-disabled={disabled}
+                                  aria-label={`Horário ${time} da noite${disabled ? ', ocupado' : isSlotSelected ? ', selecionado no pacote' : ''}`}
                                   className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
-                                    : selectedTime === time
-                                      ? 'border-[#2d8659] bg-[#2d8659] text-white shadow-lg'
+                                    : isSlotSelected
+                                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
                                       : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
                                     }`}
                                   whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
-                                  title={disabled ? 'Horário não disponível' : `Agendar para ${time}`}
+                                  title={disabled ? 'Horário não disponível' : `Adicionar/remover ${time} no pacote`}
                                 >
-                                  <div className="text-base">{time}</div>
-                                  {!disabled && selectedTime !== time && (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-[#2d8659] text-white rounded-lg opacity-0 group-hover:opacity-90 transition-opacity">
-                                      <Clock className="w-4 h-4" />
-                                    </div>
-                                  )}
+                                  <div className="text-base flex items-center justify-center gap-1.5">
+                                    {isSlotSelected && <Check className="w-4 h-4" />}
+                                    {time}
+                                  </div>
                                   {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
                                 </motion.button>
                               );
@@ -602,7 +725,11 @@ const DateTimeStep = ({
 
       <div className="mt-8 pt-6 border-t flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="text-sm text-gray-600">
-          {selectedDate && selectedTime ? (
+          {selectedSlots.length > 0 ? (
+            <span>
+              Você selecionou <strong className="text-emerald-700">{selectedSlots.length} {selectedSlots.length === 1 ? 'consulta' : 'consultas'}</strong> para o seu pacote.
+            </span>
+          ) : selectedDate && selectedTime ? (
             <span>
               Você selecionou <strong>{new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR')}</strong> às{' '}
               <strong>{selectedTime}</strong>
@@ -615,11 +742,16 @@ const DateTimeStep = ({
           <Button variant="outline" onClick={onBack} className="w-full md:w-auto">
             Voltar
           </Button>
-          <Button onClick={onNext} disabled={!selectedDate || !selectedTime} className="w-full md:w-auto">
-            Continuar
+          <Button
+            onClick={onNext}
+            disabled={selectedSlots.length === 0 && (!selectedDate || !selectedTime)}
+            className="w-full md:w-auto bg-[#2d8659] hover:bg-[#236b47]"
+          >
+            Continuar {selectedSlots.length > 1 ? `(${selectedSlots.length} Sessões)` : ''}
           </Button>
         </div>
       </div>
+
     </motion.div>
   );
 };

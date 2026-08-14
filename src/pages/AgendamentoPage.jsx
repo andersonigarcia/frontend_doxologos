@@ -154,10 +154,33 @@ const AgendamentoPage = () => {
   const [selectedService, setSelectedService] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedSlots, setSelectedSlots] = useState([]);
   const [meetingPlatform, setMeetingPlatform] = useState('google_meet');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
+
+  // Manipuladores de Agendamento Múltiplo / Pacotes
+  const handleToggleSlot = (slot) => {
+    if (!slot?.date || !slot?.time) return;
+    setSelectedSlots((prev) => {
+      const exists = prev.some((s) => s.date === slot.date && s.time === slot.time);
+      if (exists) {
+        return prev.filter((s) => !(s.date === slot.date && s.time === slot.time));
+      } else {
+        return [...prev, slot];
+      }
+    });
+  };
+
+  const handleRemoveSlot = (index) => {
+    setSelectedSlots((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClearSlots = () => {
+    setSelectedSlots([]);
+  };
+
 
   // Engagement features state
   const [isFirstBooking, setIsFirstBooking] = useState(true);
@@ -769,15 +792,19 @@ const AgendamentoPage = () => {
       return;
     }
 
-    if (!selectedDate || !selectedTime) {
+    const effectiveDate = selectedDate || (selectedSlots.length > 0 ? selectedSlots[0].date : '');
+    const effectiveTime = selectedTime || (selectedSlots.length > 0 ? selectedSlots[0].time : '');
+
+    if (!effectiveDate || !effectiveTime) {
       toast({
         variant: 'destructive',
         title: 'Escolha data e horário',
-        description: 'Selecione um dia e horário disponíveis para continuar.'
+        description: 'Selecione pelo menos um dia e horário disponíveis para continuar.'
       });
       setIsSubmitting(false);
       return;
     }
+
 
     const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
     if (Number.isNaN(selectedDateTime.getTime())) {
@@ -982,6 +1009,8 @@ const AgendamentoPage = () => {
       const safePatientName = normalizedPatientName || (authUser?.email ? authUser.email.split('@')[0] : 'Paciente Doxologos');
       const rawPatientPhone = (patientData.phone || authMetadata.phone || authMetadata.phone_number || '').trim();
       const safePatientPhone = rawPatientPhone ? formatPhoneNumber(rawPatientPhone) : '';
+      const safePatientCpf = (patientData.cpf || authMetadata.cpf || '').trim();
+
 
       if (!normalizedPatientEmail || !validateEmail(normalizedPatientEmail)) {
         console.error('❌ [handleBooking] Email do paciente ausente ou inválido. Abortando fluxo para evitar erros no envio de email.');
@@ -1098,9 +1127,63 @@ const AgendamentoPage = () => {
         has_meeting_start_url: !!bookingData.meeting_start_url
       });
 
+      // 5. Se houver mais de 1 slot no carrinho, criar registro em public.packages e agendamentos filhos
+      if (selectedSlots.length > 1) {
+        console.log('📦 Criando pacote para', selectedSlots.length, 'sessões...');
+        const servicePrice = parseFloat(serviceDetails?.price || 150);
+        const totalSessions = selectedSlots.length;
+        const grossAmount = servicePrice * totalSessions;
+        const repasseTotal = (servicePrice * 0.60) * totalSessions;
+        const platformFeeTotal = (servicePrice * 0.40) * totalSessions;
+
+        const { data: pkgRecord, error: pkgError } = await supabase.from('packages').insert([{
+          patient_name: safePatientName,
+          patient_email: normalizedPatientEmail,
+          patient_phone: safePatientPhone,
+          patient_cpf: safePatientCpf,
+          professional_id: selectedProfessional,
+          total_sessions: totalSessions,
+          gross_amount: grossAmount,
+          professional_repasse_total: repasseTotal,
+          platform_fee_total: platformFeeTotal,
+          status: 'pending'
+        }]).select().single();
+
+        if (pkgError) {
+          console.error('❌ Erro ao criar pacote:', pkgError);
+        } else if (pkgRecord) {
+          console.log('✅ Pacote criado com sucesso:', pkgRecord.id);
+
+          // Criar agendamentos filhos vinculados ao package_id
+          const childBookings = selectedSlots.map(slot => ({
+            ...bookingData,
+            booking_date: slot.date,
+            booking_time: slot.time,
+            package_id: pkgRecord.id
+          }));
+
+          await supabase.from('bookings').insert(childBookings);
+
+          setIsSubmitting(false);
+          navigate(`/checkout?package_id=${pkgRecord.id}`, {
+            state: {
+              packageId: pkgRecord.id,
+              totalAmount: grossAmount,
+              professionalName: professionalDetails?.name,
+              serviceName: serviceDetails?.name,
+              sessionCount: totalSessions,
+              patientName: safePatientName,
+              patientEmail: normalizedPatientEmail
+            }
+          });
+          return;
+        }
+      }
+
       let insertPayload = { ...bookingData };
       let bookingInsertData = null;
       let bookingError = null;
+
 
       const attemptInsert = async (payload) => supabase.from('bookings').insert([payload]).select().single();
 
@@ -1261,6 +1344,10 @@ const AgendamentoPage = () => {
             selectedTime={selectedTime}
             onSelectDate={handleDateSelect}
             onSelectTime={setSelectedTime}
+            selectedSlots={selectedSlots}
+            onToggleSlot={handleToggleSlot}
+            onRemoveSlot={handleRemoveSlot}
+            onClearSlots={handleClearSlots}
             currentMonth={currentMonth}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
@@ -1276,6 +1363,7 @@ const AgendamentoPage = () => {
             onNext={() => { trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService }); setStep(4); }}
           />
         );
+
       case 4:
         return (
           <>
@@ -1324,6 +1412,7 @@ const AgendamentoPage = () => {
             serviceDetails={selectedServiceDetails}
             selectedDate={selectedDate}
             selectedTime={selectedTime}
+            selectedSlots={selectedSlots}
             meetingPlatform={meetingPlatform}
             paymentSecurityHighlights={paymentSecurityHighlights}
             acceptTermsField={register('acceptTerms')}
@@ -1409,21 +1498,29 @@ const AgendamentoPage = () => {
     const professionalLabel = selectedProfessional
       ? professionalList.find((professional) => professional.id === selectedProfessional)?.name
       : null;
-    const dateLabel = selectedDate
-      ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'UTC',
-      })
-      : null;
+
+    const dateLabel = selectedSlots.length > 1
+      ? `${selectedSlots.length} Sessões`
+      : selectedDate
+        ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
+          day: 'numeric',
+          month: 'short',
+          timeZone: 'UTC',
+        })
+        : null;
+
+    const timeLabel = selectedSlots.length > 1
+      ? 'Pacote'
+      : (selectedTime || null);
 
     return {
       serviceLabel,
       professionalLabel,
       dateLabel,
-      timeLabel: selectedTime || null,
+      timeLabel,
     };
-  }, [selectedDate, selectedProfessional, selectedService, selectedTime, services, professionals]);
+  }, [selectedDate, selectedProfessional, selectedService, selectedTime, selectedSlots, services, professionals]);
+
 
   const handleStepClick = (clickedStep) => {
     if (clickedStep <= step) {

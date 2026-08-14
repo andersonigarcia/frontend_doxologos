@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
 
-    const { token, amount, installments, description, payer, booking_id, inscricao_id, payment_method_id } = body;
+    const { token, amount, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id } = body;
 
     if (!token || !amount) {
       return new Response(
@@ -64,6 +64,14 @@ Deno.serve(async (req) => {
 
     console.log('[MP Card] Valor processado:', transactionAmount);
 
+    const externalRef = package_id
+      ? `PACOTE_${package_id}`
+      : booking_id
+        ? booking_id
+        : inscricao_id
+          ? `EVENTO_${inscricao_id}`
+          : '';
+
     // Criar pagamento no Mercado Pago
     const paymentPayload = {
       token: token,
@@ -78,7 +86,7 @@ Deno.serve(async (req) => {
         email: payer?.email || 'contato@doxologos.com.br',
         identification: payer?.identification || {}
       },
-      external_reference: booking_id || inscricao_id,
+      external_reference: externalRef,
       statement_descriptor: 'DOXOLOGOS',
       notification_url: `${SUPABASE_URL}/functions/v1/mp-webhook`
     };
@@ -90,7 +98,7 @@ Deno.serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
         'Content-Type': 'application/json',
-        'X-Idempotency-Key': `${booking_id || inscricao_id}-${Date.now()}`
+        'X-Idempotency-Key': `${package_id || booking_id || inscricao_id}-${Date.now()}`
       },
       body: JSON.stringify(paymentPayload)
     });
@@ -123,7 +131,9 @@ Deno.serve(async (req) => {
       raw_payload: mpJson
     };
 
-    if (booking_id) {
+    if (package_id) {
+      paymentRecord.package_id = package_id;
+    } else if (booking_id) {
       paymentRecord.booking_id = booking_id;
     } else if (inscricao_id) {
       paymentRecord.inscricao_id = inscricao_id;

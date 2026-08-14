@@ -49,11 +49,11 @@ serve(async (req) => {
     });
 
     const body = await req.json();
-    const { booking_id, inscricao_id, amount, description, payer, payment_method_id } = body;
+    const { booking_id, inscricao_id, package_id, amount, description, payer, payment_method_id } = body;
 
-    if (!booking_id && !inscricao_id) {
+    if (!booking_id && !inscricao_id && !package_id) {
       return new Response(
-        JSON.stringify({ error: 'booking_id or inscricao_id required' }),
+        JSON.stringify({ error: 'booking_id, inscricao_id, or package_id required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -65,16 +65,20 @@ serve(async (req) => {
     }
 
     const isBookingPayment = Boolean(booking_id);
-    // Para inscrições de eventos, o external_reference precisa ter o prefixo EVENTO_
-    // para que o mp-webhook possa distingui-las de agendamentos de consulta (bookings).
-    const referenceId = booking_id
-      ? booking_id
-      : inscricao_id
-        ? `EVENTO_${inscricao_id}`
-        : null;
+    const isPackagePayment = Boolean(package_id);
+    // Para pacotes e inscrições de eventos, o external_reference precisa ter o prefixo PACOTE_ ou EVENTO_
+    // para que o mp-webhook possa distingui-las de agendamentos de consulta avulsa (bookings).
+    const referenceId = package_id
+      ? `PACOTE_${package_id}`
+      : booking_id
+        ? booking_id
+        : inscricao_id
+          ? `EVENTO_${inscricao_id}`
+          : null;
 
     let booking = null;
     let inscricao = null;
+    let packageObj = null;
 
     if (isBookingPayment) {
       const { data: bookingData, error: bookErr } = await supabaseAdmin
@@ -96,6 +100,26 @@ serve(async (req) => {
         );
       }
       booking = bookingData;
+    } else if (isPackagePayment) {
+      const { data: pkgData, error: pkgErr } = await supabaseAdmin
+        .from('packages')
+        .select('*')
+        .eq('id', package_id)
+        .maybeSingle();
+
+      if (pkgErr) {
+        return new Response(
+          JSON.stringify({ error: 'error fetching package', details: pkgErr.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (!pkgData) {
+        return new Response(
+          JSON.stringify({ error: 'package not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      packageObj = pkgData;
     } else {
       const { data: inscricaoData, error: inscricaoErr } = await supabaseAdmin
         .from('inscricoes_eventos')
@@ -129,6 +153,17 @@ serve(async (req) => {
             ? {
               area_code: booking.patient_phone.substring(0, 2) || '11',
               number: booking.patient_phone.substring(2) || '999999999'
+            }
+            : undefined)
+        }
+        : isPackagePayment
+        ? {
+          name: (typeof payer?.name === 'string' && payer.name.trim().length > 0) ? payer.name : packageObj?.patient_name,
+          email: (typeof payer?.email === 'string' && payer.email.trim().length > 0) ? payer.email : packageObj?.patient_email,
+          phone: payer?.phone || (packageObj?.patient_phone
+            ? {
+              area_code: packageObj.patient_phone.substring(0, 2) || '11',
+              number: packageObj.patient_phone.substring(2) || '999999999'
             }
             : undefined)
         }
@@ -236,6 +271,9 @@ serve(async (req) => {
     if (inscricao_id) {
       paymentInsert.inscricao_id = inscricao_id;
     }
+    if (package_id) {
+      paymentInsert.package_id = package_id;
+    }
 
     const { data: insertedPayment, error: insertErr } = await supabaseAdmin
       .from('payments')
@@ -250,7 +288,7 @@ serve(async (req) => {
       console.log('✅ Payment saved to database:', insertedPayment?.id);
     }
 
-    // Atualizar booking com ID do pagamento
+    // Atualizar booking / pacote com ID do pagamento
     const nowIso = new Date().toISOString();
 
     if (booking_id) {
@@ -262,6 +300,24 @@ serve(async (req) => {
           updated_at: nowIso
         })
         .eq('id', booking_id);
+    } else if (package_id) {
+      await supabaseAdmin
+        .from('packages')
+        .update({
+          marketplace_payment_id: paymentResult.id.toString(),
+          status: 'pending',
+          updated_at: nowIso
+        })
+        .eq('id', package_id);
+
+      await supabaseAdmin
+        .from('bookings')
+        .update({
+          marketplace_payment_id: paymentResult.id.toString(),
+          payment_status: 'pending',
+          updated_at: nowIso
+        })
+        .eq('package_id', package_id);
     } else if (inscricao_id) {
       const { error: inscricaoUpdateErr } = await supabaseAdmin
         .from('inscricoes_eventos')

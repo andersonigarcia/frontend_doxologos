@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { CreditCard, Smartphone, Barcode, Calendar, Lock, CheckCircle, XCircle, Clock, ArrowLeft, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,16 +17,19 @@ import { paymentOrchestrator } from '@/lib/payment';
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { toast } = useToast();
 
     const bookingId = searchParams.get('booking_id');
     const type = searchParams.get('type'); // 'booking' ou 'evento'
     const inscricaoId = searchParams.get('inscricao_id');
+    const packageId = searchParams.get('package_id') || location.state?.packageId;
     const valorParam = searchParams.get('valor');
     const tituloParam = searchParams.get('titulo');
 
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
+    const [packageData, setPackageData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [selectedMethod, setSelectedMethod] = useState('pix');
@@ -55,7 +58,8 @@ const CheckoutPage = () => {
     const buildLogContext = (extra = {}) => ({
         bookingId: bookingId || null,
         inscricaoId: inscricaoId || null,
-        type: type || 'booking',
+        packageId: packageId || null,
+        type: type || (packageId ? 'package' : 'booking'),
         selectedMethod,
         ...extra
     });
@@ -121,6 +125,8 @@ const CheckoutPage = () => {
     useEffect(() => {
         if (type === 'evento' && inscricaoId) {
             fetchInscricao();
+        } else if (packageId) {
+            fetchPackage();
         } else if (bookingId) {
             fetchBooking();
         } else {
@@ -131,7 +137,7 @@ const CheckoutPage = () => {
             });
             navigate('/');
         }
-    }, [bookingId, inscricaoId, type, valorParam, tituloParam]);
+    }, [bookingId, inscricaoId, packageId, type, valorParam, tituloParam]);
 
     // Cleanup: Parar monitoramento quando componente desmontar
     useEffect(() => {
@@ -147,14 +153,16 @@ const CheckoutPage = () => {
     }, [stopMonitoring, pollingInterval]);
 
     useEffect(() => {
-        if (booking && type !== 'evento') {
+        if ((booking || packageData) && type !== 'evento') {
             loadCreditData();
         }
-    }, [booking, type]);
+    }, [booking, packageData, type]);
 
     const bookingTotal = type === 'evento'
         ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
-        : Number(booking?.valor_consulta || booking?.service?.price || valorParam || 0);
+        : packageId
+            ? Number(packageData?.gross_amount || parseFloat(valorParam) || 0)
+            : Number(booking?.valor_consulta || booking?.service?.price || valorParam || 0);
 
     const availableCredits = type === 'evento'
         ? []
@@ -169,6 +177,60 @@ const CheckoutPage = () => {
     const selectedCreditAmount = selectedCredit ? Number(selectedCredit.amount) : 0;
     const creditCoversTotal = usingCredit && selectedCredit && selectedCreditAmount >= bookingTotal && bookingTotal > 0;
     const creditAppliedAmount = creditCoversTotal ? Math.min(selectedCreditAmount, bookingTotal) : 0;
+
+    const fetchPackage = async () => {
+        try {
+            logger.info('CheckoutPage.fetchPackage:start', buildLogContext({ packageId }));
+            if (location.state?.packageId && location.state?.totalAmount) {
+                setPackageData({
+                    id: location.state.packageId,
+                    gross_amount: location.state.totalAmount,
+                    patient_name: location.state.patientName,
+                    patient_email: location.state.patientEmail,
+                    total_sessions: location.state.sessionCount,
+                    service_name: location.state.serviceName,
+                    professional_name: location.state.professionalName
+                });
+                if (location.state.patientEmail) {
+                    setPayerEmail((current) => current || location.state.patientEmail);
+                }
+            } else {
+                const { data, error } = await supabase
+                    .from('packages')
+                    .select('*, professionals:professional_id(name)')
+                    .eq('id', packageId)
+                    .single();
+
+                if (error) throw error;
+
+                if (!data) {
+                    throw new Error('Pacote não encontrado');
+                }
+
+                if (data.status === 'paid' || data.status === 'completed') {
+                    logger.info('CheckoutPage.fetchPackage:already-paid', buildLogContext({ packageId, status: data.status }));
+                    navigate('/paciente');
+                    return;
+                }
+
+                setPackageData(data);
+                if (data.patient_email) {
+                    setPayerEmail((current) => current || data.patient_email);
+                }
+                logger.success('CheckoutPage.fetchPackage:success', buildLogContext({ packageId, status: data.status }));
+            }
+        } catch (error) {
+            logger.error('CheckoutPage.fetchPackage:error', error, buildLogContext({ packageId }));
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não foi possível carregar os dados do pacote'
+            });
+            navigate('/');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchBooking = async () => {
         try {
@@ -532,33 +594,38 @@ const CheckoutPage = () => {
 
             // Obter informações do pagador
             const session = await getFreshSession();
-            const referenceId = bookingId || inscricaoId;
+            const referenceId = bookingId || inscricaoId || packageId;
 
             // FIX: Calcular amount corretamente baseado no tipo
             let amount = 0;
             if (type === 'evento') {
                 amount = inscricao?.valor || parseFloat(valorParam) || 0;
+            } else if (packageId) {
+                amount = packageData?.gross_amount || parseFloat(valorParam) || 0;
             } else {
                 // Para bookings, usar valor_consulta ou service.price
                 amount = booking?.valor_consulta || booking?.service?.price || parseFloat(valorParam) || 0;
             }
 
-            const description = booking
-                ? `Consulta Online - Agendamento ${referenceId}`
-                : (inscricao?.evento?.titulo || tituloParam || `Pagamento de Evento - Inscrição ${referenceId}`);
+            const description = packageId
+                ? `Pacote de Consultas (${packageData?.total_sessions || ''} sessões)`
+                : booking
+                    ? `Consulta Online - Agendamento ${referenceId}`
+                    : (inscricao?.evento?.titulo || tituloParam || `Pagamento de Evento - Inscrição ${referenceId}`);
 
             // O e-mail prioriza o que o usuário digitou no campo editável do checkout;
             // em seguida, cai nos fallbacks da sessão/banco.
             const resolvedEmail = payerEmail.trim()
                 || session?.user?.email
+                || packageData?.patient_email
                 || booking?.patient_email
                 || inscricao?.email
                 || '';
 
             const payerInfo = {
                 email: resolvedEmail,
-                first_name: session?.user?.user_metadata?.full_name?.split(' ')[0] || booking?.patient_name?.split(' ')[0] || inscricao?.nome?.split(' ')[0] || '',
-                last_name: session?.user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || booking?.patient_name?.split(' ').slice(1).join(' ') || inscricao?.nome?.split(' ').slice(1).join(' ') || ''
+                first_name: session?.user?.user_metadata?.full_name?.split(' ')[0] || packageData?.patient_name?.split(' ')[0] || booking?.patient_name?.split(' ')[0] || inscricao?.nome?.split(' ')[0] || '',
+                last_name: session?.user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || packageData?.patient_name?.split(' ').slice(1).join(' ') || booking?.patient_name?.split(' ').slice(1).join(' ') || inscricao?.nome?.split(' ').slice(1).join(' ') || ''
             };
 
             // ─── Validação de e-mail ───────────────────────────────────────────
@@ -583,7 +650,7 @@ const CheckoutPage = () => {
 
             // Preparar dados do pagamento
             const paymentData = {
-                [type === 'evento' ? 'inscricao_id' : 'booking_id']: referenceId,
+                ...(type === 'evento' ? { inscricao_id: referenceId } : packageId ? { package_id: packageId } : { booking_id: referenceId }),
                 amount: amount,
                 description: description,
                 payer: payerInfo
@@ -629,6 +696,7 @@ const CheckoutPage = () => {
                             state: {
                                 bookingId: bookingId,
                                 inscricaoId: inscricaoId,
+                                packageId: packageId,
                                 paymentId: paymentResult.paymentId,
                                 paymentStatus: 'approved'
                             }
@@ -848,7 +916,7 @@ const CheckoutPage = () => {
         );
     }
 
-    if (!booking && !inscricao) {
+    if (!booking && !inscricao && !packageData) {
         return null;
     }
 
@@ -1210,6 +1278,7 @@ const CheckoutPage = () => {
                                                 const params = new URLSearchParams({
                                                     ...(bookingId && { booking_id: bookingId }),
                                                     ...(inscricaoId && { inscricao_id: inscricaoId }),
+                                                    ...(packageId && { package_id: packageId }),
                                                     ...(type && { type }),
                                                     ...(valorParam && { valor: valorParam }),
                                                     ...(tituloParam && { titulo: tituloParam }),
@@ -1313,6 +1382,45 @@ const CheckoutPage = () => {
                                                 <p>Total</p>
                                                 <p className="text-[#2d8659]">
                                                     {MercadoPagoService.formatCurrency(inscricao?.evento?.valor || parseFloat(valorParam))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : packageData ? (
+                                    <>
+                                        <div>
+                                            <p className="text-sm text-gray-600">Pacote de Consultas</p>
+                                            <p className="font-semibold text-gray-900">{packageData.service_name || 'Psicoterapia'}</p>
+                                            <p className="text-xs text-[#2d8659] font-bold mt-0.5">{packageData.total_sessions} Sessões Agendadas</p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-gray-600">Profissional</p>
+                                            <p className="font-semibold">{packageData.professional_name || packageData.professionals?.name || 'Profissional'}</p>
+                                        </div>
+
+                                        <div>
+                                            <p className="text-sm text-gray-600">Paciente</p>
+                                            <p className="font-semibold">{packageData.patient_name}</p>
+                                        </div>
+
+                                        <div className="border-t pt-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-gray-600">Subtotal ({packageData.total_sessions} sessões)</p>
+                                                <p className="font-semibold">
+                                                    {MercadoPagoService.formatCurrency(bookingTotal)}
+                                                </p>
+                                            </div>
+                                            {creditCoversTotal && (
+                                                <div className="flex justify-between items-center mb-2 text-green-700">
+                                                    <p>Crédito aplicado</p>
+                                                    <p>-{MercadoPagoService.formatCurrency(creditAppliedAmount)}</p>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between items-center text-lg font-bold">
+                                                <p>Total</p>
+                                                <p className="text-[#2d8659]">
+                                                    {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : bookingTotal)}
                                                 </p>
                                             </div>
                                         </div>

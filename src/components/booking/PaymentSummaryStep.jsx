@@ -10,6 +10,7 @@ const PaymentSummaryStep = ({
   serviceDetails,
   selectedDate,
   selectedTime,
+  selectedSlots = [],
   meetingPlatform,
   paymentSecurityHighlights = [],
   acceptTermsField = {},
@@ -23,6 +24,10 @@ const PaymentSummaryStep = ({
 }) => {
   const isImplicitTerms = isFeatureEnabled('CRO_IMPLICIT_TERMS');
   const effectiveCanSubmit = isImplicitTerms ? true : canSubmit;
+
+  const isPackage = selectedSlots.length > 1;
+  const unitPrice = parseFloat(serviceDetails?.price || 150);
+  const totalPrice = isPackage ? selectedSlots.length * unitPrice : unitPrice;
 
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
   const formattedDate = selectedDate
@@ -61,9 +66,18 @@ const PaymentSummaryStep = ({
       {/* Container Estilo Ticket */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
         {/* Top Header */}
-        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-[#2d8659]" />
-          <h3 className="font-bold text-gray-900">Resumo do Agendamento</h3>
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-[#2d8659]" />
+            <h3 className="font-bold text-gray-900">
+              {isPackage ? `Resumo do Pacote (${selectedSlots.length} Sessões)` : 'Resumo do Agendamento'}
+            </h3>
+          </div>
+          {isPackage && (
+            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-xs rounded-full">
+              Pacote Promocional
+            </span>
+          )}
         </div>
         
         {/* Detalhes do Agendamento */}
@@ -80,26 +94,50 @@ const PaymentSummaryStep = ({
               <CreditCard className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Serviço</p>
-                <p className="font-semibold text-gray-900">{serviceDetails?.name || 'Selecione o serviço'}</p>
-                {serviceDuration && <p className="text-sm text-gray-600 mt-1">Duração: {serviceDuration}</p>}
+                <p className="font-semibold text-gray-900">
+                  {serviceDetails?.name || 'Selecione o serviço'}
+                  {isPackage && <span className="text-emerald-700 font-bold block text-sm mt-0.5">({selectedSlots.length} Consultas)</span>}
+                </p>
+                {serviceDuration && <p className="text-sm text-gray-600 mt-1">Duração por sessão: {serviceDuration}</p>}
               </div>
             </div>
           </div>
           <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Data</p>
-                <p className="font-semibold text-gray-900">{formattedDate}</p>
+            {isPackage ? (
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-[#2d8659] shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Sessões Agendadas ({selectedSlots.length})</p>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {selectedSlots.map((slot, index) => (
+                      <div key={`${slot.date}-${slot.time}`} className="text-xs font-bold text-gray-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 flex items-center justify-between gap-2">
+                        <span>Sessão {index + 1}:</span>
+                        <span className="text-emerald-900">
+                          {new Date(`${slot.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })} às {slot.time}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Clock className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Horário</p>
-                <p className="font-semibold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Data</p>
+                    <p className="font-semibold text-gray-900">{formattedDate}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Horário</p>
+                    <p className="font-semibold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -112,15 +150,20 @@ const PaymentSummaryStep = ({
 
         {/* Valor Total */}
         <div className="p-6 bg-gray-50 flex items-center justify-between">
-           <span className="text-gray-600 font-medium">Valor total a pagar:</span>
-           <span className="text-3xl font-bold text-[#2d8659]">R$ {formatPrice(serviceDetails?.price)}</span>
+           <div>
+             <span className="text-gray-600 font-medium block">Valor total a pagar:</span>
+             {isPackage && <span className="text-xs text-gray-500">({selectedSlots.length}x de R$ {formatPrice(unitPrice)})</span>}
+           </div>
+           <span className="text-3xl font-bold text-[#2d8659]">R$ {formatPrice(totalPrice)}</span>
         </div>
       </div>
 
       <div className="mb-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start gap-3">
         <Zap className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
         <p className="text-sm text-blue-800 leading-relaxed">
-          Após o pagamento, você receberá o link da sala de vídeo. A sessão começa pontualmente.
+          {isPackage
+            ? 'Após o pagamento, você receberá os links das salas de vídeo para cada uma das consultas agendadas.'
+            : 'Após o pagamento, você receberá o link da sala de vídeo. A sessão começa pontualmente.'}
         </p>
       </div>
 
@@ -166,44 +209,21 @@ const PaymentSummaryStep = ({
         >
           <Button
             onClick={onSubmit}
-            disabled={!effectiveCanSubmit || isSubmitting}
-            className={`w-full rounded-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${isSubmitting ? 'cursor-not-allowed opacity-75' : ''
-              }`}
-            title={submitButtonTitle}
+            disabled={isSubmitting || !effectiveCanSubmit}
+            className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? (
-              <>
-                <motion.div
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
-                Processando...
-              </>
-            ) : (
-              'Ir para Pagamento'
-            )}
+            {isSubmitting
+              ? 'Processando...'
+              : submitButtonTitle || (isPackage ? `Ir para Pagamento (R$ ${formatPrice(totalPrice)})` : 'Ir para Pagamento')}
           </Button>
         </motion.div>
-        <Button
-          type="button"
-          onClick={onSupport}
-          variant="outline"
-          className="rounded-full sm:w-auto flex items-center gap-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
-        >
-          <MessageCircle className="w-5 h-5" />
-          Tirar dúvidas no WhatsApp
-        </Button>
+        {onSupport && (
+          <Button onClick={onSupport} variant="outline" className="rounded-full border-green-600 text-[#2d8659] hover:bg-green-50">
+            <MessageCircle className="w-4 h-4 mr-2" />
+            Tirar dúvidas no WhatsApp
+          </Button>
+        )}
       </div>
-
-      {isImplicitTerms && (
-        <p className="text-center text-xs text-gray-500 mt-4 leading-relaxed">
-          Ao clicar em &quot;Ir para Pagamento&quot;, você declara que leu e concorda expressamente com nossos{' '}
-          <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
-            Termos e Condições
-          </a>.
-        </p>
-      )}
     </motion.div>
   );
 };

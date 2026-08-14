@@ -184,10 +184,10 @@ export class PixPaymentStrategy extends PaymentStrategy {
 
             logger.info('PixPaymentStrategy.confirm:payment-updated', { paymentId });
 
-            // 2. Buscar booking_id ou inscricao_id
+            // 2. Buscar booking_id, inscricao_id ou package_id
             const { data: payment, error: fetchError } = await supabase
                 .from('payments')
-                .select('booking_id, inscricao_id')
+                .select('booking_id, inscricao_id, package_id')
                 .eq('mp_payment_id', paymentId.toString())
                 .single();
 
@@ -196,8 +196,37 @@ export class PixPaymentStrategy extends PaymentStrategy {
                 return false;
             }
 
-            // 3. Atualizar booking ou inscrição
-            if (payment.booking_id) {
+            // 3. Atualizar booking, pacote ou inscrição
+            if (payment.package_id) {
+                const { error: pkgError } = await supabase
+                    .from('packages')
+                    .update({ status: 'paid' })
+                    .eq('id', payment.package_id);
+
+                if (pkgError) {
+                    logger.error('PixPaymentStrategy.confirm:package-error', pkgError, {
+                        paymentId,
+                        packageId: payment.package_id
+                    });
+                }
+
+                const { error: childError } = await supabase
+                    .from('bookings')
+                    .update({ status: 'confirmed' })
+                    .eq('package_id', payment.package_id);
+
+                if (childError) {
+                    logger.error('PixPaymentStrategy.confirm:package-children-error', childError, {
+                        paymentId,
+                        packageId: payment.package_id
+                    });
+                }
+
+                logger.success('PixPaymentStrategy.confirm:package-confirmed', {
+                    paymentId,
+                    packageId: payment.package_id
+                });
+            } else if (payment.booking_id) {
                 const { error: bookingError } = await supabase
                     .from('bookings')
                     .update({ status: 'confirmed' })

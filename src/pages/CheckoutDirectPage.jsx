@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { CreditCard, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -12,17 +12,20 @@ import { logger } from '@/lib/logger';
 const CheckoutDirectPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { toast } = useToast();
 
     const bookingId = searchParams.get('booking_id');
     const type = searchParams.get('type');
     const inscricaoId = searchParams.get('inscricao_id');
+    const packageId = searchParams.get('package_id') || location.state?.packageId;
     const emailParam = searchParams.get('email');
     const valorParam = searchParams.get('valor');
     const tituloParam = searchParams.get('titulo');
 
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
+    const [packageData, setPackageData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [stopMonitoring, setStopMonitoring] = useState(null);
@@ -36,7 +39,7 @@ const CheckoutDirectPage = () => {
     const [docType, setDocType] = useState('CPF');
     const [docNumber, setDocNumber] = useState('');
     const [payerEmail, setPayerEmail] = useState('');
-    const [acceptedTcle, setAcceptedTcle] = useState(false); // Aceite do TCLE Telepsicologia / CFP Resolução 11/2018
+    const [acceptedTcle, setAcceptedTcle] = useState(false);
 
     // Mercado Pago
     const [mp, setMp] = useState(null);
@@ -74,10 +77,54 @@ const CheckoutDirectPage = () => {
     useEffect(() => {
         if (type === 'evento' && inscricaoId) {
             fetchInscricao();
+        } else if (packageId) {
+            fetchPackage();
         } else if (bookingId) {
             fetchBooking();
+        } else {
+            setLoading(false);
         }
-    }, [bookingId, inscricaoId, type]);
+    }, [bookingId, inscricaoId, packageId, type]);
+
+    const fetchPackage = async () => {
+        try {
+            if (location.state?.packageId) {
+                setPackageData({
+                    id: location.state.packageId,
+                    gross_amount: location.state.totalAmount,
+                    patient_name: location.state.patientName,
+                    patient_email: location.state.patientEmail,
+                    total_sessions: location.state.sessionCount,
+                    service_name: location.state.serviceName,
+                    professional_name: location.state.professionalName
+                });
+                setCardholderName(location.state.patientName || '');
+                setPayerEmail((current) => current || location.state.patientEmail || '');
+            } else {
+                const { data, error } = await supabase
+                    .from('packages')
+                    .select('*, professionals:professional_id(name)')
+                    .eq('id', packageId)
+                    .single();
+
+                if (error) throw error;
+
+                setPackageData(data);
+                setCardholderName(data.patient_name || '');
+                setDocNumber(data.patient_cpf || '');
+                setPayerEmail((current) => current || data.patient_email || '');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar pacote:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não foi possível carregar os dados do pacote'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchBooking = async () => {
         try {
@@ -134,7 +181,7 @@ const CheckoutDirectPage = () => {
     const formatCardNumber = (value) => {
         const cleaned = value.replace(/\D/g, '');
         const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-        return formatted.substring(0, 19); // 16 dígitos + 3 espaços
+        return formatted.substring(0, 19);
     };
 
     const formatExpirationDate = (value) => {
@@ -145,18 +192,6 @@ const CheckoutDirectPage = () => {
         return cleaned;
     };
 
-    const formatCPF = (value) => {
-        const cleaned = value.replace(/\D/g, '');
-        if (cleaned.length <= 11) {
-            return cleaned
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-                .replace(/(-\d{2})\d+?$/, '$1');
-        }
-        return cleaned.substring(0, 11);
-    };
-
     const handleCardNumberChange = (e) => {
         setCardNumber(formatCardNumber(e.target.value));
     };
@@ -165,18 +200,14 @@ const CheckoutDirectPage = () => {
         setExpirationDate(formatExpirationDate(e.target.value));
     };
 
-    const handleDocNumberChange = (e) => {
-        setDocNumber(formatCPF(e.target.value));
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!acceptedTcle) {
             toast({
                 variant: 'destructive',
-                title: 'Consentimento Necessário',
-                description: 'Você precisa aceitar os termos de consentimento (TCLE/CFP) para prosseguir com o pagamento.'
+                title: 'Aceite do TCLE é Obrigatório',
+                description: 'De acordo com a Resolução CFP nº 11/2018, você deve aceitar os Termos e o TCLE antes de finalizar o pagamento.'
             });
             return;
         }
@@ -190,31 +221,27 @@ const CheckoutDirectPage = () => {
             return;
         }
 
-
         setProcessing(true);
 
         try {
-            // Validações básicas
             if (!cardNumber || !cardholderName || !expirationDate || !securityCode || !docNumber) {
                 throw new Error('Preencha todos os campos do cartão');
             }
 
-            // Obter valor do pagamento
             let amount = 0;
             if (type === 'evento') {
                 amount = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
+            } else if (packageId) {
+                amount = packageData?.gross_amount || parseFloat(valorParam) || 0;
             } else {
                 amount = booking?.valor_consulta || booking?.services?.price || parseFloat(valorParam) || 0;
             }
 
-            // Validar valor
             if (!amount || amount <= 0) {
                 throw new Error('Valor do pagamento inválido. Por favor, retorne à página anterior.');
             }
 
-            // Garantir que é número com 2 casas decimais
             amount = parseFloat(amount.toFixed(2));
-
             console.log('💰 Valor do pagamento:', amount);
 
             const email = payerEmail?.trim().toLowerCase();
@@ -223,7 +250,6 @@ const CheckoutDirectPage = () => {
                 throw new Error('Informe um e-mail válido para continuar.');
             }
 
-            // Criar token do cartão
             const [month, year] = expirationDate.split('/');
             const cardData = {
                 cardNumber: cardNumber.replace(/\s/g, ''),
@@ -236,7 +262,6 @@ const CheckoutDirectPage = () => {
             };
 
             console.log('🔵 Criando token do cartão...');
-
             const token = await mp.createCardToken(cardData);
 
             if (!token || !token.id) {
@@ -245,18 +270,16 @@ const CheckoutDirectPage = () => {
 
             console.log('✅ Token criado:', token.id);
 
-            // Enviar para Edge Function processar pagamento
             const paymentData = {
                 token: token.id,
-                // Bandeira real do cartão detectada pelo SDK do MP (visa, master, elo, etc.)
-                // Obrigatório: o Mercado Pago rejeita o pagamento se payment_method_id
-                // não corresponder ao cartão tokenizado.
                 payment_method_id: token.payment_method_id,
                 amount: amount,
                 installments: parseInt(installments),
                 description: type === 'evento'
                     ? `Evento - ${inscricao?.evento?.titulo}`
-                    : `Consulta - ${booking?.services?.name}`,
+                    : packageId
+                        ? `Pacote de Consultas (${packageData?.total_sessions || ''} sessões)`
+                        : `Consulta - ${booking?.services?.name}`,
                 payer: {
                     email,
                     identification: {
@@ -264,14 +287,13 @@ const CheckoutDirectPage = () => {
                         number: docNumber.replace(/\D/g, '')
                     }
                 },
-                booking_id: bookingId,
-                inscricao_id: inscricaoId
+                booking_id: bookingId || null,
+                inscricao_id: inscricaoId || null,
+                package_id: packageId || null,
+                paymentMethod: 'credit_card'
             };
 
             console.log('💳 Processando pagamento...');
-
-            // Adicionar paymentMethod ao payload
-            paymentData.paymentMethod = 'credit_card';
 
             const result = await paymentOrchestrator.processPayment(
                 'credit_card',
@@ -291,92 +313,76 @@ const CheckoutDirectPage = () => {
                             title: 'Erro no pagamento',
                             description: err.message || 'Não foi possível processar.'
                         });
-                        setProcessing(false); // ✅ Liberar loading apenas em caso de erro
+                        setProcessing(false);
                         if (stopMonitoring) stopMonitoring();
                     },
                     onStatusChange: (statusUpdate) => {
                         console.log('🔄 Status atualizado:', statusUpdate);
 
                         if (statusUpdate.status === 'approved' || statusUpdate.status === 'authorized') {
-                            toast({ title: 'Pagamento Aprovado!', className: 'bg-green-600 text-white' });
-                            const referenceId = bookingId || inscricaoId;
-                            const referenceType = type || 'booking';
-                            navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
-                        } else if (statusUpdate.status === 'rejected' || statusUpdate.status === 'cancelled') {
-                            const msg = statusUpdate.statusDetail === 'cc_rejected_high_risk'
-                                ? 'Pagamento recusado por segurança. Tente outro cartão.'
-                                : 'Pagamento não autorizado pelo banco.';
+                            toast({
+                                title: 'Pagamento Aprovado! 🎉',
+                                description: 'Seu pagamento foi confirmado com sucesso.'
+                            });
+                            setProcessing(false);
 
+                            if (type === 'evento') {
+                                navigate(`/checkout-success?type=evento&inscricao_id=${inscricaoId}`);
+                            } else if (packageId) {
+                                navigate(`/checkout-success?package_id=${packageId}`);
+                            } else {
+                                navigate(`/checkout-success?booking_id=${bookingId}`);
+                            }
+                        } else if (statusUpdate.status === 'rejected') {
                             toast({
                                 variant: 'destructive',
-                                title: 'Pagamento Recusado',
-                                description: msg
+                                title: 'Pagamento Recusado ❌',
+                                description: statusUpdate.status_detail || 'Não foi possível autorizar a transação.'
                             });
-                            setProcessing(false); // ✅ Liberar loading em rejeicão
-                            if (stopMonitoring) stopMonitoring();
-                        } else if (statusUpdate.status === 'timeout') {
-                            // ⏳ Timeout do polling — o webhook ainda pode confirmar em background
-                            // Redirecionar para página de sucesso mesmo assim para o usuário verificar
-                            toast({
-                                title: 'Processando...',
-                                description: 'O pagamento está sendo analisado. Você receberá a confirmação por e-mail.'
-                            });
-                            const referenceId = bookingId || inscricaoId;
-                            const referenceType = type || 'booking';
-                            navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
+                            setProcessing(false);
                         }
                     }
                 }
             );
 
-            if (result.success && result.stopMonitoring) {
+            if (result && result.stopMonitoring) {
                 setStopMonitoring(() => result.stopMonitoring);
-                // ✅ Não chamar setProcessing(false) aqui: o polling ainda está ativo
-                // O estado será liberado pelos callbacks onError ou onStatusChange
-            } else if (!result.success) {
-                // Se falhou síncrono
-                setProcessing(false);
             }
 
         } catch (error) {
-            console.error('Erro no pagamento:', error);
+            console.error('❌ Erro no checkout:', error);
             toast({
                 variant: 'destructive',
                 title: 'Erro no pagamento',
-                description: error.message || 'Não foi possível processar o pagamento'
+                description: error.message || 'Ocorreu um erro ao processar o pagamento.'
             });
-            setProcessing(false); // ✅ Liberar loading em exceção síncrona
+            setProcessing(false);
         }
     };
 
+    let total = 0;
+    if (type === 'evento') {
+        total = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
+    } else if (packageId) {
+        total = packageData?.gross_amount || parseFloat(valorParam) || 0;
+    } else {
+        total = booking?.valor_consulta || booking?.services?.price || parseFloat(valorParam) || 0;
+    }
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d8659]"></div>
             </div>
         );
     }
 
-    // Calcular total para exibição
-    let total = 0;
-    if (type === 'evento') {
-        total = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
-    } else {
-        total = booking?.valor_consulta || booking?.services?.price || parseFloat(valorParam) || 0;
-    }
-
-    // Se ainda for 0, tentar pegar do parâmetro
-    if (total === 0 && valorParam) {
-        total = parseFloat(valorParam);
-    }
-
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-4">
-                {/* Header */}
+        <div className="min-h-screen bg-gray-50 py-12 px-4">
+            <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => navigate(-1)}
                         className="mb-4"
                     >
@@ -458,70 +464,64 @@ const CheckoutDirectPage = () => {
                                     </div>
                                 </div>
 
-                                {/* CPF */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        CPF do Titular
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={docNumber}
-                                        onChange={handleDocNumberChange}
-                                        placeholder="000.000.000-00"
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                                        maxLength="14"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Email */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        E-mail para confirmação
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={payerEmail}
-                                        onChange={(e) => setPayerEmail(e.target.value)}
-                                        placeholder="nome@exemplo.com"
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                                        required
-                                    />
+                                {/* CPF e Email */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">
+                                            CPF do Titular
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={docNumber}
+                                            onChange={(e) => setDocNumber(e.target.value)}
+                                            placeholder="000.000.000-00"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">
+                                            E-mail
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={payerEmail}
+                                            onChange={(e) => setPayerEmail(e.target.value)}
+                                            placeholder="seu@email.com"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            required
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Parcelas */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2">
-                                        Parcelas
+                                        Parcelamento
                                     </label>
                                     <select
                                         value={installments}
                                         onChange={(e) => setInstallments(e.target.value)}
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent bg-white"
                                     >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                                            <option key={n} value={n}>
-                                                {n}x de {MercadoPagoService.formatCurrency(total / n)}
-                                                {n === 1 ? ' sem juros' : ''}
-                                            </option>
-                                        ))}
+                                        <option value="1">1x de {MercadoPagoService.formatCurrency(total)} à vista</option>
+                                        {total >= 100 && <option value="2">2x de {MercadoPagoService.formatCurrency(total / 2)}</option>}
+                                        {total >= 150 && <option value="3">3x de {MercadoPagoService.formatCurrency(total / 3)}</option>}
                                     </select>
                                 </div>
 
-                                {/* Consentimento TCLE / CFP Resolução 11/2018 */}
-                                <div className="p-4 rounded-lg border border-amber-200 bg-amber-50/50">
+                                {/* Checkbox TCLE / Política de Cancelamento (CFP Resolução 11/2018) */}
+                                <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200/80 my-4">
                                     <label className="flex items-start gap-3 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            id="tcle-checkbox-direct"
-                                            data-testid="tcle-checkbox"
                                             checked={acceptedTcle}
                                             onChange={(e) => setAcceptedTcle(e.target.checked)}
                                             className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
                                         />
                                         <span className="text-xs text-amber-900 leading-relaxed">
                                             Li e concordo com o <strong>Termo de Consentimento Livre e Esclarecido (TCLE) de Atendimento Psicológico Online</strong> (Resolução CFP nº 11/2018) e com a <strong>Política de Cancelamento e Reagendamento</strong> (com até 24h de antecedência). Entendo que meus dados clínicos e de atendimento estão protegidos por sigilo profissional e pela LGPD.{' '}
-                                            <Link to="/termos" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
+                                            <Link to="/termos-e-condicoes" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
                                                 Ver termos completos
                                             </Link>
                                         </span>
@@ -543,7 +543,6 @@ const CheckoutDirectPage = () => {
                                     )}
                                 </Button>
                             </form>
-
                         </Card>
                     </div>
 
@@ -556,6 +555,14 @@ const CheckoutDirectPage = () => {
                                 <div className="space-y-3 mb-4">
                                     <p className="text-sm text-gray-600">Evento</p>
                                     <p className="font-semibold">{inscricao.evento?.titulo}</p>
+                                </div>
+                            )}
+
+                            {packageData && (
+                                <div className="space-y-3 mb-4">
+                                    <p className="text-sm text-gray-600 font-medium">Pacote de Consultas</p>
+                                    <p className="font-semibold text-gray-900">{packageData.service_name || 'Psicoterapia'}</p>
+                                    <p className="text-xs text-[#2d8659] font-bold">{packageData.total_sessions} Sessões Agendadas</p>
                                 </div>
                             )}
 

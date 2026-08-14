@@ -314,7 +314,85 @@ function sanitizeForLog(data: any): any {
       // =====================================================
 
       success = true;
+    } else if (externalRef && externalRef.startsWith('PACOTE_')) {
+      // =====================================================
+      // PACKAGE LOGIC (Agendamento Múltiplo / Pacotes)
+      // =====================================================
+      const packageId = externalRef.replace('PACOTE_', '');
+      console.log(`📦 Processing package payment - Package ID: ${packageId}`);
+
+      const { data: pkgData, error: pkgFetchError } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', packageId)
+        .single();
+
+      if (pkgFetchError || !pkgData) {
+        console.error(`❌ Package ${packageId} not found!`, pkgFetchError);
+      } else {
+        // Update Package status
+        await supabase.from('packages').update({
+          status: mpPayment.status === 'approved' ? 'paid' : mpPayment.status,
+          marketplace_payment_id: paymentId.toString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', packageId);
+
+        // Update all child bookings
+        await supabase.from('bookings').update({
+          status: mpPayment.status === 'approved' ? 'confirmed' : 'pending',
+          payment_status: mpPayment.status,
+          marketplace_payment_id: paymentId.toString(),
+          updated_at: new Date().toISOString()
+        }).eq('package_id', packageId);
+
+        // Update Payments table
+        const { data: payData } = await supabase.from('payments')
+          .update({ status: mpPayment.status, raw_payload: mpPayment })
+          .eq('mp_payment_id', paymentId.toString())
+          .select()
+          .single();
+
+        if (payData) ledgerTransactionId = payData.id;
+
+        // Register Ledger Entry for Package Custody: CASH_BANK (Debit) -> PACKAGE_ESCROW (Credit)
+        if (mpPayment.status === 'approved' && payData) {
+          await supabase.from('payment_ledger_entries').insert([
+            {
+              transaction_id: payData.id,
+              entry_type: 'DEBIT',
+              account_code: 'CASH_BANK',
+              amount: pkgData.gross_amount,
+              description: `Recebimento Pacote #${packageId} (${pkgData.total_sessions} sessões)`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: payData.id,
+              entry_type: 'CREDIT',
+              account_code: 'PACKAGE_ESCROW',
+              amount: pkgData.gross_amount,
+              description: `Custódia Pacote #${packageId} (${pkgData.total_sessions} sessões)`,
+              created_at: new Date().toISOString()
+            }
+          ]);
+
+          // Trigger NFS-e Emission for total repasse amount (R$ 90 x N)
+          try {
+            console.log(`🧾 Triggering automated NFS-e for package ${packageId} (Repasse Total: R$ ${pkgData.professional_repasse_total})...`);
+            await supabase.functions.invoke('emit-nfse', {
+              body: {
+                package_id: packageId,
+                payment_id: payData.id,
+                repasse_total: pkgData.professional_repasse_total
+              }
+            });
+          } catch (nfseErr) {
+            console.error('⚠️ Non-fatal error triggering package NFS-e:', nfseErr);
+          }
+        }
+      }
+      success = true;
     } else {
+
       // Booking Logic
 
       // UUID format validation
