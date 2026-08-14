@@ -1,11 +1,16 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { StrategicCockpitModule } from '@/components/admin/StrategicCockpitModule';
+import { FinancialControlModule } from '@/components/admin/FinancialControlModule';
+import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
+import { PatientAnalyticsDashboard } from '@/components/admin/PatientAnalyticsDashboard';
 import { useAdminData } from '@/hooks/useAdminData';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
@@ -268,9 +273,12 @@ const AdminPage = () => {
 
     const [bookingSortField, setBookingSortField] = useState('default');
     const [bookingSortOrder, setBookingSortOrder] = useState('asc');
-    const [activeTab, setActiveTab] = useState('bookings');
+    const [activeModule, setActiveModule] = useState('cockpit');
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [bookingView, setBookingView] = useState('list'); // 'list' ou 'calendar'
+    const [patientView, setPatientView] = useState('analytics'); // 'analytics' ou 'list'
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -1567,6 +1575,10 @@ const AdminPage = () => {
         return totals;
     };
 
+    const totals = useMemo(() => {
+        return calculateTotals(bookings || []);
+    }, [bookings, userRole]);
+
     const resetServiceForm = () => {
         setIsEditingService(false);
         setServiceFormData({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' });
@@ -2253,11 +2265,6 @@ const AdminPage = () => {
                             <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
                                 <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
                             </Link>
-                            {userRole === 'admin' && (
-                                <Link to="/admin/dashboard" className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 px-3 py-1.5 rounded-md">
-                                    <LayoutDashboard className="w-4 h-4 mr-1" /> Dashboard Gerencial
-                                </Link>
-                            )}
                             <div className="h-6 w-px bg-gray-300"></div>
                             <UserBadge
                                 user={user}
@@ -2363,69 +2370,51 @@ const AdminPage = () => {
                     )}
                 </nav>
             </header>
-            <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-32">
-                <div className="container mx-auto px-3 md:px-4">
-                    <h1 className="text-4xl font-bold mb-2">Painel de Controle</h1>
-                    <p className="text-gray-500 mb-8">Bem-vindo, {displayName}. Utilize os atalhos acima para navegar rapidamente.</p>
 
-                    {/* Quick Access Links - Apenas para Admin */}
-                    {userRole === 'admin' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                            <Link to="/admin/dashboard" className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-1">Dashboard Gerencial</h3>
-                                        <p className="text-indigo-100 text-sm opacity-90">Funil, faturamento e conversões</p>
-                                    </div>
-                                    <LayoutDashboard className="w-10 h-10 opacity-70" />
-                                </div>
-                            </Link>
-                            <Link to="/admin/usuarios" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-1">Gestão de Usuários</h3>
-                                        <p className="text-purple-100 text-sm opacity-90">Gerenciar contas e permissões</p>
-                                    </div>
-                                    <Users className="w-10 h-10 opacity-70" />
-                                </div>
-                            </Link>
-                            <Link to="/admin/pagamentos" className="bg-gradient-to-br from-[#2d8659] to-[#236b47] text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-1">Pagamentos</h3>
-                                        <p className="text-green-100 text-sm opacity-90">Gerenciar transações</p>
-                                    </div>
-                                    <DollarSign className="w-10 h-10 opacity-70" />
-                                </div>
-                            </Link>
-                            <Link to="/admin/depoimentos" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-semibold mb-1">Depoimentos</h3>
-                                        <p className="text-blue-100 text-sm opacity-90">Moderar avaliações</p>
-                                    </div>
-                                    <MessageCircle className="w-10 h-10 opacity-70" />
-                                </div>
-                            </Link>
+            <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
+                {/* Sidebar Lateral Navegável nos 5 Módulos Estruturados */}
+                <div className="hidden md:block flex-shrink-0">
+                    <AdminSidebar
+                        activeModule={activeModule}
+                        setActiveModule={setActiveModule}
+                        activeTab={activeTab}
+                        setActiveTab={setActiveTab}
+                        userRole={userRole}
+                        userName={displayName}
+                        pendingAlertsCount={professionalStats?.pendingAppointments?.length || 0}
+                    />
+                </div>
+
+                <div className="flex-1 min-w-0 p-4 md:p-8 pt-24 md:pt-28 overflow-y-auto">
+                    <div className="container mx-auto max-w-7xl">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Painel de Controle</h1>
+                            <p className="text-sm text-gray-500 mt-1">Bem-vindo, <span className="font-semibold text-gray-800">{displayName}</span>. Gerencie a operação, relatórios e configurações da plataforma.</p>
                         </div>
-                    )}
+                    </div>
 
                     <Tabs id="admin-tabs" value={activeTab} onValueChange={setActiveTab} className="w-full">
-                        <TabsList className="flex overflow-x-auto h-auto justify-start p-2 bg-white border border-gray-100 rounded-2xl gap-2 hide-scrollbar mb-6 shadow-sm">
-                            {currentTabs.map(tab => (
-                                <TabsTrigger
-                                    key={tab.value}
-                                    value={tab.value}
-                                    className="flex-shrink-0 min-w-max px-4 py-2.5 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-50 data-[state=active]:bg-[#2d8659] data-[state=active]:text-white data-[state=active]:shadow-md transition-all whitespace-nowrap"
-                                >
-                                    <tab.icon className="w-4 h-4 mr-2" />{tab.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
 
-                        {/* Dashboard Tab - Profissionais */}
+                        {/* Dashboard Tab - Cockpit Estratégico ou Visão do Profissional */}
                         <TabsContent value="dashboard" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                            {isAdminView ? (
+                                <StrategicCockpitModule
+                                    summaryData={{
+                                        receita_consultas: totals.totalValue,
+                                        consultas_confirmadas: totals.totalBookings,
+                                        total_professionals: professionals.length
+                                    }}
+                                    financialData={{
+                                        monthlyRevenue: totals.totalValue,
+                                        takeRatePct: 20,
+                                        netMargin: totals.totalPlatformFee
+                                    }}
+                                    alertsData={{}}
+                                    onNavigateTab={setActiveTab}
+                                />
+                            ) : (
                             <div className="space-y-6">
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
@@ -2599,64 +2588,87 @@ const AdminPage = () => {
                                     </div>
                                 )}
                             </div>
+                            )}
                         </Suspense>
 </TabsContent>
 
+                        {/* Financial Control Tab - DRE & Controladoria Unificada */}
+                        <TabsContent value="financial-control" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                <FinancialControlModule
+                                    financialData={{ monthlyRevenue: totals.totalValue }}
+                                    bookings={bookings}
+                                    userRole={userRole}
+                                    onNavigateTab={setActiveTab}
+                                />
+                            </Suspense>
+                        </TabsContent>
+
                         <TabsContent value="bookings" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
 
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-                                    <h2 className="text-2xl font-bold flex items-center">
-                                        <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                        Agendamentos
-                                        <span className="ml-2 text-lg text-gray-500">({getFilteredBookings().length}/{bookings.length})</span>
-                                    </h2>
+                            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+                                {/* Header e Toolbar de Ações */}
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                            <Calendar className="w-5 h-5 text-[#2d8659]" />
+                                            Gestão Operacional de Agendamentos
+                                            <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">
+                                                {getFilteredBookings().length} de {bookings.length}
+                                            </span>
+                                        </h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            Filtre, ordene e gerencie todas as consultas em tempo real com controle financeiro.
+                                        </p>
+                                    </div>
 
-                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
-                                        {/* View Toggle */}
-                                        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-                                            <Button
-                                                variant={bookingView === 'list' ? 'default' : 'ghost'}
-                                                size="sm"
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {/* Modos de Exibição: Tabela vs Cards vs Calendário */}
+                                        <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200 text-xs">
+                                            <button
                                                 onClick={() => setBookingView('list')}
-                                                className={cn(
-                                                    'h-8 px-3 flex-1 sm:flex-none',
-                                                    bookingView === 'list' && 'bg-white shadow-sm'
-                                                )}
+                                                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
+                                                    bookingView === 'list' ? 'bg-white text-[#2d8659] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
                                             >
-                                                <List className="w-4 h-4 mr-1" />
-                                                Lista
-                                            </Button>
-                                            <Button
-                                                variant={bookingView === 'calendar' ? 'default' : 'ghost'}
-                                                size="sm"
+                                                <List className="w-3.5 h-3.5" />
+                                                Tabela
+                                            </button>
+                                            <button
+                                                onClick={() => setBookingView('cards')}
+                                                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
+                                                    bookingView === 'cards' ? 'bg-white text-[#2d8659] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
+                                            >
+                                                <LayoutGrid className="w-3.5 h-3.5" />
+                                                Cards
+                                            </button>
+                                            <button
                                                 onClick={() => setBookingView('calendar')}
-                                                className={cn(
-                                                    'h-8 px-3 flex-1 sm:flex-none',
-                                                    bookingView === 'calendar' && 'bg-white shadow-sm'
-                                                )}
+                                                className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
+                                                    bookingView === 'calendar' ? 'bg-white text-[#2d8659] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                                                }`}
                                             >
-                                                <LayoutGrid className="w-4 h-4 mr-1" />
+                                                <Calendar className="w-3.5 h-3.5" />
                                                 Calendário
-                                            </Button>
+                                            </button>
                                         </div>
 
+                                        {/* Botão de Filtros */}
                                         <Button
                                             onClick={() => setShowFilters(!showFilters)}
                                             variant="outline"
                                             size="sm"
-                                            className="flex items-center justify-center w-full sm:w-auto"
+                                            className="text-xs h-8 border-slate-200 text-slate-700 hover:bg-slate-50"
                                         >
-                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                            </svg>
-                                            {showFilters ? 'Ocultar' : 'Mostrar'} Filtros
+                                            <Filter className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                                            {showFilters ? 'Ocultar Filtros' : 'Filtros Avançados'}
                                             {(() => {
-                                                const activeFilters = Object.values(bookingFilters).filter(value => value !== '').length;
-                                                return activeFilters > 0 ? (
-                                                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                        {activeFilters}
+                                                const activeCount = Object.values(bookingFilters).filter(v => v !== '').length;
+                                                return activeCount > 0 ? (
+                                                    <span className="ml-1.5 bg-[#2d8659] text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                                                        {activeCount}
                                                     </span>
                                                 ) : null;
                                             })()}
@@ -2664,194 +2676,129 @@ const AdminPage = () => {
                                     </div>
                                 </div>
 
-                                {/* Totalizadores */}
+                                {/* BARRA EXECUTIVA DE TOTAIS (1 LINHA COMPACTA DE 48PX) */}
                                 {(() => {
                                     const filteredBookings = getFilteredBookings();
-                                    const totals = calculateTotals(filteredBookings);
-
-                                    const gridColsClass = userRole === 'admin'
-                                        ? 'xl:grid-cols-6'
-                                        : (totals.cancelledValue > 0 ? 'xl:grid-cols-5' : 'xl:grid-cols-4');
+                                    const filteredTotals = calculateTotals(filteredBookings);
 
                                     return (
-                                        <div className={`grid grid-cols-1 md:grid-cols-2 ${gridColsClass} gap-4 mb-6`}>
-                                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                                                <div className="flex items-center">
-                                                    <Calendar className="w-8 h-8 text-blue-600 mr-3" />
-                                                    <div>
-                                                        <p className="text-sm text-blue-600 font-medium">Total de Agendamentos</p>
-                                                        <p className="text-2xl font-bold text-blue-900">{totals.totalBookings}</p>
-                                                    </div>
-                                                </div>
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 text-xs">
+                                            <div className="flex items-center gap-2">
+                                                <Calendar className="w-4 h-4 text-[#2d8659]" />
+                                                <span className="text-slate-500 font-medium">Agendamentos:</span>
+                                                <span className="font-extrabold text-slate-900">{filteredTotals.totalBookings}</span>
                                             </div>
 
                                             {userRole === 'admin' && (
-                                                <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-                                                    <div className="flex items-center">
-                                                        <svg className="w-8 h-8 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                                                        </svg>
-                                                        <div>
-                                                            <p className="text-sm text-green-600 font-medium">Valor total cobrado</p>
-                                                            <p className="text-2xl font-bold text-green-900">
-                                                                R$ {totals.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-slate-500">Valor Cobrado:</span>
+                                                    <span className="font-bold text-emerald-700">R$ {filteredTotals.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </div>
                                             )}
 
-                                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-                                                <div className="flex items-center">
-                                                    <DollarSign className="w-8 h-8 text-blue-600 mr-3" />
-                                                    <div>
-                                                        <p className="text-sm text-blue-600 font-medium">{userRole === 'admin' ? 'Total repassado' : 'A faturar'}</p>
-                                                        <p className="text-2xl font-bold text-blue-900">
-                                                            R$ {totals.totalProfessionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-slate-500">{userRole === 'admin' ? 'Repassado:' : 'A faturar:'}</span>
+                                                <span className="font-bold text-blue-700">R$ {filteredTotals.totalProfessionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
                                             {userRole === 'admin' && (
-                                                <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-                                                    <div className="flex items-center">
-                                                        <ShieldCheck className="w-8 h-8 text-purple-600 mr-3" />
-                                                        <div>
-                                                            <p className="text-sm text-purple-600 font-medium">Taxa da plataforma</p>
-                                                            <p className="text-2xl font-bold text-purple-900">
-                                                                R$ {totals.totalPlatformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-slate-500">Taxa Doxologos:</span>
+                                                    <span className="font-bold text-purple-700">R$ {filteredTotals.totalPlatformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </div>
                                             )}
 
-                                            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-4 rounded-lg border border-emerald-200">
-                                                <div className="flex items-center">
-                                                    <svg className="w-8 h-8 text-emerald-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <div>
-                                                        <p className="text-sm text-emerald-600 font-medium">Total a Receber</p>
-                                                        <p className="text-2xl font-bold text-emerald-900">
-                                                            R$ {totals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-slate-500 font-medium">Recebidos:</span>
+                                                <span className="font-bold text-emerald-800">R$ {filteredTotals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
-                                            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-                                                <div className="flex items-center">
-                                                    <svg className="w-8 h-8 text-yellow-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                    </svg>
-                                                    <div>
-                                                        <p className="text-sm text-yellow-600 font-medium">Pendentes</p>
-                                                        <p className="text-2xl font-bold text-yellow-900">
-                                                            R$ {totals.pendingValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                        </p>
-                                                    </div>
-                                                </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-slate-500 font-medium">Pendentes:</span>
+                                                <span className="font-bold text-amber-600">R$ {filteredTotals.pendingValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
-                                            {totals.cancelledValue > 0 && (
-                                                <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-                                                    <div className="flex items-center">
-                                                        <svg className="w-8 h-8 text-red-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                        </svg>
-                                                        <div>
-                                                            <p className="text-sm text-red-600 font-medium">Cancelados</p>
-                                                            <p className="text-2xl font-bold text-red-900">
-                                                                R$ {totals.cancelledValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
+                                            {filteredTotals.cancelledValue > 0 && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="text-slate-500 font-medium">Cancelados:</span>
+                                                    <span className="font-bold text-red-600">R$ {filteredTotals.cancelledValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </div>
                                             )}
                                         </div>
                                     );
                                 })()}
 
-                                {/* Calendar View */}
-                                {bookingView === 'calendar' ? (
-                                    <AppointmentCalendar
-                                        appointments={getFilteredBookings()}
-                                        onDateClick={(date, dayAppointments) => {
-                                            // Ao clicar em um dia, volta para lista e filtra por essa data
-                                            setBookingView('list');
-                                            const dateStr = date.toISOString().split('T')[0];
-                                            setBookingFilters(prev => ({
-                                                ...prev,
-                                                date_from: dateStr,
-                                                date_to: dateStr
-                                            }));
-                                        }}
-                                        onAppointmentClick={(appointment) => {
-                                            // Pode adicionar lógica para abrir modal de detalhes
-                                            console.log('Appointment clicked:', appointment);
-                                        }}
-                                    />
-                                ) : (
-                                    <>
-                                        {/* Ordenação de Agendamentos */}
-                                        {bookings.length > 0 && (
-                                            <div className="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-200">
-                                                <h3 className="font-semibold mb-3 flex items-center text-blue-900">
-                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
-                                                    </svg>
-                                                    Ordenação
-                                                </h3>
-                                                <div className="flex flex-wrap gap-2">
+                                {/* BARRA DE ORDENAÇÃO E BUSCA DE 1 LINHA */}
+                                {bookingView !== 'calendar' && (
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/70 p-2.5 rounded-xl border border-slate-200/80 text-xs">
+                                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                                            <span className="text-slate-500 font-bold text-[11px] whitespace-nowrap">Ordenar por:</span>
+                                            <div className="flex flex-wrap gap-1">
+                                                <Button
+                                                    onClick={() => handleBookingSort('default')}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'default' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    Padrão
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleBookingSort('status')}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'status' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleBookingSort('date')}
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'date' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
+                                                </Button>
+                                                {userRole === 'admin' && (
                                                     <Button
-                                                        onClick={() => handleBookingSort('default')}
-                                                        variant="outline"
+                                                        onClick={() => handleBookingSort('professional')}
+                                                        variant="ghost"
                                                         size="sm"
-                                                        className={bookingSortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
+                                                        className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'professional' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
                                                     >
-                                                        📋 Padrão (Status + Data)
+                                                        Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                                                     </Button>
-                                                    <Button
-                                                        onClick={() => handleBookingSort('status')}
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className={bookingSortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                                    >
-                                                        🎯 Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                                    </Button>
-                                                    <Button
-                                                        onClick={() => handleBookingSort('date')}
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className={bookingSortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                                    >
-                                                        📅 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                                    </Button>
-                                                    {userRole === 'admin' && (
-                                                        <Button
-                                                            onClick={() => handleBookingSort('professional')}
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className={bookingSortField === 'professional' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : 'bg-white'}
-                                                        >
-                                                            👤 Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
-                                                        </Button>
-                                                    )}
-                                                </div>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
 
-                                        {/* Seção de Filtros - Recolhível */}
-                                        {showFilters && (
-                                            <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
-                                                <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
-                                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                                    </svg>
-                                                    Filtros Avançados
-                                                </h3>                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                                        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                                            <span className="text-[11px] text-slate-500">Exibir:</span>
+                                            <select
+                                                value={itemsPerPage}
+                                                onChange={(e) => {
+                                                    setItemsPerPage(Number(e.target.value));
+                                                    setCurrentPage(1);
+                                                }}
+                                                className="bg-white border border-slate-200 rounded-lg text-xs py-1 px-2 font-bold text-slate-700"
+                                            >
+                                                <option value="10">10 por página</option>
+                                                <option value="20">20 por página</option>
+                                                <option value="50">50 por página</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Seção de Filtros - Recolhível */}
+                                    {showFilters && (
+                                        <div className="bg-gray-50 rounded-lg p-4 mb-6 border animate-in slide-in-from-top-2 duration-200">
+                                            <h3 className="font-semibold text-gray-700 mb-4 flex items-center">
+                                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 2v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                                </svg>
+                                                Filtros Avançados
+                                            </h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                                                     {/* Busca por nome/email */}
                                                     <div>
                                                         <label className="block text-xs font-medium mb-1 text-gray-600">Buscar Paciente</label>
@@ -3005,7 +2952,222 @@ const AdminPage = () => {
                                                     </div>
 
                                                     <div className="space-y-2">
-                                                        {paginatedBookings.map((b, index) => {
+                                                        {bookingView === 'list' ? (
+                                                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+                                                                <div className="overflow-x-auto">
+                                                                    <table className="w-full text-xs text-left text-slate-700">
+                                                                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+                                                                            <tr>
+                                                                                <th className="p-3">Data & Horário</th>
+                                                                                <th className="p-3">Paciente</th>
+                                                                                <th className="p-3">Profissional & Serviço</th>
+                                                                                <th className="p-3">Financeiro (Preço / Repasse / Taxa)</th>
+                                                                                <th className="p-3">Status</th>
+                                                                                <th className="p-3 text-right">Ações</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-slate-100">
+                                                                            {paginatedBookings.map((b) => {
+                                                                                const statusColors = {
+                                                                                    'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                                    'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                                    'awaiting_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                                    'confirmed': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                                                                                    'paid': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                                                                                    'completed': 'bg-blue-100 text-blue-800 border-blue-200',
+                                                                                    'cancelled': 'bg-red-100 text-red-800 border-red-200',
+                                                                                    'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
+                                                                                    'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
+                                                                                    'expired': 'bg-gray-100 text-gray-600 border-gray-200',
+                                                                                    'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200',
+                                                                                    'refunded': 'bg-purple-100 text-purple-800 border-purple-200',
+                                                                                    'partially_refunded': 'bg-purple-100 text-purple-800 border-purple-200'
+                                                                                };
+
+                                                                                const statusLabels = {
+                                                                                    'pending': 'Pendente',
+                                                                                    'pending_payment': 'Pendente',
+                                                                                    'awaiting_payment': 'Aguardando',
+                                                                                    'confirmed': 'Confirmado',
+                                                                                    'paid': 'Pago',
+                                                                                    'completed': 'Concluído',
+                                                                                    'cancelled': 'Cancelado',
+                                                                                    'cancelled_by_patient': 'Cancelado (Paciente)',
+                                                                                    'cancelled_by_professional': 'Cancelado (Psicólogo)',
+                                                                                    'expired': 'Expirado',
+                                                                                    'no_show_unjustified': 'Falta Injustificada',
+                                                                                    'refunded': 'Reembolsado',
+                                                                                    'partially_refunded': 'Reembolso Parcial'
+                                                                                };
+
+                                                                                const patientValue = Number(b.valor_consulta ?? b.service?.price ?? 0) || 0;
+                                                                                const professionalValue = Number(
+                                                                                    b.valor_repasse_profissional ?? b.service?.professional_payout ?? b.valor_consulta ?? patientValue
+                                                                                ) || 0;
+                                                                                const platformFeeValue = Math.max(patientValue - professionalValue, 0);
+
+                                                                                return (
+                                                                                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                                                                                        <td className="p-3 font-mono">
+                                                                                            <span className="font-bold text-slate-900 block">
+                                                                                                {new Date(b.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                                                                            </span>
+                                                                                            <span className="text-[11px] text-[#2d8659] font-bold">{b.booking_time}h</span>
+                                                                                        </td>
+
+                                                                                        <td className="p-3">
+                                                                                            <p className="font-bold text-slate-900">{b.patient_name || 'Nome não informado'}</p>
+                                                                                            <p className="text-[10px] text-slate-400">{b.patient_email || b.patient_phone || 'Sem contato'}</p>
+                                                                                        </td>
+
+                                                                                        <td className="p-3">
+                                                                                            <p className="font-bold text-slate-800">{b.professional?.name || 'N/A'}</p>
+                                                                                            <p className="text-[11px] text-slate-500">{b.service?.name || 'N/A'}</p>
+                                                                                        </td>
+
+                                                                                        <td className="p-3 font-mono">
+                                                                                            {userRole === 'admin' ? (
+                                                                                                <div>
+                                                                                                    <span className="font-bold text-emerald-700 text-xs">R$ {patientValue.toFixed(2)}</span>
+                                                                                                    <div className="text-[10px] text-slate-500">
+                                                                                                        Repasse: R$ {professionalValue.toFixed(2)} | Taxa: R$ {platformFeeValue.toFixed(2)}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            ) : (
+                                                                                                <span className="font-bold text-blue-700 text-xs">R$ {professionalValue.toFixed(2)}</span>
+                                                                                            )}
+                                                                                        </td>
+
+                                                                                        <td className="p-3">
+                                                                                            <select
+                                                                                                value={b.status}
+                                                                                                onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
+                                                                                                className={`text-xs px-2 py-1 border border-slate-200 rounded-lg font-bold ${statusColors[b.status] || 'bg-slate-100 text-slate-700'}`}
+                                                                                            >
+                                                                                                <option value="pending_payment">Pendente Pagamento</option>
+                                                                                                <option value="confirmed">Confirmado</option>
+                                                                                                <option value="completed">Concluído</option>
+                                                                                                <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                                                <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                                                <option value="no_show_unjustified">Falta Injustificada</option>
+                                                                                            </select>
+                                                                                        </td>
+
+                                                                                        <td className="p-3 text-right">
+                                                                                            <div className="flex items-center justify-end gap-1.5">
+                                                                                                {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
+                                                                                                    <a
+                                                                                                        href={b.meeting_link}
+                                                                                                        target="_blank"
+                                                                                                        rel="noopener noreferrer"
+                                                                                                        className="bg-emerald-50 text-[#2d8659] border border-emerald-200 px-2 py-1 rounded-md text-[11px] font-bold hover:bg-emerald-100 transition-colors"
+                                                                                                    >
+                                                                                                        Zoom
+                                                                                                    </a>
+                                                                                                )}
+                                                                                                <Dialog>
+                                                                                                    <DialogTrigger asChild>
+                                                                                                        <Button
+                                                                                                            size="sm"
+                                                                                                            variant="outline"
+                                                                                                            className="h-7 px-2 text-xs border-slate-200 hover:bg-slate-50"
+                                                                                                            onClick={() => {
+                                                                                                                setEditingBooking(b);
+                                                                                                                setBookingEditData({
+                                                                                                                    booking_date: b.booking_date,
+                                                                                                                    booking_time: b.booking_time,
+                                                                                                                    status: b.status,
+                                                                                                                    professional_id: b.professional_id || '',
+                                                                                                                    service_id: b.service_id || '',
+                                                                                                                    patient_name: b.patient_name || '',
+                                                                                                                    patient_email: b.patient_email || '',
+                                                                                                                    patient_phone: b.patient_phone || '',
+                                                                                                                    valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
+                                                                                                                    valor_repasse_profissional: formatNumberToCurrencyInput(
+                                                                                                                        b.valor_repasse_profissional ?? b.valor_consulta ?? ''
+                                                                                                                    )
+                                                                                                                });
+                                                                                                            }}
+                                                                                                        >
+                                                                                                            <Edit className="w-3 h-3" />
+                                                                                                        </Button>
+                                                                                                    </DialogTrigger>
+                                                                                                    <DialogContent className="max-w-2xl">
+                                                                                                        <DialogHeader>
+                                                                                                            <DialogTitle className="flex items-center">
+                                                                                                                <Edit className="w-5 h-5 mr-2 text-[#2d8659]" />
+                                                                                                                Editar Agendamento
+                                                                                                            </DialogTitle>
+                                                                                                        </DialogHeader>
+                                                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+                                                                                                            <div>
+                                                                                                                <label className="block text-sm font-medium mb-1">Nome do Paciente *</label>
+                                                                                                                <input
+                                                                                                                    type="text"
+                                                                                                                    value={bookingEditData.patient_name}
+                                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, patient_name: e.target.value })}
+                                                                                                                    className="w-full input text-sm"
+                                                                                                                    placeholder="Nome completo"
+                                                                                                                />
+                                                                                                            </div>
+                                                                                                            <div>
+                                                                                                                <label className="block text-sm font-medium mb-1">Data *</label>
+                                                                                                                <input
+                                                                                                                    type="date"
+                                                                                                                    value={bookingEditData.booking_date}
+                                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, booking_date: e.target.value })}
+                                                                                                                    className="w-full input text-sm"
+                                                                                                                />
+                                                                                                            </div>
+                                                                                                            <div>
+                                                                                                                <label className="block text-sm font-medium mb-1">Horário *</label>
+                                                                                                                <input
+                                                                                                                    type="time"
+                                                                                                                    value={bookingEditData.booking_time}
+                                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, booking_time: e.target.value })}
+                                                                                                                    className="w-full input text-sm"
+                                                                                                                />
+                                                                                                            </div>
+                                                                                                            <div>
+                                                                                                                <label className="block text-sm font-medium mb-1">Status *</label>
+                                                                                                                <select
+                                                                                                                    value={bookingEditData.status}
+                                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, status: e.target.value })}
+                                                                                                                    className="w-full input text-sm"
+                                                                                                                >
+                                                                                                                    <option value="pending_payment">Pendente Pagamento</option>
+                                                                                                                    <option value="confirmed">Confirmado</option>
+                                                                                                                    <option value="completed">Concluído</option>
+                                                                                                                    <option value="cancelled_by_patient">Cancelado (Paciente)</option>
+                                                                                                                    <option value="cancelled_by_professional">Cancelado (Profissional)</option>
+                                                                                                                    <option value="no_show_unjustified">Falta Injustificada</option>
+                                                                                                                </select>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <DialogFooter>
+                                                                                                            <DialogClose asChild>
+                                                                                                                <Button variant="outline">Cancelar</Button>
+                                                                                                            </DialogClose>
+                                                                                                            <Button
+                                                                                                                onClick={handleUpdateBooking}
+                                                                                                                className="bg-[#2d8659] hover:bg-[#236b47] text-white"
+                                                                                                            >
+                                                                                                                Salvar
+                                                                                                            </Button>
+                                                                                                        </DialogFooter>
+                                                                                                    </DialogContent>
+                                                                                                </Dialog>
+                                                                                            </div>
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                );
+                                                                            })}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            paginatedBookings.map((b, index) => {
                                                             const statusColors = {
                                                                 'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                                 'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -3194,7 +3356,7 @@ const AdminPage = () => {
                                                                                                     {professionalChipLabel}: R$ {professionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                                                 </span>
                                                                                             )}
-                                                                                            {userRole === 'admin' && (
+                                                                                            {userRole === 'admin' && platformFeeValue > 0 && (
                                                                                                 <span className="text-xs text-purple-700 block">
                                                                                                     Taxa plataforma: R$ {platformFeeValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                                                                 </span>
@@ -3524,7 +3686,7 @@ const AdminPage = () => {
                                                                     </div>
                                                                 </div>
                                                             );
-                                                        })}
+                                                        }))}
 
                                                         {/* Navegação de Páginas */}
                                                         {totalPages > 1 && (
@@ -3566,8 +3728,6 @@ const AdminPage = () => {
                                                 </div>
                                             );
                                         })()}
-                                    </>
-                                )}
                             </div>
                         </Suspense>
 </TabsContent>
@@ -3628,11 +3788,45 @@ const AdminPage = () => {
 </TabsContent>
 
 
-                        {/* Patients Tab - Professional View Only */}
-                        {
-                            isProfessionalView && (
-                                <TabsContent value="patients" className="mt-6">
+                        {/* Patients Tab - Admin e Profissional */}
+                        <TabsContent value="patients" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                            <div className="space-y-6">
+                                {/* Seletor de Visão */}
+                                <div className="flex justify-end">
+                                    <div className="bg-slate-200/80 p-1 rounded-xl flex items-center gap-1 border border-slate-300/60 shadow-inner">
+                                        <button
+                                            onClick={() => setPatientView('analytics')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                patientView === 'analytics'
+                                                    ? 'bg-white text-[#2d8659] shadow-sm'
+                                                    : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            <Activity className="w-3.5 h-3.5" />
+                                            Analytics de Retenção & CRM
+                                        </button>
+                                        <button
+                                            onClick={() => setPatientView('list')}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                patientView === 'list'
+                                                    ? 'bg-white text-[#2d8659] shadow-sm'
+                                                    : 'text-slate-600 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            <List className="w-3.5 h-3.5" />
+                                            Lista Simples de Pacientes
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {patientView === 'analytics' ? (
+                                    <PatientAnalyticsDashboard
+                                        patients={patientData.patients}
+                                        loading={patientData.loading}
+                                        onPatientClick={handlePatientClick}
+                                    />
+                                ) : (
                                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                                         <div className="flex items-center gap-3 mb-6">
                                             <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
@@ -3640,7 +3834,7 @@ const AdminPage = () => {
                                             </div>
                                             <div>
                                                 <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
-                                                <p className="text-sm text-gray-600">Visualize e gerencie seus pacientes</p>
+                                                <p className="text-sm text-gray-600">Visualize e gerencie os pacientes da plataforma</p>
                                             </div>
                                         </div>
 
@@ -3650,20 +3844,20 @@ const AdminPage = () => {
                                             loading={patientData.loading}
                                         />
                                     </div>
+                                )}
+                            </div>
 
-                                    <PatientDetailsModal
-                                        patient={selectedPatient}
-                                        isOpen={isPatientModalOpen}
-                                        onClose={() => {
-                                            setIsPatientModalOpen(false);
-                                            setSelectedPatient(null);
-                                        }}
-                                        onSaveNotes={handleSavePatientNotes}
-                                    />
-                                </Suspense>
+                            <PatientDetailsModal
+                                patient={selectedPatient}
+                                isOpen={isPatientModalOpen}
+                                onClose={() => {
+                                    setIsPatientModalOpen(false);
+                                    setSelectedPatient(null);
+                                }}
+                                onSaveNotes={handleSavePatientNotes}
+                            />
+</Suspense>
 </TabsContent>
-                            )
-                        }
 
                         {/* Financial Dashboard Tab - Professional View Only */}
                         {
@@ -5505,16 +5699,12 @@ const AdminPage = () => {
                             userRole === 'admin' && (
                                 <TabsContent value="settings" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-2xl font-bold mb-6 flex items-center">
-                                            <Settings className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                            Configurações do Sistema
-                                        </h2>
-                                        <div className="space-y-6">
-                                            <div className="border rounded-lg p-4">
-                                                <h3 className="font-semibold text-lg mb-4">Marketing & Lead Magnets</h3>
-                                                <SettingsToggle />
-                                            </div>
+                                    <div className="space-y-6">
+                                        <SystemSettingsManager userRole={userRole} />
+
+                                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                                            <h3 className="font-semibold text-lg mb-4 text-slate-900">Marketing & Lead Magnets</h3>
+                                            <SettingsToggle />
                                         </div>
                                     </div>
                                 </Suspense>
@@ -5530,9 +5720,10 @@ const AdminPage = () => {
 </TabsContent>
                             )
                         }
-                    </Tabs >
-                </div >
-            </div >
+                    </Tabs>
+                </div>
+            </div>
+        </div>
 
             <ConfirmDialog
                 isOpen={confirmDialog.isOpen}

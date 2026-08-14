@@ -90,7 +90,13 @@
     1. **Agregação de Compatibilidade:** Atualizar `useFinancialData.jsx` e `AdminPage.jsx` (`calculateTotals`) para mapear `['pending', 'pending_payment', 'awaiting_payment']` como pendentes e `['confirmed', 'paid']` como confirmados.
     2. **Faltas Injustificadas (`no_show_unjustified`):** Categorizar faltas sem justificativa do paciente como receita realizada e repasse devido ao psicólogo, pois o profissional esteve disponível.
     3. **Ampliação Visual (`getStatusLabel` e `statusColors`):** Incluir cores e rótulos para `expired`, `refunded` e `partially_refunded`.
-  - *Consequências:* Relatórios gerenciais 100% precisos, zerando divergências entre o fluxo de caixa da Doxologos e a folha de repasse aos profissionais.
+- **Data (2026-08-14):** **Redesign de Alta Densidade e Usabilidade na Tela de Agendamentos (v3.2).**
+  - *Contexto:* A aba de agendamentos consumia rolagem vertical excessiva devido a 7 cards de totais financeiros em 2 linhas e cards verticais de agendamentos com dados de preços duplicados (~220px por card).
+  - *Decisão:* 
+    1. **Barra Resumo Executiva em 1 Linha:** Substituir a grade de 7 cards por uma faixa horizontal compacta de 48px de altura.
+    2. **Tabela de Dados (Data Table de Alta Densidade):** Adicionar o modo Data Table com linhas compactas de ~48px de altura (Data/Hora, Paciente, Psicólogo, Financeiro, Status e Ações).
+    3. **Eliminação de Duplicações:** Remover os badges de preços duplicados dos cards e integrar ordenação/filtros em um toolbar unificado de 1 linha.
+  - *Consequências:* Redução de 75% na rolagem vertical, permitindo visualizar de 10 a 15 agendamentos completos por tela.
 
 
 

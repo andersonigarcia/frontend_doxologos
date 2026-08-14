@@ -30,9 +30,10 @@ function parseCurrencyToNumber(value) {
 
 function normalizeService(service) {
     const patientValue = parseCurrencyToNumber(service.price);
+    const defaultPayout = Number.isFinite(patientValue) ? (patientValue * 0.60) : 0;
     const payoutValue = parseCurrencyToNumber(
         service.professional_payout === undefined || service.professional_payout === null
-            ? service.price
+            ? defaultPayout
             : service.professional_payout
     );
     return {
@@ -40,7 +41,7 @@ function normalizeService(service) {
         price: Number.isFinite(patientValue) ? patientValue : 0,
         professional_payout: Number.isFinite(payoutValue)
             ? payoutValue
-            : Number.isFinite(patientValue) ? patientValue : 0,
+            : defaultPayout,
         duration_minutes: Number.isFinite(Number.parseInt(service.duration_minutes, 10))
             ? Number.parseInt(service.duration_minutes, 10)
             : service.duration_minutes,

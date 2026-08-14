@@ -131,7 +131,7 @@ export const PageErrorBoundary = ({ children, pageName }) => {
         <p className="text-gray-600 mb-6">
           Não foi possível carregar esta página. Tente recarregar ou voltar para o início.
         </p>
-        <div className="space-x-4">
+        <div className="space-x-4 mb-4">
           <button
             onClick={retry}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md"
@@ -145,6 +145,16 @@ export const PageErrorBoundary = ({ children, pageName }) => {
             Voltar ao início
           </a>
         </div>
+        {error && (
+          <details className="mt-4 text-left max-w-xl mx-auto p-4 bg-red-50 border border-red-200 rounded-md">
+            <summary className="cursor-pointer text-sm font-semibold text-red-700">
+              Detalhes do Erro: {error.toString()}
+            </summary>
+            <pre className="mt-2 text-xs text-red-900 overflow-auto max-h-60 whitespace-pre-wrap font-mono">
+              {error.stack}
+            </pre>
+          </details>
+        )}
       </div>
     </div>
   );

@@ -1,22 +1,24 @@
 /**
- * usePatientData — Dados de pacientes agrupados por profissional
- *
- * R-01: Migrado de useState+useEffect para TanStack Query.
- * Benefícios: retry automático (2x), cache de 5min, deduplicação de requests.
+ * usePatientData — Dados de pacientes agrupados por profissional ou visão global admin
  */
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/customSupabaseClient';
 
 async function fetchPatientData(professionalId) {
-    const { data: bookings, error } = await supabase
+    let query = supabase
         .from('bookings')
         .select(`
       *,
       service:services(name, price),
       professional:professionals(name)
     `)
-        .eq('professional_id', professionalId)
         .order('booking_date', { ascending: false });
+
+    if (professionalId) {
+        query = query.eq('professional_id', professionalId);
+    }
+
+    const { data: bookings, error } = await query;
 
     if (error) throw error;
 
@@ -48,12 +50,12 @@ async function fetchPatientData(professionalId) {
         patient.totalBookings++;
 
         if (['confirmed', 'paid', 'completed'].includes(booking.status)) {
-            patient.totalSpent += parseFloat(booking.valor_repasse_profissional) || 0;
+            patient.totalSpent += parseFloat(booking.valor_consulta || booking.valor_repasse_profissional) || 0;
         }
 
         if (booking.status === 'completed') {
             patient.completedBookings++;
-        } else if (booking.status.includes('cancelled')) {
+        } else if (booking.status && booking.status.includes('cancelled')) {
             patient.cancelledBookings++;
         } else if (['pending', 'awaiting_payment'].includes(booking.status)) {
             patient.pendingBookings++;
@@ -76,15 +78,15 @@ async function fetchPatientData(professionalId) {
 }
 
 /**
- * @param {string|null} professionalId
+ * @param {string|null} professionalId - ID do profissional (opcional). Se null, busca todos (visão admin).
  */
 export function usePatientData(professionalId = null) {
     const query = useQuery({
-        queryKey: ['patientData', professionalId],
+        queryKey: ['patientData', professionalId || 'all'],
         queryFn: () => fetchPatientData(professionalId),
         staleTime: 5 * 60 * 1000,
         retry: 2,
-        enabled: !!professionalId,
+        enabled: true,
     });
 
     return {

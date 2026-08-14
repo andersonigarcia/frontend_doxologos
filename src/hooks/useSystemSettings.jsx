@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 
+export const DEFAULT_SYSTEM_SETTINGS = {
+  platform_default_retention_pct: 40,
+  mp_estimated_gateway_fee_pct: 2.99,
+  nfse_estimated_tax_rate_pct: 6.00,
+  cancellation_min_hours_notice: 24,
+  cancellation_late_patient_retention_pct: 20,
+  reschedule_min_hours_notice: 12,
+  express_booking_tolerance_minutes: 15,
+  nextday_booking_tolerance_minutes: 30,
+  standard_booking_tolerance_minutes: 60,
+  default_appointment_duration_minutes: 50,
+  professional_monthly_capacity_slots: 80,
+  whatsapp_reminders_enabled: true
+};
+
 /**
  * Hook to manage system settings stored in the database.
  * @param {string} [key] - Optional specific key to listen to. If not provided, fetches all settings.
  */
 export const useSystemSettings = (key = null) => {
-    const [settings, setSettings] = useState({});
+    const [settings, setSettings] = useState(DEFAULT_SYSTEM_SETTINGS);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -30,7 +45,7 @@ export const useSystemSettings = (key = null) => {
                     return acc;
                 }, {});
 
-                setSettings(prev => ({ ...prev, ...settingsMap }));
+                setSettings(prev => ({ ...DEFAULT_SYSTEM_SETTINGS, ...prev, ...settingsMap }));
             } catch (err) {
                 console.error('Error fetching system settings:', err);
                 setError(err);
@@ -91,6 +106,8 @@ export const useSystemSettings = (key = null) => {
         error,
         updateSetting,
         // Helper to get a specific value with default
-        getSetting: (k, defaultValue) => settings[k] ?? defaultValue
+        getSetting: (k, defaultValue) => settings[k] ?? DEFAULT_SYSTEM_SETTINGS[k] ?? defaultValue
     };
 };
+
+export default useSystemSettings;
