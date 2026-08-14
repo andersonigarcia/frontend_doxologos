@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle, ShieldCheck, Zap, Moon, Brain, Sprout, MessageCircle, Filter, X } from 'lucide-react';
 import analytics from '@/lib/analytics';
 
 const ProfessionalStep = ({
@@ -143,7 +143,9 @@ const ProfessionalStep = ({
   const quickFilterDefinitions = useMemo(() => [
     {
       id: 'available-today',
-      label: '⚡ Disponível Hoje',
+      label: 'Disponível Hoje',
+      icon: Zap,
+      iconColor: 'text-amber-500',
       predicate: (professional) => {
         const nextSlot = getNextAvailableSlot(professional);
         if (!nextSlot) return false;
@@ -154,6 +156,8 @@ const ProfessionalStep = ({
     {
       id: 'logoterapia',
       label: 'Logoterapia',
+      icon: Sprout,
+      iconColor: 'text-emerald-600',
       predicate: (professional) => {
         const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
         return text.includes('logoterapia') || text.includes('logoterapeuta');
@@ -162,6 +166,8 @@ const ProfessionalStep = ({
     {
       id: 'tcc',
       label: 'TCC (Cognitiva)',
+      icon: Brain,
+      iconColor: 'text-blue-500',
       predicate: (professional) => {
         const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
         return text.includes('tcc') || text.includes('cognitivo-comportamental') || text.includes('cognitiva');
@@ -170,6 +176,8 @@ const ProfessionalStep = ({
     {
       id: 'psicanalise',
       label: 'Psicanálise',
+      icon: MessageCircle,
+      iconColor: 'text-purple-500',
       predicate: (professional) => {
         const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
         return text.includes('psicanálise') || text.includes('psicanalítica') || text.includes('psicanalista');
@@ -177,7 +185,9 @@ const ProfessionalStep = ({
     },
     {
       id: 'night-slots',
-      label: '🌙 Atendimento Noturno',
+      label: 'Atendimento Noturno',
+      icon: Moon,
+      iconColor: 'text-indigo-500',
       predicate: (professional) => {
         const profAvail = availability[professional.id];
         if (!profAvail) return false;
@@ -767,37 +777,52 @@ const ProfessionalStep = ({
             </div>
 
             <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-2 font-semibold">Filtros rápidos</p>
-              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 md:m-0 md:px-0" role="toolbar" aria-label="Filtros de profissionais">
-                {quickFilterDefinitions.map((filter) => {
-                  const isActive = activeFilters.includes(filter.id);
-                  return (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      onClick={() =>
-                        setActiveFilters((prev) =>
-                          prev.includes(filter.id)
-                            ? prev.filter((id) => id !== filter.id)
-                            : [...prev, filter.id]
-                        )
-                      }
-                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${isActive ? 'bg-[#2d8659] text-white border-[#2d8659]' : 'border-gray-300 text-gray-700'
-                        }`}
-                    >
-                      {filter.label}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-[#1b3c37]" />
+                  Filtros rápidos
+                </p>
                 {activeFilters.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setActiveFilters([])}
-                    className="text-sm text-[#2d8659] underline whitespace-nowrap"
+                    className="text-xs text-[#2d8659] hover:text-[#132d29] font-medium flex items-center gap-1 underline transition-colors"
                   >
-                    Limpar filtros
+                    <X className="w-3 h-3" />
+                    Limpar ({activeFilters.length})
                   </button>
                 )}
+              </div>
+
+              <div className="relative -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-0.5 no-scrollbar scroll-smooth" role="toolbar" aria-label="Filtros de profissionais">
+                  {quickFilterDefinitions.map((filter) => {
+                    const isActive = activeFilters.includes(filter.id);
+                    const IconComponent = filter.icon;
+                    return (
+                      <button
+                        key={filter.id}
+                        type="button"
+                        onClick={() =>
+                          setActiveFilters((prev) =>
+                            prev.includes(filter.id)
+                              ? prev.filter((id) => id !== filter.id)
+                              : [...prev, filter.id]
+                          )
+                        }
+                        className={`whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all duration-200 shadow-xs touch-manipulation active:scale-95 ${isActive
+                            ? 'bg-[#1b3c37] text-white border-[#1b3c37] ring-2 ring-[#1b3c37]/20 shadow-md'
+                            : 'bg-white text-gray-700 border-gray-200 hover:border-[#1b3c37]/40 hover:bg-gray-50'
+                          }`}
+                      >
+                        {IconComponent && (
+                          <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : filter.iconColor}`} />
+                        )}
+                        <span>{filter.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

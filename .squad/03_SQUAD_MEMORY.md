@@ -96,7 +96,15 @@
     1. **Barra Resumo Executiva em 1 Linha:** Substituir a grade de 7 cards por uma faixa horizontal compacta de 48px de altura.
     2. **Tabela de Dados (Data Table de Alta Densidade):** Adicionar o modo Data Table com linhas compactas de ~48px de altura (Data/Hora, Paciente, Psicólogo, Financeiro, Status e Ações).
     3. **Eliminação de Duplicações:** Remover os badges de preços duplicados dos cards e integrar ordenação/filtros em um toolbar unificado de 1 linha.
-  - *Consequências:* Redução de 75% na rolagem vertical, permitindo visualizar de 10 a 15 agendamentos completos por tela.
+- **Data (2026-08-14):** **Otimização da Experiência Mobile & Hardening de Conversão (FASE 3.1 - CRO & Mobile-First).**
+  - *Contexto:* Em preparação para o lançamento de campanhas de tráfego pago (Meta Ads/Google Ads) com tráfego predominantemente mobile (>80%), foi realizada uma auditoria completa que identificou gargalos de UX, colisão de elementos fixos no rodapé, atritos em teclados virtuais e formato ineficiente de apresentação do PIX no celular.
+  - *Decisão:*
+    1. **Orquestração de Flutuantes (Z-Index):** Reposicionar o botão do WhatsApp (`FloatingWhatsAppButton.jsx`) com offset responsivo (`bottom-[88px] md:bottom-28`) e ajuste de z-index (`z-40`) para eliminar sobreposição com barras sticky e banners LGPD em telas mobile (<768px).
+    2. **Teclados Nativos & Autocomplete:** Adicionar `autoComplete` e `inputMode` nativos do iOS/Android em formulários de cadastro e agendamento (`PatientAccountStep.jsx`).
+    3. **Grid Responsivo de Horários:** Reconfigurar a seleção de horários (`DateTimeStep.jsx`) para 2 colunas responsivas (`grid-cols-2`) no mobile, reduzindo em 50% o scroll vertical e garantindo alvos de toque maiores (48px+).
+    4. **PIX Mobile-First:** No checkout de PIX (`CheckoutPage.jsx`), promover o botão "Copiar Código PIX Copia e Cola" a destaque primário de 100% da largura com aviso amigável, recolhendo o QR Code em menu explicativo para navegação em tela única.
+  - *Consequências:* Eliminação de vazamento de conversão em dispositivos móveis, redução do tempo de agendamento e maximização do ROI de tráfego pago.
+
 
 
 

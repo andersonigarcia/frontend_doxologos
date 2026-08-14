@@ -71,6 +71,7 @@ const PatientAccountStep = ({
               <input
                 type="email"
                 inputMode="email"
+                autoComplete="email"
                 {...register('email', {
                   setValueAs: (value) => (value ?? '').trim(),
                 })}
@@ -141,6 +142,7 @@ const PatientAccountStep = ({
                   <div className="relative">
                     <input
                       type="text"
+                      autoComplete="name"
                       {...register('name', {
                         setValueAs: (value) => (value ?? '').trim(),
                       })}
@@ -167,6 +169,7 @@ const PatientAccountStep = ({
                     <input
                       type="tel"
                       inputMode="numeric"
+                      autoComplete="tel"
                       {...register('phone', {
                         onChange: (event) => {
                           const formatted = formatPhoneNumber(event.target.value);

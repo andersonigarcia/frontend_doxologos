@@ -1168,60 +1168,76 @@ const CheckoutPage = () => {
                             )}
                         </Card>
 
-                        {/* QR Code do PIX */}
+                        {/* QR Code e Código Copia e Cola do PIX */}
                         {pixPayment && selectedMethod === 'pix' && (
-                            <Card className="p-6">
-                                <h3 className="text-lg font-bold mb-4 text-center">
+                            <Card className="p-6 border-2 border-emerald-500/30 shadow-lg">
+                                <h3 className="text-xl font-bold mb-4 text-center text-emerald-900 flex items-center justify-center gap-2">
+                                    <Smartphone className="w-5 h-5 text-emerald-600" />
                                     Pague com PIX
                                 </h3>
 
                                 <div className="flex flex-col items-center">
-                                    <div className="bg-white p-4 rounded-lg border-2 mb-4">
-                                        <QRCodeSVG
-                                            value={pixPayment.qrCode}
-                                            size={256}
-                                            level="M"
-                                        />
-                                    </div>
-                                    <p className="text-sm text-gray-600 text-center mb-4">
-                                        Escaneie o QR Code com o app do seu banco
-                                    </p>
+                                    {/* Destaque Mobile First: Botão Copiar PIX */}
+                                    <div className="w-full bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl mb-4 text-center">
+                                        <p className="text-xs font-semibold text-emerald-800 mb-2">
+                                            📲 No celular: Copie o código abaixo e cole no app do seu banco
+                                        </p>
 
-                                    <div className="w-full bg-gray-50 p-4 rounded-lg">
-                                        <p className="text-xs text-gray-600 mb-2">Ou copie o código PIX:</p>
-                                        <div className="flex gap-2">
+                                        <Button
+                                            size="lg"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(pixPayment.qrCode);
+                                                toast({
+                                                    title: '✅ Código PIX Copiado!',
+                                                    description: 'Abra o app do seu banco e escolha PIX Copia e Cola.',
+                                                });
+                                            }}
+                                            className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all touch-manipulation"
+                                        >
+                                            <Smartphone className="w-5 h-5" />
+                                            Copiar Código PIX Copia e Cola
+                                        </Button>
+
+                                        <div className="mt-3 flex items-center gap-2">
                                             <input
                                                 type="text"
                                                 value={pixPayment.qrCode}
                                                 readOnly
-                                                className="flex-1 input text-xs font-mono"
+                                                className="flex-1 px-3 py-1.5 bg-white border border-emerald-200 rounded-lg text-xs font-mono text-gray-700 truncate"
                                             />
-                                            <Button
-                                                size="sm"
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(pixPayment.qrCode);
-                                                    toast({ title: 'Código copiado!' });
-                                                }}
-                                            >
-                                                Copiar
-                                            </Button>
                                         </div>
                                     </div>
 
-                                    <div className="mt-6 text-center">
-                                        <div className="flex items-center justify-center gap-2 text-yellow-600 mb-2">
-                                            <Clock className="w-5 h-5 animate-pulse" />
-                                            <p className="font-semibold">
-                                                {paymentStatus?.status === 'approved'
-                                                    ? 'Pagamento Aprovado!'
-                                                    : 'Aguardando pagamento...'}
+                                    {/* QR Code para Desktop ou Escaneamento Secundário */}
+                                    <details className="w-full text-center group mb-4">
+                                        <summary className="text-xs text-gray-600 cursor-pointer hover:text-emerald-700 font-medium py-1 select-none">
+                                            🔍 Prefere escanear o QR Code? Clique para exibir
+                                        </summary>
+                                        <div className="mt-3 flex flex-col items-center animate-in fade-in duration-200">
+                                            <div className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-sm inline-block">
+                                                <QRCodeSVG
+                                                    value={pixPayment.qrCode}
+                                                    size={220}
+                                                    level="M"
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-2">
+                                                Escaneie a imagem com a câmera do app do seu banco
                                             </p>
                                         </div>
-                                        <p className="text-sm text-gray-600">
-                                            Status atual: <span className="font-mono font-bold">{paymentStatus?.status || 'criado'}</span>
-                                        </p>
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            O status será atualizado automaticamente.
+                                    </details>
+
+                                    <div className="w-full text-center border-t border-gray-100 pt-4">
+                                        <div className="flex items-center justify-center gap-2 text-amber-700 mb-1">
+                                            <Clock className="w-4 h-4 animate-pulse" />
+                                            <p className="font-semibold text-sm">
+                                                {paymentStatus?.status === 'approved'
+                                                    ? '🎉 Pagamento Aprovado!'
+                                                    : 'Aguardando pagamento no banco...'}
+                                            </p>
+                                        </div>
+                                        <p className="text-xs text-gray-500">
+                                            Status: <span className="font-mono font-bold text-gray-700">{paymentStatus?.status || 'pendente'}</span> • A confirmação é automática (sem recarregar).
                                         </p>
                                     </div>
                                 </div>

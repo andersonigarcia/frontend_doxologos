@@ -495,7 +495,7 @@ const DateTimeStep = ({
                             <h4 className="text-sm font-semibold text-gray-700">Manhã</h4>
                             <span className="text-xs text-gray-500">({timePeriods.manha.length} {timePeriods.manha.length === 1 ? 'horário' : 'horários'})</span>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5">
                             {timePeriods.manha.map((time) => {
                               const disabled = bookedSlots.includes(time);
                               const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
@@ -550,7 +550,7 @@ const DateTimeStep = ({
                             <h4 className="text-sm font-semibold text-gray-700">Tarde</h4>
                             <span className="text-xs text-gray-500">({timePeriods.tarde.length} {timePeriods.tarde.length === 1 ? 'horário' : 'horários'})</span>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5">
                             {timePeriods.tarde.map((time) => {
                               const disabled = bookedSlots.includes(time);
                               const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
@@ -605,7 +605,7 @@ const DateTimeStep = ({
                             <h4 className="text-sm font-semibold text-gray-700">Noite</h4>
                             <span className="text-xs text-gray-500">({timePeriods.noite.length} {timePeriods.noite.length === 1 ? 'horário' : 'horários'})</span>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5">
                             {timePeriods.noite.map((time) => {
                               const disabled = bookedSlots.includes(time);
                               const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
