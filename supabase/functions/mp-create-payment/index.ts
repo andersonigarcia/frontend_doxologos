@@ -196,13 +196,36 @@ serve(async (req) => {
       metadata.inscricao_id = inscricao_id;
     }
 
+    // Calcular antecedência e janela de expiração do pagamento (SLA Doxologos):
+    // - Antecedência < 3h: 15 minutos (15 * 60 * 1000)
+    // - Antecedência 3h a 24h: 30 minutos (30 * 60 * 1000)
+    // - Antecedência > 24h: 60 minutos (60 * 60 * 1000)
+    let allowedWindowMs = 30 * 60 * 1000; // Padrão 30 min
+    if (booking && booking.booking_date) {
+      let bTime = booking.booking_time || '00:00';
+      if (bTime.length === 5) bTime += ':00';
+      const bookingTimeMs = new Date(`${booking.booking_date}T${bTime}`).getTime();
+      const leadTimeMs = bookingTimeMs - Date.now();
+
+      if (leadTimeMs < 3 * 60 * 60 * 1000) {
+        allowedWindowMs = 15 * 60 * 1000; // 15 minutos para consultas em < 3h
+      } else if (leadTimeMs < 24 * 60 * 60 * 1000) {
+        allowedWindowMs = 30 * 60 * 1000; // 30 minutos entre 3h e 24h
+      } else {
+        allowedWindowMs = 60 * 60 * 1000; // 60 minutos para consultas em > 24h
+      }
+    }
+
+    const expirationDateIso = new Date(Date.now() + allowedWindowMs).toISOString();
+
     // Criar pagamento PIX no Mercado Pago
-    console.log('🔵 Creating PIX payment in Mercado Pago...');
+    console.log(`🔵 Creating PIX payment in Mercado Pago (expires at: ${expirationDateIso}, window: ${allowedWindowMs / 60000}m)...`);
 
     const paymentPayload = {
       transaction_amount: finalAmount,
       description: paymentDescription,
       payment_method_id: payment_method_id || 'pix',
+      date_of_expiration: expirationDateIso,
       payer: {
         email: payerData.email,
         first_name: payerData.name?.split(' ')[0] || 'Cliente',
@@ -341,7 +364,9 @@ serve(async (req) => {
         status: paymentResult.status,
         qr_code: qrCodeData.qr_code,
         qr_code_base64: qrCodeData.qr_code_base64,
-        ticket_url: qrCodeData.ticket_url
+        ticket_url: qrCodeData.ticket_url,
+        expires_at: expirationDateIso,
+        allowed_window_minutes: allowedWindowMs / (60 * 1000)
       }),
       {
         status: 200,

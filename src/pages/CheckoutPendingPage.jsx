@@ -19,10 +19,59 @@ const CheckoutPendingPage = () => {
     const [loading, setLoading] = useState(true);
     const [checking, setChecking] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [timeLeftSeconds, setTimeLeftSeconds] = useState(null);
 
     const paymentId = searchParams.get('payment_id');
     const externalReference = searchParams.get('external_reference');
     const preferenceId = searchParams.get('preference_id');
+
+    useEffect(() => {
+        if (!payment && !booking) return;
+
+        let expiresAtMs = null;
+        if (payment?.raw_payload?.date_of_expiration) {
+            expiresAtMs = new Date(payment.raw_payload.date_of_expiration).getTime();
+        } else {
+            const createdAtMs = booking?.created_at
+                ? new Date(booking.created_at).getTime()
+                : (payment?.created_at ? new Date(payment.created_at).getTime() : Date.now());
+
+            if (booking?.booking_date) {
+                let bTime = booking.booking_time || '00:00';
+                if (bTime.length === 5) bTime += ':00';
+                const bookingTimeMs = new Date(`${booking.booking_date}T${bTime}`).getTime();
+                const leadTimeMs = bookingTimeMs - createdAtMs;
+
+                let allowedWindowMs;
+                if (leadTimeMs < 3 * 60 * 60 * 1000) {
+                    allowedWindowMs = 15 * 60 * 1000;
+                } else if (leadTimeMs < 24 * 60 * 60 * 1000) {
+                    allowedWindowMs = 30 * 60 * 1000;
+                } else {
+                    allowedWindowMs = 60 * 60 * 1000;
+                }
+                expiresAtMs = createdAtMs + allowedWindowMs;
+            } else {
+                expiresAtMs = createdAtMs + 30 * 60 * 1000;
+            }
+        }
+
+        const updateTimer = () => {
+            const remaining = Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
+            setTimeLeftSeconds(remaining);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [booking, payment]);
+
+    const formatTimer = (seconds) => {
+        if (seconds === null) return '--:--';
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -193,9 +242,39 @@ const CheckoutPendingPage = () => {
                         {/* PIX QR Code */}
                         {isPix && payment?.qr_code && (
                             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
-                                <h3 className="font-semibold text-gray-900 mb-4 text-center">
+                                <h3 className="font-semibold text-gray-900 mb-2 text-center">
                                     Pagamento via PIX
                                 </h3>
+
+                                {/* Timer de Expiração da Reserva */}
+                                {timeLeftSeconds !== null && (
+                                    <div className={`mb-4 p-3 rounded-lg text-center font-medium border flex items-center justify-center gap-2 ${
+                                        timeLeftSeconds > 300
+                                            ? 'bg-amber-50 border-amber-200 text-amber-900'
+                                            : timeLeftSeconds > 0
+                                            ? 'bg-red-50 border-red-200 text-red-700 animate-pulse'
+                                            : 'bg-gray-100 border-gray-300 text-gray-700'
+                                    }`}>
+                                        <Clock className="w-5 h-5" />
+                                        {timeLeftSeconds > 0 ? (
+                                            <span>
+                                                Reserva garantida por: <strong className="font-mono text-lg">{formatTimer(timeLeftSeconds)}</strong> min
+                                            </span>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span>⚠️ Reserva expirada. O horário foi liberado para outros pacientes.</span>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => navigate('/agendamento')}
+                                                    className="mt-1 bg-white text-xs"
+                                                >
+                                                    Escolher outro horário
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 
                                 {/* QR Code */}
                                 <div className="flex justify-center mb-4">

@@ -77,7 +77,22 @@
     2. Adicionar botão **"🚀 Replicar para Próximos 3 Meses"** em `AvailabilityManager.jsx` com modal de confirmação visual e handler em `AdminPage.jsx` que replica a grade nos 3 meses vigentes (com tratamento de virada de ano).
     3. Implementar detecção de estado rascunho (*Dirty State*), **Sticky Save Bar** (Barra Flutuante de Salvamento) e alerta de proteção `beforeunload` para impedir a perda silenciosa de alterações.
     4. Garantir a normalização de horários (`HH:MM`) em 24h para compatibilidade total com os filtros de agendamento de pacientes.
-  - *Consequências:* Redução drástica do tempo de configuração de agenda de 10 minutos para 10 segundos, eliminação de agendas vazias nos meses seguintes e satisfação plena dos psicólogos.
+- **Data (2026-08-14):** **Revisão Estratégica & Matriz Dinâmica de Expiração de Agendamentos Pendentes de Pagamento.**
+  - *Contexto:* Agendamentos pendentes de pagamento estavam travando a agenda dos psicólogos por longos períodos (até 6h ou 24h), gerando perda de faturamento para profissionais e frustração operacional.
+  - *Decisão:*
+    1. **Matriz de Tolerância Dinâmica (SLA):** Consultas em < 3h expiram em 15 minutos; consultas entre 3h e 24h expiram em 30 minutos; consultas > 24h expiram em 60 minutos (1 hora).
+    2. **Expiração Nativa Mercado Pago:** Injetar `date_of_expiration` em `mp-create-payment/index.ts` sincronizado exatamente com a tolerância da plataforma para expirar a chave PIX no app do banco e eliminar estornos.
+    3. **Descarte SQL On-The-Fly (`useBookedSlots.js`):** Desconsiderar agendamentos pendentes cuja tolerância expirou em tempo real durante a busca de disponibilidade, liberando o slot instantaneamente antes da cron de limpeza.
+    4. **UX Transparente (`CheckoutPendingPage.jsx`):** Exibir um timer de contagem regressiva em tempo real (`MM:SS`) na tela do QR Code PIX com alerta visual e botão de redirecionamento em caso de expiração.
+- **Data (2026-08-14):** **Padronização de Status de Agendamento no DRE, Fluxo de Caixa e Ledger de Repasse.**
+  - *Contexto:* Existiam pequenas divergências entre os nomes dos status no banco (`pending`, `confirmed`) e os filtros do frontend (`pending_payment`, `paid`), além do tratamento de `no_show_unjustified` como cancelado em vez de faturamento retido e devido ao profissional.
+  - *Decisão:*
+    1. **Agregação de Compatibilidade:** Atualizar `useFinancialData.jsx` e `AdminPage.jsx` (`calculateTotals`) para mapear `['pending', 'pending_payment', 'awaiting_payment']` como pendentes e `['confirmed', 'paid']` como confirmados.
+    2. **Faltas Injustificadas (`no_show_unjustified`):** Categorizar faltas sem justificativa do paciente como receita realizada e repasse devido ao psicólogo, pois o profissional esteve disponível.
+    3. **Ampliação Visual (`getStatusLabel` e `statusColors`):** Incluir cores e rótulos para `expired`, `refunded` e `partially_refunded`.
+  - *Consequências:* Relatórios gerenciais 100% precisos, zerando divergências entre o fluxo de caixa da Doxologos e a folha de repasse aos profissionais.
+
+
 
 
 

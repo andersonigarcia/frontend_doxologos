@@ -41,7 +41,7 @@ export function useFinancialData(professionalId, startDate, endDate) {
             weekAgo.setDate(weekAgo.getDate() - 7);
             const weekAgoStr = weekAgo.toISOString().split('T')[0];
 
-            const confirmed = (bookings || []).filter(b => ['confirmed', 'paid', 'completed'].includes(b.status));
+            const confirmed = (bookings || []).filter(b => ['confirmed', 'paid', 'completed', 'no_show_unjustified'].includes(b.status));
 
             // M-01: somas via centavos
             const dailyRevenue = sumMoney(confirmed.filter(b => b.booking_date === today), b => b.valor_repasse_profissional);
@@ -49,7 +49,7 @@ export function useFinancialData(professionalId, startDate, endDate) {
             const monthlyRevenue = sumMoney(confirmed, b => b.valor_repasse_profissional);
 
             const pendingPayments = (bookings || [])
-                .filter(b => b.status === 'pending_payment' || b.status === 'awaiting_payment')
+                .filter(b => ['pending', 'pending_payment', 'awaiting_payment'].includes(b.status))
                 .sort((a, b) => new Date(a.booking_date) - new Date(b.booking_date));
 
             const totalPending = sumMoney(pendingPayments, b => b.valor_repasse_profissional);

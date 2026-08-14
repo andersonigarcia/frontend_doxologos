@@ -58,10 +58,10 @@ serve(async (req: Request) => {
         }
 
         // 2. Limpeza de Agendamentos (Bookings) e Pacotes Pendentes:
-        // Regra Dinâmica por Antecedência da Consulta:
-        // - Antecedência < 12h (ou mesmo dia): 15 minutos (15 * 60 * 1000)
-        // - Antecedência 12h a 48h: 2 horas (2 * 60 * 60 * 1000)
-        // - Antecedência > 48h: 6 horas (6 * 60 * 60 * 1000)
+        // Nova Matriz Dinâmica de SLA Doxologos por Antecedência da Consulta:
+        // - Express (< 3h antecedência): 15 minutos (15 * 60 * 1000)
+        // - Próximo dia (3h a 24h antecedência): 30 minutos (30 * 60 * 1000)
+        // - Padrão (> 24h antecedência): 60 minutos (60 * 60 * 1000)
         const { data: pendingBookings } = await supabase
             .from('bookings')
             .select('id, package_id, patient_email, patient_name, booking_date, booking_time, created_at')
@@ -86,15 +86,15 @@ serve(async (req: Request) => {
 
                 // Janela de tolerância para pagamento conforme antecedência
                 let allowedWindowMs: number;
-                if (leadTimeMs < 12 * 60 * 60 * 1000) {
-                    // Menos de 12h de antecedência (ou mesmo dia) -> 15 minutos
+                if (leadTimeMs < 3 * 60 * 60 * 1000) {
+                    // Menos de 3h de antecedência (Express) -> 15 minutos
                     allowedWindowMs = 15 * 60 * 1000;
-                } else if (leadTimeMs < 48 * 60 * 60 * 1000) {
-                    // Entre 12h e 48h de antecedência -> 2 horas
-                    allowedWindowMs = 2 * 60 * 60 * 1000;
+                } else if (leadTimeMs < 24 * 60 * 60 * 1000) {
+                    // Entre 3h e 24h de antecedência -> 30 minutos
+                    allowedWindowMs = 30 * 60 * 1000;
                 } else {
-                    // Mais de 48h de antecedência -> 6 horas
-                    allowedWindowMs = 6 * 60 * 60 * 1000;
+                    // Mais de 24h de antecedência -> 60 minutos (1 hora)
+                    allowedWindowMs = 60 * 60 * 1000;
                 }
 
                 const expiredAtMs = createdAtMs + allowedWindowMs;

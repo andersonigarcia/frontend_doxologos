@@ -1305,13 +1305,19 @@ const AdminPage = () => {
 
     const getStatusLabel = (status) => {
         const labels = {
+            'pending': 'Pendente Pagamento',
             'pending_payment': 'Pendente Pagamento',
+            'awaiting_payment': 'Aguardando Pagamento',
             'confirmed': 'Confirmado',
             'paid': 'Pago',
-            'completed': 'Concluído',
+            'completed': 'Concluído (Atendido)',
+            'cancelled': 'Cancelado',
             'cancelled_by_patient': 'Cancelado pelo Paciente',
             'cancelled_by_professional': 'Cancelado pelo Profissional',
-            'no_show_unjustified': 'Falta injustificada'
+            'expired': 'Expirado (Sem Pagamento)',
+            'no_show_unjustified': 'Falta Injustificada',
+            'refunded': 'Reembolsado',
+            'partially_refunded': 'Parcialmente Reembolsado'
         };
         return labels[status] || status;
     };
@@ -1532,17 +1538,25 @@ const AdminPage = () => {
 
             switch (booking.status) {
                 case 'confirmed':
+                case 'paid':
                     totals.confirmedValue += amountForStatus;
                     break;
                 case 'completed':
+                case 'no_show_unjustified':
+                    // Falta injustificada do paciente: receita retida e repasse devido ao profissional
                     totals.completedValue += amountForStatus;
                     break;
+                case 'pending':
                 case 'pending_payment':
+                case 'awaiting_payment':
                     totals.pendingValue += amountForStatus;
                     break;
+                case 'cancelled':
                 case 'cancelled_by_patient':
                 case 'cancelled_by_professional':
-                case 'no_show_unjustified':
+                case 'expired':
+                case 'refunded':
+                case 'partially_refunded':
                     totals.cancelledValue += amountForStatus;
                     break;
                 default:
@@ -2993,23 +3007,35 @@ const AdminPage = () => {
                                                     <div className="space-y-2">
                                                         {paginatedBookings.map((b, index) => {
                                                             const statusColors = {
+                                                                'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
                                                                 'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-                                                                'confirmed': 'bg-green-100 text-green-800 border-green-200',
-                                                                'paid': 'bg-green-100 text-green-800 border-green-200',
+                                                                'awaiting_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                                                                'confirmed': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                                                                'paid': 'bg-emerald-100 text-emerald-800 border-emerald-200',
                                                                 'completed': 'bg-blue-100 text-blue-800 border-blue-200',
+                                                                'cancelled': 'bg-red-100 text-red-800 border-red-200',
                                                                 'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
                                                                 'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
-                                                                'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200'
+                                                                'expired': 'bg-gray-100 text-gray-600 border-gray-200',
+                                                                'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200',
+                                                                'refunded': 'bg-purple-100 text-purple-800 border-purple-200',
+                                                                'partially_refunded': 'bg-purple-100 text-purple-800 border-purple-200'
                                                             };
 
                                                             const statusLabels = {
+                                                                'pending': 'Pendente Pagamento',
                                                                 'pending_payment': 'Pendente Pagamento',
+                                                                'awaiting_payment': 'Aguardando Pagamento',
                                                                 'confirmed': 'Confirmado',
                                                                 'paid': 'Pago',
-                                                                'completed': 'Concluído',
+                                                                'completed': 'Concluído (Atendido)',
+                                                                'cancelled': 'Cancelado',
                                                                 'cancelled_by_patient': 'Cancelado pelo Paciente',
                                                                 'cancelled_by_professional': 'Cancelado pelo Profissional',
-                                                                'no_show_unjustified': 'Falta injustificada'
+                                                                'expired': 'Expirado',
+                                                                'no_show_unjustified': 'Falta Injustificada',
+                                                                'refunded': 'Reembolsado',
+                                                                'partially_refunded': 'Parcialmente Reembolsado'
                                                             };
 
                                                             // Usa valor histórico se disponível, senão usa preço atual do serviço
