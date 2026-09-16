@@ -32,7 +32,6 @@ export const ADMIN_MODULES = [
     icon: LayoutDashboard,
     tabs: [
       { id: 'dashboard', label: 'Dashboard & KPIs', icon: LayoutDashboard },
-      { id: 'analytics', label: 'Comportamento (Analytics)', icon: Sparkles },
     ]
   },
   {

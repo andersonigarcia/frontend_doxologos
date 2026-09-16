@@ -25,8 +25,7 @@ import {
  */
 export const tabsConfig = {
     admin: [
-        { value: 'dashboard', label: '1. Cockpit Estratégico', icon: LayoutDashboard },
-        { value: 'analytics', label: 'Comportamento e Analytics', icon: Sparkles },
+        { value: 'dashboard', label: 'Dashboard & KPIs', icon: LayoutDashboard },
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'financial-control', label: '3. Controladoria & DRE', icon: TrendingUp },
         { value: 'payments', label: 'Pagamentos', icon: DollarSign },
