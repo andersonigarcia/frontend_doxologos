@@ -21,6 +21,14 @@ console.log('🌐 Gerando sitemap dinâmico para:', appUrl);
 async function generateSitemap() {
   const staticRoutes = [
     { loc: '/', changefreq: 'weekly', priority: '1.0' },
+    { loc: '/terapia/ansiedade', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/depressao', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/tdah', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/casal', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/burnout', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/dependencia-emocional', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/vicio-apostas', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/terapia/abuso-espiritual', changefreq: 'weekly', priority: '0.9' },
     { loc: '/ferramentas', changefreq: 'weekly', priority: '0.9' },
     { loc: '/teste-ansiedade', changefreq: 'weekly', priority: '0.9' },
     { loc: '/teste-depressao', changefreq: 'weekly', priority: '0.9' },

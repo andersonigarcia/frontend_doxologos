@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { ArrowLeft, Calendar, User, Share2 } from 'lucide-react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import HomeHeader from '@/components/home/HomeHeader';
+import SiteFooter from '@/components/common/SiteFooter';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -91,6 +92,29 @@ const ArticlePage = () => {
         <meta property="og:description" content={artigo.description} />
         <meta property="og:type" content="article" />
         {artigo.cover_image_url && <meta property="og:image" content={artigo.cover_image_url} />}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: artigo.title,
+            description: artigo.description,
+            image: artigo.cover_image_url || 'https://doxologos.com.br/og-image.jpg',
+            author: {
+              '@type': 'Person',
+              name: artigo.author || 'Equipe Doxologos'
+            },
+            publisher: {
+              '@type': 'Organization',
+              name: 'Doxologos',
+              logo: {
+                '@type': 'ImageObject',
+                url: 'https://doxologos.com.br/logo.png'
+              }
+            },
+            datePublished: artigo.published_at || new Date().toISOString(),
+            dateModified: artigo.updated_at || artigo.published_at || new Date().toISOString()
+          })}
+        </script>
       </Helmet>
 
       <HomeHeader
@@ -191,11 +215,7 @@ const ArticlePage = () => {
         </article>
       </main>
 
-      <footer className="bg-gray-900 text-white py-12 mt-auto">
-         <div className="container mx-auto px-4 text-center">
-            <p className="text-gray-400 text-sm">&copy; {new Date().getFullYear()} Doxologos. Todos os direitos reservados.</p>
-         </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 };

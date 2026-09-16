@@ -52,6 +52,14 @@ const LgpdCookieBanner = lazy(() => import('@/components/common/LgpdCookieBanner
 const BookResourcePage = lazy(() => import('@/pages/BookResourcePage'));
 const AssessmentPage = lazy(() => import('@/pages/AssessmentPage'));
 const AssessmentHubPage = lazy(() => import('@/pages/AssessmentHubPage'));
+const TerapiaAnsiedadePage = lazy(() => import('@/pages/TerapiaAnsiedadePage'));
+const TerapiaDepressaoPage = lazy(() => import('@/pages/TerapiaDepressaoPage'));
+const TerapiaTdahPage = lazy(() => import('@/pages/TerapiaTdahPage'));
+const TerapiaCasalPage = lazy(() => import('@/pages/TerapiaCasalPage'));
+const TerapiaBurnoutPage = lazy(() => import('@/pages/TerapiaBurnoutPage'));
+const TerapiaDependenciaPage = lazy(() => import('@/pages/TerapiaDependenciaPage'));
+const TerapiaVicioApostasPage = lazy(() => import('@/pages/TerapiaVicioApostasPage'));
+const TerapiaAbusoEspiritualPage = lazy(() => import('@/pages/TerapiaAbusoEspiritualPage'));
 
 
 
@@ -281,7 +289,47 @@ function AppContent() {
               </PageErrorBoundary>
             </ProtectedRoute>
           } />
-          {/* Book Companion — QR Codes do Livro */}
+          {/* Landing Pages Específicas para SEO */}
+          <Route path="/terapia/ansiedade" element={
+            <PageErrorBoundary pageName="Terapia para Ansiedade">
+              <TerapiaAnsiedadePage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/depressao" element={
+            <PageErrorBoundary pageName="Terapia para Depressão">
+              <TerapiaDepressaoPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/tdah" element={
+            <PageErrorBoundary pageName="Terapia para TDAH">
+              <TerapiaTdahPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/casal" element={
+            <PageErrorBoundary pageName="Terapia de Casal">
+              <TerapiaCasalPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/burnout" element={
+            <PageErrorBoundary pageName="Terapia para Burnout">
+              <TerapiaBurnoutPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/dependencia-emocional" element={
+            <PageErrorBoundary pageName="Terapia para Dependência Emocional">
+              <TerapiaDependenciaPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/vicio-apostas" element={
+            <PageErrorBoundary pageName="Terapia para Vício em Apostas">
+              <TerapiaVicioApostasPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/abuso-espiritual" element={
+            <PageErrorBoundary pageName="Terapia para Abuso Espiritual">
+              <TerapiaAbusoEspiritualPage />
+            </PageErrorBoundary>
+          } />
           <Route path="/r/:slug" element={
             <PageErrorBoundary pageName="Material do Livro">
               <BookResourcePage />
