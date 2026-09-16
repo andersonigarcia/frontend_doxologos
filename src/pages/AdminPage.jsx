@@ -2590,7 +2590,10 @@ const AdminPage = () => {
                                     onNavigateTab={setActiveTab}
                                 />
                             </Suspense>
-                        {/* Removed Analytics Tab */}
+                        </TabsContent>
+
+                        {/* Bookings Tab */}
+                        <TabsContent value="bookings" className="mt-6">
                             <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
 
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
