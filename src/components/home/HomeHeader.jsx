@@ -5,8 +5,10 @@ import { Menu, X, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserBadge from '@/components/UserBadge';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
+import { getAllAssessments } from '@/data/assessments';
 
 const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMenuOpen, onToggleMenu }) => {
+  const assessmentsCount = getAllAssessments().length;
   const navigationItems = [
     { href: '/#inicio', label: 'Início' },
     ...(activeEventsCount > 0 ? [{ href: '/#eventos', label: 'Eventos' }] : []),
@@ -15,7 +17,9 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
     { href: '/#contato', label: 'Contato' },
   ];
 
+  const ferramentasNavItem = { to: '/ferramentas', label: 'Autoavaliações' };
   const blogNavItem = { to: '/artigos', label: 'Blog' };
+
 
   return (
     <header className="fixed top-0 w-full bg-[#f8f6f0]/95 backdrop-blur-md border-b border-[#e4ded5] shadow-xs z-50">
@@ -33,6 +37,14 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                   {item.label}
                 </a>
             ))}
+            <Link
+              to={ferramentasNavItem.to}
+              className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm inline-flex items-center gap-1.5"
+            >
+              <span>{ferramentasNavItem.label}</span>
+              <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-1.5 py-0.5 rounded-full font-bold">{assessmentsCount} Testes</span>
+            </Link>
+
             <Link
               to={blogNavItem.to}
               className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm"
@@ -84,7 +96,13 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 {item.label}
               </a>
             ))}
+            <Link to={ferramentasNavItem.to} className="block text-[#262624] hover:text-[#1b3c37] font-medium flex items-center justify-between" role="menuitem">
+              <span>{ferramentasNavItem.label}</span>
+              <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-2 py-0.5 rounded-full font-bold">{assessmentsCount} Testes Gratuitos</span>
+            </Link>
+
             <Link to={blogNavItem.to} className="block text-[#262624] hover:text-[#1b3c37] font-medium" role="menuitem">
+
               {blogNavItem.label}
             </Link>
             {!user && (

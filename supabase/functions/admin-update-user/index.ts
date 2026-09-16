@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     }
 
     // Receber dados do body
-    const { userId, userData } = await req.json()
+    const { userId, userData, professionalData } = await req.json()
 
     if (!userId) {
       throw new Error('ID do usuário não fornecido')
@@ -53,6 +53,18 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       throw updateError
+    }
+
+    // Sincronizar dados do profissional (Risco 2 - Mitigação)
+    if (professionalData) {
+      const { error: profError } = await supabaseAdmin
+        .from('professionals')
+        .upsert({ id: userId, ...professionalData })
+
+      if (profError) {
+        console.error('Erro ao sincronizar dados do profissional:', profError)
+        throw new Error('Falha ao sincronizar dados públicos do profissional: ' + profError.message)
+      }
     }
 
     console.log(`✅ Admin ${user.email} atualizou usuário ${userId}`)

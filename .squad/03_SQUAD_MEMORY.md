@@ -103,7 +103,14 @@
     2. **Teclados Nativos & Autocomplete:** Adicionar `autoComplete` e `inputMode` nativos do iOS/Android em formulários de cadastro e agendamento (`PatientAccountStep.jsx`).
     3. **Grid Responsivo de Horários:** Reconfigurar a seleção de horários (`DateTimeStep.jsx`) para 2 colunas responsivas (`grid-cols-2`) no mobile, reduzindo em 50% o scroll vertical e garantindo alvos de toque maiores (48px+).
     4. **PIX Mobile-First:** No checkout de PIX (`CheckoutPage.jsx`), promover o botão "Copiar Código PIX Copia e Cola" a destaque primário de 100% da largura com aviso amigável, recolhendo o QR Code em menu explicativo para navegação em tela única.
-  - *Consequências:* Eliminação de vazamento de conversão em dispositivos móveis, redução do tempo de agendamento e maximização do ROI de tráfego pago.
+- **Data (2026-08-15):** **Diretriz Estratégica de Crescimento +50% (Growth, Conversão e Faturamento Líquido).**
+  - *Contexto:* A liderança executiva demandou um plano integrado para aumentar fluxo, conversão e faturamento da plataforma em +50% de forma sustentável, sem desperdício de capital em tráfego frio.
+  - *Decisão:* 
+    1. **Equação Composta (+52%):** Focar em ganhos equilibrados (Fluxo Qualificado +15% x Conversão +15% x LTV/Retenção +15%) em vez de triplicar a operação de forma linear.
+    2. **6 Alavancas Oficiais:** (1) Quiz de Triagem e Matching Clínico na Home, (2) Planos de Assinatura Mensal Recorrente (MRR com vaga garantida), (3) Grupos Terapêuticos Temáticos de Alta Margem, (4) Canal B2B2C e Parcerias com Comunidades/Igrejas (`/parcerias`), (5) Testes Clínicos Gratuitos para SEO Programático (GAD-7/Burnout), (6) Automação de WhatsApp/CRM para recuperação de checkout e retenção pós-sessão.
+    3. **Especificação Completa:** Formalizada no documento [`docs/02-FEATURES/GROWTH_STRATEGY_50PCT.md`](../docs/02-FEATURES/GROWTH_STRATEGY_50PCT.md).
+  - *Consequências:* Todas as próximas features de produto, marketing e backend devem estar alinhadas a um dos 3 horizontes desse roadmap.
+
 
 
 

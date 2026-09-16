@@ -46,7 +46,8 @@ serve(async (req: Request) => {
 
   try {
     const body = await req.json();
-    const { booking_id, inscricao_id, reminder_type = '24h', custom_message } = body;
+    const { booking_id, inscricao_id, reminder_type = '24h', custom_message, meeting_link: overrideMeetLink, zoom_meeting_url } = body;
+    // meeting_link tem prioridade sobre zoom_meeting_url (legado)
 
     if (!booking_id && !inscricao_id) {
       return new Response(
@@ -73,7 +74,7 @@ serve(async (req: Request) => {
           patient_phone,
           booking_date,
           booking_time,
-          zoom_meeting_url,
+          meeting_link,
           professional:professionals (name, whatsapp, phone)
         `)
         .eq('id', booking_id)
@@ -91,7 +92,8 @@ serve(async (req: Request) => {
       bookingDate = formatDateBr(booking.booking_date);
       bookingTime = booking.booking_time || '';
       psychologistName = booking.professional?.name || 'Psicólogo(a)';
-      zoomLink = booking.zoom_meeting_url || 'https://novo.doxologos.com.br/area-do-paciente';
+      zoomLink = overrideMeetLink || booking.meeting_link || zoom_meeting_url || 'https://novo.doxologos.com.br/area-do-paciente';
+      // Nota: 'zoomLink' é nome legado — contém o Google Meet link do profissional
 
     } else if (inscricao_id) {
       const { data: inscricao, error: iError } = await supabase
@@ -126,11 +128,11 @@ serve(async (req: Request) => {
       if (reminder_type === '24h') {
         messageText = `Olá, ${recipientName}! 💜 Lembramos que sua consulta de psicologia com ${psychologistName} está agendada para amanhã (${bookingDate}) às ${bookingTime}.\n\nPara confirmar sua presença ou em caso de dúvidas, acesse a Área do Paciente: https://novo.doxologos.com.br/area-do-paciente`;
       } else if (reminder_type === '1h') {
-        messageText = `Olá, ${recipientName}! ⏳ Sua teleconsulta com ${psychologistName} começará em 1 hora (${bookingTime}).\n\nPrepare um local reservado e tranquilo. Link de acesso à sala Zoom: ${zoomLink}`;
+        messageText = `Olá, ${recipientName}! ⏳ Sua teleconsulta com ${psychologistName} começará em 1 hora (${bookingTime}).\n\nPrepare um local reservado e tranquilo. Link de acesso à consulta: ${zoomLink}`;
       } else if (reminder_type === '10min') {
         messageText = `🔔 Seu atendimento com ${psychologistName} vai começar em 10 minutos!\n\nClique no link para acessar a consulta online: ${zoomLink}`;
       } else if (reminder_type === 'confirmation') {
-        messageText = `✅ Seu agendamento foi confirmado com sucesso!\n\nPsicólogo(a): ${psychologistName}\nData: ${bookingDate} às ${bookingTime}\nLink de acesso Zoom: ${zoomLink}`;
+        messageText = `✅ Seu agendamento foi confirmado com sucesso!\n\nPsicólogo(a): ${psychologistName}\nData: ${bookingDate} às ${bookingTime}\nLink de acesso (Google Meet): ${zoomLink}`;
       } else {
         messageText = `Olá, ${recipientName}! Lembrete de consulta de psicologia com ${psychologistName} em ${bookingDate} às ${bookingTime}. Link: ${zoomLink}`;
       }

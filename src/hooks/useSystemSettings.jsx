@@ -13,7 +13,9 @@ export const DEFAULT_SYSTEM_SETTINGS = {
   standard_booking_tolerance_minutes: 60,
   default_appointment_duration_minutes: 50,
   professional_monthly_capacity_slots: 80,
-  whatsapp_reminders_enabled: true
+  whatsapp_reminders_enabled: true,
+  session_idle_timeout_minutes: 15,
+  session_max_duration_hours: 6
 };
 
 /**

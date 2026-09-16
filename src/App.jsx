@@ -20,6 +20,7 @@ import HomePage from '@/pages/HomePage';
 // O Vite criará um chunk separado por página (code splitting automático).
 const AgendamentoPage = lazy(() => import('@/pages/AgendamentoPage'));
 const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const ProfessionalDashboardPage = lazy(() => import('@/pages/ProfessionalDashboardPage'));
 const QuemSomosPage = lazy(() => import('@/pages/QuemSomosPage'));
 const TrabalheConoscoPage = lazy(() => import('@/pages/TrabalheConoscoPage'));
 const EventoDetalhePage = lazy(() => import('@/pages/EventoDetalhePage'));
@@ -42,9 +43,16 @@ const AdminUsuariosPage = lazy(() => import('@/pages/AdminUsuariosPage'));
 const TermosCondicoesPage = lazy(() => import('@/pages/TermosCondicoesPage'));
 const FloatingWhatsAppButton = lazy(() => import('@/components/FloatingWhatsAppButton'));
 const ManagementDashboardPage = lazy(() => import('@/pages/ManagementDashboardPage'));
+const AnalyticsDashboardPage = lazy(() => import('@/pages/admin/AnalyticsDashboardPage'));
+const ProfessionalListPage = lazy(() => import('@/pages/admin/ProfessionalListPage'));
+const ProfessionalHubPage = lazy(() => import('@/pages/admin/ProfessionalHubPage'));
 const BlogPage = lazy(() => import('@/pages/BlogPage'));
 const ArticlePage = lazy(() => import('@/pages/ArticlePage'));
 const LgpdCookieBanner = lazy(() => import('@/components/common/LgpdCookieBanner'));
+const BookResourcePage = lazy(() => import('@/pages/BookResourcePage'));
+const AssessmentPage = lazy(() => import('@/pages/AssessmentPage'));
+const AssessmentHubPage = lazy(() => import('@/pages/AssessmentHubPage'));
+
 
 
 // PERF (P-02): QueryClient com staleTime e gcTime para evitar refetches desnecessários
@@ -77,11 +85,8 @@ function AppContent() {
   usePageTracking();
   useComprehensiveErrorTracking('App');
 
-  // Controle de sessão e inatividade
+  // Controle de sessão e inatividade (parametrização dinâmica via admin + cross-tab sync)
   useSessionTimeout({
-    idleTimeout: 10 * 60 * 1000,       // 10 minutos de inatividade
-    sessionTimeout: 1 * 60 * 60 * 1000, // 1 hora de sessão total
-    warningTime: 2 * 60 * 1000,          // Avisar 2 minutos antes
     enabled: true
   });
 
@@ -118,10 +123,16 @@ function AppContent() {
             </PageErrorBoundary>
           } />
           <Route path="/admin" element={
-            // SECURITY FIX (S-03): Admins e Profissionais acessam as rotas /admin (AdminPage tem lógica interna de visualização)
-            <ProtectedRoute requiredRoles={['admin', 'professional']} redirectTo="/">
+            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
               <PageErrorBoundary pageName="Admin">
                 <AdminPage />
+              </PageErrorBoundary>
+            </ProtectedRoute>
+          } />
+          <Route path="/profissional" element={
+            <ProtectedRoute requiredRoles={['professional', 'admin']} redirectTo="/">
+              <PageErrorBoundary pageName="Profissional">
+                <ProfessionalDashboardPage />
               </PageErrorBoundary>
             </ProtectedRoute>
           } />
@@ -129,6 +140,27 @@ function AppContent() {
             <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
               <PageErrorBoundary pageName="Dashboard Gerencial">
                 <ManagementDashboardPage />
+              </PageErrorBoundary>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/analytics" element={
+            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+              <PageErrorBoundary pageName="Comportamento e Analytics">
+                <AnalyticsDashboardPage />
+              </PageErrorBoundary>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/professionals" element={
+            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+              <PageErrorBoundary pageName="Admin Profissionais">
+                <ProfessionalListPage />
+              </PageErrorBoundary>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/professionals/:id" element={
+            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
+              <PageErrorBoundary pageName="Admin Hub Profissional">
+                <ProfessionalHubPage />
               </PageErrorBoundary>
             </ProtectedRoute>
           } />
@@ -249,6 +281,182 @@ function AppContent() {
               </PageErrorBoundary>
             </ProtectedRoute>
           } />
+          {/* Book Companion — QR Codes do Livro */}
+          <Route path="/r/:slug" element={
+            <PageErrorBoundary pageName="Material do Livro">
+              <BookResourcePage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/livro/:slug" element={
+            <PageErrorBoundary pageName="Material do Livro">
+              <BookResourcePage />
+            </PageErrorBoundary>
+          } />
+          {/* Ferramentas de Autoavaliação Psicométrica (Lead Magnets / GAD-7) */}
+          <Route path="/ferramentas" element={
+            <PageErrorBoundary pageName="Central de Ferramentas">
+              <AssessmentHubPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/ferramentas/:slug" element={
+            <PageErrorBoundary pageName="Autoavaliação Psicométrica">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-ansiedade-gad7" element={
+            <PageErrorBoundary pageName="Teste de Ansiedade GAD-7">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-ansiedade" element={
+            <PageErrorBoundary pageName="Teste de Ansiedade">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-burnout" element={
+            <PageErrorBoundary pageName="Inventário de Burnout e Sobrecarga Emocional">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-esgotamento" element={
+            <PageErrorBoundary pageName="Inventário de Burnout e Sobrecarga Emocional">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-depressao" element={
+            <PageErrorBoundary pageName="Escala de Depressão e Humor (PHQ-9)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-depressao-phq9" element={
+            <PageErrorBoundary pageName="Escala de Depressão e Humor (PHQ-9)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-tdah" element={
+            <PageErrorBoundary pageName="Escala de Rastreio de TDAH em Adultos (ASRS-18)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-tdah-adultos" element={
+            <PageErrorBoundary pageName="Escala de Rastreio de TDAH em Adultos (ASRS-18)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-tdah-adultos-asrs18" element={
+            <PageErrorBoundary pageName="Escala de Rastreio de TDAH em Adultos (ASRS-18)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-espiritualidade" element={
+            <PageErrorBoundary pageName="Inventário de Culpa, Perfeccionismo e Saúde Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-culpa-perfeccionismo" element={
+            <PageErrorBoundary pageName="Inventário de Culpa, Perfeccionismo e Saúde Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-culpa-perfeccionismo-espiritual" element={
+            <PageErrorBoundary pageName="Inventário de Culpa, Perfeccionismo e Saúde Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-sono" element={
+            <PageErrorBoundary pageName="Índice de Qualidade do Sono e Insônia (ISI)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-insonia" element={
+            <PageErrorBoundary pageName="Índice de Qualidade do Sono e Insônia (ISI)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-qualidade-sono-insonia" element={
+            <PageErrorBoundary pageName="Índice de Qualidade do Sono e Insônia (ISI)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-casamento" element={
+            <PageErrorBoundary pageName="Avaliação de Conexão e Ajuste Conjugal (RDAS)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-relacionamento" element={
+            <PageErrorBoundary pageName="Avaliação de Conexão e Ajuste Conjugal (RDAS)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-casamento-relacionamento-rdas" element={
+            <PageErrorBoundary pageName="Avaliação de Conexão e Ajuste Conjugal (RDAS)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-dependencia-emocional" element={
+            <PageErrorBoundary pageName="Inventário de Dependência Emocional e Autoestima">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-autoestima" element={
+            <PageErrorBoundary pageName="Inventário de Dependência Emocional e Autoestima">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-dependencia-emocional-autoestima" element={
+            <PageErrorBoundary pageName="Inventário de Dependência Emocional e Autoestima">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-apostas" element={
+            <PageErrorBoundary pageName="Rastreio de Transtorno de Jogos e Apostas (Ludopatia)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-ludopatia" element={
+            <PageErrorBoundary pageName="Rastreio de Transtorno de Jogos e Apostas (Ludopatia)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-jogos-azar" element={
+            <PageErrorBoundary pageName="Rastreio de Transtorno de Jogos e Apostas (Ludopatia)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-transtorno-jogos-apostas-ludopatia" element={
+            <PageErrorBoundary pageName="Rastreio de Transtorno de Jogos e Apostas (Ludopatia)">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-abuso-espiritual" element={
+            <PageErrorBoundary pageName="Inventário de Violência Eclesiástica e Abuso Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-violencia-eclesiastica" element={
+            <PageErrorBoundary pageName="Inventário de Violência Eclesiástica e Abuso Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-trauma-religioso" element={
+            <PageErrorBoundary pageName="Inventário de Violência Eclesiástica e Abuso Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/teste-abuso-espiritual-violencia-eclesiastica" element={
+            <PageErrorBoundary pageName="Inventário de Violência Eclesiástica e Abuso Espiritual">
+              <AssessmentPage />
+            </PageErrorBoundary>
+          } />
+
+
+
+
+
+
+
+
+
         </Routes>
       </Suspense>
       <Toaster />

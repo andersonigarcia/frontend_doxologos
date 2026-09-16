@@ -143,6 +143,12 @@ export const ProtectedRoute = ({
   // Verificar roles se necessário
   if (requiredRoles.length > 0 && !requiredRoles.includes(userRole)) {
     console.log('🔒 Acesso negado: role insuficiente', { required: requiredRoles, current: userRole });
+    
+    // Roteamento inteligente: Se um profissional tentar acessar /admin, envie-o para /profissional
+    if (userRole === 'professional' && location.pathname.startsWith('/admin')) {
+      return <Navigate to="/profissional" replace />;
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
         <motion.div

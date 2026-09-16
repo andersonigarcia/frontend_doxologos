@@ -49,11 +49,13 @@ serve(async (req) => {
     });
 
     const body = await req.json();
-    const { booking_id, inscricao_id, package_id, amount, description, payer, payment_method_id } = body;
+    const { booking_id, inscricao_id, package_id, resource_id, download_record_id, amount, description, payer, payment_method_id } = body;
 
-    if (!booking_id && !inscricao_id && !package_id) {
+    const isDigitalResource = Boolean(resource_id);
+
+    if (!booking_id && !inscricao_id && !package_id && !resource_id) {
       return new Response(
-        JSON.stringify({ error: 'booking_id, inscricao_id, or package_id required' }),
+        JSON.stringify({ error: 'booking_id, inscricao_id, package_id, or resource_id required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -66,15 +68,15 @@ serve(async (req) => {
 
     const isBookingPayment = Boolean(booking_id);
     const isPackagePayment = Boolean(package_id);
-    // Para pacotes e inscrições de eventos, o external_reference precisa ter o prefixo PACOTE_ ou EVENTO_
-    // para que o mp-webhook possa distingui-las de agendamentos de consulta avulsa (bookings).
-    const referenceId = package_id
-      ? `PACOTE_${package_id}`
-      : booking_id
-        ? booking_id
-        : inscricao_id
-          ? `EVENTO_${inscricao_id}`
-          : null;
+    const referenceId = isDigitalResource
+      ? `LIVRO_${resource_id}`
+      : package_id
+        ? `PACOTE_${package_id}`
+        : booking_id
+          ? booking_id
+          : inscricao_id
+            ? `EVENTO_${inscricao_id}`
+            : null;
 
     let booking = null;
     let inscricao = null;
@@ -120,7 +122,7 @@ serve(async (req) => {
         );
       }
       packageObj = pkgData;
-    } else {
+    } else if (inscricao_id) {
       const { data: inscricaoData, error: inscricaoErr } = await supabaseAdmin
         .from('inscricoes_eventos')
         .select('*, evento:eventos(*)')
@@ -140,6 +142,9 @@ serve(async (req) => {
         );
       }
       inscricao = inscricaoData;
+    } else if (isDigitalResource) {
+      // Pagamento de recurso digital do livro — sem entidade adicional para buscar
+      console.log(`📚 Digital resource payment - Resource ID: ${resource_id}, Record ID: ${download_record_id}`);
     }
 
     const finalAmount = Number(amount);
@@ -180,28 +185,25 @@ serve(async (req) => {
     };
 
     const paymentDescription = description || (
-      isBookingPayment
-        ? `Consulta ${booking?.services?.name || 'Doxologos'} - Agendamento ${booking_id}`
-        : `Evento ${inscricao?.evento?.titulo || 'Doxologos'} - Inscrição ${inscricao_id}`
+      isDigitalResource
+        ? `Material Clínico Doxologos - Recurso ${resource_id}`
+        : isBookingPayment
+          ? `Consulta ${booking?.services?.name || 'Doxologos'} - Agendamento ${booking_id}`
+          : `Evento ${inscricao?.evento?.titulo || 'Doxologos'} - Inscrição ${inscricao_id}`
     );
 
     const metadata: Record<string, unknown> = {
-      integration_type: 'direct_payment'
+      integration_type: isDigitalResource ? 'digital_resource' : 'direct_payment'
     };
 
-    if (booking_id) {
-      metadata.booking_id = booking_id;
-    }
-    if (inscricao_id) {
-      metadata.inscricao_id = inscricao_id;
-    }
+    if (booking_id) metadata.booking_id = booking_id;
+    if (inscricao_id) metadata.inscricao_id = inscricao_id;
+    if (resource_id) metadata.resource_id = resource_id;
+    if (download_record_id) metadata.download_record_id = download_record_id;
 
-    // Calcular antecedência e janela de expiração do pagamento (SLA Doxologos):
-    // - Antecedência < 3h: 15 minutos (15 * 60 * 1000)
-    // - Antecedência 3h a 24h: 30 minutos (30 * 60 * 1000)
-    // - Antecedência > 24h: 60 minutos (60 * 60 * 1000)
-    let allowedWindowMs = 30 * 60 * 1000; // Padrão 30 min
-    if (booking && booking.booking_date) {
+    // Para recursos digitais a janela é sempre 30 min (sem data de consulta para calcular)
+    let allowedWindowMs = 30 * 60 * 1000;
+    if (!isDigitalResource && booking && booking.booking_date) {
       let bTime = booking.booking_time || '00:00';
       if (bTime.length === 5) bTime += ':00';
       const bookingTimeMs = new Date(`${booking.booking_date}T${bTime}`).getTime();
@@ -271,50 +273,59 @@ serve(async (req) => {
       );
     }
 
-    // Salvar pagamento no banco de dados
-    console.log('💾 Salvando pagamento no banco de dados...');
-    const paymentInsert: Record<string, unknown> = {
-      mp_payment_id: paymentResult.id.toString(),
-      status: paymentResult.status,
-      status_detail: paymentResult.status_detail,
-      payment_method: paymentResult.payment_method_id,
-      amount: finalAmount,
-      payer_email: payerData.email,
-      payer_name: payerData.name,
-      external_reference: referenceId,
-      qr_code: qrCodeData.qr_code,
-      qr_code_base64: qrCodeData.qr_code_base64,
-      ticket_url: qrCodeData.ticket_url,
-      raw_payload: paymentResult
-    };
+    // Salvar pagamento no banco de dados (apenas para bookings, pacotes e eventos)
+    // Recursos digitais usam user_book_downloads (o webhook atualizará o registro)
+    if (!isDigitalResource) {
+      console.log('💾 Salvando pagamento no banco de dados...');
+      const paymentInsert: Record<string, unknown> = {
+        mp_payment_id: paymentResult.id.toString(),
+        status: paymentResult.status,
+        status_detail: paymentResult.status_detail,
+        payment_method: paymentResult.payment_method_id,
+        amount: finalAmount,
+        payer_email: payerData.email,
+        payer_name: payerData.name,
+        external_reference: referenceId,
+        qr_code: qrCodeData.qr_code,
+        qr_code_base64: qrCodeData.qr_code_base64,
+        ticket_url: qrCodeData.ticket_url,
+        raw_payload: paymentResult
+      };
 
-    if (booking_id) {
-      paymentInsert.booking_id = booking_id;
-    }
-    if (inscricao_id) {
-      paymentInsert.inscricao_id = inscricao_id;
-    }
-    if (package_id) {
-      paymentInsert.package_id = package_id;
-    }
+      if (booking_id) paymentInsert.booking_id = booking_id;
+      if (inscricao_id) paymentInsert.inscricao_id = inscricao_id;
+      if (package_id) paymentInsert.package_id = package_id;
 
-    const { data: insertedPayment, error: insertErr } = await supabaseAdmin
-      .from('payments')
-      .insert(paymentInsert)
-      .select()
-      .single();
+      const { data: insertedPayment, error: insertErr } = await supabaseAdmin
+        .from('payments')
+        .insert(paymentInsert)
+        .select()
+        .single();
 
-    if (insertErr) {
-      console.error('❌ Error inserting payment:', insertErr);
-      // Não retornar erro aqui, pois o pagamento foi criado com sucesso no MP
+      if (insertErr) {
+        console.error('❌ Error inserting payment:', insertErr);
+      } else {
+        console.log('✅ Payment saved to database:', insertedPayment?.id);
+      }
     } else {
-      console.log('✅ Payment saved to database:', insertedPayment?.id);
+      // Recurso digital: salvar mp_payment_id no download_record para o webhook reconciliar
+      console.log('📚 Digital resource: updating download_record with payment_id...');
+      if (download_record_id) {
+        await supabaseAdmin
+          .from('user_book_downloads')
+          .update({
+            payment_id: paymentResult.id.toString(),
+            payment_status: 'pending',
+          })
+          .eq('id', download_record_id);
+      }
     }
 
-    // Atualizar booking / pacote com ID do pagamento
+    // Atualizar booking / pacote com ID do pagamento (não aplicável para recursos digitais)
     const nowIso = new Date().toISOString();
 
-    if (booking_id) {
+    if (!isDigitalResource) {
+      if (booking_id) {
       await supabaseAdmin
         .from('bookings')
         .update({
@@ -355,6 +366,7 @@ serve(async (req) => {
         console.error('❌ Error updating inscrição:', inscricaoUpdateErr);
       }
     }
+    } // end !isDigitalResource
 
     // Retornar dados do pagamento PIX
     return new Response(

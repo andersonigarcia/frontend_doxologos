@@ -272,20 +272,40 @@ export function StrategicCockpitModule({
             </div>
 
             <div className="space-y-3">
-              {/* Alerta 1: Pagamentos Pendentes / Reservas Expirando */}
-              <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                <div className="text-xs text-amber-950">
-                  <p className="font-bold">Agendamentos Pendentes</p>
-                  <p className="text-amber-800 mt-0.5">Existem cobranças em andamento aguardando confirmação no PIX.</p>
-                  <button
-                    onClick={() => onNavigateTab?.('bookings')}
-                    className="mt-2 text-amber-900 underline font-semibold hover:text-amber-950"
-                  >
-                    Ver agendamentos pendentes &rarr;
-                  </button>
+              {/* Alerta 1: Pagamentos Pendentes / Reservas Expirando (Dinâmico) */}
+              {(alertsData?.pendingAppointmentsCount || 0) > 0 ? (
+                <div className="p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0 animate-pulse" />
+                  <div className="text-xs text-amber-950">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <span>Agendamentos Pendentes</span>
+                      <span className="bg-amber-200 text-amber-900 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                        {alertsData.pendingAppointmentsCount}
+                      </span>
+                    </p>
+                    <p className="text-amber-800 mt-0.5">
+                      Existem {alertsData.pendingAppointmentsCount} cobrança(s) em andamento aguardando confirmação no PIX.
+                    </p>
+                    <button
+                      onClick={() => onNavigateTab?.('bookings')}
+                      className="mt-2 text-amber-900 underline font-semibold hover:text-amber-950 flex items-center gap-1"
+                    >
+                      Ver agendamentos pendentes &rarr;
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-3.5 bg-emerald-50/80 border border-emerald-200/80 rounded-xl flex items-start gap-3">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
+                  <div className="text-xs text-emerald-950">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Saúde Operacional 100%</span>
+                    </p>
+                    <p className="text-emerald-800 mt-0.5">Nenhuma cobrança ou reserva pendente no momento.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Alerta 2: Resiliência NFS-e */}
               <div className="p-3.5 bg-blue-50/80 border border-blue-200/80 rounded-xl flex items-start gap-3">

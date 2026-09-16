@@ -9,8 +9,9 @@ class EmailService {
 
     this.apiUrl = `${isNode ? process.env.VITE_SUPABASE_URL : import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`;
     this.apiKey = isNode ? process.env.VITE_SUPABASE_ANON_KEY : import.meta.env.VITE_SUPABASE_ANON_KEY;
-    this.fromEmail = (isNode ? process.env.VITE_FROM_EMAIL : import.meta.env.VITE_FROM_EMAIL) || 'contato@doxologos.com.br';
+    this.fromEmail = (isNode ? process.env.VITE_FROM_EMAIL : import.meta.env.VITE_FROM_EMAIL) || 'doxologos@doxologos.com.br';
     this.fromName = (isNode ? process.env.VITE_FROM_NAME : import.meta.env.VITE_FROM_NAME) || 'Doxologos Psicologia';
+    this.backofficeEmail = (isNode ? process.env.VITE_BACKOFFICE_EMAIL : import.meta.env.VITE_BACKOFFICE_EMAIL) || 'doxologos@doxologos.com.br';
     this.enabled = (isNode ? process.env.VITE_ENABLE_EMAIL_NOTIFICATIONS : import.meta.env.VITE_ENABLE_EMAIL_NOTIFICATIONS) !== 'false';
     this.isDev = (isNode ? process.env.VITE_ENVIRONMENT : import.meta.env.VITE_ENVIRONMENT) === 'development';
 
@@ -25,14 +26,18 @@ class EmailService {
   }
 
   sanitizeSubject(subject) {
-    if (!subject) return 'Notificacao Doxologos';
-    // Remove emojis, quebras de linha e caracteres especiais de controle que corrompem cabeçalhos MIME no Hostinger SMTP
+    if (!subject) return 'Notificacao - Doxologos';
+    // Remove diacríticos, emojis, quebras de linha e limita tamanho para evitar quebra de cabeçalho MIME RFC 2822
     return subject
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove acentos nos headers SMTP
       .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
       .replace(/[\r\n\t]/g, ' ')
       .replace(/\s+/g, ' ')
+      .slice(0, 60)
       .trim();
   }
+
 
   async sendEmail({ to, subject, html, replyTo = null, cc = null, attachments = null, type = 'notification' }) {
     if (!this.enabled) {

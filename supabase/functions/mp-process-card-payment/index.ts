@@ -93,12 +93,17 @@ Deno.serve(async (req) => {
 
     console.log('[MP Card] Criando pagamento no MP:', JSON.stringify(paymentPayload, null, 2));
 
+    // Idempotency key determinística: evita cobranças duplicadas em retentativas
+    // Formato: {id}-card-v1 (estável por tentativa, sem Date.now())
+    const idempotencyRef = package_id || booking_id || inscricao_id;
+    const idempotencyKey = `${idempotencyRef}-card-v1`;
+
     const mpRes = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
         'Content-Type': 'application/json',
-        'X-Idempotency-Key': `${package_id || booking_id || inscricao_id}-${Date.now()}`
+        'X-Idempotency-Key': idempotencyKey
       },
       body: JSON.stringify(paymentPayload)
     });
@@ -173,7 +178,15 @@ Deno.serve(async (req) => {
         bookingUpdate.status = 'confirmed';
         console.log(`[MP Card] ✅ Aprovado imediatamente - booking será confirmado agora`);
       } else {
-        console.log(`[MP Card] ⏳ Status '${mpJson.status}' - aguardando webhook para confirmação final`);
+        // Status in_process: booking fica em awaiting_payment para indicar
+        // que o pagamento foi enviado e aguarda confirmação assíncrona da operadora
+        const useAwaitingStatus = (Deno.env.get('AWAITING_PAYMENT_STATUS') || 'false').toLowerCase() === 'true';
+        if (useAwaitingStatus) {
+          bookingUpdate.status = 'awaiting_payment';
+          console.log(`[MP Card] ⏳ Status '${mpJson.status}' - booking marcado como 'awaiting_payment'`);
+        } else {
+          console.log(`[MP Card] ⏳ Status '${mpJson.status}' - aguardando webhook para confirmação final`);
+        }
       }
 
       const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
@@ -193,6 +206,28 @@ Deno.serve(async (req) => {
       } else {
         const updated = await updateResponse.json();
         console.log(`[MP Card] ✅ Booking atualizado com sucesso:`, updated);
+
+        // ── Post-Payment Orchestrator (aprovação síncrona) ─────────────────
+        // Quando MP aprova imediatamente (sem aguardar webhook), dispara
+        // emails de confirmação agora. Fire-and-forget.
+        if (isApprovedNow) {
+          const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'false').toLowerCase() === 'true';
+          if (orchestratorEnabled) {
+            const orchUrl = `${SUPABASE_URL}/functions/v1/post-payment-orchestrator`;
+            fetch(orchUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_ROLE}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ booking_id })
+            }).then(r => {
+              console.log(`[MP Card] ✅ Orchestrator invocado (booking ${booking_id}), status: ${r.status}`);
+            }).catch(e => {
+              console.error(`[MP Card] ⚠️ Orchestrator falhou (non-fatal):`, e);
+            });
+          }
+        }
       }
 
     } else if (inscricao_id) {

@@ -1251,8 +1251,14 @@ const AgendamentoPage = () => {
           meeting_platform: bookingInsertData?.meeting_platform || (supportsMeetingPlatform ? bookingData.meeting_platform : undefined)
         };
 
-        console.log('📧 Enviando email para:', normalizedPatientEmail);
+        console.log('📧 Enviando email para o paciente:', normalizedPatientEmail);
         await emailManager.sendBookingConfirmation(bookingDetails);
+
+        console.log('📧 Enviando email de confirmação para o profissional...');
+        await emailManager.sendProfessionalConfirmation({
+          ...bookingDetails,
+          professional_email: professionalDetails?.email
+        });
 
         // Se for agendamento para o mesmo dia (<= 4h), disparar notificação urgente para o profissional e cópia para o backoffice
         const todayStr = new Date().toISOString().split('T')[0];

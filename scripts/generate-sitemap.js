@@ -21,13 +21,30 @@ console.log('🌐 Gerando sitemap dinâmico para:', appUrl);
 async function generateSitemap() {
   const staticRoutes = [
     { loc: '/', changefreq: 'weekly', priority: '1.0' },
+    { loc: '/ferramentas', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-ansiedade', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-depressao', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-burnout', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-tdah', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-sono', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-casamento', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-espiritualidade', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-dependencia-emocional', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-apostas', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-ludopatia', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-abuso-espiritual', changefreq: 'weekly', priority: '0.9' },
+    { loc: '/teste-violencia-eclesiastica', changefreq: 'weekly', priority: '0.9' },
     { loc: '/agendamento', changefreq: 'monthly', priority: '0.9' },
+
+
+    { loc: '/artigos', changefreq: 'daily', priority: '0.8' },
     { loc: '/quem-somos', changefreq: 'monthly', priority: '0.8' },
     { loc: '/depoimento', changefreq: 'weekly', priority: '0.7' },
     { loc: '/trabalhe-conosco', changefreq: 'monthly', priority: '0.6' },
     { loc: '/doacao', changefreq: 'monthly', priority: '0.6' },
     { loc: '/termos-e-condicoes', changefreq: 'yearly', priority: '0.3' }
   ];
+
 
   let dynamicRoutes = [];
 

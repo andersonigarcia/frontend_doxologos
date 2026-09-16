@@ -1,0 +1,211 @@
+{
+  "id": "asrs-18",
+  "slug": "teste-tdah-adultos-asrs18",
+  "aliases": ["asrs-18", "asrs18", "teste-tdah", "teste-tdah-adultos", "tdah", "tdah-adultos", "foco-atencao"],
+  "title": "Escala de Rastreio de TDAH em Adultos (ASRS-18)",
+
+  "subtitle": "Avaliação de desatenção, procrastinação, impulsividade e hiperatividade mental",
+  "category": "Atenção & Neurodiversidade",
+  "icon": "Brain",
+  "badge": "Tendência",
+  "estimatedTime": "4 a 5 min",
+  "scientificBasis": "Adult ADHD Self-Report Scale (ASRS-v1.1 da OMS / Harvard Medical School)",
+  "disclaimer": "Esta autoavaliação tem caráter informativo e de triagem. Ela não substitui uma avaliação neuropsicológica ou médica completa.",
+  "timeframePrompt": "Nas últimas semanas, com que frequência você tem vivenciado cada uma das situações abaixo?",
+  "maxScore": 72,
+  "options": [
+    { "label": "Nunca", "value": 0, "helper": "0% do tempo" },
+    { "label": "Raramente", "value": 1, "helper": "Raras ocasiões" },
+    { "label": "Às vezes", "value": 2, "helper": "De vez em quando" },
+    { "label": "Frequentemente", "value": 3, "helper": "Com regularidade" },
+    { "label": "Muito frequentemente", "value": 4, "helper": "Quase todos os dias" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Desatenção & Organização (Parte A)",
+      "text": "Dificuldade para finalizar os detalhes finais de um projeto ou tarefa após as partes mais difíceis terem sido feitas."
+    },
+    {
+      "id": 2,
+      "dimension": "Desatenção & Organização (Parte A)",
+      "text": "Dificuldade para colocar as coisas em ordem quando precisa realizar uma tarefa que exige organização e planejamento."
+    },
+    {
+      "id": 3,
+      "dimension": "Memória de Trabalho (Parte A)",
+      "text": "Problemas para se lembrar de compromissos, prazos ou tarefas do dia a dia."
+    },
+    {
+      "id": 4,
+      "dimension": "Procrastinação Cognitiva (Parte A)",
+      "text": "Evitar ou adiar o início de tarefas que exigem esforço mental prolongado e foco contínuo."
+    },
+    {
+      "id": 5,
+      "dimension": "Hiperatividade Motora (Parte A)",
+      "text": "Ficar mexendo as mãos ou os pés, ou remexer-se na cadeira quando precisa ficar sentado(a) por muito tempo."
+    },
+    {
+      "id": 6,
+      "dimension": "Inquietação Mental (Parte A)",
+      "text": "Sentir-se hiperativo(a), impelido(a) a fazer coisas como se fosse movido(a) a motor, com mente inquieta."
+    },
+    {
+      "id": 7,
+      "dimension": "Erros por Descuido",
+      "text": "Cometer erros por descuido ou falta de atenção ao trabalhar em projetos complexos ou monótonos."
+    },
+    {
+      "id": 8,
+      "dimension": "Foco Sustentado",
+      "text": "Dificuldade para manter a atenção quando está fazendo trabalhos repetitivos ou assistindo a reuniões/aulas longas."
+    },
+    {
+      "id": 9,
+      "dimension": "Escuta Atenta",
+      "text": "Dificuldade para prestar atenção quando alguém está falando diretamente com você, parecendo estar com a mente distante."
+    },
+    {
+      "id": 10,
+      "dimension": "Extravio de Objetos",
+      "text": "Perder ou ter dificuldade para encontrar objetos necessários para suas atividades (chaves, celular, carteira, documentos)."
+    },
+    {
+      "id": 11,
+      "dimension": "Distratibilidade",
+      "text": "Distrair-se com facilidade por causa de barulhos, pensamentos paralelos ou estímulos do ambiente ao seu redor."
+    },
+    {
+      "id": 12,
+      "dimension": "Dificuldade de Permanecer Sentado(a)",
+      "text": "Levantar-se do seu lugar em reuniões, aulas ou situações em que se espera que você permaneça sentado(a)."
+    },
+    {
+      "id": 13,
+      "dimension": "Inquietação Física",
+      "text": "Sentir-se agitado(a) ou com dificuldade de relaxar o corpo em momentos de lazer."
+    },
+    {
+      "id": 14,
+      "dimension": "Lazer Tranquilo",
+      "text": "Dificuldade para se engajar silenciosamente em atividades de lazer ou momentos calmos."
+    },
+    {
+      "id": 15,
+      "dimension": "Verbalização Excessiva",
+      "text": "Falar demais ou de forma acelerada quando está em ambientes sociais ou reuniões de trabalho."
+    },
+    {
+      "id": 16,
+      "dimension": "Precipitação de Respostas",
+      "text": "Terminar as frases de outras pessoas antes que elas concluam, ou responder antes de a pergunta ser totalmente feita."
+    },
+    {
+      "id": 17,
+      "dimension": "Tolerância à Espera",
+      "text": "Dificuldade para esperar a sua vez em filas, no trânsito ou em situações que exigem paciência."
+    },
+    {
+      "id": 18,
+      "dimension": "Interrupção Social",
+      "text": "Interromper conversas ou intrometer-se nas atividades de outras pessoas sem perceber."
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Vida Pessoal e Profissional",
+    "prompt": "Em que grau esses desafios de foco, organização ou inquietação têm impactado o seu trabalho, carreira ou relacionamentos?",
+    "options": [
+      { "label": "Nenhum impacto perceptível", "value": 0 },
+      { "label": "Impacto leve (pequenos atrasos ou esquecimentos ocasionais)", "value": 1 },
+      { "label": "Impacto moderado (prejuízo na produtividade e frustração frequente)", "value": 2 },
+      { "label": "Impacto severo (dificuldade de manter prazos, empregos ou harmonia em casa)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 23,
+      "severity": "minimal",
+      "label": "Padrão Neurotípico / Baixa Probabilidade de TDAH",
+      "tag": "Faixa Típica",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua pontuação sugere boa regulação atencional, organização de rotina e controle de impulsividade, dentro dos padrões médios populacionais.",
+      "clinicalInsight": "Eventuais distrações ou procrastinações que você sinta são normais e costumam estar associadas a noites mal dormidas, cansaço ou sobrecarga pontual de tarefas.",
+      "recommendations": [
+        "Mantenha ferramentas simples de agenda para não sobrecarregar sua memória de trabalho.",
+        "Pratique pausas regulares entre blocos de concentração intensa.",
+        "Cultive hábitos regulares de sono e atividade física para manter a clareza mental."
+      ],
+      "spiritualBridge": "Deus nos chama a viver com sabedoria e bom senso (2 Timóteo 1:7). Ter clareza de prioridades e cuidar da rotina glorifica a Deus nas pequenas coisas.",
+      "ctaText": "Conhecer Nossos Psicólogos",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 24,
+      "max": 39,
+      "severity": "mild",
+      "label": "Sinais Leves de Desatenção e Inquietação",
+      "tag": "Atenção Moderada",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta alguns desafios de dispersão, procrastinação ou inquietação que podem estar ligados a hábitos de multitarefa, ansiedade ou sobrecarga ambiental.",
+      "clinicalInsight": "Nesta faixa, estratégias comportamentais de organização (técnica Pomodoro, gestão de ambiente e redução de notificações) costumam gerar melhorias expressivas.",
+      "recommendations": [
+        "Elimine distrações visuais e notificações do celular enquanto trabalha em tarefas prioritárias.",
+        "Divida grandes tarefas em etapas menores e concretas de 25 minutos.",
+        "Considere uma sessão de orientação psicológica para desenvolver estratégias de foco e produtividade saudável."
+      ],
+      "spiritualBridge": "'Ensina-nos a contar os nossos dias, para que alcancemos coração sábio.' (Salmo 90:12). Aprender a gerir nossa mente e tempo é um exercício de mordomia espiritual.",
+      "ctaText": "Agendar Orientação com Especialista",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 40,
+      "max": 53,
+      "severity": "moderate",
+      "label": "Alta Probabilidade de TDAH em Adultos",
+      "tag": "Rastreio Positivo / Alerta Laranja",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação é consistente com o perfil clínico de TDAH no adulto, indicando desafios persistentes de desatenção, regulação executiva e/ou inquietação mental.",
+      "clinicalInsight": "O TDAH não é falta de força de vontade nem 'preguiça'. É uma condição neurobiológica de funcionamento dopaminérgico. O diagnóstico correto e o tratamento adequado transformam a qualidade de vida e a autoestima.",
+      "recommendations": [
+        "Busque uma avaliação diagnóstica estruturada com um psicólogo especialista e/ou psiquiatra/neurologista.",
+        "A Terapia Cognitivo-Comportamental (TCC) voltada para TDAH é padrão-ouro para desenvolver rotinas e regulação emocional.",
+        "Evite a autoculpa: entender seu cérebro é o primeiro passo para parar de lutar contra si mesmo(a)."
+      ],
+      "spiritualBridge": "Deus nos criou com singularidade e variedade de temperamentos e mentes. O autoconhecimento liberta da culpa e abre espaço para a graça e a restauração prática.",
+      "ctaText": "Agendar Avaliação com Especialista",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 54,
+      "max": 72,
+      "severity": "severe",
+      "label": "Forte Indicação Clínica de TDAH / Alto Impacto",
+      "tag": "Indicação Prioritária / Alerta Vermelho",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado indica um nível expressivo e contínuo de sintomas de desatenção, impulsividade e inquietação, com provável impacto em múltiplas áreas da vida.",
+      "clinicalInsight": "Adultos com TDAH severo não tratado frequentemente enfrentam exaustão crônica, frustração profissional e sobrecarga emocional secundária. O tratamento multidisciplinar (psicoterapia + suporte médico) é altamente eficaz.",
+      "recommendations": [
+        "Agende com prioridade uma consulta com psicólogo para investigação clínica detalhada e direcionamento.",
+        "Realize uma avaliação médica especializada para avaliar a necessidade de intervenção terapêutica integrada.",
+        "Compartilhe seus desafios com pessoas de confiança para diminuir a sobrecarga de julgamentos."
+      ],
+      "spiritualBridge": "'Porque não nos deu Deus espírito de covardia, mas de poder, de amor e de moderação (mente sóbria e equilibrada).' (2 Timóteo 1:7). Há caminhos científicos e acolhedores para restaurar a paz na sua rotina.",
+      "ctaText": "Agendar Consulta Prioritária",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

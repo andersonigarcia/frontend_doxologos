@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/customSupabaseClient';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { motion } from 'framer-motion';
 import {
@@ -43,24 +44,65 @@ export function FinancialControlModule({
   const nfseTaxRate = (Number(settings.nfse_estimated_tax_rate_pct) || 6.00) / 100;
   const defaultRetentionPct = Number(settings.platform_default_retention_pct) || 40;
 
-  // Filtrar agendamentos pelo período selecionado
-  const filteredBookings = bookings.filter((b) => {
-    if (!b.booking_date) return true;
-    const dateStr = String(b.booking_date);
-    const bookingYear = parseInt(dateStr.substring(0, 4), 10);
-    const bookingMonth = parseInt(dateStr.substring(5, 7), 10);
+  // Estado para armazenar os dados reais do DRE (sem paginação e sem cancelamentos)
+  const [dreData, setDreData] = useState({ gmv: 0, payoutTotal: 0, count: 0, isLoading: true });
 
-    if (selectedYear !== 'all' && bookingYear !== Number(selectedYear)) return false;
-    if (selectedMonth !== 'all' && bookingMonth !== Number(selectedMonth)) return false;
-    return true;
-  });
+  useEffect(() => {
+    async function fetchDRE() {
+      setDreData(prev => ({ ...prev, isLoading: true }));
+      try {
+        let query = supabase.from('bookings').select(`
+          valor_consulta, 
+          valor_repasse_profissional, 
+          status,
+          service:services ( price, professional_payout )
+        `);
+        
+        // Anti Efeito Melancia: Considera apenas Receita Realizada / A Receber
+        query = query.in('status', ['paid', 'completed', 'confirmed']);
+        
+        // Filtros de Data
+        if (selectedYear !== 'all') {
+            const y = Number(selectedYear);
+            if (selectedMonth !== 'all') {
+                const m = Number(selectedMonth);
+                const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+                const endDate = new Date(y, m, 0).toISOString().split('T')[0];
+                query = query.gte('booking_date', startDate).lte('booking_date', endDate);
+            } else {
+                const startDate = `${y}-01-01`;
+                const endDate = `${y}-12-31`;
+                query = query.gte('booking_date', startDate).lte('booking_date', endDate);
+            }
+        }
 
-  // Cálculos da DRE Consolidada com base no período filtrado
-  const gmv = filteredBookings.reduce((acc, b) => acc + (Number(b.valor_consulta || b.service?.price || 0)), 0);
-  const payoutTotal = filteredBookings.reduce((acc, b) => acc + (Number(b.valor_repasse_profissional || b.service?.professional_payout || b.valor_consulta || 0)), 0);
-  const estimatedMpFees = gmv * mpFeeRate;
-  const estimatedNfseTaxes = gmv * nfseTaxRate;
+        const { data, error } = await query;
+        
+        if (!error && data) {
+            const gmv = data.reduce((acc, b) => acc + (Number(b.valor_consulta || b?.service?.price || 0)), 0);
+            const payoutTotal = data.reduce((acc, b) => acc + (Number(b.valor_repasse_profissional || b?.service?.professional_payout || b.valor_consulta || 0)), 0);
+            setDreData({ gmv, payoutTotal, count: data.length, isLoading: false });
+        } else {
+            console.error("Erro na busca do DRE:", error);
+            setDreData(prev => ({ ...prev, isLoading: false }));
+        }
+      } catch (err) {
+        console.error(err);
+        setDreData(prev => ({ ...prev, isLoading: false }));
+      }
+    }
+    fetchDRE();
+  }, [selectedMonth, selectedYear]);
+
+  // Cálculos da DRE Consolidada
+  const gmv = dreData.gmv;
+  const payoutTotal = dreData.payoutTotal;
+  const estimatedMpFees = gmv * mpFeeRate; // Taxa de Gateway cobra sobre o Transacionado (GMV)
   const platformGrossMargin = Math.max(0, gmv - payoutTotal);
+  
+  // CORREÇÃO CONTÁBIL: NFS-e cobrada sobre a Margem da Plataforma (Take Rate) e não sobre o GMV
+  const estimatedNfseTaxes = platformGrossMargin * nfseTaxRate; 
+  
   const netMargin = Math.max(0, platformGrossMargin - estimatedMpFees - estimatedNfseTaxes);
   const takeRatePct = gmv > 0 ? (platformGrossMargin / gmv) * 100 : defaultRetentionPct;
 
@@ -126,7 +168,7 @@ export function FinancialControlModule({
                     ? `Acumulado ${selectedYear === 'all' ? 'Histórico Total' : selectedYear}`
                     : `${monthNames[selectedMonth]} de ${selectedYear}`}
                   <strong className="ml-2 bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full text-[11px]">
-                    {filteredBookings.length} {filteredBookings.length === 1 ? 'consulta' : 'consultas'}
+                    {dreData.isLoading ? '...' : `${dreData.count} ${dreData.count === 1 ? 'consulta' : 'consultas'}`}
                   </strong>
                 </span>
               </div>
@@ -219,12 +261,17 @@ export function FinancialControlModule({
               </div>
 
               <div className="py-2.5 flex justify-between text-slate-600 px-4 pl-8">
-                <span>(-) Taxas de Processamento de Meio de Pagamento (Mercado Pago ~2.99%)</span>
+                <span>(-) Taxas de Processamento de Meio de Pagamento (Mercado Pago ~{(mpFeeRate*100).toFixed(2)}%)</span>
                 <span className="text-red-600">({formatBrl(estimatedMpFees)})</span>
               </div>
 
               <div className="py-2.5 flex justify-between text-slate-600 px-4 pl-8">
-                <span>(-) Provisão Tributária NFS-e / Simples Nacional (~6%)</span>
+                <div className="flex items-center gap-1 group relative">
+                  <span>(-) Provisão Tributária NFS-e / Simples Nacional (~{(nfseTaxRate*100).toFixed(0)}%)</span>
+                  <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 w-64 bg-slate-900 text-white text-[10px] p-2 rounded shadow-lg z-10">
+                    Calculado sobre a Margem Bruta (Take Rate) assumindo modelo de Split Payment
+                  </div>
+                </div>
                 <span className="text-red-600">({formatBrl(estimatedNfseTaxes)})</span>
               </div>
 

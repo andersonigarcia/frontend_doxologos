@@ -90,6 +90,7 @@ Separadas por contexto. **Nunca comite chaves reais no git.**
 | `VITE_SUPABASE_ANON_KEY` | Chave anônima do Supabase (pública) |
 | `VITE_APP_URL` | URL base da aplicação (ex: `https://doxologos.com.br`) |
 | `VITE_APP_ENV` | Ambiente: `development`, `staging`, `production` |
+| `VITE_BACKOFFICE_EMAIL` | Email de suporte que receberá cópias ocultas (CC) |
 | `VITE_LOG_LEVEL` | Nível de log: `DEBUG`, `INFO`, `WARN`, `ERROR` |
 | `VITE_GA4_MEASUREMENT_ID` | ID do Google Analytics 4 (opcional) |
 
@@ -145,9 +146,10 @@ npm run analyze:bundle             # Analisa bundle gerado
 
 ### Edge Functions (Supabase)
 ```bash
-supabase login
-supabase link --project-ref <project-ref>
+npx supabase login
+npx supabase link --project-ref <project-ref>
 npm run supabase:deploy:all
+# Para deploy individual: npx supabase functions deploy <nome-da-funcao> --no-verify-jwt
 ```
 Configure as variáveis de backend no painel **Supabase → Settings → Edge Function Secrets**.
 

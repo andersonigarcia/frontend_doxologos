@@ -24,6 +24,9 @@ import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import BlogPreviewSection from '@/components/home/BlogPreviewSection.jsx';
+import AssessmentsHighlightSection from '@/components/home/AssessmentsHighlightSection';
+
+
 
 const videos = [
   {
@@ -350,7 +353,10 @@ const HomePage = () => {
 
         <ComoFuncionaSection />
 
+        <AssessmentsHighlightSection />
+
         <ProfessionalsCarousel professionals={professionals} />
+
 
         <BlogPreviewSection />
 

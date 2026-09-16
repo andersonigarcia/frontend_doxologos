@@ -6,6 +6,7 @@ import { StatCard } from '@/components/common/StatCard';
 import { SkeletonStatsGrid, SkeletonList } from '@/components/common/SkeletonLoaders';
 import { InfoTooltip, EmptyState } from '@/components/common';
 import { useFinancialData } from '@/hooks/useFinancialData';
+import { usePaymentCalculation } from '@/hooks/usePaymentCalculation';
 import { cn } from '@/lib/utils';
 
 /**
@@ -28,8 +29,18 @@ export function FinancialDashboard({ professionalId, className = '' }) {
         pendingPayments,
         serviceBreakdown,
         totalPending,
-        loading
+        loading: financialLoading
     } = useFinancialData(professionalId, dateRange.start, dateRange.end);
+
+    const { 
+        pendingPayments: payoutsPending, 
+        paidPayments: payoutsPaid, 
+        totalPending: totalPayoutPending, 
+        totalPaid: totalPayoutPaid, 
+        loading: payoutsLoading 
+    } = usePaymentCalculation(professionalId, dateRange.start, dateRange.end);
+
+    const loading = financialLoading || payoutsLoading;
 
     const handleExportCSV = () => {
         // Prepare CSV data
@@ -41,7 +52,9 @@ export function FinancialDashboard({ professionalId, className = '' }) {
             ['Receita Diária', dailyRevenue.toFixed(2)],
             ['Receita Semanal', weeklyRevenue.toFixed(2)],
             ['Receita do Período', monthlyRevenue.toFixed(2)],
-            ['Pagamentos Pendentes', totalPending.toFixed(2)],
+            ['Repasses Pagos (Período)', totalPayoutPaid.toFixed(2)],
+            ['Repasses Pendentes (Período)', totalPayoutPending.toFixed(2)],
+            ['Aguardando Pagto. de Pacientes', totalPending.toFixed(2)],
             [''],
             ['Receita por Serviço'],
             ['Serviço', 'Receita (R$)', 'Quantidade', 'Percentual (%)'],
@@ -52,7 +65,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 ((s.revenue / monthlyRevenue) * 100).toFixed(1)
             ]),
             [''],
-            ['Pagamentos Pendentes'],
+            ['Aguardando Pagamento (Pacientes)'],
             ['Paciente', 'Data', 'Horário', 'Valor (R$)'],
             ...pendingPayments.map(p => [
                 p.patient_name,
@@ -198,16 +211,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <span>Receita Hoje</span>
-                                    <InfoTooltip content="Soma dos valores recebidos hoje de consultas confirmadas, pagas ou completadas" />
-                                </div>
-                            }
-                            value={`R$ ${dailyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            icon={<DollarSign className="w-5 h-5" />}
-                            iconColor="text-green-600"
-                            iconBgColor="bg-green-100"
+                            label="Receita Hoje"
+                            tooltip="Soma dos valores recebidos hoje de consultas confirmadas, pagas ou completadas"
+                            value={dailyRevenue}
+                            format="currency"
                         />
                     </div>
                 </motion.div>
@@ -219,16 +226,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <span>Receita Semana</span>
-                                    <InfoTooltip content="Receita dos últimos 7 dias (consultas confirmadas, pagas ou completadas)" />
-                                </div>
-                            }
-                            value={`R$ ${weeklyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            icon={<TrendingUp className="w-5 h-5" />}
-                            iconColor="text-blue-600"
-                            iconBgColor="bg-blue-100"
+                            label="Receita Semana"
+                            tooltip="Receita dos últimos 7 dias (consultas confirmadas, pagas ou completadas)"
+                            value={weeklyRevenue}
+                            format="currency"
                         />
                     </div>
                 </motion.div>
@@ -240,16 +241,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <span>Receita do Período</span>
-                                    <InfoTooltip content="Receita total do período selecionado (consultas confirmadas, pagas ou completadas)" />
-                                </div>
-                            }
-                            value={`R$ ${monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            icon={<Calendar className="w-5 h-5" />}
-                            iconColor="text-purple-600"
-                            iconBgColor="bg-purple-100"
+                            label="Receita do Período"
+                            tooltip="Receita total do período selecionado (consultas confirmadas, pagas ou completadas)"
+                            value={monthlyRevenue}
+                            format="currency"
                         />
                     </div>
                 </motion.div>
@@ -264,8 +259,8 @@ export function FinancialDashboard({ professionalId, className = '' }) {
             >
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-orange-600" />
-                        <h3 className="text-lg font-semibold">Pagamentos Pendentes</h3>
+                        <Clock className="w-5 h-5 text-orange-500" />
+                        <h3 className="text-lg font-semibold">Aguardando Pagamento (Pacientes)</h3>
                     </div>
                     <span className="text-2xl font-bold text-orange-600">
                         R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -300,8 +295,8 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 ) : (
                     <EmptyState
                         icon={Clock}
-                        title="Nenhum pagamento pendente"
-                        description="Todos os pagamentos estão em dia! 🎉"
+                        title="Nenhum pagamento aguardando"
+                        description="Todos os pacientes estão em dia! 🎉"
                         compact={true}
                     />
                 )}
@@ -365,6 +360,82 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                         compact={true}
                     />
                 )}
+            </motion.div>
+
+            {/* Payouts Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+            >
+                <div className="p-6 border-b border-gray-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-emerald-600" />
+                        Repasses Financeiros (Período Selecionado)
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">Histórico de pagamentos da clínica para o profissional.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                    {/* Paid Payouts */}
+                    <div className="p-6 bg-emerald-50/30">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-emerald-800 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4" /> Pagos
+                            </h4>
+                            <span className="font-bold text-emerald-700">R$ {totalPayoutPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        
+                        {payoutsPaid.length > 0 ? (
+                            <div className="space-y-3">
+                                {payoutsPaid.map(p => (
+                                    <div key={p.id} className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm flex justify-between items-center text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-700">{new Date(p.period_start).toLocaleDateString('pt-BR')} - {new Date(p.period_end).toLocaleDateString('pt-BR')}</p>
+                                            <p className="text-xs text-slate-500">{p.total_bookings} consultas</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-semibold text-emerald-600 block">R$ {parseFloat(p.total_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            {p.payment_date && <span className="text-[10px] text-emerald-500">Em {new Date(p.payment_date).toLocaleDateString('pt-BR')}</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-emerald-600/70 text-center py-4">Nenhum repasse pago neste período.</p>
+                        )}
+                    </div>
+
+                    {/* Pending Payouts */}
+                    <div className="p-6 bg-amber-50/30">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-amber-800 flex items-center gap-2">
+                                <Clock className="w-4 h-4" /> A Liberar
+                            </h4>
+                            <span className="font-bold text-amber-700">R$ {totalPayoutPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        
+                        {payoutsPending.length > 0 ? (
+                            <div className="space-y-3">
+                                {payoutsPending.map(p => (
+                                    <div key={p.id} className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex justify-between items-center text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-700">{new Date(p.period_start).toLocaleDateString('pt-BR')} - {new Date(p.period_end).toLocaleDateString('pt-BR')}</p>
+                                            <p className="text-xs text-slate-500">{p.total_bookings} consultas</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-semibold text-amber-600 block">R$ {parseFloat(p.total_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            <span className="text-[10px] text-amber-500 uppercase font-bold">Pendente</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-amber-600/70 text-center py-4">Nenhum repasse a liberar neste período.</p>
+                        )}
+                    </div>
+                </div>
             </motion.div>
         </div>
     );

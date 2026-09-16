@@ -59,8 +59,8 @@ serve(async (req: Request) => {
 
         // 2. Limpeza de Agendamentos (Bookings) e Pacotes Pendentes:
         // Nova Matriz Dinâmica de SLA Doxologos por Antecedência da Consulta:
-        // - Express (< 3h antecedência): 15 minutos (15 * 60 * 1000)
-        // - Próximo dia (3h a 24h antecedência): 30 minutos (30 * 60 * 1000)
+        // - Express (<= 4h antecedência): 15 minutos (15 * 60 * 1000)
+        // - Próximo dia (4h a 24h antecedência): 30 minutos (30 * 60 * 1000)
         // - Padrão (> 24h antecedência): 60 minutos (60 * 60 * 1000)
         const { data: pendingBookings } = await supabase
             .from('bookings')
@@ -86,11 +86,11 @@ serve(async (req: Request) => {
 
                 // Janela de tolerância para pagamento conforme antecedência
                 let allowedWindowMs: number;
-                if (leadTimeMs < 3 * 60 * 60 * 1000) {
-                    // Menos de 3h de antecedência (Express) -> 15 minutos
+                if (leadTimeMs <= 4 * 60 * 60 * 1000) {
+                    // Até 4h de antecedência (Express) -> 15 minutos
                     allowedWindowMs = 15 * 60 * 1000;
                 } else if (leadTimeMs < 24 * 60 * 60 * 1000) {
-                    // Entre 3h e 24h de antecedência -> 30 minutos
+                    // Entre 4h e 24h de antecedência -> 30 minutos
                     allowedWindowMs = 30 * 60 * 1000;
                 } else {
                     // Mais de 24h de antecedência -> 60 minutos (1 hora)

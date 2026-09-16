@@ -28,23 +28,22 @@ Deno.serve(async (req) => {
       throw new Error('Variáveis de ambiente SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas')
     }
 
-    // Criar cliente admin (service role)
-    const supabaseAdmin = createClient(
+    // Criar cliente normal para validar o token do usuário
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
+    if (!supabaseAnonKey) {
+      throw new Error('SUPABASE_ANON_KEY não configurada')
+    }
+
+    const supabaseClient = createClient(
       supabaseUrl,
-      serviceRoleKey,
+      supabaseAnonKey,
       {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
+        global: { headers: { Authorization: authHeader } }
       }
     )
 
-    // Verificar o token do usuário logado
-    const token = authHeader.replace('Bearer ', '')
     console.log('🔍 Verificando token do usuário...')
-    
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
 
     if (userError || !user) {
       console.error('❌ Erro ao verificar usuário:', userError)
@@ -56,6 +55,18 @@ Deno.serve(async (req) => {
     if (user.user_metadata?.role !== 'admin') {
       throw new Error('Acesso negado. Apenas administradores podem acessar esta função.')
     }
+
+    // Criar cliente admin (service role) APENAS para executar o RPC
+    const supabaseAdmin = createClient(
+      supabaseUrl,
+      serviceRoleKey,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
 
     // Listar todos os usuários usando função RPC (acesso direto ao auth.users)
     console.log('🔍 Listando usuários via RPC function...')

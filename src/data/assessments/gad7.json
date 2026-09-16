@@ -1,0 +1,142 @@
+{
+  "id": "gad-7",
+  "slug": "teste-ansiedade-gad7",
+  "aliases": ["teste-ansiedade", "ansiedade-gad7"],
+  "title": "Teste de Nível de Ansiedade (Escala GAD-7)",
+  "shortTitle": "Autoavaliação de Ansiedade",
+  "subtitle": "Avalie a presença e intensidade de sintomas de ansiedade nas últimas duas semanas através do instrumento clínico validado internacionalmente.",
+  "timeEstimate": "2 minutos",
+  "questionsCount": 7,
+  "category": "Ansiedade & Emoções",
+  "scientificReference": "Spitzer RL, Kroenke K, Williams JBW, Löwe B. A brief measure for assessing generalized anxiety disorder: the GAD-7. Arch Intern Med. 2006;166(10):1092–1097. Validação brasileira: Moreno et al. (2016).",
+  "instructions": "Durante as últimas duas semanas, com que frequência você foi incomodado(a) por qualquer um dos seguintes problemas?",
+  "options": [
+    { "value": 0, "label": "Nenhuma vez", "shortLabel": "Nunca" },
+    { "value": 1, "label": "Vários dias", "shortLabel": "Alguns dias" },
+    { "value": 2, "label": "Mais da metade dos dias", "shortLabel": "+ da metade" },
+    { "value": 3, "label": "Quase todos os dias", "shortLabel": "Quase sempre" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "text": "Sentir-se nervoso(a), ansioso(a) ou com os nervos à flor da pele?",
+      "category": "Tensão e Nervosismo"
+    },
+    {
+      "id": 2,
+      "text": "Não ser capaz de impedir ou de controlar as preocupações?",
+      "category": "Controle de Pensamentos"
+    },
+    {
+      "id": 3,
+      "text": "Preocupar-se muito com diversas coisas diferentes?",
+      "category": "Preocupação Excessiva"
+    },
+    {
+      "id": 4,
+      "text": "Dificuldade para relaxar ou descansar a mente?",
+      "category": "Dificuldade de Relaxamento"
+    },
+    {
+      "id": 5,
+      "text": "Ficar tão agitado(a) que se torna difícil permanecer sentado(a) ou quieto(a)?",
+      "category": "Agitação Psicomotora"
+    },
+    {
+      "id": 6,
+      "text": "Ficar facilmente irritado(a), impaciente ou chateado(a)?",
+      "category": "Irritabilidade"
+    },
+    {
+      "id": 7,
+      "text": "Sentir medo como se algo horrível fosse acontecer a qualquer momento?",
+      "category": "Sensação de Ameaça"
+    }
+  ],
+  "functionalImpactQuestion": {
+    "id": 8,
+    "text": "Se você assinalou algum problema nas perguntas anteriores, quão difícil esses sentimentos tornaram realizar o seu trabalho, cuidar das tarefas de casa ou se relacionar com outras pessoas?",
+    "options": [
+      { "value": 0, "label": "Nada difícil" },
+      { "value": 1, "label": "Um pouco difícil" },
+      { "value": 2, "label": "Muito difícil" },
+      { "value": 3, "label": "Extremamente difícil" }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 4,
+      "severity": "minimal",
+      "label": "Ansiedade Mínima",
+      "badgeColor": "emerald",
+      "summary": "Seus sintomas de ansiedade estão dentro da faixa considerada habitual e funcional.",
+      "description": "Você apresenta baixos níveis de sintomas ansiosos no momento. É normal vivenciar episódios pontuais de preocupação em situações de estresse, mas eles não parecem comprometer sua rotina de forma significativa.",
+      "recommendations": [
+        "Mantenha hábitos saudáveis de sono, pausas e atividade física.",
+        "Pratique momentos intencionais de desaceleração, leitura e meditação/oração.",
+        "Monitore suas emoções se passar por períodos de grande transição ou sobrecarga."
+      ],
+      "spiritualBridge": "O equilíbrio emocional é nutrido diariamente por meio de momentos de descanso, gratidão e autocuidado.",
+      "ctaText": "Conhecer Artigos e Recursos",
+      "ctaLink": "/artigos",
+      "showBooking": false
+    },
+    {
+      "min": 5,
+      "max": 9,
+      "severity": "mild",
+      "label": "Ansiedade Leve",
+      "badgeColor": "blue",
+      "summary": "Você apresenta alguns sinais perceptíveis de ansiedade, mas ainda sob controle relativo.",
+      "description": "Algumas preocupações e tensões têm surgido com frequência nas últimas semanas. Embora ainda permitam realizar suas atividades diárias, podem começar a gerar desgaste físico e cansaço mental se não forem acolhidas com atenção preventiva.",
+      "recommendations": [
+        "Identifique os principais gatilhos que aumentam suas preocupações cotidianas.",
+        "Experimente técnicas de respiração diafragmática e higiene do sono.",
+        "Considere uma conversa preventiva com um psicólogo para fortalecer suas estratégias de regulação emocional."
+      ],
+      "spiritualBridge": "Reconhecer que o fardo está pesado é o primeiro passo para encontrar alívio e renovação da mente com apoio adequado.",
+      "ctaText": "Falar com um Psicólogo Preventivamente",
+      "ctaLink": "/agendamento",
+      "showBooking": true
+    },
+    {
+      "min": 10,
+      "max": 14,
+      "severity": "moderate",
+      "label": "Ansiedade Moderada",
+      "badgeColor": "amber",
+      "summary": "Seu nível de ansiedade atingiu um ponto de corte clínico importante e merece cuidado profissional.",
+      "description": "Seus sintomas de tensão, agitação e preocupação persistente estão impactando sua energia, sono ou relacionamentos. Esse nível de pontuação sugere que a ansiedade deixou de ser apenas um sinal de alerta e passou a gerar sofrimento e sobrecarga.",
+      "recommendations": [
+        "Recomenda-se acompanhamento psicoterapêutico estruturado (como a Terapia Cognitivo-Comportamental).",
+        "Evite sobrecarregar-se com decisões excessivas no momento; aprenda a delegar e dizer não.",
+        "Busque um espaço seguro de escuta onde sua fé e suas dores sejam acolhidas sem julgamento."
+      ],
+      "spiritualBridge": "'Não andeis ansiosos por coisa alguma; antes, as vossas petições sejam conhecidas diante de Deus... e a paz que excede todo o entendimento guardará os vossos corações.' Cuidar da mente com profissionais qualificados é uma atitude de sabedoria e responsabilidade.",
+      "ctaText": "Agendar Sessão com Especialista em Ansiedade",
+      "ctaLink": "/agendamento",
+      "showBooking": true,
+      "isHighlight": true
+    },
+    {
+      "min": 15,
+      "max": 21,
+      "severity": "severe",
+      "label": "Ansiedade Severa",
+      "badgeColor": "rose",
+      "summary": "Você está vivenciando um quadro agudo de ansiedade que exige acolhimento e suporte especializado prioritário.",
+      "description": "Os sintomas que você relatou estão muito intensos e provavelmente interferem de maneira expressiva em seu bem-estar, capacidade de concentração, sono e paz interior. Você não precisa carregar esse peso sozinho(a).",
+      "recommendations": [
+        "Inicie acompanhamento psicológico especializado o quanto antes.",
+        "Considere também uma consulta com um médico psiquiatra para avaliação conjunta e alívio do sofrimento agudo.",
+        "Compartilhe o que está sentindo com pessoas de confiança e busque uma rede de apoio acolhedora."
+      ],
+      "spiritualBridge": "Buscar ajuda especializada em momentos de dor aguda é um ato de coragem e preservação da vida. Nossa equipe de psicólogos está pronta para acolher sua história com total empatia e sigilo.",
+      "ctaText": "Buscar Atendimento Prioritário com Psicólogo",
+      "ctaLink": "/agendamento",
+      "showBooking": true,
+      "isHighlight": true
+    }
+  ]
+}

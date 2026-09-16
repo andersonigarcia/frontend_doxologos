@@ -10,7 +10,7 @@ import { useAdminData } from '@/hooks/useAdminData';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter, AlertTriangle, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
@@ -35,9 +35,15 @@ import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
 import UserBadge from '@/components/UserBadge';
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner';
 const EventRegistrationsDashboard = lazy(() => import('@/components/admin/EventRegistrationsDashboard'));
 const BlogManagementDashboard = lazy(() => import('@/components/admin/BlogManagementDashboard'));
+const BookResourcesAdminSection = lazy(() => import('@/components/admin/BookResourcesAdminSection'));
+const AssessmentLeadsSection = lazy(() => import('@/components/admin/AssessmentLeadsSection'));
 // Fase 5 - Dashboard Profissional
+import ProfessionalListPage from '@/pages/admin/ProfessionalListPage';
+
 import { DashboardCard } from '@/components/shared/DashboardCard';
 import { StatCard } from '@/components/common/StatCard';
 import { TimelineView } from '@/components/common/TimelineView';
@@ -59,7 +65,9 @@ const AvailabilityManager = lazy(() => import('@/components/admin/availability/A
 const CostFormModal = lazy(() => import('@/components/admin/CostFormModal').then(m => ({ default: m.CostFormModal })));
 const RefundRequestDashboard = lazy(() => import('@/components/admin/RefundRequestDashboard'));
 const NfseResilienceDashboard = lazy(() => import('@/components/admin/NfseResilienceDashboard'));
+const AnalyticsDashboardPage = lazy(() => import('@/pages/admin/AnalyticsDashboardPage'));
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
+import { EmergencyBookingModal } from '@/components/admin/EmergencyBookingModal';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { useProfessionalStats } from '@/hooks/useProfessionalStats';
 import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
@@ -141,6 +149,7 @@ const AdminPage = () => {
     const { toast } = useToast();
     const { user, userRole, signIn, signOut, updatePassword } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
+    const [isEmergencyBookingModalOpen, setIsEmergencyBookingModalOpen] = useState(false);
 
     // P-03: Dados e fetching centralizados no hook useAdminData
     const {
@@ -279,6 +288,7 @@ const AdminPage = () => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [bookingView, setBookingView] = useState('list'); // 'list' ou 'calendar'
     const [patientView, setPatientView] = useState('analytics'); // 'analytics' ou 'list'
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -291,7 +301,7 @@ const AdminPage = () => {
     }, [professionals, user]);
 
     const isAdminView = userRole === 'admin';
-    const isProfessionalView = userRole === 'professional';
+    const isProfessionalView = false;
 
     const professionalServiceIds = useMemo(() => {
         if (!isProfessionalView) return [];
@@ -529,7 +539,7 @@ const AdminPage = () => {
         if (!currentTabs.find(tab => tab.value === activeTab)) {
             setActiveTab(currentTabs[0]?.value || 'bookings');
         }
-    }, [userRole, activeTab, tabsConfig]);
+    }, [userRole, activeTab]);
 
     useEffect(() => {
         if (!currentProfessional) {
@@ -1452,9 +1462,23 @@ const AdminPage = () => {
                 return false;
             }
 
-            // Filtro por status
-            if (bookingFilters.status && booking.status !== bookingFilters.status) {
-                return false;
+            // Filtro por status (normalizando equivalências de status)
+            if (bookingFilters.status) {
+                const targetStatus = bookingFilters.status.toLowerCase();
+                const currentStatus = (booking.status || '').toLowerCase();
+
+                const PENDING_STATUSES = ['pending', 'pending_payment', 'pendente', 'awaiting_payment'];
+                const CONFIRMED_STATUSES = ['confirmed', 'paid'];
+
+                if (PENDING_STATUSES.includes(targetStatus)) {
+                    if (!PENDING_STATUSES.includes(currentStatus)) return false;
+                } else if (targetStatus === 'confirmed') {
+                    if (!CONFIRMED_STATUSES.includes(currentStatus)) return false;
+                } else {
+                    if (currentStatus !== targetStatus) {
+                        return false;
+                    }
+                }
             }
 
             // Filtro por período - data inicial
@@ -1989,47 +2013,9 @@ const AdminPage = () => {
                 .eq('id', id)
                 .select();
         } else {
-            let zoomData = null;
-            try {
-                const { default: zoomService } = await import('../lib/zoomService');
-                const durationMinutes = startDate && endDate ? Math.max(1, Math.ceil((endDate - startDate) / 60000)) : 60;
-
-                zoomData = await zoomService.createMeeting({
-                    topic: `Evento: ${trimmedTitle}`,
-                    startTime: sanitizedEventData.data_inicio,
-                    duration: durationMinutes,
-                    timezone: 'America/Sao_Paulo',
-                    agenda: sanitizedEventData.descricao || '',
-                    settings: {
-                        join_before_host: false,
-                        waiting_room: true,
-                        approval_type: 0,
-                        mute_upon_entry: true,
-                        auto_recording: 'none'
-                    }
-                });
-
-                if (!zoomData) {
-                    secureLog.warn('Não foi possível criar a sala Zoom automaticamente.');
-                }
-            } catch (error) {
-                secureLog.error('Erro ao criar sala Zoom:', error?.message || error);
-                secureLog.debug('Detalhes do erro ao criar sala Zoom', error);
-                // Não bloquear criação do evento se Zoom falhar
-            }
-
-            const zoomMeetingFields = zoomData
-                ? {
-                    meeting_link: zoomData.join_url,
-                    meeting_password: zoomData.password,
-                    meeting_id: zoomData.id?.toString(),
-                    meeting_start_url: zoomData.start_url
-                }
-                : null;
-
             result = await supabase
                 .from('eventos')
-                .insert([{ ...sanitizedEventData, ...(zoomMeetingFields || {}) }])
+                .insert([sanitizedEventData])
                 .select();
         }
 
@@ -2044,8 +2030,7 @@ const AdminPage = () => {
             return;
         }
 
-        const zoomMessage = !isEditingEvent && result.data?.[0]?.meeting_link ? ' (Sala Zoom criada ✅)' : '';
-        toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!${zoomMessage}` });
+        toast({ title: `Evento ${isEditingEvent ? 'atualizado' : 'criado'} com sucesso!` });
         resetEventForm();
         fetchAllData();
     };
@@ -2382,11 +2367,13 @@ const AdminPage = () => {
                         userRole={userRole}
                         userName={displayName}
                         pendingAlertsCount={professionalStats?.pendingAppointments?.length || 0}
+                        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
                     />
                 </div>
 
                 <div className="flex-1 min-w-0 p-4 md:p-8 pt-24 md:pt-28 overflow-y-auto">
                     <div className="container mx-auto max-w-7xl">
+                        <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Painel de Controle</h1>
@@ -2398,7 +2385,7 @@ const AdminPage = () => {
 
                         {/* Dashboard Tab - Cockpit Estratégico ou Visão do Profissional */}
                         <TabsContent value="dashboard" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             {isAdminView ? (
                                 <StrategicCockpitModule
                                     summaryData={{
@@ -2411,7 +2398,12 @@ const AdminPage = () => {
                                         takeRatePct: 20,
                                         netMargin: totals.totalPlatformFee
                                     }}
-                                    alertsData={{}}
+                                    alertsData={{
+                                        pendingAppointmentsCount: (bookings || []).filter(b => {
+                                            const s = (b.status || '').toLowerCase();
+                                            return ['pending', 'pending_payment', 'pendente', 'awaiting_payment'].includes(s);
+                                        }).length
+                                    }}
                                     onNavigateTab={setActiveTab}
                                 />
                             ) : (
@@ -2603,6 +2595,12 @@ const AdminPage = () => {
                                 />
                             </Suspense>
                         </TabsContent>
+                        {/* Analytics Tab */}
+                        <TabsContent value="analytics" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                <AnalyticsDashboardPage />
+                            </Suspense>
+                        </TabsContent>
 
                         <TabsContent value="bookings" className="mt-6">
                             <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
@@ -2614,9 +2612,6 @@ const AdminPage = () => {
                                         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                                             <Calendar className="w-5 h-5 text-[#2d8659]" />
                                             Gestão Operacional de Agendamentos
-                                            <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-bold">
-                                                {getFilteredBookings().length} de {bookings.length}
-                                            </span>
                                         </h2>
                                         <p className="text-xs text-slate-500 mt-0.5">
                                             Filtre, ordene e gerencie todas as consultas em tempo real com controle financeiro.
@@ -2673,44 +2668,44 @@ const AdminPage = () => {
                                                 ) : null;
                                             })()}
                                         </Button>
+
+                                        {userRole === 'admin' && (
+                                            <Button
+                                                onClick={() => setIsEmergencyBookingModalOpen(true)}
+                                                variant="outline"
+                                                size="sm"
+                                                className="text-xs h-8 border-slate-200 text-slate-700 hover:bg-slate-50 font-bold"
+                                            >
+                                                <AlertTriangle className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                                                Encaixe de Urgência
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
 
-                                {/* BARRA EXECUTIVA DE TOTAIS (1 LINHA COMPACTA DE 48PX) */}
+                                {/* PIPELINE STATUS BAR (Operacional + Financeiro Básico) */}
                                 {(() => {
                                     const filteredBookings = getFilteredBookings();
                                     const filteredTotals = calculateTotals(filteredBookings);
 
                                     return (
                                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 text-xs">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-4 h-4 text-[#2d8659]" />
-                                                <span className="text-slate-500 font-medium">Agendamentos:</span>
-                                                <span className="font-extrabold text-slate-900">{filteredTotals.totalBookings}</span>
-                                            </div>
-
+                                            
                                             {userRole === 'admin' && (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-slate-500">Valor Cobrado:</span>
-                                                    <span className="font-bold text-emerald-700">R$ {filteredTotals.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <div className="flex items-center gap-1.5 border-r border-slate-200 pr-4">
+                                                    <span className="text-slate-500">Valor Grade:</span>
+                                                    <span className="font-extrabold text-slate-900">R$ {filteredTotals.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                                 </div>
                                             )}
 
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-slate-500">{userRole === 'admin' ? 'Repassado:' : 'A faturar:'}</span>
-                                                <span className="font-bold text-blue-700">R$ {filteredTotals.totalProfessionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-slate-500 font-medium">A Receber (Agendados):</span>
+                                                <span className="font-bold text-blue-600">R$ {filteredTotals.confirmedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
-                                            {userRole === 'admin' && (
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="text-slate-500">Taxa Doxologos:</span>
-                                                    <span className="font-bold text-purple-700">R$ {filteredTotals.totalPlatformFee.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                                </div>
-                                            )}
-
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-slate-500 font-medium">Recebidos:</span>
-                                                <span className="font-bold text-emerald-800">R$ {filteredTotals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-slate-500 font-medium">Recebidos (Concluídos):</span>
+                                                <span className="font-bold text-emerald-700">R$ {filteredTotals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
                                             <div className="flex items-center gap-1.5">
@@ -4119,11 +4114,17 @@ const AdminPage = () => {
                             (userRole === 'admin' || userRole === 'professional') && (
                                 <TabsContent value="professionals" className="mt-6">
                                     <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                        {userRole === 'admin' ? (
+                                            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+                                                <ProfessionalListPage isEmbedded />
+                                            </div>
+                                        ) : (
+                                        <>
                                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                             <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6">
                                                 <h2 className="text-2xl font-bold mb-6 flex items-center">
                                                     <Users className="w-6 h-6 mr-2 text-[#2d8659]" />
-                                                    {userRole === 'admin' ? 'Profissionais' : 'Meu Perfil'}
+                                                    Meu Perfil
                                                 </h2>
                                                 <div className="space-y-4">
                                                     {professionals.map((prof, index) => (
@@ -4564,8 +4565,10 @@ const AdminPage = () => {
                                             </form>
                                         </div>
                                     )}
+                                    </>
+                                    )}
                                 </Suspense>
-</TabsContent>
+                            </TabsContent>
                             )
                         }
 
@@ -5704,6 +5707,7 @@ const AdminPage = () => {
                                 <TabsContent value="settings" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="space-y-6">
+                                        <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
                                         <SystemSettingsManager userRole={userRole} />
 
                                         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
@@ -5724,7 +5728,22 @@ const AdminPage = () => {
 </TabsContent>
                             )
                         }
+                        {
+                            userRole === 'admin' && (
+                                <TabsContent value="book-resources" className="mt-6">
+<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                    <BookResourcesAdminSection />
+                                </Suspense>
+</TabsContent>
+                            )
+                        }
+                        <TabsContent value="assessment-leads" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                <AssessmentLeadsSection currentUserId={user?.id} />
+                            </Suspense>
+                        </TabsContent>
                     </Tabs>
+
                 </div>
             </div>
         </div>
@@ -5737,6 +5756,19 @@ const AdminPage = () => {
                 message={confirmDialog.message}
                 warningMessage={confirmDialog.warningMessage}
                 type={confirmDialog.type}
+            />
+
+            <EmergencyBookingModal
+                isOpen={isEmergencyBookingModalOpen}
+                onClose={() => setIsEmergencyBookingModalOpen(false)}
+                professionals={professionals}
+                services={services}
+                onBookingCreated={fetchAllData}
+            />
+
+            <ChangePasswordModal
+                isOpen={isChangePasswordOpen}
+                onClose={() => setIsChangePasswordOpen(false)}
             />
         </>
     );

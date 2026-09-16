@@ -31,7 +31,17 @@ async function verifySignature(req: Request, bodyText: string, secret: string): 
     if (key.trim() === 'v1') v1 = value.trim();
   });
 
-  const manifest = `id:${getUrlParam(req, 'data.id')};request-id:${xRequestId};ts:${ts};`;
+  let bodyJson: any = {};
+  try {
+    bodyJson = JSON.parse(bodyText);
+  } catch (e) {
+    // ignore
+  }
+
+  const urlId = getUrlParam(req, 'data.id');
+  const finalId = urlId || bodyJson?.data?.id || bodyJson?.id || '';
+
+  const manifest = `id:${finalId};request-id:${xRequestId};ts:${ts};`;
 
   // Create HMAC
   const encoder = new TextEncoder();
@@ -89,6 +99,37 @@ async function sendEmail(sendgridKey: string, from: string, to: string, subject:
   return res.ok;
 }
 
+// FIX #7: sanitizeForLog movida para escopo de módulo (fora do handler)
+// Evita problemas de hoisting instável em Deno com arrow functions
+function sanitizeForLog(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(sanitizeForLog);
+
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const lowerKey = key.toLowerCase();
+    if (
+      lowerKey.includes('card') ||
+      lowerKey.includes('cvv') ||
+      lowerKey.includes('security_code') ||
+      lowerKey.includes('password') ||
+      lowerKey.includes('token')
+    ) {
+      sanitized[key] = '***REDACTED***';
+    } else if (lowerKey.includes('email') && typeof value === 'string') {
+      const [user, domain] = value.split('@');
+      sanitized[key] = user ? `${user.substring(0, 2)}***@${domain || ''}` : '***@***';
+    } else if (lowerKey.includes('phone') && typeof value === 'string') {
+      sanitized[key] = value.length > 4 ? `***${value.slice(-4)}` : '***';
+    } else if (typeof value === 'object') {
+      sanitized[key] = sanitizeForLog(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -135,35 +176,6 @@ serve(async (req: Request) => {
     console.warn('⚠️ MP_WEBHOOK_SECRET não configurado — assinatura não verificada. Configure em produção.');
   }
 
-function sanitizeForLog(data: any): any {
-  if (!data || typeof data !== 'object') return data;
-  if (Array.isArray(data)) return data.map(sanitizeForLog);
-
-  const sanitized: Record<string, any> = {};
-  for (const [key, value] of Object.entries(data)) {
-    const lowerKey = key.toLowerCase();
-    if (
-      lowerKey.includes('card') ||
-      lowerKey.includes('cvv') ||
-      lowerKey.includes('security_code') ||
-      lowerKey.includes('password') ||
-      lowerKey.includes('token')
-    ) {
-      sanitized[key] = '***REDACTED***';
-    } else if (lowerKey.includes('email') && typeof value === 'string') {
-      const [user, domain] = value.split('@');
-      sanitized[key] = user ? `${user.substring(0, 2)}***@${domain || ''}` : '***@***';
-    } else if (lowerKey.includes('phone') && typeof value === 'string') {
-      sanitized[key] = value.length > 4 ? `***${value.slice(-4)}` : '***';
-    } else if (typeof value === 'object') {
-      sanitized[key] = sanitizeForLog(value);
-    } else {
-      sanitized[key] = value;
-    }
-  }
-  return sanitized;
-}
-
   // Log to database (com saneamento PII)
   const logEntry = {
     provider: 'mercadopago',
@@ -195,6 +207,8 @@ function sanitizeForLog(data: any): any {
 
     let bookingId: string | null = null;
     let existingBooking: any = null;
+    // FIX #6: flag para evitar dupla emissão de NFS-e quando já tratada inline
+    let nfseHandledInline = false;
 
     // 1. Double Check with MP API (Self-Validation)
     // This confirms the payment status is real and not a spoofed payload
@@ -210,7 +224,65 @@ function sanitizeForLog(data: any): any {
     // 2. Process based on Reference
     let ledgerTransactionId = null;
 
-    if (externalRef && externalRef.startsWith('EVENTO_')) {
+    if (externalRef && externalRef.startsWith('LIVRO_')) {
+      // ── Recurso Digital do Livro ──────────────────────────────
+      const resourceId = externalRef.replace('LIVRO_', '');
+      console.log(`📚 Processing digital resource payment - Resource ID: ${resourceId}`);
+
+      if (mpPayment.status === 'approved') {
+        // Atualizar user_book_downloads via payment_id (reconciliação)
+        const { error: dlUpdateErr } = await supabase
+          .from('user_book_downloads')
+          .update({ payment_status: 'completed' })
+          .eq('payment_id', paymentId.toString())
+          .eq('download_type', 'paid');
+
+        if (dlUpdateErr) {
+          console.error('❌ Error updating user_book_downloads:', dlUpdateErr);
+        } else {
+          console.log('✅ user_book_downloads updated to completed');
+        }
+
+        // Incrementar purchase_count no recurso
+        await supabase.rpc('increment_book_resource_purchases', { p_resource_id: resourceId });
+
+        // Notificação de sistema no painel admin
+        await supabase.from('notifications').insert([{
+          user_id: null,
+          type: 'book:purchase',
+          title: 'Nova venda de material do livro',
+          message: `Pagamento ${paymentId} aprovado para recurso ${resourceId} — R$ ${mpPayment.transaction_amount?.toFixed(2)}`,
+          link: '/admin?tab=book-resources',
+          metadata: {
+            resource_id: resourceId,
+            payment_id: paymentId,
+            payer_email: mpPayment.payer?.email,
+            amount: mpPayment.transaction_amount,
+          },
+        }]);
+
+        success = true;
+      } else {
+        // Pagamento recusado/cancelado — marcar como failed
+        await supabase
+          .from('user_book_downloads')
+          .update({ payment_status: 'failed' })
+          .eq('payment_id', paymentId.toString())
+          .eq('download_type', 'paid');
+      }
+
+      if (logId) {
+        await supabase.from('webhook_logs')
+          .update({ status: success ? 'processed' : 'ignored', processed_at: new Date().toISOString() })
+          .eq('id', logId);
+      }
+
+      return new Response(JSON.stringify({ ok: true, type: 'digital_resource' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } else if (externalRef && externalRef.startsWith('EVENTO_')) {
       // ... Event Logic ...
       const inscricaoId = externalRef.replace('EVENTO_', '');
       console.log(`🎫 Processing event payment - Enrollment ID: ${inscricaoId}`);
@@ -375,18 +447,23 @@ function sanitizeForLog(data: any): any {
             }
           ]);
 
-          // Trigger NFS-e Emission for total repasse amount (R$ 90 x N)
+          // FIX #6: Emissão inline de NFS-e para pacotes (evita duplo disparo no bloco externo)
           try {
-            console.log(`🧾 Triggering automated NFS-e for package ${packageId} (Repasse Total: R$ ${pkgData.professional_repasse_total})...`);
-            await supabase.functions.invoke('emit-nfse', {
+            console.log(`🧾 Disparando NFS-e para pacote ${packageId} (payment_id: ${payData.id})...`);
+            const { error: nfsePkgErr } = await supabase.functions.invoke('emit-nfse', {
               body: {
                 package_id: packageId,
                 payment_id: payData.id,
-                repasse_total: pkgData.professional_repasse_total
               }
             });
+            if (nfsePkgErr) {
+              console.error('⚠️ Falha ao disparar NFS-e para pacote (non-fatal):', nfsePkgErr);
+            } else {
+              console.log('✅ NFS-e de pacote disparada com sucesso.');
+              nfseHandledInline = true; // Marca como tratada — bloco externo não re-emitirá
+            }
           } catch (nfseErr) {
-            console.error('⚠️ Non-fatal error triggering package NFS-e:', nfseErr);
+            console.error('⚠️ Exceção ao disparar NFS-e de pacote (non-fatal):', nfseErr);
           }
         }
       }
@@ -459,13 +536,19 @@ function sanitizeForLog(data: any): any {
 
         // M-03: Máquina de estados — impede regressões de status por webhooks tardios
         const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+          'pending_payment': ['awaiting_payment', 'confirmed', 'cancelled'],
+          'awaiting_payment': ['confirmed', 'cancelled'], // cartão in_process → aprovado/recusado
           'pending': ['confirmed', 'cancelled'],
-          'awaiting_payment': ['confirmed', 'cancelled'],
           'confirmed': ['cancelled', 'completed'],
           'completed': [], // estado terminal — nenhuma transição permitida
           'cancelled': [], // estado terminal — nenhuma transição permitida
+          'cancelled_by_patient': [],
+          'cancelled_by_professional': [],
+          'no_show_unjustified': []
         };
-        const allowedNext = ALLOWED_TRANSITIONS[existingBooking.status] ?? [];
+        
+        // Se o status não está mapeado (fallback), permitimos transições padrão para não bloquear o fluxo
+        const allowedNext = ALLOWED_TRANSITIONS[existingBooking.status] ?? ['awaiting_payment', 'confirmed', 'cancelled'];
 
         if (newStatus && !allowedNext.includes(newStatus)) {
           console.warn(`⚠️ [M-03] Transição bloqueada: ${existingBooking.status} → ${newStatus} para booking ${bookingId}. Webhook ignorado.`);
@@ -493,6 +576,29 @@ function sanitizeForLog(data: any): any {
             transactionAmount: mpPayment.transaction_amount
           });
           success = true;
+
+          // ── Post-Payment Orchestrator (fire-and-forget) ─────────────────
+          // Dispara email de confirmação ao paciente e ao profissional.
+          // Falha aqui NÃO impede o webhook de retornar 200.
+          // Controlado por variável de ambiente POST_PAYMENT_ORCHESTRATOR.
+          if (newStatus === 'confirmed') {
+            const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'false').toLowerCase() === 'true';
+            if (orchestratorEnabled) {
+              supabase.functions.invoke('post-payment-orchestrator', {
+                body: { booking_id: bookingId }
+              }).then(({ error: orchErr }: any) => {
+                if (orchErr) {
+                  console.error(`⚠️ [Orchestrator] Falha ao invocar para booking ${bookingId} (non-fatal):`, orchErr);
+                } else {
+                  console.log(`✅ [Orchestrator] Invocado com sucesso para booking ${bookingId}`);
+                }
+              }).catch((e: any) => {
+                console.error(`⚠️ [Orchestrator] Exceção na invocação (non-fatal):`, e);
+              });
+            } else {
+              console.log(`ℹ️ [Orchestrator] Desativado (POST_PAYMENT_ORCHESTRATOR=false). Email não disparado.`);
+            }
+          }
         } else if (!newStatus) {
           console.warn(`⚠️ No status mapping for MP status: ${mpPayment.status}`);
         }
@@ -614,25 +720,42 @@ function sanitizeForLog(data: any): any {
 
     // ========================================
     // 4. AUTOMATED NFS-E EMISSION (BHISS PBH)
+    // FIX #6: Só dispara se não foi tratado inline (evita dupla emissão para pacotes)
+    // FIX #6: Garante que bookingId ou ledgerTransactionId estão resolvidos antes de invocar
     // ========================================
-    if (isPositiveStatus) {
-      try {
-        console.log(`🧾 Triggering automated NFS-e emission for payment ${paymentId}...`);
-        const { error: nfseInvokeError } = await supabase.functions.invoke('emit-nfse', {
-          body: {
-            booking_id: bookingId,
-            inscricao_id: externalRef && externalRef.startsWith('EVENTO_') ? externalRef.replace('EVENTO_', '') : null,
-            payment_id: ledgerTransactionId
+    if (isPositiveStatus && !nfseHandledInline) {
+      const hasValidReference = !!(bookingId || ledgerTransactionId ||
+        (externalRef && externalRef.startsWith('EVENTO_')));
+
+      if (!hasValidReference) {
+        console.warn('⚠️ NFS-e não disparada: nenhuma referência válida (bookingId, ledgerTransactionId ou inscricaoId) resolvida.');
+      } else {
+        try {
+          const inscricaoId = externalRef && externalRef.startsWith('EVENTO_')
+            ? externalRef.replace('EVENTO_', '')
+            : null;
+
+          console.log(`🧾 Disparando NFS-e: booking=${bookingId} | inscricao=${inscricaoId} | payment=${ledgerTransactionId}`);
+
+          const { error: nfseInvokeError } = await supabase.functions.invoke('emit-nfse', {
+            body: {
+              booking_id: bookingId,
+              inscricao_id: inscricaoId,
+              payment_id: ledgerTransactionId,
+            }
+          });
+
+          if (nfseInvokeError) {
+            console.error('⚠️ Falha ao disparar NFS-e (non-fatal):', nfseInvokeError);
+          } else {
+            console.log('✅ NFS-e disparada com sucesso.');
           }
-        });
-        if (nfseInvokeError) {
-          console.error('⚠️ Warning: Automatic NFS-e emission invocation failed:', nfseInvokeError);
-        } else {
-          console.log('✅ NFS-e emission triggered successfully.');
+        } catch (nfseErr) {
+          console.error('⚠️ Exceção ao disparar NFS-e (non-fatal):', nfseErr);
         }
-      } catch (nfseErr) {
-        console.error('⚠️ Non-fatal error triggering NFS-e:', nfseErr);
       }
+    } else if (nfseHandledInline) {
+      console.log('ℹ️ NFS-e já tratada inline (pacote). Bloco externo ignorado.');
     }
 
     // Update Log

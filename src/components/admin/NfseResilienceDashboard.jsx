@@ -49,6 +49,12 @@ export default function NfseResilienceDashboard() {
     correction_notes: ''
   });
 
+  // Modal de Disparo Avulso (para transações históricas não capturadas)
+  const [isManualEmitOpen, setIsManualEmitOpen] = useState(false);
+  const [manualEmitData, setManualEmitData] = useState({ booking_id: '', package_id: '', payment_id: '' });
+  const [manualEmitLoading, setManualEmitLoading] = useState(false);
+  const [manualEmitMessage, setManualEmitMessage] = useState(null);
+
   useEffect(() => {
     fetchNfseEmissions();
   }, [statusFilter, categoryFilter]);
@@ -87,6 +93,39 @@ export default function NfseResilienceDashboard() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchNfseEmissions();
+  };
+
+  // Disparar NFS-e avulsa (para transações históricas não capturadas pelos bugs corrigidos)
+  const handleManualEmit = async (e) => {
+    e.preventDefault();
+    setManualEmitLoading(true);
+    setManualEmitMessage(null);
+    try {
+      const body = {};
+      if (manualEmitData.booking_id.trim()) body.booking_id = manualEmitData.booking_id.trim();
+      if (manualEmitData.package_id.trim()) body.package_id = manualEmitData.package_id.trim();
+      if (manualEmitData.payment_id.trim()) body.payment_id = manualEmitData.payment_id.trim();
+
+      if (!body.booking_id && !body.package_id && !body.payment_id) {
+        setManualEmitMessage({ type: 'error', text: 'Informe ao menos um ID (booking, pacote ou payment).' });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('emit-nfse', { body });
+      if (error || data?.error) {
+        setManualEmitMessage({ type: 'error', text: `❌ ${error?.message || data?.error}` });
+      } else if (data?.idempotent) {
+        setManualEmitMessage({ type: 'success', text: `ℹ️ NFS-e já existia: #${data?.nfse?.nfse_number}` });
+        setTimeout(() => { setIsManualEmitOpen(false); fetchNfseEmissions(); }, 2000);
+      } else {
+        setManualEmitMessage({ type: 'success', text: `✅ NFS-e ${data?.nfse?.nfse_number || 'criada'} com sucesso!` });
+        setTimeout(() => { setIsManualEmitOpen(false); fetchNfseEmissions(); }, 2000);
+      }
+    } catch (err) {
+      setManualEmitMessage({ type: 'error', text: `Exceção: ${err.message}` });
+    } finally {
+      setManualEmitLoading(false);
+    }
   };
 
   const openCorrectionModal = (record) => {
@@ -239,6 +278,21 @@ export default function NfseResilienceDashboard() {
     .filter(r => r.status === 'error')
     .reduce((sum, r) => sum + (Number(r.valor_servico) || 0), 0);
 
+  // Helper: resolve origem do registro (booking / pacote / evento)
+  const getOrigem = (record) => {
+    if (record.package_id) return { label: 'Pacote', color: 'bg-violet-50 text-violet-700' };
+    if (record.booking_id) return { label: 'Agendamento', color: 'bg-blue-50 text-blue-700' };
+    if (record.inscricao_id) return { label: 'Evento', color: 'bg-orange-50 text-orange-700' };
+    return { label: 'Avulso', color: 'bg-slate-100 text-slate-600' };
+  };
+
+  // Helper: badge de modo de emissão
+  const getEmissionModeBadge = (mode) => {
+    if (mode === 'production') return { label: '🟢 Produção', color: 'bg-emerald-50 text-emerald-700 border border-emerald-200' };
+    if (mode === 'manual') return { label: '✏️ Manual', color: 'bg-teal-50 text-teal-700 border border-teal-200' };
+    return { label: '🔵 Sandbox', color: 'bg-blue-50 text-blue-600 border border-blue-200' };
+  };
+
   // Filtragem de Busca no Client
   const filteredRecords = records.filter(r => {
     if (!searchTerm) return true;
@@ -267,6 +321,13 @@ export default function NfseResilienceDashboard() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setIsManualEmitOpen(true); setManualEmitMessage(null); setManualEmitData({ booking_id: '', package_id: '', payment_id: '' }); }}
+            className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold rounded-xl transition-all shadow-sm shadow-emerald-200"
+          >
+            <Send className="w-4 h-4" />
+            <span>Disparar NFS-e Avulsa</span>
+          </button>
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -392,6 +453,21 @@ export default function NfseResilienceDashboard() {
             <FileText className="w-12 h-12 mx-auto mb-3 stroke-1 text-slate-300" />
             <p className="text-base font-semibold text-slate-600">Nenhum registro de NFS-e encontrado</p>
             <p className="text-xs text-slate-400 mt-1">Ajuste os filtros de pesquisa para visualizar outros registros.</p>
+            {statusFilter === 'all' && categoryFilter === 'all' && !searchTerm && (
+              <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left max-w-md mx-auto">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Tabela vazia detectada</p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      Se já existem pagamentos aprovados mas não aparecem aqui, use o botão
+                      <strong> "Disparar NFS-e Avulsa"</strong> para reprocessar transações históricas
+                      que possam ter sido perdidas.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -399,9 +475,10 @@ export default function NfseResilienceDashboard() {
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   <th className="py-3.5 px-4">Data / Transação</th>
-                  <th className="py-3.5 px-4">Tomador do Serviço</th>
+                  <th className="py-3.5 px-4">Tomador (Profissional)</th>
                   <th className="py-3.5 px-4">Valor (R$)</th>
                   <th className="py-3.5 px-4">Status & Categoria</th>
+                  <th className="py-3.5 px-4">Origem / Modo</th>
                   <th className="py-3.5 px-4">Tentativas</th>
                   <th className="py-3.5 px-4 text-right">Ação</th>
                 </tr>
@@ -428,7 +505,7 @@ export default function NfseResilienceDashboard() {
 
                       {/* Tomador */}
                       <td className="py-3.5 px-4">
-                        <div className="font-medium text-slate-900">{record.tomador_nome || 'Paciente Doxologos'}</div>
+                        <div className="font-medium text-slate-900">{record.tomador_nome || 'Profissional Não Identificado'}</div>
                         <div className="text-xs text-slate-500 font-mono">
                           {record.tomador_cpf_cnpj ? `Doc: ${record.tomador_cpf_cnpj}` : <span className="text-rose-500 font-semibold">⚠️ CPF/CNPJ Ausente</span>}
                         </div>
@@ -478,10 +555,29 @@ export default function NfseResilienceDashboard() {
                             }`}>
                               {record.error_category === 'VALIDATION_ERROR' ? '⚠️ CPF/Dados Incompletos' : 
                                record.error_category === 'PREFEITURA_OFFLINE' ? '📡 Instabilidade WebService PBH' : 
+                               record.error_category === 'AUTH_ERROR' ? '🔒 Erro de Autenticação PBH' :
                                'Erro Interno'}
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* Origem & Modo de Emissão — coluna adicionada */}
+                      <td className="py-3.5 px-4">
+                        {(() => {
+                          const origem = getOrigem(record);
+                          const modoBadge = getEmissionModeBadge(record.emission_mode);
+                          return (
+                            <div className="flex flex-col gap-1">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold ${origem.color}`}>
+                                {origem.label}
+                              </span>
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${modoBadge.color}`}>
+                                {modoBadge.label}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Tentativas */}
@@ -645,7 +741,7 @@ export default function NfseResilienceDashboard() {
                 <form onSubmit={handleUpdateAndRetry} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Tomador / Paciente *</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Nome do Profissional / Tomador *</label>
                       <input
                         type="text"
                         required
@@ -656,7 +752,7 @@ export default function NfseResilienceDashboard() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">CPF / CNPJ do Tomador *</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">CPF / CNPJ do Profissional *</label>
                       <input
                         type="text"
                         required
@@ -670,7 +766,7 @@ export default function NfseResilienceDashboard() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Tomador</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">E-mail do Profissional</label>
                       <input
                         type="email"
                         value={formData.tomador_email}
@@ -680,7 +776,7 @@ export default function NfseResilienceDashboard() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">Valor do Serviço (R$) *</label>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">Valor Retido / Taxa Plataforma (R$) *</label>
                       <input
                         type="number"
                         step="0.01"
@@ -706,7 +802,7 @@ export default function NfseResilienceDashboard() {
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Justificativa da Correção (Audit Log)</label>
                     <input
                       type="text"
-                      placeholder="Ex: CPF corrigido conforme documento oficial enviado pelo paciente."
+                      placeholder="Ex: CPF corrigido conforme documento oficial enviado pelo profissional."
                       value={formData.correction_notes}
                       onChange={(e) => setFormData({ ...formData, correction_notes: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -795,6 +891,67 @@ export default function NfseResilienceDashboard() {
                   <span>Salvar & Reenviar à Prefeitura</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Disparo Avulso — reprocessar transações históricas */}
+      {isManualEmitOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Send className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-base font-bold">Disparar NFS-e Avulsa</h3>
+              </div>
+              <button onClick={() => setIsManualEmitOpen(false)} disabled={manualEmitLoading}
+                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center text-sm">✕</button>
+            </div>
+
+            <div className="p-5">
+              <p className="text-xs text-slate-500 mb-4">
+                Use para reprocessar transações históricas que não tiveram NFS-e gerada automaticamente. Informe ao menos um identificador.
+              </p>
+
+              {manualEmitMessage && (
+                <div className={`p-3 rounded-xl text-sm font-medium mb-4 ${
+                  manualEmitMessage.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}>{manualEmitMessage.text}</div>
+              )}
+
+              <form onSubmit={handleManualEmit} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Booking ID (UUID)</label>
+                  <input type="text" value={manualEmitData.booking_id} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    onChange={e => setManualEmitData({ ...manualEmitData, booking_id: e.target.value.trim() })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Package ID (UUID)</label>
+                  <input type="text" value={manualEmitData.package_id} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    onChange={e => setManualEmitData({ ...manualEmitData, package_id: e.target.value.trim() })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Payment ID (UUID)</label>
+                  <input type="text" value={manualEmitData.payment_id} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                    onChange={e => setManualEmitData({ ...manualEmitData, payment_id: e.target.value.trim() })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" />
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button type="button" onClick={() => setIsManualEmitOpen(false)} disabled={manualEmitLoading}
+                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={manualEmitLoading}
+                    className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50">
+                    {manualEmitLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    Disparar NFS-e
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>

@@ -25,6 +25,10 @@ export const NotificationType = {
     PAYMENT_REFUNDED: 'payment:refunded',
     PAYMENT_PENDING: 'payment:pending',
 
+    // Book Companion — Materiais do Livro
+    BOOK_PURCHASE: 'book:purchase',     // Admin: nova compra de material clínico
+    BOOK_DOWNLOAD: 'book:download',     // Admin: novo lead (download gratuito)
+
     // Sistema
     SYSTEM_ANNOUNCEMENT: 'system:announcement',
     SYSTEM_UPDATE: 'system:update',

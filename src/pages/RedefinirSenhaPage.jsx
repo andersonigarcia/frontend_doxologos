@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
+import { PasswordStrengthMeter, isPasswordValid } from '@/components/auth/PasswordStrengthMeter';
 
 export default function RedefinirSenhaPage() {
   const { updatePassword, user } = useAuth();
@@ -28,10 +29,10 @@ export default function RedefinirSenhaPage() {
   // Ref para evitar dupla execução em React.StrictMode
   const hasAttemptedVerification = useRef(false);
 
-  // Validações
-  const passwordLength = newPassword.length >= 6;
+  // Validações com o novo padrão LGPD/HIPAA (10+ caracteres, maiúsculas, números, especiais)
+  const passwordStrong = isPasswordValid(newPassword);
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
-  const isValid = passwordLength && passwordsMatch;
+  const isValid = passwordStrong && passwordsMatch;
 
   useEffect(() => {
     // Prevenir dupla execução (React.StrictMode remonta o componente em dev)
@@ -397,32 +398,16 @@ export default function RedefinirSenhaPage() {
                     </div>
                   </div>
 
-                  {/* Requisitos da Senha */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Requisitos da senha:
+                  {/* Requisitos da Senha e Medidor de Força */}
+                  {newPassword && (
+                    <PasswordStrengthMeter password={newPassword} />
+                  )}
+
+                  {confirmPassword && confirmPassword !== newPassword && (
+                    <p className="text-xs font-semibold text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                      ⚠️ As senhas digitadas não coincidem.
                     </p>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordLength ? 'bg-green-100' : 'bg-gray-200'
-                          }`}>
-                          {passwordLength && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                        </div>
-                        <span className={passwordLength ? 'text-green-700' : 'text-gray-600'}>
-                          Mínimo de 6 caracteres
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${passwordsMatch ? 'bg-green-100' : 'bg-gray-200'
-                          }`}>
-                          {passwordsMatch && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                        </div>
-                        <span className={passwordsMatch ? 'text-green-700' : 'text-gray-600'}>
-                          As senhas coincidem
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   <Button
                     type="submit"

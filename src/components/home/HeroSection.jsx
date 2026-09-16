@@ -61,39 +61,29 @@ const HeroSection = ({
             </div>
 
             {/* CTAs - Mobile Optimized */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* CTA Primário - Full width em mobile, destaque máximo */}
-              <Link to="/agendamento" >
-                <Button size="lg" className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap shadow-md hover:shadow-lg transition-all">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              {/* CTA Primário - Encontre seu psicólogo */}
+              <Link to="/agendamento" className="w-full sm:w-auto">
+                <Button size="lg" className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap shadow-md hover:shadow-lg transition-all font-semibold">
                   <Calendar className="w-5 h-5 mr-2" />
                   Encontre seu psicólogo
                 </Button>
-
               </Link>
 
-
-
-              {/* Micro-CTA - Scroll suave para "Como Funciona" */}
-              {/* <button
-                onClick={() => {
-                  const element = document.getElementById('como-funciona');
-                  element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                className="text-gray-600 hover:text-gray-800 text-sm font-medium
-                  flex items-center justify-center sm:justify-start gap-1
-                  active:scale-95 transition-all
-                  touch-manipulation"
-                aria-label="Ver como funciona"
-              >
-                Veja como funciona
-                <span className="text-lg">↓</span>
-              </button> */}
+              {/* CTA Secundário / Lead Magnet - Teste de Ansiedade Gratuito */}
+              <Link to="/ferramentas/teste-ansiedade-gad7" className="w-full sm:w-auto">
+                <Button size="lg" variant="outline" className="border-[#1b3c37]/30 bg-white/80 hover:bg-white text-[#1b3c37] text-base px-6 py-3 sm:py-4 w-full sm:w-auto font-semibold flex items-center justify-center gap-2 shadow-xs transition-all">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Fazer Teste de Ansiedade (2 min)</span>
+                </Button>
+              </Link>
             </div>
 
             {/* Texto de Apoio - Reduz ansiedade */}
             <p className="mt-4 sm:mt-6 text-xs sm:text-sm text-gray-500 text-center sm:text-left">
-              ⏱️ Primeira consulta em até 24h • 🔒 Sigilo garantido
+              ⏱️ Primeira consulta em até 24h • 🔒 Sigilo garantido • 🧠 Autoavaliação gratuita
             </p>
+
           </motion.div>
 
           {/* Vídeo - Otimizado para mobile */}

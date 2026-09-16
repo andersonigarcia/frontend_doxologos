@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
-import { Plus, X, Copy, Trash2, Clock, Briefcase, Sun, Sunset, Moon, Sparkles } from 'lucide-react';
+import { Plus, X, Copy, Trash2, Clock, Briefcase, Sun, Sunset, Moon, Sparkles, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import Tooltip from '@/components/ui/Tooltip';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuLabel,
+    DropdownMenuGroup
+} from '@/components/ui/dropdown-menu';
 
 export const DayScheduleCard = ({
     dayKey,
@@ -103,113 +111,43 @@ export const DayScheduleCard = ({
     const sortedSlots = [...slots].sort();
 
     return (
-        <div className="bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+        <div className="bg-white border rounded-2xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col justify-between h-full">
             <div>
                 {/* Header do Dia */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                         <span className="font-bold text-gray-800 text-base">{dayLabel}</span>
                         <Badge variant={slots.length > 0 ? "secondary" : "outline"} className={slots.length > 0 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "text-gray-400"}>
-                            {slots.length} {slots.length === 1 ? 'horário' : 'horários'}
+                            {slots.length}
                         </Badge>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                        <Tooltip content="Gerar faixa de horários rápida">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8 hover:bg-emerald-50 ${showRangeBuilder ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500 hover:text-emerald-600'}`}
-                                onClick={() => { setShowRangeBuilder(!showRangeBuilder); setIsAdding(false); }}
-                            >
-                                <Sparkles className="h-4 w-4" />
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full">
+                                <MoreVertical className="h-4 w-4" />
                             </Button>
-                        </Tooltip>
-
-                        <Tooltip content="Adicionar horário manual">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`h-8 w-8 hover:bg-emerald-50 ${isAdding ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500 hover:text-emerald-600'}`}
-                                onClick={() => { setIsAdding(!isAdding); setShowRangeBuilder(false); }}
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </Tooltip>
-
-                        <Tooltip content="Copiar horários para todos os dias da semana">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                onClick={() => onCopyToAll(dayKey)}
-                                disabled={slots.length === 0}
-                            >
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                        </Tooltip>
-
-                        <Tooltip content="Limpar todos os horários deste dia">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                                onClick={() => onClearDay(dayKey)}
-                                disabled={slots.length === 0}
-                            >
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </Tooltip>
-                    </div>
-                </div>
-
-                {/* Presets Rápidos em 1-Clique */}
-                <div className="flex flex-wrap items-center gap-1.5 mb-3 bg-gray-50/80 p-2 rounded-xl border border-gray-100">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block w-full mb-0.5">Atalhos de Turno:</span>
-                    
-                    <button
-                        type="button"
-                        onClick={handlePresetMorning}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
-                        title="Adiciona 08:00, 09:00, 10:00, 11:00"
-                    >
-                        <Sun className="w-3 h-3 text-amber-500" /> Manhã
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handlePresetAfternoon}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-colors"
-                        title="Adiciona 13:00, 14:00, 15:00, 16:00, 17:00"
-                    >
-                        <Sunset className="w-3 h-3 text-orange-500" /> Tarde
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handlePresetNight}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors"
-                        title="Adiciona 18:00, 19:00, 20:00, 21:00"
-                    >
-                        <Moon className="w-3 h-3 text-indigo-500" /> Noite
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={handleFillCommercial}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-colors"
-                        title="Adiciona 08:00 às 18:00"
-                    >
-                        <Briefcase className="w-3 h-3 text-blue-500" /> Dia Todo
-                    </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => onCopyToAll(dayKey)} disabled={slots.length === 0} className="text-blue-600 focus:text-blue-700 focus:bg-blue-50 cursor-pointer">
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copiar para todos
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => onClearDay(dayKey)} disabled={slots.length === 0} className="text-rose-600 focus:text-rose-700 focus:bg-rose-50 cursor-pointer">
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Limpar dia
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 {/* Exibição dos Horários */}
-                <div className="flex flex-wrap gap-1.5 mb-3 min-h-[44px] items-center">
-                    {sortedSlots.length === 0 ? (
-                        <div className="w-full flex items-center justify-center p-3 text-gray-400 text-xs italic bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                            <Clock className="w-3.5 h-3.5 mr-1.5" />
-                            Nenhum horário configurado para este dia
+                <div className="flex flex-wrap gap-1.5 mb-4 items-center">
+                    {sortedSlots.length === 0 && !isAdding && !showRangeBuilder ? (
+                        <div className="w-full flex flex-col items-center justify-center py-6 px-3 text-gray-400 text-xs bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                            <Clock className="w-6 h-6 mb-2 text-gray-300" />
+                            <p className="text-center font-medium">Nenhum horário configurado</p>
                         </div>
                     ) : (
                         sortedSlots.map((time, index) => (
@@ -233,7 +171,11 @@ export const DayScheduleCard = ({
 
                 {/* Form de Adição Manual */}
                 {isAdding && (
-                    <div className="mb-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-slate-700">Adicionar Manual</span>
+                            <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600"><X className="w-3 h-3" /></button>
+                        </div>
                         <div className="flex gap-2">
                             <input
                                 type="time"
@@ -249,19 +191,22 @@ export const DayScheduleCard = ({
                                 size="sm"
                                 onClick={handleAdd}
                                 disabled={!newTime}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold px-4"
                             >
                                 Add
                             </Button>
                         </div>
-                        {error && <p className="mt-1 text-xs text-rose-500 font-semibold">{error}</p>}
+                        {error && <p className="mt-1 text-[10px] text-rose-500 font-semibold">{error}</p>}
                     </div>
                 )}
 
                 {/* Gerador por Faixa */}
                 {showRangeBuilder && (
-                    <div className="mb-2 p-3 bg-indigo-50/80 rounded-xl border border-indigo-100 text-xs space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                        <span className="font-bold text-indigo-900 block">Gerar Faixa de Horários:</span>
+                    <div className="mb-4 p-3 bg-indigo-50/80 rounded-xl border border-indigo-100 text-xs space-y-3 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex justify-between items-center">
+                            <span className="font-bold text-indigo-900 block">Gerar Faixa de Horários</span>
+                            <button onClick={() => setShowRangeBuilder(false)} className="text-indigo-400 hover:text-indigo-600"><X className="w-3 h-3" /></button>
+                        </div>
                         <div className="grid grid-cols-3 gap-2">
                             <div>
                                 <label className="text-[10px] text-indigo-700 font-medium">Início</label>
@@ -305,6 +250,58 @@ export const DayScheduleCard = ({
                     </div>
                 )}
             </div>
+
+            {/* Main Add Dropdown */}
+            {!isAdding && !showRangeBuilder && (
+                <div className="mt-auto pt-2">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button 
+                                variant="outline" 
+                                className="w-full border-dashed border-gray-300 text-gray-500 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 rounded-xl text-xs font-semibold"
+                            >
+                                <Plus className="w-4 h-4 mr-1.5" />
+                                Adicionar Horários
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="center" className="w-56 rounded-xl p-1.5">
+                            <DropdownMenuGroup>
+                                <DropdownMenuItem onClick={() => setIsAdding(true)} className="rounded-lg cursor-pointer py-2">
+                                    <Plus className="w-4 h-4 mr-2 text-emerald-600" />
+                                    <span className="font-medium text-slate-700">Adicionar Manualmente</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setShowRangeBuilder(true)} className="rounded-lg cursor-pointer py-2">
+                                    <Sparkles className="w-4 h-4 mr-2 text-indigo-600" />
+                                    <span className="font-medium text-slate-700">Gerar Faixa de Horários</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                            
+                            <DropdownMenuSeparator className="my-1" />
+                            
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel className="text-[10px] text-gray-400 font-bold uppercase tracking-wider py-1.5 px-2">Atalhos de Turno</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={handlePresetMorning} className="rounded-lg cursor-pointer py-2">
+                                    <Sun className="w-4 h-4 mr-2 text-amber-500" />
+                                    <span className="font-medium text-slate-700">Manhã (08h às 11h)</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handlePresetAfternoon} className="rounded-lg cursor-pointer py-2">
+                                    <Sunset className="w-4 h-4 mr-2 text-orange-500" />
+                                    <span className="font-medium text-slate-700">Tarde (13h às 17h)</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handlePresetNight} className="rounded-lg cursor-pointer py-2">
+                                    <Moon className="w-4 h-4 mr-2 text-indigo-500" />
+                                    <span className="font-medium text-slate-700">Noite (18h às 21h)</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleFillCommercial} className="rounded-lg cursor-pointer py-2">
+                                    <Briefcase className="w-4 h-4 mr-2 text-blue-500" />
+                                    <span className="font-medium text-slate-700">Dia Todo (08h às 18h)</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )}
         </div>
     );
 };
+

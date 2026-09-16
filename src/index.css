@@ -3,39 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fontes Oficiais Doxologos (Trust & Neue Haas Grotesk) */
-@font-face {
-  font-family: 'Trust';
-  src: url('/fonts/Trust-Regular.otf') format('opentype');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Trust';
-  src: url('/fonts/Trust-Medium.otf') format('opentype');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Trust';
-  src: url('/fonts/Trust-Bold.otf') format('opentype');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Trust';
-  src: url('/fonts/Trust-Black.otf') format('opentype');
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 @font-face {
   font-family: 'Neue Haas Grotesk';
   src: url('/fonts/NeueHaasGrotesk-Regular.otf') format('opentype');
@@ -141,7 +108,7 @@
   }
 
   h1, h2, h3, .font-serif-trust {
-    font-family: 'Trust', 'Cormorant Garamond', 'Playfair Display', 'Georgia', serif;
+    font-family: 'Montserrat', 'Cormorant Garamond', 'Playfair Display', 'Georgia', sans-serif;
   }
 }
 

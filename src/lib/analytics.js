@@ -1,4 +1,6 @@
 // Analytics and Performance Monitoring Utilities
+import posthog from './posthog';
+
 class AnalyticsManager {
   constructor() {
     this.isProduction = import.meta.env.PROD;
@@ -46,9 +48,6 @@ class AnalyticsManager {
       }, 100);
     });
 
-    // Monitor resource loading
-    this.monitorResourceTiming();
-
     // Monitor JavaScript errors
     this.setupErrorTracking();
   }
@@ -58,24 +57,6 @@ class AnalyticsManager {
     return fcpEntry ? fcpEntry.startTime : 0;
   }
 
-  monitorResourceTiming() {
-    const observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (entry.name.includes('.js') || entry.name.includes('.css')) {
-          const loadTime = entry.responseEnd - entry.requestStart;
-          if (loadTime > 1000) { // Track slow resources (>1s)
-            this.trackEvent('performance_issue', {
-              event_category: 'Resource Loading',
-              event_label: entry.name,
-              value: Math.round(loadTime)
-            });
-          }
-        }
-      }
-    });
-
-    observer.observe({ type: 'resource', buffered: true });
-  }
 
   setupErrorTracking() {
     window.addEventListener('error', (event) => {
@@ -99,24 +80,40 @@ class AnalyticsManager {
 
   // Core tracking methods
   trackPageView(pageName, pageTitle = document.title) {
-    if (!this.isProduction || typeof gtag !== 'function') return;
+    if (!this.isProduction) return;
 
-    gtag('config', this.gaId, {
-      page_title: pageTitle,
-      page_location: window.location.href,
-      custom_parameter_1: pageName,
-      custom_parameter_2: this.getUserType()
-    });
+    if (typeof gtag === 'function') {
+      gtag('config', this.gaId, {
+        page_title: pageTitle,
+        page_location: window.location.href,
+        custom_parameter_1: pageName,
+        custom_parameter_2: this.getUserType()
+      });
+    }
+
+    if (posthog) {
+      posthog.capture('$pageview', {
+        page_title: pageTitle,
+        page_name: pageName,
+        user_type: this.getUserType()
+      });
+    }
   }
 
   trackEvent(eventName, parameters = {}) {
-    if (!this.isProduction || typeof gtag !== 'function') return;
+    if (!this.isProduction) return;
 
-    gtag('event', eventName, {
-      session_id: this.sessionId,
-      timestamp: Date.now(),
-      ...parameters
-    });
+    if (typeof gtag === 'function') {
+      gtag('event', eventName, {
+        session_id: this.sessionId,
+        timestamp: Date.now(),
+        ...parameters
+      });
+    }
+
+    if (posthog) {
+      posthog.capture(eventName, parameters);
+    }
   }
 
   trackPerformanceMetric(metricName, value) {
@@ -213,6 +210,21 @@ class AnalyticsManager {
   getUserType() {
     // Determine user type based on behavior/authentication
     const isAuthenticated = localStorage.getItem('supabase.auth.token');
+    
+    // Identificar usuário no posthog se estiver autenticado
+    if (isAuthenticated && posthog && posthog.get_distinct_id() !== 'identified_user') {
+        try {
+          const sessionData = JSON.parse(isAuthenticated);
+          const user = sessionData?.user;
+          if (user?.id) {
+             posthog.identify(user.id, {
+                 email: user.email,
+                 role: user.role
+             });
+          }
+        } catch(e) {}
+    }
+    
     return isAuthenticated ? 'returning_user' : 'new_visitor';
   }
 

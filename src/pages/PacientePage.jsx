@@ -16,10 +16,15 @@ import UserBadge from '@/components/UserBadge';
 // Novos imports - Fase 4
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { SessionValidator } from '@/components/auth/SessionValidator';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { DashboardCard } from '@/components/shared/DashboardCard';
+import BookShelfSection from '@/components/shared/BookShelfSection';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner';
+import { KeyRound } from 'lucide-react';
 
 const MAX_RESCHEDULE_ATTEMPTS = 2;
 const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
@@ -32,6 +37,7 @@ const PacientePage = () => {
     const [reviews, setReviews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     const [reviewingBooking, setReviewingBooking] = useState(null);
     const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
@@ -732,8 +738,7 @@ const PacientePage = () => {
                     <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
                         <div className="flex items-center justify-between gap-3">
                             <Link to="/" className="flex items-center space-x-2">
-                                <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 md:w-8 h-7 md:h-8" />
-                                <span className="text-xl md:text-2xl font-bold gradient-text">Doxologos</span>
+                                <DoxologosLogo className="h-7 md:h-9 w-auto" />
                             </Link>
                             <Link to="/">
                                 <Button variant="outline" className="border-[#2d8659] text-[#2d8659] text-sm md:text-base">
@@ -775,8 +780,7 @@ const PacientePage = () => {
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
-                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                            <DoxologosLogo className="h-9 w-auto" />
                         </Link>
                         <div className="flex items-center gap-4 flex-wrap justify-end">
                             <ThemeToggle />
@@ -795,14 +799,22 @@ const PacientePage = () => {
                                 layout="row"
                                 showLogoutButton={true}
                             />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsChangePasswordOpen(true)}
+                                className="border-slate-300 text-slate-700 hover:text-[#2d8659]"
+                            >
+                                <KeyRound className="w-4 h-4 mr-1.5 text-[#2d8659]" />
+                                Alterar Senha
+                            </Button>
                         </div>
                     </div>
 
                     {/* Mobile Header */}
                     <div className="flex md:hidden items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 h-7" />
-                            <span className="text-xl font-bold gradient-text">Doxologos</span>
+                            <DoxologosLogo className="h-7 w-auto" />
                         </Link>
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -836,6 +848,18 @@ const PacientePage = () => {
                                 compact={true}
                             />
                             <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setIsChangePasswordOpen(true);
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className="w-full border-slate-300 text-slate-700 hover:text-[#2d8659]"
+                                >
+                                    <KeyRound className="w-4 h-4 mr-1.5 text-[#2d8659]" />
+                                    Alterar Senha
+                                </Button>
                                 <Link
                                     to="/minhas-inscricoes"
                                     className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
@@ -850,6 +874,7 @@ const PacientePage = () => {
             </header>
             <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-24">
                 <div className="container mx-auto px-3 md:px-4 max-w-4xl">
+                    <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
                     <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
                     <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
 
@@ -1412,8 +1437,18 @@ const PacientePage = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Seção Meus Materiais do Livro */}
+                    <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+                        <BookShelfSection />
+                    </div>
                 </div>
             </div>
+
+            <ChangePasswordModal
+                isOpen={isChangePasswordOpen}
+                onClose={() => setIsChangePasswordOpen(false)}
+            />
         </>
     );
 };

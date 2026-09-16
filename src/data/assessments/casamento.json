@@ -1,0 +1,259 @@
+{
+  "id": "casamento-rdas",
+  "slug": "teste-casamento-relacionamento-rdas",
+  "aliases": [
+    "casamento-rdas",
+    "casamento",
+    "relacionamento",
+    "teste-casamento",
+    "teste-relacionamento",
+    "teste-casal",
+    "rdas"
+  ],
+  "title": "Avaliação de Conexão e Ajuste Conjugal (RDAS)",
+  "subtitle": "Identifique a qualidade da comunicação, alinhamento de valores e saúde emocional do casal",
+  "category": "Casamento & Relacionamentos",
+  "icon": "Heart",
+  "badge": "Terapia de Casal",
+  "estimatedTime": "3 a 4 min",
+  "scientificBasis": "Revised Dyadic Adjustment Scale (RDAS - Busby et al., 1995), padrão-ouro em terapia de casal",
+  "disclaimer": "Esta autoavaliação tem caráter reflexivo e educativo para casais. Ela não substitui uma sessão de avaliação com psicólogo de casais e famílias.",
+  "timeframePrompt": "Considerando o momento atual do seu relacionamento ou casamento, responda com sinceridade:",
+  "maxScore": 69,
+  "options": [
+    { "label": "Discordamos Sempre", "value": 0, "helper": "Conflito constante" },
+    { "label": "Discordamos Quase Sempre", "value": 1, "helper": "Frequente atrito" },
+    { "label": "Discordamos Ocasionalmente", "value": 2, "helper": "Divergências normais" },
+    { "label": "Concordamos Ocasionalmente", "value": 3, "helper": "Bom alinhamento" },
+    { "label": "Concordamos Quase Sempre", "value": 4, "helper": "Muita sintonia" },
+    { "label": "Concordamos Sempre", "value": 5, "helper": "Total acordo" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Consenso em Finanças",
+      "text": "Qual o grau de concordância entre vocês quanto à gestão do dinheiro, orçamento familiar e prioridades financeiras?"
+    },
+    {
+      "id": 2,
+      "dimension": "Consenso em Lazer",
+      "text": "Qual o grau de concordância entre vocês sobre como aproveitar o tempo livre, passeios e atividades de lazer?"
+    },
+    {
+      "id": 3,
+      "dimension": "Consenso em Valores e Fé",
+      "text": "Qual o grau de alinhamento em assuntos religiosos, princípios morais e visão de propósito de vida?"
+    },
+    {
+      "id": 4,
+      "dimension": "Relações Sociais e Amizades",
+      "text": "Qual o grau de concordância sobre a convivência com amigos, família de origem e limites sociais?"
+    },
+    {
+      "id": 5,
+      "dimension": "Tomada de Decisões Importantes",
+      "text": "Qual o grau de consenso e trabalho em equipe quando precisam tomar decisões importantes sobre a casa e o futuro?"
+    },
+    {
+      "id": 6,
+      "dimension": "Demonstrações de Afeto",
+      "text": "Qual o grau de sintonia entre vocês quanto à frequência e forma de expressar carinho e afeto físico?"
+    },
+    {
+      "id": 7,
+      "dimension": "Estabilidade e Futuro",
+      "text": "Com que frequência vocês conversam com serenidade sobre o futuro da relação, sem ameaças de término ou separação?",
+      "options": [
+        { "label": "Nunca conversamos com calma (sempre há ameaças)", "value": 0 },
+        { "label": "Raramente", "value": 1 },
+        { "label": "De vez em quando", "value": 2 },
+        { "label": "Frequentemente", "value": 3 },
+        { "label": "Quase sempre", "value": 4 },
+        { "label": "Sempre (ambiente de total segurança e compromisso)", "value": 5 }
+      ]
+    },
+    {
+      "id": 8,
+      "dimension": "Resolução Serena de Conflitos",
+      "text": "Quando surgem desentendimentos, com que facilidade vocês conseguem conversar sem gritos, sarcasmo ou 'tratamento do silêncio'?",
+      "options": [
+        { "label": "Extrema dificuldade (sempre vira briga destrutiva)", "value": 0 },
+        { "label": "Muita dificuldade", "value": 1 },
+        { "label": "Dificuldade moderada", "value": 2 },
+        { "label": "Boa facilidade", "value": 3 },
+        { "label": "Muita facilidade", "value": 4 },
+        { "label": "Total facilidade (conversamos com maturidade e respeito)", "value": 5 }
+      ]
+    },
+    {
+      "id": 9,
+      "dimension": "Apreço e Satisfação Geral",
+      "text": "No geral, com que frequência você se sente grato(a), feliz e satisfeito(a) por ter escolhido seu cônjuge/parceiro(a)?",
+      "options": [
+        { "label": "Nunca me sinto feliz", "value": 0 },
+        { "label": "Raramente", "value": 1 },
+        { "label": "Às vezes", "value": 2 },
+        { "label": "Frequentemente", "value": 3 },
+        { "label": "Quase todos os dias", "value": 4 },
+        { "label": "Todos os dias (profunda gratidão)", "value": 5 }
+      ]
+    },
+    {
+      "id": 10,
+      "dimension": "Confiança Mútua",
+      "text": "Qual o nível de confiança emocional mútua (sentir que pode ser vulnerável e contar seus medos sem ser julgado(a))?",
+      "options": [
+        { "label": "Nenhuma confiança", "value": 0 },
+        { "label": "Pouca confiança", "value": 1 },
+        { "label": "Confiança moderada", "value": 2 },
+        { "label": "Boa confiança", "value": 3 },
+        { "label": "Muita confiança", "value": 4 },
+        { "label": "Confiança plena e segura", "value": 5 }
+      ]
+    },
+    {
+      "id": 11,
+      "dimension": "Coesão & Parceria Diária",
+      "text": "Vocês se envolvem juntos em projetos, conversas leves ou tarefas práticas do cotidiano?",
+      "options": [
+        { "label": "Nunca fazemos nada juntos", "value": 0 },
+        { "label": "Raramente (menos de uma vez por mês)", "value": 1 },
+        { "label": "Uma ou duas vezes por mês", "value": 2 },
+        { "label": "Uma ou duas vezes por semana", "value": 3 },
+        { "label": "Quase todos os dias", "value": 4 }
+      ]
+    },
+    {
+      "id": 12,
+      "dimension": "Troca Estimulante de Ideias",
+      "text": "Com que frequência vocês têm uma troca estimulante de ideias, planos e sonhos a dois?",
+      "options": [
+        { "label": "Nunca conversamos sobre ideias", "value": 0 },
+        { "label": "Raramente", "value": 1 },
+        { "label": "Ocasionalmente", "value": 2 },
+        { "label": "Frequentemente", "value": 3 },
+        { "label": "Muito frequentemente", "value": 4 }
+      ]
+    },
+    {
+      "id": 13,
+      "dimension": "Trabalho em Equipe",
+      "text": "Vocês conseguem trabalhar juntos com calma em uma meta comum (ex: cuidar da casa, filhos ou finanças)?",
+      "options": [
+        { "label": "Nunca conseguimos sem brigar", "value": 0 },
+        { "label": "Raramente", "value": 1 },
+        { "label": "Ocasionalmente", "value": 2 },
+        { "label": "Frequentemente", "value": 3 },
+        { "label": "Sempre com ótima parceria", "value": 4 }
+      ]
+    },
+    {
+      "id": 14,
+      "dimension": "Risadas e Conexão Espontânea",
+      "text": "Com que frequência vocês riem juntos, compartilham momentos descontraídos e brincam no dia a dia?",
+      "options": [
+        { "label": "Nunca rimos juntos", "value": 0 },
+        { "label": "Raramente", "value": 1 },
+        { "label": "Ocasionalmente", "value": 2 },
+        { "label": "Frequentemente", "value": 3 },
+        { "label": "Muito frequentemente (ambiente leve e afetuoso)", "value": 4 }
+      ]
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Convivência e Paz Familiar",
+    "prompt": "Como os desentendimentos ou o distanciamento no relacionamento têm afetado o clima da sua casa e o seu bem-estar emocional?",
+    "options": [
+      { "label": "Não afetam (nosso lar é um refúgio de paz)", "value": 0 },
+      { "label": "Impacto leve (pequenos desentendimentos passageiros)", "value": 1 },
+      { "label": "Impacto moderado (frequente clima pesado e distanciamento)", "value": 2 },
+      { "label": "Impacto severo (angústia diária, desgaste profundo e sensação de solidão a dois)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 35,
+      "severity": "severe",
+      "label": "Crise Conjugal & Desconexão Severa",
+      "tag": "Indicação Prioritária de Terapia de Casal",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Sua pontuação revela um estado agudo de distresse, frustração e distanciamento emocional na relação, com prejuízo grave na comunicação e na segurança afetiva.",
+      "clinicalInsight": "Muitos casais nessa fase entram no padrão 'ataque-defesa' ou no isolamento afetivo ('solidão a dois'). A Terapia de Casal com base na Terapia Focada nas Emoções (EFT) é altamente eficaz para desarmar conflitos e restabelecer o vínculo seguro.",
+      "recommendations": [
+        "Iniciem urgentemente um processo de Terapia de Casal com psicólogo especialista.",
+        "Evitem discussões sobre temas complexos quando estiverem exaustos ou irritados.",
+        "Suspenda ameaças de término para criar um ambiente mínimo de segurança para o diálogo."
+      ],
+      "spiritualBridge": "'O amor é paciente, o amor é bondoso... tudo sofre, tudo crê, tudo espera, tudo suporta.' (1 Coríntios 13:4,7). Mesmo diante de crises profundas, com mediação terapêutica capacitada e graça, há caminho de restauração.",
+      "ctaText": "Agendar Terapia de Casal",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 36,
+      "max": 47,
+      "severity": "moderate",
+      "label": "Desgaste na Relação & Dificuldades de Ajuste",
+      "tag": "Alerta de Distresse Conjugal (Cut-off RDAS)",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação ficou abaixo do ponto de corte clínico do RDAS (score < 48), indicando que desgastes na rotina, falhas de comunicação ou divergências de valores estão erodindo a conexão do casal.",
+      "clinicalInsight": "Nesta faixa, o casal ainda tem carinho mútuo, mas se sente sobrecarregado por discussões repetitivas sem solução. A orientação de um terapeuta de casais impede que o desgaste evolua para uma crise grave.",
+      "recommendations": [
+        "Agendem uma avaliação com psicólogo de casais para alinhar expectativas e melhorar a escuta ativa.",
+        "Reservem um momento semanal exclusivo para o casal (sem telas, sem filhos e sem trabalho).",
+        "Pratiquem expressar necessidades em primeira pessoa ('Eu me sinto...') em vez de acusações ('Você sempre...')."
+      ],
+      "spiritualBridge": "'Suportando-vos uns aos outros em amor, esforçando-vos para guardar a unidade pelo vínculo da paz.' (Efésios 4:2-3). Investir no diálogo renova a aliança do casamento.",
+      "ctaText": "Agendar Orientação Conjugal",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 48,
+      "max": 58,
+      "severity": "mild",
+      "label": "Ajuste Conjugal Saudável & Conexão Estável",
+      "tag": "Bom Ajuste & Parceria",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Vocês possuem uma base sólida de compromisso, carinho e respeito mútuo, embora haja áreas pontuais da convivência que merecem atenção e cuidado.",
+      "clinicalInsight": "O relacionamento está em faixa funcional saudável. Pequenos ajustes na gestão do tempo a dois, alinhamento financeiro e cultivo da intimidade emocional fortalecem ainda mais o vínculo.",
+      "recommendations": [
+        "Continuem cultivando a admiração mútua com elogios e gestos de gratidão diários.",
+        "Alinhem sonhos e metas para os próximos 6 a 12 meses.",
+        "Participem de oficinas ou palestras de casais para enriquecimento da relação."
+      ],
+      "spiritualBridge": "'Melhor é serem dois do que um, porque têm melhor paga pelo seu trabalho. Se um cair, o outro levanta o seu companheiro.' (Eclesiastes 4:9-10). Celebrem a parceria construída!",
+      "ctaText": "Conhecer Nossos Terapeutas",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 59,
+      "max": 69,
+      "severity": "minimal",
+      "label": "Alta Sintonia, Intimidade & Coesão",
+      "tag": "Excelente Conexão & Harmonia",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Parabéns! Sua pontuação reflete um nível excelente de cumplicidade, amizade profunda, consenso e comunicação madura no relacionamento.",
+      "clinicalInsight": "Vocês desenvolveram uma cultura relacional de segurança, generosidade e cooperação mútua. Essa harmonia é um forte fator de proteção para a saúde mental de ambos e de toda a família.",
+      "recommendations": [
+        "Mantenham vivos os rituais de conexão e o tempo de qualidade a dois.",
+        "Sejam mentores e inspiração para casais mais jovens na comunidade e na igreja.",
+        "Continuem investindo na saúde emocional individual e compartilhada."
+      ],
+      "spiritualBridge": "'Acima de tudo, porém, revistam-se do amor, que é o elo perfeito. Que a paz de Cristo seja o juiz em seu coração.' (Colossenses 3:14-15).",
+      "ctaText": "Agendar Consulta Preventiva",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

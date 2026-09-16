@@ -1,4 +1,4 @@
-﻿// Supabase Edge Function para envio de e-mails via SMTP Hostinger
+// Supabase Edge Function para envio de e-mails via SMTP Hostinger
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
@@ -59,12 +59,12 @@ serve(async (req) => {
     
     // Preparar estrutura do email
     const emailContent = {
-      from: ${fromName} <>,
+      from: `${fromName} <${fromEmail}>`,
       to: recipients.join(", "),
       subject,
-      content: "text/html",
       html,
     };
+
 
     // Adicionar CC se fornecido
     if (cc) {

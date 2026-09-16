@@ -17,8 +17,12 @@ import {
   Newspaper,
   UserCircle,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  BookOpen,
+  Sparkles,
+  KeyRound
 } from 'lucide-react';
+import { tabsConfig } from '@/config/tabsConfig';
 
 export const ADMIN_MODULES = [
   {
@@ -28,6 +32,7 @@ export const ADMIN_MODULES = [
     icon: LayoutDashboard,
     tabs: [
       { id: 'dashboard', label: 'Dashboard & KPIs', icon: LayoutDashboard },
+      { id: 'analytics', label: 'Comportamento (Analytics)', icon: Sparkles },
     ]
   },
   {
@@ -47,6 +52,7 @@ export const ADMIN_MODULES = [
     icon: TrendingUp,
     tabs: [
       { id: 'financial-control', label: 'DRE & Controladoria', icon: TrendingUp },
+      { id: 'financeiro', label: 'Meu Faturamento', icon: DollarSign },
       { id: 'payments', label: 'Pagamentos / Checkout', icon: DollarSign },
       { id: 'livro-caixa', label: 'Livro Caixa', icon: FileText },
       { id: 'refunds', label: 'Reembolsos', icon: Receipt },
@@ -60,8 +66,10 @@ export const ADMIN_MODULES = [
     tabs: [
       { id: 'professionals', label: 'Profissionais / Perfil', icon: Users },
       { id: 'patients', label: 'Pacientes', icon: UserCircle },
+      { id: 'assessment-leads', label: 'Leads & GAD-7', icon: Sparkles },
       { id: 'reviews', label: 'Avaliações', icon: Star },
     ]
+
   },
   {
     id: 'plataforma',
@@ -72,6 +80,7 @@ export const ADMIN_MODULES = [
       { id: 'services', label: 'Serviços & Preços', icon: Briefcase },
       { id: 'events', label: 'Eventos', icon: Ticket },
       { id: 'event-registrations', label: 'Inscrições em Eventos', icon: ClipboardList },
+      { id: 'book-resources', label: 'Materiais do Livro', icon: BookOpen },
       { id: 'blog', label: 'Blog & Substack', icon: Newspaper },
       { id: 'nfse', label: 'Resiliência NFS-e', icon: Building2 },
       { id: 'settings', label: 'Configurações', icon: Settings },
@@ -86,18 +95,17 @@ export function AdminSidebar({
   setActiveTab,
   userRole = 'admin',
   userName = 'Administrador',
-  pendingAlertsCount = 0
+  pendingAlertsCount = 0,
+  onOpenChangePassword
 }) {
   const isProfessional = userRole === 'professional';
 
   // Filtrar módulos por papel (admin vs professional)
   const availableModules = ADMIN_MODULES.map(module => {
-    const filteredTabs = module.tabs.filter(tab => {
-      if (isProfessional) {
-        if (tab.id === 'blog' || tab.id === 'nfse' || tab.id === 'event-registrations') return false;
-      }
-      return true;
-    });
+    const currentTabs = tabsConfig[userRole] || tabsConfig.admin;
+    const allowedTabIds = currentTabs.map(t => t.value);
+
+    const filteredTabs = module.tabs.filter(tab => allowedTabIds.includes(tab.id));
 
     return {
       ...module,
@@ -195,7 +203,7 @@ export function AdminSidebar({
       </div>
 
       {/* User Footer Profile */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-xs">
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-2.5 text-xs">
         <div className="flex items-center gap-2.5 truncate">
           <div className="w-8 h-8 rounded-full bg-[#2d8659]/10 text-[#2d8659] border border-[#2d8659]/20 flex items-center justify-center font-bold">
             {userName.charAt(0)}
@@ -205,6 +213,16 @@ export function AdminSidebar({
             <p className="text-[10px] text-slate-500 capitalize">{userRole}</p>
           </div>
         </div>
+
+        {onOpenChangePassword && (
+          <button
+            onClick={onOpenChangePassword}
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-[#2d8659] hover:bg-emerald-50 transition-colors border border-slate-200 bg-white shadow-xs"
+          >
+            <KeyRound className="w-3.5 h-3.5 text-[#2d8659]" />
+            Alterar Minha Senha
+          </button>
+        )}
       </div>
     </aside>
   );

@@ -147,13 +147,17 @@ const AdminUsuariosPage = () => {
   }, [users, searchTerm, filterRole]);
 
   const handleEditClick = (userData) => {
+    if (userData.role === 'professional') {
+      window.location.href = `/admin/professionals/${userData.id}`;
+      return;
+    }
+
     setSelectedUser(userData);
-    const profData = professionals.find(p => p.id === userData.id);
     setEditFormData({
       email: userData.email,
       full_name: userData.full_name,
       role: userData.role,
-      whatsapp: profData?.whatsapp || profData?.phone || ''
+      whatsapp: ''
     });
     setEditDialogOpen(true);
   };

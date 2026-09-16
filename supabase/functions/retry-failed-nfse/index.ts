@@ -1,5 +1,6 @@
 // Supabase Edge Function (Deno) - retry-failed-nfse
-// Worker assíncrono para retentativa inteligente de NFS-e que falharam por instabilidade da prefeitura
+// Worker assíncrono para retentativa inteligente de NFS-e com falhas recuperáveis.
+// Suporta: PREFEITURA_OFFLINE, SYSTEM_ERROR, e VALIDATION_ERROR (com force=true após correção)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -21,17 +22,36 @@ serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    console.log('🔄 Iniciando rotina de retentativa assíncrona de NFS-e pendentes/offline...');
+    // Parâmetros opcionais via body
+    let force = false;
+    let targetCategories: string[] = ['PREFEITURA_OFFLINE', 'SYSTEM_ERROR'];
+    let maxRetries = 3;
+    let batchLimit = 10;
 
-    // Buscar até 10 registros de erros temporários de infraestrutura que ainda não excederam 3 retentativas
+    try {
+      const body = await req.json();
+      force = body.force === true;
+      if (force) {
+        // force=true: também retenta erros de validação e AUTH (após correção manual)
+        targetCategories = ['PREFEITURA_OFFLINE', 'SYSTEM_ERROR', 'VALIDATION_ERROR', 'AUTH_ERROR'];
+      }
+      if (body.max_retries) maxRetries = parseInt(body.max_retries) || 3;
+      if (body.limit) batchLimit = Math.min(parseInt(body.limit) || 10, 25); // Máx 25 por run
+    } catch (_) {
+      // Body ausente ou inválido — usa defaults
+    }
+
+    console.log(`🔄 retry-failed-nfse | categorias=${targetCategories.join(',')} | force=${force} | max_retries=${maxRetries}`);
+
+    // Buscar registros elegíveis para retentativa
     const { data: recordsToRetry, error: fetchErr } = await supabase
       .from('nfse_emissions')
-      .select('*')
+      .select('id, error_category, retry_count, tomador_nome, tomador_cpf_cnpj')
       .eq('status', 'error')
-      .eq('error_category', 'PREFEITURA_OFFLINE')
-      .lt('retry_count', 3)
+      .in('error_category', targetCategories)
+      .lt('retry_count', maxRetries)
       .order('created_at', { ascending: true })
-      .limit(10);
+      .limit(batchLimit);
 
     if (fetchErr) {
       console.error('❌ Erro ao buscar registros para retentativa:', fetchErr);
@@ -39,46 +59,55 @@ serve(async (req: Request) => {
     }
 
     if (!recordsToRetry || recordsToRetry.length === 0) {
+      console.log('✅ Nenhuma NFS-e pendente para retentativa no momento.');
       return new Response(
-        JSON.stringify({ message: 'Nenhuma NFS-e pendente para retentativa assíncrona no momento.', count: 0 }),
+        JSON.stringify({ message: 'Nenhuma NFS-e pendente para retentativa.', count: 0 }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`🔎 Encontrados ${recordsToRetry.length} registros para tentar re-emissão...`);
+    console.log(`🔎 ${recordsToRetry.length} registro(s) elegíveis para retentativa.`);
 
-    const results = [];
+    const results: Array<{ id: string; category: string; success: boolean; error?: string }> = [];
 
     for (const record of recordsToRetry) {
       try {
-        console.log(`⚡ Retentando envio da NFS-e ID ${record.id} (Tentativa #${(record.retry_count || 0) + 1})...`);
+        console.log(`⚡ Retentando NFS-e ID=${record.id} (categoria: ${record.error_category}, tentativa #${(record.retry_count || 0) + 1})...`);
 
         const { data: resData, error: invokeErr } = await supabase.functions.invoke('emit-nfse', {
-          body: {
-            nfse_id: record.id,
-            action: 'retry',
-          },
+          body: { nfse_id: record.id, action: 'retry' },
         });
 
         if (invokeErr) {
-          results.push({ id: record.id, success: false, error: invokeErr.message });
+          console.error(`❌ Falha na retentativa ID=${record.id}:`, invokeErr.message);
+          results.push({ id: record.id, category: record.error_category, success: false, error: invokeErr.message });
         } else {
-          results.push({ id: record.id, success: true, response: resData });
+          const isSuccess = resData?.success === true || resData?.idempotent === true;
+          console.log(`${isSuccess ? '✅' : '⚠️'} Retentativa ID=${record.id}: ${isSuccess ? 'sucesso' : 'nova falha'}`);
+          results.push({ id: record.id, category: record.error_category, success: isSuccess });
         }
       } catch (err: any) {
-        console.error(`❌ Falha na retentativa para NFS-e ID ${record.id}:`, err);
-        results.push({ id: record.id, success: false, error: err.message });
+        console.error(`❌ Exceção na retentativa ID=${record.id}:`, err);
+        results.push({ id: record.id, category: record.error_category, success: false, error: err.message });
       }
     }
 
+    const successCount = results.filter(r => r.success).length;
+    const failCount = results.filter(r => !r.success).length;
+
+    console.log(`📊 Retentativa concluída: ${successCount} sucesso(s), ${failCount} nova(s) falha(s).`);
+
     return new Response(
       JSON.stringify({
-        message: `Processadas ${results.length} retentativas de NFS-e com sucesso.`,
+        message: `Retentativa concluída: ${successCount}/${results.length} bem-sucedidas.`,
         processed: results.length,
+        success: successCount,
+        failed: failCount,
         details: results,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (err: any) {
     console.error('❌ Exceção na Edge Function retry-failed-nfse:', err);
     return new Response(

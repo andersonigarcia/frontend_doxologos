@@ -160,9 +160,9 @@ export const AvailabilityManager = ({
 
                 <div className="flex flex-wrap gap-2 w-full md:w-auto">
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => setIsBlockedDatesModalOpen(true)}
-                        className="rounded-full border-rose-200 text-rose-700 hover:bg-rose-50"
+                        className="text-gray-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl font-medium"
                     >
                         <CalendarX className="w-4 h-4 mr-2" />
                         Bloqueios e Férias
@@ -171,21 +171,11 @@ export const AvailabilityManager = ({
                     <Button
                         variant="outline"
                         onClick={() => setIsReplicateModalOpen(true)}
-                        className="rounded-full border-indigo-200 text-indigo-700 bg-indigo-50/50 hover:bg-indigo-100 font-semibold"
+                        className="rounded-xl border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 font-medium"
                     >
-                        <Layers className="w-4 h-4 mr-2 text-indigo-600" />
-                        Replicar para 3 Meses 🚀
+                        <Layers className="w-4 h-4 mr-2 text-indigo-500" />
+                        Replicar Trimestre
                     </Button>
-
-                    <LoadingButton
-                        isLoading={isLoadingSave}
-                        loadingText="Salvando..."
-                        onClick={() => onSaveClick(false)}
-                        className="rounded-full bg-[#2d8659] hover:bg-[#236b47] text-white h-10 px-6 shadow-sm flex items-center justify-center gap-2 font-semibold"
-                    >
-                        <Save className="w-4 h-4" />
-                        Salvar Disponibilidade
-                    </LoadingButton>
                 </div>
             </div>
 

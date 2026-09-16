@@ -7,13 +7,6 @@ export function useFinancialData(professionalId, startDate, endDate) {
         dailyRevenue: 0,
         weeklyRevenue: 0,
         monthlyRevenue: 0,
-        gmv: 0,
-        payoutTotal: 0,
-        mpFees: 0,
-        nfseTaxes: 0,
-        platformGrossMargin: 0,
-        netMargin: 0,
-        takeRatePct: 20,
         pendingPayments: [],
         serviceBreakdown: [],
         totalPending: 0,
@@ -27,13 +20,6 @@ export function useFinancialData(professionalId, startDate, endDate) {
                 dailyRevenue: 0,
                 weeklyRevenue: 0,
                 monthlyRevenue: 0,
-                gmv: 0,
-                payoutTotal: 0,
-                mpFees: 0,
-                nfseTaxes: 0,
-                platformGrossMargin: 0,
-                netMargin: 0,
-                takeRatePct: 20,
                 pendingPayments: [],
                 serviceBreakdown: [],
                 totalPending: 0
@@ -67,14 +53,8 @@ export function useFinancialData(professionalId, startDate, endDate) {
             const weeklyRevenue = sumMoney(confirmed.filter(b => b.booking_date >= weekAgoStr), b => b.valor_repasse_profissional ?? b.service?.professional_payout);
             const monthlyRevenue = sumMoney(confirmed, b => b.valor_repasse_profissional ?? b.service?.professional_payout);
 
-            // DRE Consolidada
-            const gmv = sumMoney(confirmed, b => b.valor_consulta ?? b.service?.price ?? 0);
-            const payoutTotal = monthlyRevenue;
-            const platformGrossMargin = Math.max(0, gmv - payoutTotal);
-            const mpFees = gmv * 0.0299; // Taxa estimada MP (2.99%)
-            const nfseTaxes = gmv * 0.06; // Impostos estimados (6%)
-            const netMargin = Math.max(0, platformGrossMargin - mpFees - nfseTaxes);
-            const takeRatePct = gmv > 0 ? (platformGrossMargin / gmv) * 100 : 20;
+            // Cálculos da clínica foram removidos deste hook para blindagem de dados estratégicos.
+            // O componente FinancialControlModule de admin tem seu próprio gerenciamento.
 
             const pendingPayments = (bookings || [])
                 .filter(b => ['pending', 'pending_payment', 'awaiting_payment'].includes(b.status))
@@ -99,13 +79,6 @@ export function useFinancialData(professionalId, startDate, endDate) {
                 dailyRevenue,
                 weeklyRevenue,
                 monthlyRevenue,
-                gmv,
-                payoutTotal,
-                mpFees,
-                nfseTaxes,
-                platformGrossMargin,
-                netMargin,
-                takeRatePct,
                 pendingPayments,
                 serviceBreakdown,
                 totalPending

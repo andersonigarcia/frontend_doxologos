@@ -31,6 +31,26 @@ export const PAYMENT_FEATURE_FLAGS = {
     // Recursos adicionais (ativar após estabilização)
     PAYMENT_RETRY_LOGIC: false,
     PAYMENT_CIRCUIT_BREAKER: false,
+
+    // ── Resiliência End-to-End (Fase 3 — v2.4) ─────────────────────────────
+    // Ativar progressivamente após deploy das Edge Functions correspondentes.
+    // Todas iniciam como FALSE para garantir zero impacto na operação atual.
+
+    // Orquestração pós-pagamento: dispara email de confirmação após webhook/aprovação
+    // Requer deploy de `post-payment-orchestrator` Edge Function
+    POST_PAYMENT_ORCHESTRATOR: false,
+
+    // Status intermediário para cartão em análise antifraude (in_process)
+    // booking.status = 'awaiting_payment' em vez de 'pending_payment'
+    AWAITING_PAYMENT_STATUS: false,
+
+    // Cron de reconciliação: safety net que verifica bookings pendentes a cada 10min
+    // Requer configuração do pg_cron no Supabase Dashboard
+    RECONCILIATION_CRON: false,
+
+    // WhatsApp pós-confirmação: ativar apenas quando serviço de API for contratado
+    // Requer: WHATSAPP_API_URL, WHATSAPP_API_KEY, WHATSAPP_REMINDERS_ENABLED=true
+    WHATSAPP_BOOKING_CONFIRMATION: false,
 };
 
 /**

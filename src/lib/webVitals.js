@@ -177,11 +177,17 @@ class WebVitalsMonitor {
   }
 
   measureJSExecution() {
-    // Measure long tasks that block the main thread
-    if ('PerformanceObserver' in window) {
+    // Measure critical long tasks that block the main thread (> 300ms)
+    if (!('PerformanceObserver' in window)) return;
+    
+    let longTaskCount = 0;
+    const MAX_LONG_TASK_REPORTS = 3;
+
+    try {
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.duration > 50) { // Tasks longer than 50ms
+          if (entry.duration > 300 && longTaskCount < MAX_LONG_TASK_REPORTS) {
+            longTaskCount++;
             this.reportCustomMetric('long_task', entry.duration);
             analytics.trackEvent('performance_issue', {
               event_category: 'Performance',
@@ -191,6 +197,8 @@ class WebVitalsMonitor {
           }
         }
       }).observe({ type: 'longtask', buffered: true });
+    } catch (e) {
+      // Ignore browsers without longtask support
     }
   }
 
@@ -266,36 +274,86 @@ class WebVitalsMonitor {
   }
 }
 
-// Resource timing monitoring
+// Domínios e padrões que NUNCA devem ser monitorados pelo Resource Timing (evita loops recursivos com Google Ads/Analytics)
+const IGNORED_DOMAINS = [
+  'google',
+  'googletagmanager',
+  'google-analytics',
+  'googleadservices',
+  'doubleclick',
+  'supabase',
+  'mercadopago',
+  'hotjar',
+  'facebook',
+  'collect',
+  'analytics'
+];
+
+function isMonitoredAppAsset(url) {
+  if (!url || typeof url !== 'string') return false;
+  const lower = url.toLowerCase();
+  
+  // Ignora explicitamente chamadas de telemetria, ads, tracking, APIS e CDN externas
+  if (IGNORED_DOMAINS.some((domain) => lower.includes(domain))) {
+    return false;
+  }
+  
+  // Apenas assets estáticos locais da aplicação (ex: /assets/bundle.js, /assets/style.css)
+  return lower.includes('/assets/') && (
+    lower.endsWith('.js') || lower.endsWith('.css') || lower.endsWith('.woff2') || lower.endsWith('.webp')
+  );
+}
+
+// Resource timing monitoring protegido contra loops recursivos
 export const monitorResourceTiming = () => {
   if (!('PerformanceObserver' in window)) return;
 
-  new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) {
-      const { name, transferSize, duration } = entry;
-      
-      // Track large resources
-      if (transferSize > 100000) { // > 100KB
-        analytics.trackEvent('large_resource', {
-          event_category: 'Performance',
-          event_label: 'Large Resource',
-          value: Math.round(transferSize / 1000), // KB
-          custom_parameter_1: name
-        });
+  const reportedResources = new Set();
+  let reportCount = 0;
+  const MAX_RESOURCE_REPORTS = 5;
+
+  try {
+    new PerformanceObserver((list) => {
+      if (reportCount >= MAX_RESOURCE_REPORTS) return;
+
+      for (const entry of list.getEntries()) {
+        const { name, transferSize, duration } = entry;
+        
+        // Apenas avalia assets internos da aplicação
+        if (!isMonitoredAppAsset(name)) continue;
+
+        // Extrai apenas o nome do arquivo para payload compacto
+        const cleanName = name.split('/').pop()?.split('?')[0]?.slice(0, 60) || 'asset';
+
+        if (reportedResources.has(cleanName)) continue;
+        
+        // Track slow resources (> 2.5s)
+        if (duration > 2500) {
+          reportedResources.add(cleanName);
+          reportCount++;
+          analytics.trackEvent('slow_resource', {
+            event_category: 'Performance', 
+            event_label: 'Slow Resource',
+            value: Math.round(duration),
+            custom_parameter_1: cleanName
+          });
+        } else if (transferSize > 350000) { // > 350KB
+          reportedResources.add(cleanName);
+          reportCount++;
+          analytics.trackEvent('large_resource', {
+            event_category: 'Performance',
+            event_label: 'Large Resource',
+            value: Math.round(transferSize / 1000), // KB
+            custom_parameter_1: cleanName
+          });
+        }
       }
-      
-      // Track slow resources
-      if (duration > 1000) { // > 1 second
-        analytics.trackEvent('slow_resource', {
-          event_category: 'Performance', 
-          event_label: 'Slow Resource',
-          value: Math.round(duration),
-          custom_parameter_1: name
-        });
-      }
-    }
-  }).observe({ type: 'resource', buffered: true });
+    }).observe({ type: 'resource', buffered: true });
+  } catch (e) {
+    // Ignore if resource observer is not permitted
+  }
 };
+
 
 // Memory monitoring
 export const monitorMemoryUsage = () => {

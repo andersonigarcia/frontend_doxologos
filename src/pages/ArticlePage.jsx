@@ -147,9 +147,36 @@ const ArticlePage = () => {
             dangerouslySetInnerHTML={{ __html: artigo.content_html }}
           />
 
-          <hr className="my-12 border-gray-200" />
+          <hr className="my-10 border-gray-200" />
 
-          <div className="flex justify-between items-center">
+          {/* Banner de Conversão de Autoavaliação Clínica no Artigo */}
+          <div className="bg-gradient-to-br from-emerald-50 via-teal-50/50 to-white rounded-3xl p-6 sm:p-8 border border-emerald-200/80 shadow-md shadow-emerald-900/5 my-10">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div>
+                <span className="inline-block text-xs font-bold uppercase tracking-wider text-[#2d8659] bg-emerald-100/70 px-3 py-1 rounded-full mb-2">
+                  Autoavaliação Gratuita & Confidencial
+                </span>
+                <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+                  Descubra como está a sua saúde emocional
+                </h3>
+                <p className="text-sm text-gray-600 leading-relaxed max-w-xl">
+                  Realize autoavaliações clínicas rápidas de ansiedade, estresse, sono, foco ou relacionamentos e receba orientações personalizadas em minutos.
+                </p>
+              </div>
+
+              <Link to="/ferramentas" className="shrink-0 w-full sm:w-auto">
+                <button
+                  type="button"
+                  className="w-full sm:w-auto bg-[#2d8659] hover:bg-[#236b46] text-white px-6 py-3.5 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Fazer Teste Grátis</span>
+                  <span>→</span>
+                </button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-2">
             <p className="text-gray-500 text-sm font-medium">Gostou deste artigo? Compartilhe!</p>
             <button 
               onClick={handleShare}
@@ -159,6 +186,7 @@ const ArticlePage = () => {
               Compartilhar
             </button>
           </div>
+
 
         </article>
       </main>

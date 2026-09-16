@@ -51,7 +51,11 @@ export const DEFAULT_SYSTEM_PARAMETERS = {
   // 4. Operação e Comunicação
   default_appointment_duration_minutes: 50,
   professional_monthly_capacity_slots: 80,
-  whatsapp_reminders_enabled: true
+  whatsapp_reminders_enabled: true,
+
+  // 5. Segurança e Controle de Sessão
+  session_idle_timeout_minutes: 15,
+  session_max_duration_hours: 6
 };
 
 // Dicionário de Metadados de Impacto e Nível de Risco por Parâmetro
@@ -151,6 +155,22 @@ export const PARAMETER_METADATA = {
     risk: 'MEDIUM',
     riskLabel: 'Médio',
     unit: ''
+  },
+  session_idle_timeout_minutes: {
+    label: 'Tempo de Inatividade (Idle Timeout)',
+    category: 'Segurança & Sessão',
+    flows: 'Desconexão automática após período sem interação do usuário (sincronizado entre abas).',
+    risk: 'HIGH',
+    riskLabel: 'Alto',
+    unit: 'minutos'
+  },
+  session_max_duration_hours: {
+    label: 'Sessão Máxima Absoluta (Hard Timeout)',
+    category: 'Segurança & Sessão',
+    flows: 'Tempo máximo contínuo de sessão autenticada antes de exigir novo login (limite de segurança 6h).',
+    risk: 'HIGH',
+    riskLabel: 'Alto',
+    unit: 'horas'
   }
 };
 
@@ -584,6 +604,59 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
               checked={Boolean(draftSettings.whatsapp_reminders_enabled)}
               onCheckedChange={(checked) => handleDraftChange('whatsapp_reminders_enabled', checked)}
             />
+          </div>
+        </div>
+      </Card>
+
+      {/* BLOCO 5: SEGURANÇA E CONTROLE DE SESSÃO */}
+      <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+          <div className="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center font-bold">
+            <ShieldCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">5. Segurança & Controle de Sessão</h3>
+            <p className="text-xs text-slate-500">Parâmetros de inatividade e limite máximo de sessão autenticada (LGPD/HIPAA).</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+          {/* Item 1: Inatividade */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Tempo de Inatividade (Idle Timeout)</label>
+              <p className="text-[11px] text-slate-500">Tempo sem interação até desconexão automática (com sincronização entre abas).</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="5"
+                max="120"
+                value={draftSettings.session_idle_timeout_minutes ?? 15}
+                onChange={(e) => handleDraftChange('session_idle_timeout_minutes', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+              <span className="text-xs font-bold text-slate-600">minutos</span>
+            </div>
+          </div>
+
+          {/* Item 2: Sessão Máxima Absoluta */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Sessão Máxima Absoluta (Hard Timeout)</label>
+              <p className="text-[11px] text-slate-500">Duração máxima contínua da sessão antes de exigir reautenticação (Máx: 6h).</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="1"
+                max="24"
+                value={draftSettings.session_max_duration_hours ?? 6}
+                onChange={(e) => handleDraftChange('session_max_duration_hours', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+              <span className="text-xs font-bold text-slate-600">horas</span>
+            </div>
           </div>
         </div>
       </Card>

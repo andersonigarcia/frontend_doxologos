@@ -51,8 +51,11 @@ Sistema completo para gestão de clínica de psicologia com:
   - OAuth Server-to-Server
   - Salas automáticas por agendamento
 
-#### Core Features
+#### Core Features & Estratégia
+- 🧠 [**Critérios Psicométricos & Autoavaliações (GAD-7)**](02-FEATURES/ASSESSMENTS_CRITERIA.md) - Escala Likert, cortes clínicos, conformidade CFP/LGPD e arquitetura
+- 🚀 [**Diretriz Estratégica de Crescimento (+50%)**](02-FEATURES/GROWTH_STRATEGY_50PCT.md) - Alavancas de produto, MRR, quiz de triagem e retenção
 - 📅 [**Sistema de Agendamentos**](02-FEATURES/BOOKING.md) - Criar, reagendar, cancelar
+
 - 🎫 [**Sistema de Eventos**](02-FEATURES/EVENTS.md) - Workshops e eventos pagos
 - 🔐 [**Autenticação**](02-FEATURES/AUTH.md) - Login, registro, recuperação de senha
 - 📄 [**Sistema de Documentos**](02-FEATURES/DOCUMENTS.md) - Upload e gestão de documentos

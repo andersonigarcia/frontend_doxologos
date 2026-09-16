@@ -1,0 +1,179 @@
+{
+  "id": "jogos-apostas",
+  "slug": "teste-transtorno-jogos-apostas-ludopatia",
+  "aliases": [
+    "jogos-apostas",
+    "ludopatia",
+    "apostas",
+    "bets",
+    "jogo-patologico",
+    "teste-apostas",
+    "teste-ludopatia",
+    "transtorno-jogos",
+    "jogos-azar"
+  ],
+  "title": "Inventário de Rastreio de Transtorno de Jogos e Apostas (Ludopatia - CID-11)",
+  "subtitle": "Avaliação de perda de controle, perseguição de perdas e impacto financeiro e emocional das apostas",
+  "category": "Impulsividade & Hábitos",
+  "icon": "Coins",
+  "badge": "Alerta CID-11",
+  "estimatedTime": "3 a 4 min",
+  "scientificBasis": "Critérios diagnósticos da CID-11 (Código 6C50 - Gambling Disorder) e PGSI (Problem Gambling Severity Index)",
+  "disclaimer": "Esta autoavaliação tem caráter informativo e de triagem. Ela não substitui uma avaliação psiquiátrica ou psicológica clínica especializada.",
+  "timeframePrompt": "Considerando os últimos 12 meses (ou o momento atual da sua relação com apostas, cassinos online, bets ou jogos de azar), com que frequência você se identifica com as afirmações abaixo?",
+  "maxScore": 30,
+  "options": [
+    { "label": "Nunca", "value": 0, "helper": "0% das vezes" },
+    { "label": "Às vezes", "value": 1, "helper": "Ocasionalmente" },
+    { "label": "Frequentemente", "value": 2, "helper": "Com regularidade" },
+    { "label": "Quase sempre", "value": 3, "helper": "Intenso ou diário" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Perda de Controle",
+      "text": "Você sente dificuldade para parar de jogar ou apostar depois de começar, ultrapassando os limites de tempo ou dinheiro que havia planejado?"
+    },
+    {
+      "id": 2,
+      "dimension": "Tolerância / Escala de Valores",
+      "text": "Você sente necessidade de apostar quantias de dinheiro cada vez maiores para sentir o mesmo nível de excitação ou adrenalina?"
+    },
+    {
+      "id": 3,
+      "dimension": "Perseguição de Perdas (Chasing Losses)",
+      "text": "Depois de perder dinheiro em apostas ou jogos, você costuma voltar a apostar no mesmo dia ou nos dias seguintes para tentar recuperar o que perdeu?"
+    },
+    {
+      "id": 4,
+      "dimension": "Preocupação / Mente Ocupada",
+      "text": "Você passa boa parte do dia pensando em apostas, relembrando ganhos passados ou planejando de onde conseguir dinheiro para o próximo jogo?"
+    },
+    {
+      "id": 5,
+      "dimension": "Fuga Emocional",
+      "text": "Você recorre ao jogo ou às apostas como uma forma de fugir de problemas, solidão, ansiedade, tédio ou tristeza?"
+    },
+    {
+      "id": 6,
+      "dimension": "Ocultação e Mentiras",
+      "text": "Você já mentiu para familiares, amigos ou cônjuge para esconder o quanto joga ou o valor real do dinheiro que perdeu?"
+    },
+    {
+      "id": 7,
+      "dimension": "Empréstimos & Desespero Financeiro",
+      "text": "Você já pegou dinheiro emprestado, vendeu bens, usou o cheque especial ou atrasou contas básicas para continuar apostando ou cobrir dívidas de jogo?"
+    },
+    {
+      "id": 8,
+      "dimension": "Irritabilidade e Abstinência",
+      "text": "Você se sente inquieto(a), irritado(a), ansioso(a) ou com alterações de humor quando tenta reduzir, parar ou fica sem poder apostar?"
+    },
+    {
+      "id": 9,
+      "dimension": "Impacto em Relacionamentos e Trabalho",
+      "text": "O envolvimento com jogos/apostas tem causado brigas em casa, perda de confiança familiar, desatenção no trabalho ou queda no rendimento profissional?"
+    },
+    {
+      "id": 10,
+      "dimension": "Sentimento de Culpa e Remorso",
+      "text": "Você sente um aperto no peito, profundo remorso, vergonha ou angústia logo após perder dinheiro jogando, prometendo a si mesmo(a) que vai parar, mas volta a jogar?"
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Saúde Financeira e Paz Mental",
+    "prompt": "Qual o grau de impacto que as apostas/jogos têm gerado na sua estabilidade financeira, paz de espírito e harmonia familiar?",
+    "options": [
+      { "label": "Nenhum impacto (jogo sob total controle recreativo)", "value": 0 },
+      { "label": "Impacto leve (pequenos arrependimentos pontuais sem dívidas graves)", "value": 1 },
+      { "label": "Impacto moderado (estresse financeiro, preocupação constante e clima tenso)", "value": 2 },
+      { "label": "Impacto severo (endividamento crítico, ameaça de desestruturação familiar e desespero)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 5,
+      "severity": "minimal",
+      "label": "Risco Mínimo / Comportamento Controlado",
+      "tag": "Faixa Saudável & Recreativa",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua pontuação indica ausência de padrões compulsivos ou de dependência em relação a jogos ou apostas.",
+      "clinicalInsight": "Você não apresenta perda de controle nem busca desesperada por recuperação de perdas. Mantenha a vigilância, pois os algoritmos de cassinos digitais são desenhados para gerar vício neuroquímico rápido.",
+      "recommendations": [
+        "Nunca veja apostas ou jogos como investimento ou fonte de renda.",
+        "Mantenha um orçamento rígido e nunca use dinheiro destinado a despesas essenciais.",
+        "Cultive hobbies saudáveis, esportes e tempo de qualidade com a família."
+      ],
+      "spiritualBridge": "'A riqueza que é fruto de ilusão diminui pouco a pouco, mas quem a ajunta com trabalho honesto a faz prosperar.' (Provérbios 13:11). A verdadeira prosperidade floresce na sabedoria e no trabalho digno.",
+      "ctaText": "Conhecer Nossos Psicólogos",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 6,
+      "max": 12,
+      "severity": "mild",
+      "label": "Comportamento de Risco / Alerta Inicial",
+      "tag": "Sinal Amarelo / Risco Inicial",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta os primeiros sinais de tolerância, perseguição de perdas ou uso do jogo para fugir de frustrações e ansiedade.",
+      "clinicalInsight": "Nesta fase, o cérebro começa a associar a aposta a picos de dopamina e alívio de estresse. Interromper o comportamento agora é crucial para evitar o ciclo de endividamento e compulsão.",
+      "recommendations": [
+        "Estabeleça um bloqueio voluntário em aplicativos de apostas e sites de cassino.",
+        "Compartilhe sua situação com alguém de confiança para ter transparência financeira.",
+        "Considere sessões de psicoterapia para trabalhar o manejo de ansiedade e autocontrole de impulsos."
+      ],
+      "spiritualBridge": "'Tudo me é lícito, mas nem tudo me convém. Tudo me é lícito, mas eu não me deixarei dominar por nada.' (1 Coríntios 6:12). Buscar a liberdade interior é o caminho da paz.",
+      "ctaText": "Agendar Orientação Preventiva",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 13,
+      "max": 20,
+      "severity": "moderate",
+      "label": "Transtorno de Jogo de Gravidade Moderada (CID-11 6C50)",
+      "tag": "Rastreio Positivo / Perda de Controle",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação atende aos critérios clínicos de Transtorno por Jogos de Azar da CID-11, com perda evidente de controle, perseguição de prejuízos e desgaste emocional.",
+      "clinicalInsight": "A ludopatia é uma dependência comportamental neurobiológica que sequestra o sistema de recompensa cerebral. Não é falta de caráter nem fraqueza moral, mas uma condição que demanda tratamento com Terapia Cognitivo-Comportamental (TCC) especializada em vícios.",
+      "recommendations": [
+        "Inicie acompanhamento psicológico especializado em dependências comportamentais e controle de impulsos.",
+        "Transfira temporariamente o controle das suas finanças para uma pessoa de total confiança (cônjuge ou familiar).",
+        "Ative bloqueadores bancários para transações via Pix e cartões em plataformas de apostas."
+      ],
+      "spiritualBridge": "'Não estejais inquietos por coisa alguma... e a paz de Deus, que excede todo o entendimento, guardará os vossos corações e as vossas mentes.' (Filipenses 4:6-7). Há restauração e acolhimento para recomeçar.",
+      "ctaText": "Agendar Sessão com Especialista",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 21,
+      "max": 30,
+      "severity": "severe",
+      "label": "Transtorno de Jogo Severo / Ludopatia Grave",
+      "tag": "Urgência Clínica / Alerta Vermelho",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado aponta para um quadro grave e agudo de dependência de jogos/apostas, com alto risco financeiro, sofrimento psíquico profundo e sensação de desespero.",
+      "clinicalInsight": "Casos severos frequentemente envolvem mentiras sistemáticas, dívidas vultosas, isolamento e ideação de desesperança. Uma abordagem multidisciplinar integrada (Psicoterapia + Avaliação Médica/Psiquiátrica + Suporte de Grupo) é urgente e transformadora.",
+      "recommendations": [
+        "Agende com máxima prioridade uma avaliação com psicólogo clínico e médico psiquiatra.",
+        "Participe de reuniões de apoio mútuo (como Jogadores Anônimos - JA).",
+        "Seja 100% transparente com sua família sobre as dívidas: o segredo alimenta o ciclo do vício, mas a verdade liberta para o tratamento."
+      ],
+      "spiritualBridge": "'Porque eu bem sei os pensamentos que tenho a vosso respeito, diz o Senhor; pensamentos de paz, e não de mal, para vos dar um fim e uma esperança.' (Jeremias 29:11). Não se desespere: existe saída, cura e reconstrução completa da sua história.",
+      "ctaText": "Agendar Atendimento Prioritário",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

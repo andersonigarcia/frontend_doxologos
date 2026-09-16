@@ -31,11 +31,11 @@ export class EmailTemplates {
   }
 
   baseTemplate(content, title = "Doxologos") {
-    const rawHtml = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; line-height: 1.6; color: #1f2937; }
@@ -50,10 +50,7 @@ export class EmailTemplates {
     .tips-box h3 { margin: 0 0 15px 0; color: #92400e; font-size: 16px; }
     .tips-box ul { margin: 0; padding-left: 20px; }
     .tips-box li { margin: 8px 0; color: #78350f; }
-    .btn { display: inline-block; padding: 14px 32px; background: ${this.brandColor}; color: white !important; text-decoration: none; border-radius: 9999px; font-weight: 600; margin: 10px 5px; transition: background 0.2s; }
-    .btn:hover { background: #236b47; }
-    .btn-secondary { background: #6b7280; }
-    .btn-secondary:hover { background: #4b5563; }
+    .btn { display: inline-block; padding: 14px 32px; background: ${this.brandColor}; color: white !important; text-decoration: none; border-radius: 9999px; font-weight: 600; margin: 10px 5px; text-align: center; }
     .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 13px; color: #6b7280; border-top: 1px solid #e5e7eb; }
     .footer p { margin: 5px 0; }
     .heart { color: #ef4444; }
@@ -75,15 +72,10 @@ export class EmailTemplates {
   </div>
 </body>
 </html>`;
-
-    // Limpeza de espaços em branco para evitar o bug de =20 (Quoted-Printable artifact)
-    return rawHtml
-      .replace(/>\s+</g, '><') // Remove quebras de linha/espaços excessivos entre tags
-      .replace(/\s{2,}/g, ' ') // Limita múltiplos espaços consecutivos a apenas 1
-      .trim();
   }
 
   formatDate(dateString) {
+
     try {
       const date = new Date(dateString + 'T00:00:00');
       return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -240,6 +232,47 @@ export class EmailTemplates {
       </p>
     `;
     return this.baseTemplate(content, "Nova Consulta Agendada - Doxologos");
+  }
+
+  // EMAIL 2.1: Resumo Diário para o PROFISSIONAL (24h)
+  professionalDailySummary(professionalName, bookings) {
+    const sortedBookings = [...bookings].sort((a, b) => a.booking_time.localeCompare(b.booking_time));
+    
+    let bookingsHtml = sortedBookings.map(booking => `
+      <div style="background: white; border-left: 4px solid ${this.brandColor}; padding: 15px; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <p style="margin: 0 0 5px 0;"><strong>⏰ ${this.sanitizeForHtml(booking.booking_time)}</strong> - ${this.sanitizeForHtml(booking.services?.name || 'Consulta')}</p>
+        <p style="margin: 0 0 5px 0; color: #4b5563;">👤 <strong>Paciente:</strong> ${this.sanitizeForHtml(booking.patient_name)}</p>
+        ${booking.patient_phone ? `<p style="margin: 0 0 5px 0; color: #4b5563;">📱 <strong>Telefone:</strong> ${this.sanitizeForHtml(booking.patient_phone)}</p>` : ''}
+        ${booking.patient_email ? `<p style="margin: 0; color: #4b5563;">📧 <strong>Email:</strong> ${this.sanitizeForHtml(booking.patient_email)}</p>` : ''}
+        ${booking.meeting_link ? `<p style="margin: 5px 0 0 0; font-size: 13px;"><a href="${booking.meeting_link}" style="color: #2563eb;">🔗 Link da Reunião</a></p>` : ''}
+      </div>
+    `).join('');
+
+    const content = `
+      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${this.sanitizeForHtml(professionalName)}!</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Aqui está o resumo dos seus agendamentos para <strong>amanhã</strong>. Você tem ${bookings.length} consulta(s) confirmada(s).
+      </p>
+      
+      <div style="background: #f3f4f6; padding: 20px; border-radius: 8px;">
+        <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 18px;">📅 Sua Agenda:</h3>
+        ${bookingsHtml}
+      </div>
+
+      <div class="tips-box">
+        <h3>💡 Dica:</h3>
+        <ul>
+          <li>Revise os horários e links das reuniões.</li>
+          <li>Os pacientes também receberam um lembrete com acesso à sala.</li>
+        </ul>
+      </div>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Desejamos um ótimo dia de atendimentos!<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, "📅 Resumo da sua Agenda de Amanhã - Doxologos");
   }
 
   // EMAIL 3: Pagamento Aprovado
@@ -1167,6 +1200,144 @@ export class EmailTemplates {
     `;
     return this.baseTemplate(content, `⏰ Seu tempo de pagamento expirou - Doxologos`);
   }
+
+  assessmentReport(data) {
+    const {
+      patient_name,
+      assessment_title,
+      score,
+      max_score,
+      severity_label,
+      severity_summary,
+      recommendations,
+      spiritual_bridge,
+      therapy_questions = [],
+      psychoeducation,
+    } = data;
+
+    const name = patient_name ? this.sanitizeForHtml(patient_name) : 'Paciente';
+
+    // 1. Psicoeducação e Validação Clínica
+    const insightText = psychoeducation || severity_summary;
+    const insightHtml = insightText ? `
+      <div style="background-color: #f8fafc; border-left: 4px solid #0284c7; padding: 15px 18px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 6px 0; color: #0369a1; font-size: 14px; font-weight: 700;">
+          💡 Compreensão Clínica do seu Momento:
+        </h4>
+        <p style="margin: 0; color: #334155; font-size: 13.5px; line-height: 1.6;">
+          ${this.sanitizeForHtml(insightText)}
+        </p>
+      </div>
+    ` : '';
+
+    // 2. Guia Preparatório: Perguntas para Levar à Consulta
+    let therapyQuestionsHtml = '';
+    if (Array.isArray(therapy_questions) && therapy_questions.length > 0) {
+      therapyQuestionsHtml = `
+        <div style="background-color: #fefce8; border: 1px solid #fef08a; padding: 16px 18px; border-radius: 12px; margin: 20px 0;">
+          <h4 style="margin: 0 0 8px 0; color: #854d0e; font-size: 14px; font-weight: 700;">
+            📝 Roteiro para sua Conversa com o Psicólogo:
+          </h4>
+          <p style="margin: 0 0 8px 0; color: #713f12; font-size: 12.5px;">
+            Pontos de reflexão que você pode levar para sua primeira sessão terapêutica:
+          </p>
+          <ol style="margin: 0; padding-left: 18px; color: #713f12; font-size: 13px; line-height: 1.5;">
+            ${therapy_questions.map((q) => `<li style="margin-bottom: 6px;">${this.sanitizeForHtml(q)}</li>`).join('')}
+          </ol>
+        </div>
+      `;
+    }
+
+    // 3. Recomendações Práticas
+    const recsList = Array.isArray(recommendations) && recommendations.length > 0
+      ? `<div class="tips-box">
+          <h3 style="margin: 0 0 10px 0; color: #92400e; font-size: 15px; font-weight: 700;">🌱 Recomendações Práticas de Autocuidado:</h3>
+          <ul style="margin: 0; padding-left: 20px;">
+            ${recommendations.map(r => `<li style="margin: 6px 0; color: #78350f; font-size: 13.5px;">${this.sanitizeForHtml(r)}</li>`).join('')}
+          </ul>
+        </div>`
+      : '';
+
+    const content = `
+      <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 20px; border-radius: 14px; margin-bottom: 20px; text-align: center;">
+        <span style="display: inline-block; background: #047857; color: white; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 9999px; letter-spacing: 0.5px; margin-bottom: 6px;">
+          Relatório de Autoavaliação
+        </span>
+        <h2 style="color: #065f46; margin: 0 0 4px 0; font-size: 20px; font-weight: 800;">
+          ${this.sanitizeForHtml(assessment_title || 'Autoavaliação Clínica')}
+        </h2>
+        <p style="margin: 0; color: #047857; font-size: 13px; font-weight: 600;">Doxologos Psicologia & Cuidado Integral</p>
+      </div>
+
+      <p style="font-size: 15px; color: #374151;">Olá, <strong>${name}</strong>,</p>
+      <p style="font-size: 14px; color: #4b5563; line-height: 1.6;">
+        Obrigado por confiar na Doxologos. Segue a síntese consolidada da sua autoavaliação com orientações para o seu momento:
+      </p>
+
+      <!-- Card do Score Geral -->
+      <div class="info-box" style="border: 1px solid #d1fae5; background: #f0fdf4; border-radius: 12px; padding: 18px; text-align: center; margin: 20px 0;">
+        <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #065f46; letter-spacing: 0.5px;">Classificação do Momento</div>
+        <div style="font-size: 20px; font-weight: 800; color: #111827; margin: 4px 0;">
+          ${this.sanitizeForHtml(severity_label || 'Resultado')}
+        </div>
+        <div style="font-size: 14px; color: #047857; font-weight: 700; margin-bottom: 8px;">
+          Pontuação Total: <span style="font-size: 18px; color: #065f46;">${score}</span> / ${max_score || 30}
+        </div>
+        <p style="margin: 0; color: #4b5563; font-size: 13.5px; line-height: 1.5; text-align: left; background: white; padding: 12px 14px; border-radius: 10px; border: 1px solid #e5e7eb;">
+          ${this.sanitizeForHtml(severity_summary || '')}
+        </p>
+      </div>
+
+      ${insightHtml}
+
+      ${therapyQuestionsHtml}
+
+      ${recsList}
+
+      ${spiritual_bridge ? `
+        <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; border-radius: 8px; margin: 20px 0;">
+          <div style="font-size: 11px; text-transform: uppercase; font-weight: 800; color: #047857; margin-bottom: 4px;">🕊️ Perspectiva de Fé e Esperança</div>
+          <p style="margin: 0; color: #065f46; font-style: italic; font-size: 13.5px; line-height: 1.6;">
+            "${this.sanitizeForHtml(spiritual_bridge)}"
+          </p>
+        </div>
+      ` : ''}
+
+      <!-- Ações de Encaminhamento -->
+      <div style="text-align: center; margin: 28px 0; background: #fafafa; padding: 20px; border-radius: 14px; border: 1px solid #f3f4f6;">
+        <h4 style="margin: 0 0 6px 0; font-size: 15px; color: #111827; font-weight: 800;">
+          Deseja aprofundar estes resultados com um profissional?
+        </h4>
+        <p style="margin: 0 0 14px 0; font-size: 13px; color: #6b7280;">
+          Nossos psicólogos são especialistas em integrar ciência psicológica e espiritualidade com ética e acolhimento.
+        </p>
+        <div>
+          <a href="${this.baseUrl}/agendamento" class="btn" style="background-color: #2d8659; margin: 5px;">
+            Agendar Consulta
+          </a>
+          <a href="https://wa.me/5531971982947" class="btn" style="background-color: #25D366; margin: 5px;">
+            Falar no WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <!-- Disclaimer Ético e Legal -->
+      <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; padding: 12px 16px; border-radius: 10px; margin-top: 20px; text-align: left;">
+        <div style="font-size: 11px; font-weight: bold; color: #374151; margin: 0 0 4px 0;">
+          Aviso Legal e Ético (Conselho Federal de Psicologia):
+        </div>
+        <div style="font-size: 10.5px; color: #6b7280; margin: 0; line-height: 1.4;">
+          Esta ferramenta é de caráter exclusivamente educativo e informativo e não substitui uma avaliação diagnóstica profissional presencial ou online conduzida por um psicólogo ou médico.
+        </div>
+      </div>
+    `;
+    return this.baseTemplate(content, "Relatorio de Autoavaliacao - Doxologos");
+  }
+
+
 }
 
+
 export default new EmailTemplates();
+
+
