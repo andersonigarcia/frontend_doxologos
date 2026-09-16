@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, Upload, X } from 'lucide-react';
+import { Loader2, CheckCircle, Upload, X, User, Settings, DollarSign } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const ProfileTab = ({ professional, onUpdate }) => {
@@ -157,191 +157,223 @@ const ProfileTab = ({ professional, onUpdate }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-100 p-6">
-      <h2 className="text-xl font-semibold mb-6">Dados do Cadastro</h2>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+      <h2 className="text-2xl font-bold mb-8 border-b border-gray-100 pb-4 text-gray-800">
+        Dados do Cadastro
+      </h2>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-            <input 
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-            <input 
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-            <input 
-              name="whatsapp"
-              value={formData.whatsapp}
-              onChange={handleChange}
-              placeholder="5531999999999"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Link Fixo do Google Meet</label>
-            <input 
-              name="personal_meet_link"
-              value={formData.personal_meet_link}
-              onChange={handleChange}
-              placeholder="https://meet.google.com/abc-defg-hij"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
+      <form onSubmit={handleSubmit} className="space-y-8 text-sm">
+        
+        {/* SEÇÃO 1: Identificação e Acesso */}
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <User className="w-5 h-5 mr-2 text-purple-600" /> Identificação e Acesso
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Nome do Profissional</label>
+              <input 
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Ex: Dr. João Silva"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">E-mail</label>
+              <input 
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="joao@clinica.com"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                required
+              />
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-            <input 
-              name="cpf"
-              value={formData.cpf}
-              onChange={handleChange}
-              placeholder="000.000.000-00"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ</label>
-            <input 
-              name="cnpj"
-              value={formData.cnpj}
-              onChange={handleChange}
-              placeholder="00.000.000/0000-00"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Registro (CRP/CRN)</label>
-            <input 
-              name="crp"
-              value={formData.crp}
-              onChange={handleChange}
-              placeholder="06/123456"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Especialidade Principal</label>
-            <input 
-              name="specialty"
-              value={formData.specialty}
-              onChange={handleChange}
-              placeholder="Ex: Psicologia Clínica"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-100">
-          
-          {/* Lado Esquerdo - Foto */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Foto do Profissional</label>
-            <div className="flex items-start gap-4">
-              <div className="w-24 h-24 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden shrink-0 relative group">
-                {formData.image_url ? (
-                  <>
-                    <img src={formData.image_url} alt="Avatar" className="w-full h-full object-cover" />
-                    <button 
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
-                      className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </>
-                ) : (
-                  <Upload className="w-8 h-8 text-gray-400" />
-                )}
-              </div>
-              <div className="flex-1">
+        {/* SEÇÃO 2: Contato e Mídia */}
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <Settings className="w-5 h-5 mr-2 text-purple-600" /> Contato e Mídia
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium mb-1 text-gray-600">WhatsApp / Celular (com DDD)</label>
                 <input 
-                  type="file" 
-                  accept="image/*"
-                  id="image-upload"
-                  className="hidden"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
+                  name="whatsapp"
+                  value={formData.whatsapp}
+                  onChange={handleChange}
+                  placeholder="5531999999999"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                 />
-                <label 
-                  htmlFor="image-upload"
-                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 cursor-pointer disabled:opacity-50"
-                >
-                  {uploadingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Procurar imagem...'}
-                </label>
-                <p className="mt-2 text-xs text-gray-500">
-                  Upload seguro para Supabase Storage. Alta qualidade, até 5MB. Formatos aceitos: JPG, PNG, WEBP.
-                </p>
+                <p className="text-xs text-gray-500 mt-1">Utilizado para notificações e contato direto</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1 text-gray-600">Link Fixo do Google Meet</label>
+                <input 
+                  name="personal_meet_link"
+                  value={formData.personal_meet_link}
+                  onChange={handleChange}
+                  placeholder="https://meet.google.com/abc-defg-hij"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enviado automaticamente aos pacientes em agendamentos online</p>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-2 text-gray-600">Foto do Profissional</label>
+              <div className="flex items-start gap-4">
+                <div className="w-24 h-24 rounded-full bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden shrink-0 relative group shadow-sm">
+                  {formData.image_url ? (
+                    <>
+                      <img src={formData.image_url} alt="Avatar" className="w-full h-full object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}
+                        className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center text-white transition-all"
+                      >
+                        <X className="w-6 h-6" />
+                      </button>
+                    </>
+                  ) : (
+                    <Upload className="w-8 h-8 text-gray-300" />
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    id="image-upload"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                  />
+                  <label 
+                    htmlFor="image-upload"
+                    className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-semibold rounded-xl text-gray-700 bg-white hover:bg-gray-50 cursor-pointer disabled:opacity-50 transition-colors"
+                  >
+                    {uploadingImage ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : 'Procurar imagem...'}
+                  </label>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Upload seguro para Supabase Storage. Alta qualidade, até 5MB. Formatos aceitos: JPG, PNG, WEBP.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-
-          {/* Lado Direito - Serviços */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Serviços que Atende</label>
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 h-64 overflow-y-auto space-y-2">
-              {services.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">Carregando serviços ou nenhum serviço cadastrado.</p>
-              ) : (
-                services.map(service => (
-                  <label key={service.id} className="flex items-start gap-3 p-2 hover:bg-gray-100 rounded cursor-pointer transition-colors">
-                    <div className="flex items-center h-5">
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                        checked={selectedServices.includes(service.id)}
-                        onChange={() => handleServiceToggle(service.id)}
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-gray-900">{service.name}</span>
-                      <span className="text-xs text-gray-500">
-                        {service.duration} min • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
-                      </span>
-                    </div>
-                  </label>
-                ))
-              )}
-            </div>
-            <p className="mt-2 text-xs text-gray-500">
-              Selecione um ou mais serviços que este profissional pode atender na plataforma.
-            </p>
-          </div>
-
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Minicurrículo</label>
+        {/* SEÇÃO 3: Atuação e Documentação */}
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <CheckCircle className="w-5 h-5 mr-2 text-purple-600" /> Atuação e Documentação
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">CPF</label>
+              <input 
+                name="cpf"
+                value={formData.cpf}
+                onChange={handleChange}
+                placeholder="000.000.000-00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">CNPJ</label>
+              <input 
+                name="cnpj"
+                value={formData.cnpj}
+                onChange={handleChange}
+                placeholder="00.000.000/0000-00"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Registro (CRP/CRN/CRM)</label>
+              <input 
+                name="crp"
+                value={formData.crp}
+                onChange={handleChange}
+                placeholder="06/123456"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium mb-1 text-gray-600">Especialidade Principal</label>
+              <input 
+                name="specialty"
+                value={formData.specialty}
+                onChange={handleChange}
+                placeholder="Ex: Psicologia Clínica"
+                className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* SEÇÃO 4: Apresentação e Currículo */}
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <label className="block text-xs font-medium mb-2 text-gray-600">Minicurrículo ou Apresentação</label>
           <textarea 
             name="mini_curriculum"
             value={formData.mini_curriculum}
             onChange={handleChange}
             rows={4}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder="Escreva um breve resumo sobre o profissional, suas abordagens e formação..."
+            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white resize-none"
           />
         </div>
 
-        <div className="pt-4 flex justify-end">
+        {/* SEÇÃO 5: Serviços e Precificação */}
+        <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
+            <DollarSign className="w-5 h-5 mr-2 text-purple-600" /> Serviços que Atende
+          </h3>
+          <p className="text-xs text-gray-500 mb-4">
+            Selecione quais modalidades de atendimento este profissional está apto a realizar na plataforma.
+          </p>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 h-64 overflow-y-auto space-y-2 shadow-inner">
+            {services.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-8 flex flex-col items-center">
+                <Loader2 className="w-6 h-6 animate-spin mb-2 text-gray-400" />
+                Carregando serviços...
+              </p>
+            ) : (
+              services.map(service => (
+                <label key={service.id} className="flex items-start gap-3 p-3 hover:bg-purple-50/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-purple-100">
+                  <div className="flex items-center h-5 mt-0.5">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      checked={selectedServices.includes(service.id)}
+                      onChange={() => handleServiceToggle(service.id)}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-gray-900">{service.name}</span>
+                    <span className="text-xs text-gray-500 font-medium">
+                      {service.duration} min • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+                    </span>
+                  </div>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="pt-6 flex justify-end gap-3 border-t border-gray-100">
           <Button 
             type="submit" 
             disabled={isSubmitting}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-purple-600 hover:bg-purple-700 rounded-xl font-semibold px-6 shadow-sm"
           >
             {isSubmitting ? (
               <>
@@ -351,7 +383,7 @@ const ProfileTab = ({ professional, onUpdate }) => {
             ) : (
               <>
                 <CheckCircle className="w-4 h-4 mr-2" />
-                Salvar Alterações
+                Salvar Alterações do Profissional
               </>
             )}
           </Button>
