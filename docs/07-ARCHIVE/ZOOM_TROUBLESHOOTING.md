@@ -85,9 +85,9 @@ if (clientId && clientSecret && accountId) {
 1. Pare o servidor (Ctrl+C)
 2. Verifique se `config/local.env` tem as 3 variáveis:
    ```env
-   VITE_ZOOM_CLIENT_ID=pFrZ5H87QOcO9HDNuxZag
-   VITE_ZOOM_CLIENT_SECRET=LlvAIQBCMW3l6gtA1HRiZ98AlTlfPIU9
-   VITE_ZOOM_ACCOUNT_ID=PKU_EuxmTgGnwsKHzxhn4A
+   VITE_ZOOM_CLIENT_ID=sua_zoom_client_id_aqui
+   VITE_ZOOM_CLIENT_SECRET=sua_zoom_client_secret_aqui
+   VITE_ZOOM_ACCOUNT_ID=sua_zoom_account_id_aqui
    ```
 3. Inicie o servidor: `npm run dev`
 4. Teste novamente

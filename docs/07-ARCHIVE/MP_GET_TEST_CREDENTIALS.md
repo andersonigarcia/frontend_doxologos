@@ -7,15 +7,15 @@
 **Ambiente de TESTE:**
 ```
 Public Key: APP_USR-df7feb33-c8bd-4bef-b3fb-c413424c849d
-Token: APP_USR-2928465425111246-102711-4cdcb010aa3af5407ac81b8d07d318e5-2950255347
+Token: APP_USR-TEST_TOKEN_REDACTED
 ```
 
 **Ambiente de PRODUÇÃO:**
 ```
 Public Key: APP_USR-4fdd0ea3-c204-438a-9eea-4f503bca869d
-Token: APP_USR-3916509036267962-102711-499af6f01166e789218b65d6c254b180-84508208
+Token: APP_USR-PROD_TOKEN_REDACTED
 Client ID: 3916509036267962
-Client Secret: ByxOX1Wy1QKtbrzg1CLva5P7wiweTMai
+Client Secret: SECRET_REDACTED
 ```
 
 **Ambiente Atual:** `production` (ativo e testado) ✅

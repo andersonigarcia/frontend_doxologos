@@ -80,9 +80,9 @@ Após executar, **confirme** que as colunas foram criadas executando novamente o
 2. Verifique se estas linhas existem e têm valores:
 
 \`\`\`env
-VITE_ZOOM_CLIENT_ID=pFrZ5H87QOcO9HDNuxZag
-VITE_ZOOM_CLIENT_SECRET=LlvAIQBCMW3l6gtA1HRiZ98AlTlfPIU9
-VITE_ZOOM_ACCOUNT_ID=PKU_EuxmTgGnwsKHzxhn4A
+VITE_ZOOM_CLIENT_ID=sua_zoom_client_id_aqui
+VITE_ZOOM_CLIENT_SECRET=sua_zoom_client_secret_aqui
+VITE_ZOOM_ACCOUNT_ID=sua_zoom_account_id_aqui
 \`\`\`
 
 **Se alguma estiver vazia ou incorreta:**
