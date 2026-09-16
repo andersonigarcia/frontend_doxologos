@@ -9,6 +9,7 @@ export function ProfessionalSidebar({
 }) {
   const tabs = [
     { id: 'bookings', label: 'Agendamentos', icon: Calendar },
+    { id: 'patients', label: 'Meus Pacientes', icon: UserCircle },
     { id: 'availability', label: 'Minha Agenda', icon: Clock },
     { id: 'financeiro', label: 'Meu Faturamento', icon: DollarSign },
     { id: 'professionals', label: 'Meu Perfil', icon: UserCircle },

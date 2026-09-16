@@ -47,6 +47,7 @@ export const tabsConfig = {
     ],
     professional: [
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
+        { value: 'patients', label: 'Meus Pacientes', icon: UserCircle },
         { value: 'availability', label: 'Disponibilidade', icon: Clock },
         { value: 'financeiro', label: 'Faturamento', icon: DollarSign },
         { value: 'professionals', label: 'Perfil', icon: UserCircle },

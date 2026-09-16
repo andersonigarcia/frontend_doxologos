@@ -55,6 +55,7 @@ export const ADMIN_MODULES = [
       { id: 'payments', label: 'Pagamentos / Checkout', icon: DollarSign },
       { id: 'livro-caixa', label: 'Livro Caixa', icon: FileText },
       { id: 'refunds', label: 'Reembolsos', icon: Receipt },
+      { id: 'nfse', label: 'Resiliência NFS-e', icon: Building2 },
     ]
   },
   {
@@ -65,24 +66,30 @@ export const ADMIN_MODULES = [
     tabs: [
       { id: 'professionals', label: 'Profissionais / Perfil', icon: Users },
       { id: 'patients', label: 'Pacientes', icon: UserCircle },
-      { id: 'assessment-leads', label: 'Leads & GAD-7', icon: Sparkles },
       { id: 'reviews', label: 'Avaliações', icon: Star },
     ]
-
   },
   {
-    id: 'plataforma',
-    title: '5. Plataforma & Conteúdo',
-    description: 'Serviços, Eventos, Blog e Fiscal',
+    id: 'marketing',
+    title: '5. Marketing & Eventos',
+    description: 'Eventos, Leads e Materiais de Apoio',
+    icon: Sparkles,
+    tabs: [
+      { id: 'assessment-leads', label: 'Leads & GAD-7', icon: Sparkles },
+      { id: 'events', label: 'Eventos', icon: Ticket },
+      { id: 'event-registrations', label: 'Inscrições em Eventos', icon: ClipboardList },
+      { id: 'blog', label: 'Blog & Substack', icon: Newspaper },
+      { id: 'book-resources', label: 'Materiais do Livro', icon: BookOpen },
+    ]
+  },
+  {
+    id: 'configuracoes',
+    title: '6. Configurações',
+    description: 'Serviços, Preços e Ajustes de Sistema',
     icon: Settings,
     tabs: [
       { id: 'services', label: 'Serviços & Preços', icon: Briefcase },
-      { id: 'events', label: 'Eventos', icon: Ticket },
-      { id: 'event-registrations', label: 'Inscrições em Eventos', icon: ClipboardList },
-      { id: 'book-resources', label: 'Materiais do Livro', icon: BookOpen },
-      { id: 'blog', label: 'Blog & Substack', icon: Newspaper },
-      { id: 'nfse', label: 'Resiliência NFS-e', icon: Building2 },
-      { id: 'settings', label: 'Configurações', icon: Settings },
+      { id: 'settings', label: 'Configurações de Sistema', icon: Settings },
     ]
   }
 ];
