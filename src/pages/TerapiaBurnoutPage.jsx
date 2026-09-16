@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
+import { usePageTracking, useEventTracking } from '@/hooks/useAnalytics';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import HomeHeader from '@/components/home/HomeHeader';
 import { Calendar, CheckCircle, Brain, Heart, ArrowRight } from 'lucide-react';
@@ -9,6 +10,18 @@ import SiteFooter from '@/components/common/SiteFooter';
 
 const TerapiaBurnoutPage = () => {
   const { user, userRole, signOut } = useAuth();
+  usePageTracking('/terapia/burnout', 'Terapia para Burnout | Doxologos');
+  const trackEvent = useEventTracking();
+
+  const handleCtaClick = () => {
+    trackEvent('generate_lead', {
+      event_category: 'Conversion',
+      event_label: 'agendar_consulta',
+      traffic_type: 'seo_landing',
+      service_type: 'terapia_burnout'
+    });
+  };
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -154,7 +167,7 @@ const TerapiaBurnoutPage = () => {
               <p className="text-xl text-[#f0ebe1] mb-8">
                 Agende sua consulta e inicie um processo de restauração sustentável para a sua vida e ministério.
               </p>
-              <Link to="/agendamento" className="inline-flex bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-8 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 items-center">
+              <Link to="/agendamento" onClick={handleCtaClick} className="inline-flex bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-8 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 items-center">
                 Ver Psicólogos Disponíveis
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>

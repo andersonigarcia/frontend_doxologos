@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import analytics from '../lib/analytics';
-import { supabase } from '@/lib/customSupabaseClient';
-
+// Removed unused Supabase dependency for analytics
 // Hook para tracking de páginas
 export const usePageTracking = (pageName, pageTitle) => {
   const location = useLocation();
@@ -10,22 +9,8 @@ export const usePageTracking = (pageName, pageTitle) => {
   useEffect(() => {
     const title = pageTitle || document.title;
     const finalPath = pageName || location.pathname;
-    
-    // 1. Google Analytics Tracking (mantido para compatibilidade se GA estiver configurado)
+    // 1. Google Ecosystem Tracking (DataLayer & Gtag)
     analytics.trackPageView(finalPath, title);
-
-    // 2. Supabase Native Analytics (Fase 3 do Dashboard Gerencial)
-    // Não registrar rotas /admin* para evitar que tráfego interno polua métricas de usuários
-    const isAdminRoute = finalPath.startsWith('/admin');
-    if (!isAdminRoute) {
-      supabase.from('page_views').insert([{
-        path: finalPath,
-        session_id: analytics.sessionId || 'unknown'
-      }]).then(({ error }) => {
-        if (error) console.error('Erro ao registrar page view:', error.message);
-      });
-    }
-    
   }, [location.pathname, pageName, pageTitle]);
 };
 

@@ -1,5 +1,5 @@
 // Analytics and Performance Monitoring Utilities
-import posthog from './posthog';
+// Now exclusively using Google Ecosystem (GTM/GA4/GSC) via DataLayer
 
 class AnalyticsManager {
   constructor() {
@@ -82,6 +82,17 @@ class AnalyticsManager {
   trackPageView(pageName, pageTitle = document.title) {
     if (!this.isProduction) return;
 
+    // 1. DataLayer Push for GTM (Best Practice)
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'page_view',
+      page_path: window.location.pathname,
+      page_title: pageTitle,
+      page_name: pageName,
+      user_type: this.getUserType()
+    });
+
+    // 2. Direct gtag fallback
     if (typeof gtag === 'function') {
       gtag('config', this.gaId, {
         page_title: pageTitle,
@@ -90,29 +101,25 @@ class AnalyticsManager {
         custom_parameter_2: this.getUserType()
       });
     }
-
-    if (posthog) {
-      posthog.capture('$pageview', {
-        page_title: pageTitle,
-        page_name: pageName,
-        user_type: this.getUserType()
-      });
-    }
   }
 
   trackEvent(eventName, parameters = {}) {
     if (!this.isProduction) return;
 
+    // 1. DataLayer Push for GTM (Best Practice)
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: eventName,
+      ...parameters
+    });
+
+    // 2. Direct gtag fallback
     if (typeof gtag === 'function') {
       gtag('event', eventName, {
         session_id: this.sessionId,
         timestamp: Date.now(),
         ...parameters
       });
-    }
-
-    if (posthog) {
-      posthog.capture(eventName, parameters);
     }
   }
 

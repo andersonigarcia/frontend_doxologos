@@ -285,7 +285,6 @@ const ProfessionalDashboardPage = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [bookingView, setBookingView] = useState('list'); // 'list' ou 'calendar'
-    const [patientView, setPatientView] = useState('analytics'); // 'analytics' ou 'list'
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     const [currentPage, setCurrentPage] = useState(1);
@@ -3768,53 +3767,23 @@ const ProfessionalDashboardPage = () => {
                         <TabsContent value="patients" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <div className="space-y-6">
-                                {/* Seletor de Visão */}
-                                <div className="flex justify-end">
-                                    <div className="bg-slate-200/80 p-1 rounded-xl flex items-center gap-1 border border-slate-300/60 shadow-inner">
-                                        <button
-                                            onClick={() => setPatientView('analytics')}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                                patientView === 'analytics'
-                                                    ? 'bg-white text-[#2d8659] shadow-sm'
-                                                    : 'text-slate-600 hover:text-slate-900'
-                                            }`}
-                                        >
-                                            <Activity className="w-3.5 h-3.5" />
-                                            Analytics de Retenção & CRM
-                                        </button>
-                                        <button
-                                            onClick={() => setPatientView('list')}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                                patientView === 'list'
-                                                    ? 'bg-white text-[#2d8659] shadow-sm'
-                                                    : 'text-slate-600 hover:text-slate-900'
-                                            }`}
-                                        >
-                                            <List className="w-3.5 h-3.5" />
-                                            Lista Simples de Pacientes
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {patientView === 'analytics' ? null : (
-                                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                                        <div className="flex items-center gap-3 mb-6">
-                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                                <Users className="w-5 h-5" />
-                                            </div>
-                                            <div>
-                                                <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
-                                                <p className="text-sm text-gray-600">Visualize e gerencie os pacientes da plataforma</p>
-                                            </div>
+                                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                                            <Users className="w-5 h-5" />
                                         </div>
-
-                                        <PatientList
-                                            patients={patientData.patients}
-                                            onPatientClick={handlePatientClick}
-                                            loading={patientData.loading}
-                                        />
+                                        <div>
+                                            <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
+                                            <p className="text-sm text-gray-600">Visualize e gerencie os pacientes da plataforma</p>
+                                        </div>
                                     </div>
-                                )}
+
+                                    <PatientList
+                                        patients={patientData.patients}
+                                        onPatientClick={handlePatientClick}
+                                        loading={patientData.loading}
+                                    />
+                                </div>
                             </div>
 
                             <PatientDetailsModal

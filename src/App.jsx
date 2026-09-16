@@ -43,7 +43,6 @@ const AdminUsuariosPage = lazy(() => import('@/pages/AdminUsuariosPage'));
 const TermosCondicoesPage = lazy(() => import('@/pages/TermosCondicoesPage'));
 const FloatingWhatsAppButton = lazy(() => import('@/components/FloatingWhatsAppButton'));
 const ManagementDashboardPage = lazy(() => import('@/pages/ManagementDashboardPage'));
-const AnalyticsDashboardPage = lazy(() => import('@/pages/admin/AnalyticsDashboardPage'));
 const ProfessionalListPage = lazy(() => import('@/pages/admin/ProfessionalListPage'));
 const ProfessionalHubPage = lazy(() => import('@/pages/admin/ProfessionalHubPage'));
 const BlogPage = lazy(() => import('@/pages/BlogPage'));
