@@ -150,13 +150,7 @@ function AppContent() {
               </PageErrorBoundary>
             </ProtectedRoute>
           } />
-          <Route path="/admin/analytics" element={
-            <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
-              <PageErrorBoundary pageName="Comportamento e Analytics">
-                <AnalyticsDashboardPage />
-              </PageErrorBoundary>
-            </ProtectedRoute>
-          } />
+
           <Route path="/admin/professionals" element={
             <ProtectedRoute requiredRoles={['admin']} redirectTo="/">
               <PageErrorBoundary pageName="Admin Profissionais">

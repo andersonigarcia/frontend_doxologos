@@ -218,20 +218,6 @@ class AnalyticsManager {
     // Determine user type based on behavior/authentication
     const isAuthenticated = localStorage.getItem('supabase.auth.token');
     
-    // Identificar usuário no posthog se estiver autenticado
-    if (isAuthenticated && posthog && posthog.get_distinct_id() !== 'identified_user') {
-        try {
-          const sessionData = JSON.parse(isAuthenticated);
-          const user = sessionData?.user;
-          if (user?.id) {
-             posthog.identify(user.id, {
-                 email: user.email,
-                 role: user.role
-             });
-          }
-        } catch(e) {}
-    }
-    
     return isAuthenticated ? 'returning_user' : 'new_visitor';
   }
 
