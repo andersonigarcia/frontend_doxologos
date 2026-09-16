@@ -143,9 +143,9 @@ export const DayScheduleCard = ({
                 </div>
 
                 {/* Exibição dos Horários */}
-                <div className="flex flex-wrap gap-1.5 mb-4 items-center">
+                <div className="flex flex-wrap gap-1.5 mb-4 items-start content-start min-h-[5rem] max-h-[14rem] overflow-y-auto pr-1">
                     {sortedSlots.length === 0 && !isAdding && !showRangeBuilder ? (
-                        <div className="w-full flex flex-col items-center justify-center py-6 px-3 text-gray-400 text-xs bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                        <div className="w-full flex flex-col items-center justify-center py-6 px-3 text-gray-400 text-xs bg-gray-50/50 rounded-xl border border-dashed border-gray-200 h-full">
                             <Clock className="w-6 h-6 mb-2 text-gray-300" />
                             <p className="text-center font-medium">Nenhum horário configurado</p>
                         </div>

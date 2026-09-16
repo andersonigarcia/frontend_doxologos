@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CalendarX, Clock, Calendar as CalendarIcon, Save, Sparkles, AlertCircle, RefreshCw, Layers } from 'lucide-react';
+import { CalendarX, Clock, Calendar as CalendarIcon, Save, Sparkles, AlertCircle, RefreshCw, Layers, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DayScheduleCard } from './DayScheduleCard';
 import { LoadingButton } from '@/components/LoadingOverlay';
@@ -147,36 +147,47 @@ export const AvailabilityManager = ({
     return (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative">
             {/* Header da Seção */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-gray-100 pb-4">
+            {/* Header da Seção */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 pb-4">
                 <div>
                     <h2 className="text-2xl font-bold flex items-center text-gray-900">
                         <Clock className="w-6 h-6 mr-2 text-[#2d8659]" />
-                        Gestão de Disponibilidade de Agenda
+                        Disponibilidade de Agenda
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
-                        Configure os horários de atendimento da semana. Você pode salvar para o mês selecionado ou replicar para o trimestre inteiro.
+                        Configure seu padrão de horários para a semana e gerencie exceções.
                     </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                    <Button
-                        variant="ghost"
-                        onClick={() => setIsBlockedDatesModalOpen(true)}
-                        className="text-gray-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl font-medium"
-                    >
-                        <CalendarX className="w-4 h-4 mr-2" />
-                        Bloqueios e Férias
+                <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-full border border-gray-100">
+                    <Button variant="ghost" size="icon" onClick={() => {
+                        if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
+                        else { setSelectedMonth(m => m - 1); }
+                    }} className="rounded-full h-8 w-8 hover:bg-white hover:shadow-sm">
+                        <ChevronLeft className="w-4 h-4 text-gray-600" />
                     </Button>
-
-                    <Button
-                        variant="outline"
-                        onClick={() => setIsReplicateModalOpen(true)}
-                        className="rounded-xl border-gray-200 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 font-medium"
-                    >
-                        <Layers className="w-4 h-4 mr-2 text-indigo-500" />
-                        Replicar Trimestre
+                    <div className="w-36 text-center">
+                        <span className="text-sm font-bold text-gray-700 capitalize">{monthNames[selectedMonth]} {selectedYear}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => {
+                        if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
+                        else { setSelectedMonth(m => m + 1); }
+                    }} className="rounded-full h-8 w-8 hover:bg-white hover:shadow-sm">
+                        <ChevronRight className="w-4 h-4 text-gray-600" />
                     </Button>
                 </div>
+            </div>
+
+            {/* Ações Globais (Abaixo do Header) */}
+            <div className="flex justify-end mb-6">
+                <Button
+                    variant="outline"
+                    onClick={() => setIsReplicateModalOpen(true)}
+                    className="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium bg-indigo-50/50"
+                >
+                    <Layers className="w-4 h-4 mr-2 text-indigo-500" />
+                    Replicar para Trimestre
+                </Button>
             </div>
 
             {/* Filtro de Profissional (para Admins) */}
@@ -196,39 +207,6 @@ export const AvailabilityManager = ({
                 </div>
             )}
 
-            {/* Seletor de Mês e Ano */}
-            <div className="flex flex-col md:flex-row gap-4 mb-8 bg-emerald-50/40 p-4 rounded-2xl border border-emerald-100">
-                <div className="flex-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-1 flex items-center gap-1.5 text-emerald-900">
-                        <CalendarIcon className="w-4 h-4 text-emerald-600" /> Mês de Referência
-                    </label>
-                    <select
-                        value={selectedMonth}
-                        onChange={e => setSelectedMonth(Number(e.target.value))}
-                        className="w-full input rounded-xl font-semibold bg-white border-emerald-200"
-                    >
-                        {Array.from({ length: 12 }, (_, i) => (
-                            <option key={i + 1} value={i + 1}>
-                                {monthNames[i + 1]}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="flex-1">
-                    <label className="block text-xs font-bold uppercase tracking-wider mb-1 text-emerald-900">Ano</label>
-                    <select
-                        value={selectedYear}
-                        onChange={e => setSelectedYear(Number(e.target.value))}
-                        className="w-full input rounded-xl font-semibold bg-white border-emerald-200"
-                    >
-                        {[2024, 2025, 2026, 2027].map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
             {/* Grid dos Cards de Cada Dia da Semana */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
                 {dayKeys.map(({ key, label }) => (
@@ -247,12 +225,28 @@ export const AvailabilityManager = ({
             </div>
 
             {/* Seção de Bloqueios de Férias e Exceções */}
-            {professionalBlockedDates && professionalBlockedDates.length > 0 && (
-                <div className="mt-8 border-t pt-6">
-                    <h3 className="text-lg font-bold mb-4 flex items-center text-gray-800">
-                        <CalendarX className="w-5 h-5 mr-2 text-rose-600" />
-                        Férias e Dias Bloqueados
-                    </h3>
+            <div className="mt-8 border-t pt-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold flex items-center text-gray-800">
+                            <CalendarX className="w-5 h-5 mr-2 text-rose-600" />
+                            Férias e Exceções
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Adicione dias inteiros ou horários específicos em que você não fará atendimentos.
+                        </p>
+                    </div>
+                    
+                    <Button
+                        onClick={() => setIsBlockedDatesModalOpen(true)}
+                        className="bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl font-semibold shrink-0 shadow-sm"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Bloqueio
+                    </Button>
+                </div>
+
+                {professionalBlockedDates && professionalBlockedDates.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {professionalBlockedDates.map((block) => (
                             <div key={block.id} className="bg-rose-50 border border-rose-100 rounded-xl p-4 transition-all hover:border-rose-200 hover:shadow-sm group">
@@ -295,8 +289,16 @@ export const AvailabilityManager = ({
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                        <div className="bg-rose-100 p-3 rounded-full mb-3">
+                            <CalendarX className="w-6 h-6 text-rose-500" />
+                        </div>
+                        <p className="text-gray-900 font-semibold mb-1">Nenhum bloqueio programado</p>
+                        <p className="text-gray-500 text-sm max-w-sm">Os dias configurados na sua grade normal de horários estarão totalmente disponíveis para agendamentos.</p>
+                    </div>
+                )}
+            </div>
 
             {/* STICKY SAVE BAR (Barra Flutuante de Salvamento de Alterações) */}
             {isDirty && (
