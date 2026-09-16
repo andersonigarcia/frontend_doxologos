@@ -46,6 +46,7 @@ export const tabsConfig = {
         { value: 'blog', label: 'Blog / Artigos', icon: Newspaper },
     ],
     professional: [
+        { value: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'patients', label: 'Meus Pacientes', icon: UserCircle },
         { value: 'availability', label: 'Disponibilidade', icon: Clock },

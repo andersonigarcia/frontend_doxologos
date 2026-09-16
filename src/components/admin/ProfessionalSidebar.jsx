@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Clock, DollarSign, UserCircle, ShieldCheck, KeyRound } from 'lucide-react';
+import { Calendar, Clock, DollarSign, UserCircle, ShieldCheck, KeyRound, LayoutDashboard } from 'lucide-react';
 
 export function ProfessionalSidebar({
   activeTab,
@@ -8,6 +8,7 @@ export function ProfessionalSidebar({
   onOpenChangePassword
 }) {
   const tabs = [
+    { id: 'dashboard', label: 'Visão Geral', icon: LayoutDashboard },
     { id: 'bookings', label: 'Agendamentos', icon: Calendar },
     { id: 'patients', label: 'Meus Pacientes', icon: UserCircle },
     { id: 'availability', label: 'Minha Agenda', icon: Clock },
