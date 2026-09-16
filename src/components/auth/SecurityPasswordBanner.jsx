@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { ShieldAlert, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export function SecurityPasswordBanner({ onOpenChangePassword }) {
   const [dismissed, setDismissed] = useState(false);
+  const { user } = useAuth();
 
-  if (dismissed) return null;
+  // Esconde o banner se o usuário já dispensou ou já atualizou a senha
+  if (dismissed || user?.user_metadata?.has_strong_password) return null;
 
   return (
     <div className="bg-gradient-to-r from-emerald-900 via-slate-900 to-slate-900 text-white p-4 rounded-2xl shadow-md border border-emerald-800/60 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all">

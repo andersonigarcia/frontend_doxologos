@@ -333,8 +333,11 @@ export function AuthProvider({ children }) {
   }, [toast]);
 
   const updatePassword = useCallback(async (newPassword) => {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: {
+        has_strong_password: true
+      }
     });
 
     if (error) {
