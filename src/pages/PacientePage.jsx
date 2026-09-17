@@ -81,38 +81,37 @@ const PacientePage = () => {
         setCreditError(null);
 
         try {
-            const accessToken = session?.access_token;
+            const { data: walletData, error: walletError } = await supabase
+                .from('patient_wallets')
+                .select('balance')
+                .eq('id', user.id)
+                .single();
 
-            if (!accessToken) {
-                throw new Error('Sessão expirada. Faça login novamente.');
+            if (walletError && walletError.code !== 'PGRST116') {
+                throw new Error(walletError.message || 'Erro ao consultar saldo da carteira');
             }
 
-            const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
-                body: { action: 'list' },
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
+            const { data: txData, error: txError } = await supabase
+                .from('wallet_transactions')
+                .select('*')
+                .eq('patient_id', user.id)
+                .order('created_at', { ascending: false });
 
-            if (error) {
-                throw new Error(error.message || 'Erro ao consultar créditos');
-            }
-
-            if (data?.error) {
-                throw new Error(data.error);
+            if (txError) {
+                throw new Error(txError.message || 'Erro ao consultar transações da carteira');
             }
 
             setCreditSummary({
-                balance: data?.balance ?? null,
-                credits: Array.isArray(data?.credits) ? data.credits : [],
+                balance: { available_amount: walletData?.balance || 0, reserved_amount: 0 },
+                credits: txData || [],
             });
         } catch (err) {
-            logger.error('Erro ao carregar créditos do paciente', err);
-            setCreditError(err instanceof Error ? err.message : 'Erro ao carregar créditos');
+            logger.error('Erro ao carregar carteira do paciente', err);
+            setCreditError(err instanceof Error ? err.message : 'Erro ao carregar carteira');
         } finally {
             setCreditLoading(false);
         }
-    }, [user, session]);
+    }, [user]);
 
     const resolvePaymentRecord = (booking) => {
         if (!booking) return null;
@@ -727,8 +726,8 @@ const PacientePage = () => {
 
     const availableCreditAmount = creditSummary.balance ? Number(creditSummary.balance.available_amount) || 0 : 0;
     const reservedCreditAmount = creditSummary.balance ? Number(creditSummary.balance.reserved_amount) || 0 : 0;
-    const availableCreditsList = (creditSummary.credits || []).filter((credit) => credit.status === 'available');
-    const hasCreditInfo = availableCreditAmount > 0 || reservedCreditAmount > 0;
+    const availableCreditsList = creditSummary.credits || [];
+    const hasCreditInfo = availableCreditAmount > 0 || availableCreditsList.length > 0;
 
     if (!user) {
         return (
@@ -944,18 +943,24 @@ const PacientePage = () => {
                                     <div className="mt-4 pt-4 border-t border-gray-100">
                                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Últimas Movimentações</p>
                                         <ul className="space-y-2">
-                                            {availableCreditsList.slice(0, 2).map((credit) => {
-                                                const creditDate = credit.created_at ? new Date(credit.created_at) : null;
-                                                const formattedDate = creditDate && !Number.isNaN(creditDate.getTime())
-                                                    ? creditDate.toLocaleDateString('pt-BR')
+                                            {availableCreditsList.slice(0, 5).map((tx) => {
+                                                const txDate = tx.created_at ? new Date(tx.created_at) : null;
+                                                const formattedDate = txDate && !Number.isNaN(txDate.getTime())
+                                                    ? txDate.toLocaleDateString('pt-BR')
                                                     : '';
-                                                const sourceLabel = credit.source_type === 'cancellation'
-                                                    ? 'Cancelamento'
-                                                    : credit.source_reason || 'Crédito';
+                                                let sourceLabel = tx.transaction_type;
+                                                if (tx.transaction_type === 'credit_cancellation') sourceLabel = 'Estorno de Cancelamento';
+                                                else if (tx.transaction_type === 'debit_payment') sourceLabel = 'Pagamento de Consulta';
+                                                else if (tx.transaction_type === 'admin_adjustment') sourceLabel = 'Ajuste Manual';
+                                                
+                                                const isCredit = Number(tx.amount) > 0;
+                                                
                                                 return (
-                                                    <li key={credit.id} className="flex items-center justify-between text-sm">
+                                                    <li key={tx.id} className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
                                                         <span className="text-gray-600">{formattedDate} • {sourceLabel}</span>
-                                                        <span className="font-medium text-gray-900">{formatCurrency(credit.amount, credit.currency || 'BRL')}</span>
+                                                        <span className={`font-medium ${isCredit ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                            {isCredit ? '+' : ''}{formatCurrency(tx.amount, 'BRL')}
+                                                        </span>
                                                     </li>
                                                 );
                                             })}
@@ -1247,18 +1252,28 @@ const PacientePage = () => {
                                                     </Dialog>
                                                 )}
                                                 {booking.status !== 'cancelled_by_patient' && new Date(booking.booking_date) > new Date() && (
-                                                    <ProtectedAction
-                                                        action="booking:cancel_own"
-                                                        requireConfirmation
-                                                        confirmTitle="Cancelar Agendamento"
-                                                        confirmMessage={`Tem certeza que deseja cancelar este agendamento?`}
-                                                        destructive
-                                                        onConfirm={() => cancelBooking(booking.id)}
-                                                    >
-                                                        <Button size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700">
-                                                            <XCircle className="w-4 h-4 mr-1" /> Cancelar
-                                                        </Button>
-                                                    </ProtectedAction>
+                                                    (() => {
+                                                        const bDate = new Date(`${booking.booking_date}T${booking.booking_time}`);
+                                                        const hDiff = (bDate - new Date()) / (1000 * 60 * 60);
+                                                        const cancelMessage = hDiff >= 24
+                                                            ? `Como você está cancelando com mais de 24h de antecedência, R$ ${(booking.payment?.[0]?.amount || 150).toFixed(2)} serão adicionados à sua carteira Doxologos para reagendamentos. Tem certeza que deseja cancelar?`
+                                                            : `Atenção: Cancelamentos com menos de 24h de antecedência não são elegíveis a reembolso ou créditos, conforme nossos Termos de Uso. O valor desta sessão não será retornado. Deseja realmente cancelar?`;
+                                                            
+                                                        return (
+                                                            <ProtectedAction
+                                                                action="booking:cancel_own"
+                                                                requireConfirmation
+                                                                confirmTitle="Cancelar Agendamento"
+                                                                confirmMessage={cancelMessage}
+                                                                destructive
+                                                                onConfirm={() => cancelBooking(booking.id)}
+                                                            >
+                                                                <Button size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700">
+                                                                    <XCircle className="w-4 h-4 mr-1" /> Cancelar
+                                                                </Button>
+                                                            </ProtectedAction>
+                                                        );
+                                                    })()
                                                 )}
                                                 {isEligibleForReschedule && (
                                                     <Dialog open={reschedulingBooking?.id === booking.id} onOpenChange={(open) => !open && setReschedulingBooking(null)}>

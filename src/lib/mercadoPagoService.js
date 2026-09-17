@@ -84,7 +84,7 @@ export class MercadoPagoService {
      */
     static async createPixPayment(paymentData, options = {}) {
         try {
-            const { booking_id, inscricao_id, package_id, amount, description, payer } = paymentData;
+            const { booking_id, inscricao_id, package_id, amount, wallet_used, description, payer } = paymentData;
             const { idempotencyKey } = options;
 
             if ((!booking_id && !inscricao_id && !package_id) || !amount) {
@@ -99,6 +99,7 @@ export class MercadoPagoService {
                 ...(inscricao_id ? { inscricao_id } : {}),
                 ...(package_id ? { package_id } : {}),
                 amount,
+                wallet_used,
                 description: description || (package_id
                     ? `Pacote de Consultas - Pacote ${package_id}`
                     : booking_id
@@ -627,6 +628,8 @@ export class MercadoPagoService {
         const logContext = {
             bookingId: paymentData?.booking_id || paymentData?.reference_id || null,
             amount: paymentData?.transaction_amount || paymentData?.amount || null,
+            walletUsed: paymentData?.wallet_used || null,
+            userId: paymentData?.user_id || null,
             installments: paymentData?.installments || null,
             paymentMethod: paymentData?.payment_method_id || 'card',
             hasToken: Boolean(paymentData?.token)

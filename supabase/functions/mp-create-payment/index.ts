@@ -49,7 +49,7 @@ serve(async (req) => {
     });
 
     const body = await req.json();
-    const { booking_id, inscricao_id, package_id, resource_id, download_record_id, amount, description, payer, payment_method_id } = body;
+    const { booking_id, inscricao_id, package_id, resource_id, download_record_id, amount, wallet_used, description, payer, payment_method_id } = body;
 
     const isDigitalResource = Boolean(resource_id);
 
@@ -147,7 +147,14 @@ serve(async (req) => {
       console.log(`📚 Digital resource payment - Resource ID: ${resource_id}, Record ID: ${download_record_id}`);
     }
 
-    const finalAmount = Number(amount);
+    let finalAmount = Number(amount);
+    let walletUsedAmount = Number(wallet_used) || 0;
+    if (walletUsedAmount > 0) {
+      if (walletUsedAmount > finalAmount) {
+        walletUsedAmount = finalAmount;
+      }
+      finalAmount -= walletUsedAmount;
+    }
     const payerData = {
       ...(typeof payer === 'object' && payer ? payer : {}),
       ...(isBookingPayment
@@ -183,6 +190,11 @@ serve(async (req) => {
             : undefined)
         })
     };
+    
+    // Assign user_id for wallet deductions
+    if (isBookingPayment && booking) {
+        payerData.user_id = booking.user_id;
+    }
 
     const paymentDescription = description || (
       isDigitalResource
@@ -273,6 +285,26 @@ serve(async (req) => {
       );
     }
 
+    // Deduct from wallet immediately
+    if (walletUsedAmount > 0 && payerData.user_id) {
+        console.log(`[MP] Deducting ${walletUsedAmount} from wallet for user ${payerData.user_id}`);
+        const { error: walletError } = await supabaseAdmin.rpc('process_wallet_transaction', {
+            p_patient_id: payerData.user_id,
+            p_amount: -walletUsedAmount,
+            p_type: 'debit_payment',
+            p_description: 'Pagamento parcial via carteira (PIX)',
+            p_booking_id: booking_id
+        });
+
+        if (walletError) {
+            console.error('[MP] Erro ao deduzir da carteira:', walletError);
+            return new Response(
+                JSON.stringify({ error: 'Erro ao processar saldo da carteira', details: walletError.message }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    }
+
     // Salvar pagamento no banco de dados (apenas para bookings, pacotes e eventos)
     // Recursos digitais usam user_book_downloads (o webhook atualizará o registro)
     if (!isDigitalResource) {
@@ -283,6 +315,7 @@ serve(async (req) => {
         status_detail: paymentResult.status_detail,
         payment_method: paymentResult.payment_method_id,
         amount: finalAmount,
+        wallet_balance_used: walletUsedAmount,
         payer_email: payerData.email,
         payer_name: payerData.name,
         external_reference: referenceId,

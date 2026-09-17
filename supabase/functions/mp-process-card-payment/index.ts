@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
 
-    const { token, amount, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id } = body;
+    const { token, amount, wallet_used, user_id, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id } = body;
 
     if (!token || !amount) {
       return new Response(
@@ -53,8 +53,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    let walletUsedAmount = Number(wallet_used) || 0;
+    if (walletUsedAmount > 0) {
+      if (walletUsedAmount > transactionAmount) {
+        walletUsedAmount = transactionAmount;
+      }
+      transactionAmount -= walletUsedAmount;
+    }
+
     // Mercado Pago exige valor mínimo de R$ 0,50 para cartão
-    if (transactionAmount < 0.50) {
+    if (transactionAmount < 0.50 && transactionAmount > 0) {
       console.warn('[MP Card] Valor muito baixo, ajustando para R$ 0,50');
       transactionAmount = 0.50;
     }
@@ -120,12 +128,44 @@ Deno.serve(async (req) => {
     const mpJson = await mpRes.json();
     console.log('[MP Card] Pagamento criado:', mpJson.id, 'Status:', mpJson.status);
 
+    // Deduct wallet balance immediately
+    if (walletUsedAmount > 0 && user_id) {
+        console.log(`[MP Card] Deducting ${walletUsedAmount} from wallet for user ${user_id}`);
+        const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || SERVICE_ROLE;
+        
+        const updateWalletRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/process_wallet_transaction`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_SERVICE_ROLE,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                p_patient_id: user_id,
+                p_amount: -walletUsedAmount,
+                p_type: 'debit_payment',
+                p_description: 'Pagamento parcial via carteira (Cartão)',
+                p_booking_id: booking_id
+            })
+        });
+
+        if (!updateWalletRes.ok) {
+            const errTx = await updateWalletRes.text();
+            console.error('[MP Card] Erro ao deduzir da carteira:', errTx);
+            return new Response(
+                JSON.stringify({ error: 'Erro ao processar saldo da carteira', details: errTx }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    }
+
     // Salvar pagamento no banco
     const paymentRecord: any = {
       mp_payment_id: String(mpJson.id),
       status: mpJson.status,
       status_detail: mpJson.status_detail,
       transaction_amount: mpJson.transaction_amount,
+      wallet_balance_used: walletUsedAmount,
       currency_id: mpJson.currency_id,
       payment_method_id: mpJson.payment_method_id,
       payment_type_id: mpJson.payment_type_id,

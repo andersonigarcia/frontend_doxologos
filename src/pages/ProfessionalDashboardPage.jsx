@@ -61,6 +61,7 @@ const PaymentDetailsModal = lazy(() => import('@/components/admin/PaymentDetails
 
 
 const AvailabilityManager = lazy(() => import('@/components/admin/availability/AvailabilityManager').then(m => ({ default: m.AvailabilityManager })));
+const RevenueAnalytics = lazy(() => import('@/components/admin/RevenueAnalytics').then(m => ({ default: m.RevenueAnalytics })));
 
 
 
@@ -2462,7 +2463,9 @@ const ProfessionalDashboardPage = () => {
                                 </div>
 
                                 {/* Gráfico de Receita Mensal */}
-                                
+                                <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                    <RevenueAnalytics professionalId={currentProfessional?.id} className="mb-6" />
+                                </Suspense>
 
                                 {/* Ações Rápidas */}
                                 <QuickActions

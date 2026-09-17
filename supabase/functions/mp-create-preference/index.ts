@@ -51,8 +51,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP] Body recebido:', JSON.stringify(body));
 
-    const { booking_id, inscricao_id, amount, description, payer, payment_methods } = body;
+    const { booking_id, inscricao_id, amount, description, payer, payment_methods, wallet_used } = body;
     console.log('[MP] payment_methods extraído:', payment_methods);
+    console.log('[MP] wallet_used:', wallet_used);
 
     if (!booking_id && !inscricao_id) {
       return new Response(
@@ -104,6 +105,8 @@ Deno.serve(async (req) => {
         name: booking.patient_name,
         email: booking.patient_email
       };
+      // Store user_id for wallet deduction
+      payerData.user_id = booking.user_id;
     }
     // Se for inscrição de evento, buscar dados da inscrição
     else if (inscricao_id) {
@@ -133,6 +136,15 @@ Deno.serve(async (req) => {
         name: inscricao.patient_name,
         email: inscricao.patient_email
       };
+    }
+
+    // Subtrair wallet_used do finalAmount
+    let walletUsedAmount = Number(wallet_used) || 0;
+    if (walletUsedAmount > 0) {
+      if (walletUsedAmount > finalAmount) {
+        walletUsedAmount = finalAmount;
+      }
+      finalAmount -= walletUsedAmount;
     }
 
     // Simplificado: sempre garantir que payment_methods tem a estrutura correta
@@ -269,6 +281,7 @@ Deno.serve(async (req) => {
       mp_preference_id: mpJson.id,
       status: 'pending',
       transaction_amount: finalAmount,
+      wallet_balance_used: walletUsedAmount,
       currency_id: 'BRL',
       payer_email: payerData.email,
       payment_url: mpJson.init_point,
@@ -276,6 +289,32 @@ Deno.serve(async (req) => {
       qr_code_base64: mpJson.qr_code_base64,
       raw_payload: mpJson
     };
+
+    // Deduct wallet balance immediately using RPC
+    if (walletUsedAmount > 0 && payerData.user_id) {
+        console.log(`[MP] Deducting ${walletUsedAmount} from wallet for user ${payerData.user_id}`);
+        
+        // We use the supabase client directly for the RPC
+        const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
+            auth: { persistSession: false, autoRefreshToken: false },
+        });
+
+        const { error: walletError } = await supabase.rpc('process_wallet_transaction', {
+            p_patient_id: payerData.user_id,
+            p_amount: -walletUsedAmount,
+            p_type: 'debit_payment',
+            p_description: 'Pagamento parcial via carteira',
+            p_booking_id: booking_id
+        });
+
+        if (walletError) {
+            console.error('[MP] Erro ao deduzir da carteira:', walletError);
+            return new Response(
+                JSON.stringify({ error: 'Erro ao processar saldo da carteira', details: walletError.message }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    }
 
     // Adicionar booking_id ou inscricao_id dependendo do tipo
     if (booking_id) {

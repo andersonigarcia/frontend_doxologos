@@ -164,19 +164,8 @@ const CheckoutPage = () => {
             ? Number(packageData?.gross_amount || parseFloat(valorParam) || 0)
             : Number(booking?.valor_consulta || booking?.service?.price || valorParam || 0);
 
-    const availableCredits = type === 'evento'
-        ? []
-        : (creditState.credits || []).filter((credit) => {
-            if (!credit || credit.status !== 'available') return false;
-            const amountNumber = Number(credit.amount);
-            if (Number.isNaN(amountNumber)) return false;
-            return amountNumber > 0;
-        });
-
-    const selectedCredit = availableCredits.find((credit) => credit.id === selectedCreditId) || null;
-    const selectedCreditAmount = selectedCredit ? Number(selectedCredit.amount) : 0;
-    const creditCoversTotal = usingCredit && selectedCredit && selectedCreditAmount >= bookingTotal && bookingTotal > 0;
-    const creditAppliedAmount = creditCoversTotal ? Math.min(selectedCreditAmount, bookingTotal) : 0;
+    const availableCreditAmount = type === 'evento' ? 0 : (creditState.balance?.available_amount || 0);
+    const creditCoversTotal = usingCredit && availableCreditAmount >= bookingTotal && bookingTotal > 0;
 
     const fetchPackage = async () => {
         try {
@@ -288,42 +277,26 @@ const CheckoutPage = () => {
                 return;
             }
 
-            const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
-                headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                },
-                body: {
-                    action: 'list',
-                },
-            });
+            const { data: walletData, error } = await supabase
+                .from('patient_wallets')
+                .select('balance')
+                .eq('id', session.user.id)
+                .single();
 
-            if (error) {
-                if (error.status === 401) {
-                    logger.warn('CheckoutPage.loadCreditData:session-expired', buildLogContext());
-                    await supabase.auth.signOut();
-                    setCreditError('Sua sessão expirou. Faça login novamente para consultar créditos.');
-                    setCreditState({ credits: [], balance: null });
-                    return;
-                }
-                throw new Error(error.message || 'Erro ao consultar créditos');
-            }
-
-            if (data?.error) {
-                throw new Error(data.error);
+            if (error && error.code !== 'PGRST116') {
+                throw new Error(error.message || 'Erro ao consultar saldo da carteira');
             }
 
             setCreditState({
-                credits: Array.isArray(data?.credits) ? data.credits : [],
-                balance: data?.balance ?? null,
+                balance: { available_amount: walletData?.balance || 0, reserved_amount: 0 },
+                credits: []
             });
             logger.success('CheckoutPage.loadCreditData:success', buildLogContext({
-                credits: Array.isArray(data?.credits) ? data.credits.length : 0,
-                hasBalance: Boolean(data?.balance)
+                hasBalance: Boolean(walletData?.balance)
             }));
         } catch (error) {
             logger.error('CheckoutPage.loadCreditData:error', error, buildLogContext());
-            const message = error instanceof Error ? error.message : 'Erro ao carregar créditos';
-            setCreditError(message.includes('Authentication required') ? 'Faça login novamente para consultar seus créditos.' : message);
+            setCreditError(error instanceof Error ? error.message : 'Erro ao carregar saldo da carteira');
         } finally {
             setCreditLoading(false);
         }
@@ -393,144 +366,43 @@ const CheckoutPage = () => {
     };
 
     const processCreditCheckout = async () => {
-        if (!bookingId || !selectedCredit || !creditCoversTotal) {
-            throw new Error('Configuração de crédito inválida.');
+        if (!bookingId || !usingCredit || !creditCoversTotal) {
+            throw new Error('Configuração de saldo inválida para pagamento integral.');
         }
-
-        const creditAmount = Number(selectedCredit.amount);
-        if (!Number.isFinite(creditAmount) || creditAmount < bookingTotal || bookingTotal <= 0) {
-            throw new Error('Crédito selecionado insuficiente para cobrir o agendamento.');
-        }
-
-        const reservationToken = generateReservationToken();
-        let reserved = false;
 
         try {
-            logger.info('CheckoutPage.processCreditCheckout:start', buildLogContext({
-                bookingId,
-                creditId: selectedCredit.id,
-                bookingTotal,
-                creditAmount
-            }));
-            const reserveResponse = await supabase.functions.invoke('financial-credit-manager', {
-                body: {
-                    action: 'reserve',
-                    credit_id: selectedCredit.id,
-                    reservation_token: reservationToken,
-                    reservation_note: `booking:${bookingId}`,
-                },
+            logger.info('CheckoutPage.processCreditCheckout:start', buildLogContext({ bookingId }));
+            
+            const session = await getFreshSession();
+            const { data, error } = await supabase.functions.invoke('patient-wallet-pay', {
+                body: { booking_id: bookingId },
+                headers: { Authorization: `Bearer ${session.access_token}` }
             });
 
-            if (reserveResponse.error) {
-                throw new Error(reserveResponse.error.message || 'Erro ao reservar crédito');
+            if (error) {
+                throw new Error(error.message || 'Erro ao processar pagamento com carteira');
             }
 
-            if (reserveResponse.data?.error) {
-                throw new Error(reserveResponse.data.error);
-            }
-
-            reserved = true;
-            logger.info('CheckoutPage.processCreditCheckout:credit-reserved', buildLogContext({
-                bookingId,
-                creditId: selectedCredit.id,
-                reservationToken
-            }));
-
-            const consumeResponse = await supabase.functions.invoke('financial-credit-manager', {
-                body: {
-                    action: 'consume',
-                    credit_id: selectedCredit.id,
-                    reservation_token: reservationToken,
-                    used_booking_id: bookingId,
-                    consumption_note: 'checkout_credit_full',
-                },
-            });
-
-            if (consumeResponse.error) {
-                throw new Error(consumeResponse.error.message || 'Erro ao consumir crédito');
-            }
-
-            if (consumeResponse.data?.error) {
-                throw new Error(consumeResponse.data.error);
-            }
-
-            const creditCurrency = consumeResponse.data?.credit?.currency || 'BRL';
-            logger.success('CheckoutPage.processCreditCheckout:credit-consumed', buildLogContext({
-                bookingId,
-                creditId: selectedCredit.id,
-                reservationToken
-            }));
-
-            const { error: bookingError } = await supabase
-                .from('bookings')
-                .update({
-                    status: 'confirmed',
-                    updated_at: new Date().toISOString(),
-                })
-                .eq('id', bookingId);
-
-            if (bookingError) {
-                throw new Error('Não foi possível atualizar o status do agendamento');
-            }
-
-            const { error: paymentRecordError } = await supabase
-                .from('payments')
-                .insert({
-                    booking_id: bookingId,
-                    status: 'approved',
-                    status_detail: 'credit_applied',
-                    payment_method: 'financial_credit',
-                    payment_type: 'financial_credit',
-                    amount: bookingTotal,
-                    currency: creditCurrency,
-                    description: 'Pagamento realizado com crédito financeiro',
-                    raw_payload: consumeResponse.data?.credit ?? null,
-                });
-
-            if (paymentRecordError) {
-                logger.warn('CheckoutPage.processCreditCheckout:payment-record-warning', {
-                    bookingId,
-                    paymentRecordError
-                });
+            if (data?.error) {
+                throw new Error(data.error);
             }
 
             toast({
-                title: 'Crédito aplicado com sucesso!',
-                description: 'Seu agendamento foi confirmado utilizando o crédito disponível.',
+                title: 'Pagamento concluído!',
+                description: 'Seu agendamento foi pago integralmente com saldo da carteira.',
             });
 
-            logger.success('CheckoutPage.processCreditCheckout:success', buildLogContext({
-                bookingId,
-                creditId: selectedCredit.id
-            }));
+            logger.success('CheckoutPage.processCreditCheckout:success', buildLogContext({ bookingId }));
 
             navigate('/checkout/success', {
                 state: {
                     bookingId,
                     paymentStatus: 'approved',
-                    paymentMethod: 'financial_credit',
+                    paymentMethod: 'wallet',
                 },
             });
         } catch (error) {
-            if (reserved) {
-                try {
-                    await supabase.functions.invoke('financial-credit-manager', {
-                        body: {
-                            action: 'release',
-                            credit_id: selectedCredit.id,
-                            reservation_token: reservationToken,
-                        },
-                    });
-                } catch (releaseError) {
-                    logger.error('CheckoutPage.processCreditCheckout:release-error', releaseError, buildLogContext({
-                        bookingId,
-                        creditId: selectedCredit.id,
-                        reservationToken
-                    }));
-                }
-            }
-
-            throw error instanceof Error ? error : new Error('Falha ao processar pagamento com crédito');
+            throw error instanceof Error ? error : new Error('Falha ao processar pagamento com carteira');
         }
     };
 
@@ -648,12 +520,20 @@ const CheckoutPage = () => {
             // Limpar erro de e-mail se estava marcado
             setPayerEmailError('');
 
+            let wallet_used = 0;
+            if (usingCredit && type !== 'evento') {
+                wallet_used = Math.min(amount, availableCreditAmount);
+            }
+
             // Preparar dados do pagamento
+            const sessionData = await getFreshSession();
             const paymentData = {
                 ...(type === 'evento' ? { inscricao_id: referenceId } : packageId ? { package_id: packageId } : { booking_id: referenceId }),
                 amount: amount,
+                wallet_used: wallet_used,
                 description: description,
-                payer: payerInfo
+                payer: payerInfo,
+                user_id: sessionData?.user?.id
             };
 
             logger.info('CheckoutPage.handlePayment:using-orchestrator', buildLogContext({
@@ -973,13 +853,13 @@ const CheckoutPage = () => {
                                 {creditLoading ? (
                                     <div className="flex items-center text-sm text-gray-600">
                                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#2d8659] mr-2"></div>
-                                        Carregando créditos...
+                                        Carregando saldo...
                                     </div>
                                 ) : creditError ? (
                                     <p className="text-sm text-red-600">{creditError}</p>
-                                ) : availableCredits.length === 0 ? (
+                                ) : availableCreditAmount === 0 ? (
                                     <p className="text-sm text-gray-600">
-                                        Nenhum crédito disponível no momento. Cancelamentos com antecedência de 24h geram créditos automáticos.
+                                        Nenhum saldo disponível na carteira no momento. Cancelamentos com antecedência de 24h geram saldos automáticos.
                                     </p>
                                 ) : (
                                     <div className="space-y-4">
@@ -991,62 +871,20 @@ const CheckoutPage = () => {
                                                 onChange={(event) => {
                                                     const enabled = event.target.checked;
                                                     setUsingCredit(enabled);
-                                                    if (!enabled) {
-                                                        setSelectedCreditId(null);
-                                                    } else if (!selectedCreditId && availableCredits.length === 1) {
-                                                        setSelectedCreditId(availableCredits[0].id);
-                                                    }
                                                 }}
                                                 disabled={processing}
                                             />
                                             <div>
-                                                <p className="font-semibold">Desejo utilizar meus créditos nesta consulta</p>
+                                                <p className="font-semibold">Desejo utilizar saldo da carteira nesta consulta</p>
                                                 <p className="text-xs text-gray-600">
-                                                    Saldo disponível: {MercadoPagoService.formatCurrency(creditState.balance?.available_amount || 0)}
+                                                    Saldo disponível: {MercadoPagoService.formatCurrency(availableCreditAmount)}
                                                 </p>
                                             </div>
                                         </label>
 
-                                        {usingCredit && (
-                                            <div className="space-y-3">
-                                                {availableCredits.map((credit) => {
-                                                    const amountNumber = Number(credit.amount);
-                                                    const covers = amountNumber >= bookingTotal;
-                                                    return (
-                                                        <button
-                                                            key={credit.id}
-                                                            type="button"
-                                                            className={`w-full text-left border rounded-lg p-3 transition ${selectedCreditId === credit.id
-                                                                ? 'border-[#2d8659] bg-[#2d8659]/5'
-                                                                : 'border-gray-200 hover:border-[#2d8659]/40'
-                                                                } ${!covers ? 'opacity-60 cursor-not-allowed' : ''}`}
-                                                            onClick={() => covers && setSelectedCreditId(credit.id)}
-                                                            disabled={!covers || processing}
-                                                        >
-                                                            <div className="flex justify-between items-center">
-                                                                <div>
-                                                                    <p className="font-semibold text-sm">Crédito #{credit.id.slice(0, 8)}</p>
-                                                                    <p className="text-xs text-gray-600">Origem: {credit.source_type || 'indefinido'}</p>
-                                                                </div>
-                                                                <span className="font-semibold text-[#2d8659]">
-                                                                    {MercadoPagoService.formatCurrency(amountNumber)}
-                                                                </span>
-                                                            </div>
-                                                            {credit.metadata?.policy && (
-                                                                <p className="text-[11px] text-gray-500 mt-1">Regra: {credit.metadata.policy}</p>
-                                                            )}
-                                                            {!covers && (
-                                                                <p className="text-xs text-yellow-700 mt-2">Valor insuficiente para cobrir o total desta consulta.</p>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-
-                                                {selectedCredit && !creditCoversTotal && (
-                                                    <div className="text-xs text-red-600">
-                                                        O crédito selecionado não cobre o valor total da consulta. Escolha outro crédito ou desmarque o uso de créditos.
-                                                    </div>
-                                                )}
+                                        {usingCredit && !creditCoversTotal && (
+                                            <div className="text-xs text-yellow-700 mt-2">
+                                                O saldo da carteira cobre parcialmente o valor da consulta. O restante ({MercadoPagoService.formatCurrency(bookingTotal - availableCreditAmount)}) será cobrado via Mercado Pago.
                                             </div>
                                         )}
                                     </div>

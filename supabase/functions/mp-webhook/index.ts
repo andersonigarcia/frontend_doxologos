@@ -497,7 +497,7 @@ serve(async (req: Request) => {
         // Verify booking exists before updating
         const { data: bookingData, error: fetchError } = await supabase
           .from('bookings')
-          .select('id, status, valor_consulta, valor_repasse_profissional, professional_id, patient_name, booking_date')
+          .select('id, user_id, status, valor_consulta, valor_repasse_profissional, professional_id, patient_name, booking_date')
           .eq('id', bookingId)
           .single();
 
@@ -533,6 +533,7 @@ serve(async (req: Request) => {
 
 
         const newStatus = statusMap[mpPayment.status];
+        let didCancelBooking = false;
 
         // M-03: Máquina de estados — impede regressões de status por webhooks tardios
         const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -576,6 +577,10 @@ serve(async (req: Request) => {
             transactionAmount: mpPayment.transaction_amount
           });
           success = true;
+          
+          if (newStatus === 'cancelled') {
+            didCancelBooking = true;
+          }
 
           // ── Post-Payment Orchestrator (fire-and-forget) ─────────────────
           // Dispara email de confirmação ao paciente e ao profissional.
@@ -619,6 +624,22 @@ serve(async (req: Request) => {
       }
 
       if (payData) ledgerTransactionId = payData.id;
+      
+      if (didCancelBooking && payData && Number(payData.wallet_balance_used) > 0) {
+        console.log(`💰 Refunding wallet balance of ${payData.wallet_balance_used} for booking ${bookingId}`);
+        const { error: refundError } = await supabase.rpc('process_wallet_transaction', {
+            p_patient_id: existingBooking.user_id,
+            p_amount: Number(payData.wallet_balance_used),
+            p_type: 'credit_cancellation',
+            p_description: 'Estorno de saldo por falha ou expiração no pagamento',
+            p_booking_id: bookingId
+        });
+        if (refundError) {
+            console.error('❌ Failed to refund wallet balance:', refundError);
+        } else {
+            console.log('✅ Wallet balance refunded successfully');
+        }
+      }
     }
 
     // ========================================

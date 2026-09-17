@@ -170,7 +170,7 @@ serve(async (req: Request) => {
 
     const { data: paymentProfiles, error: paymentError } = await supabaseAdmin
       .from('payments')
-      .select('id, status, amount, currency, mp_payment_id, payment_method, created_at')
+      .select('id, status, amount, currency, mp_payment_id, payment_method, created_at, wallet_balance_used')
       .eq('booking_id', bookingId)
       .order('created_at', { ascending: false });
 
@@ -182,12 +182,16 @@ serve(async (req: Request) => {
       });
     }
 
-    const paymentRecords = (paymentProfiles ?? []) as PaymentRecord[];
+    const paymentRecords = (paymentProfiles ?? []) as (PaymentRecord & { wallet_balance_used?: string | number })[];
     const payment = paymentRecords.find((record) =>
       SUCCESS_PAYMENT_STATUSES.has((record.status || '').toLowerCase())
     );
+    // Find any payment that used wallet (even if pending/failed)
+    const walletPayment = paymentRecords.find(p => toNumber(p.wallet_balance_used) > 0);
 
     const shouldCreateCredit = Boolean(payment) && eligibleForCredit;
+    // If it was paid, only refund wallet if eligible. If not paid (e.g. pending), always refund wallet since payment never completed.
+    const shouldRefundWallet = Boolean(walletPayment) && (!payment || eligibleForCredit);
 
     const { data: updatedBookings, error: cancelError } = await supabaseAdmin
       .from('bookings')
@@ -225,44 +229,35 @@ serve(async (req: Request) => {
     } as Record<string, unknown>;
 
     let creditRecord: Record<string, unknown> | null = null;
+    let totalRefunded = 0;
 
-    if (shouldCreateCredit && payment) {
-      const creditAmount = toNumber(payment.amount);
-      if (!Number.isFinite(creditAmount) || creditAmount <= 0) {
-        console.warn('Skipping credit creation due to invalid amount', payment);
-      } else {
-        const creditPayload = {
-          user_id: user.id,
-          original_booking_id: booking.id,
-          original_payment_id: payment.id,
-          source_type: 'cancellation',
-          source_reason: cancellationReason ?? null,
-          amount: creditAmount,
-          currency: payment.currency ?? 'BRL',
-          status: 'available',
-          metadata: {
-            ...metadataBase,
-            payment_method: payment.payment_method,
-            mp_payment_id: payment.mp_payment_id,
-            policy: `cancelled_with_${MIN_HOURS_FOR_CREDIT}h_notice`,
-          },
-        };
+    if (shouldCreateCredit || shouldRefundWallet) {
+      const mpRefundAmount = shouldCreateCredit && payment ? toNumber(payment.amount) : 0;
+      const walletRefundAmount = shouldRefundWallet && walletPayment ? toNumber(walletPayment.wallet_balance_used) : 0;
+      
+      const creditAmount = (Number.isFinite(mpRefundAmount) ? mpRefundAmount : 0) + 
+                           (Number.isFinite(walletRefundAmount) ? walletRefundAmount : 0);
 
-        const { data: insertedCredit, error: creditError } = await supabaseAdmin
-          .from('financial_credits')
-          .insert(creditPayload)
-          .select('*')
-          .single();
+      if (creditAmount > 0) {
+        totalRefunded = creditAmount;
+        
+        const { data: insertedCredit, error: creditError } = await supabaseAdmin.rpc('process_wallet_transaction', {
+            p_patient_id: user.id,
+            p_amount: creditAmount,
+            p_type: 'credit_cancellation',
+            p_description: `Estorno do agendamento cancelado. Motivo: ${cancellationReason || 'Cancelamento pelo paciente'}`,
+            p_booking_id: booking.id
+        });
 
         if (creditError) {
-          console.error('Credit creation failed', creditError);
+          console.error('Wallet refund failed', creditError);
           return jsonResponse(500, {
-            error: 'Failed to create financial credit',
+            error: 'Failed to refund to patient wallet',
             details: creditError.message,
           });
         }
 
-        creditRecord = insertedCredit;
+        creditRecord = { amount: creditAmount, currency: payment?.currency ?? 'BRL' };
 
         const historyPayload = {
           booking_id: booking.id,
@@ -274,10 +269,9 @@ serve(async (req: Request) => {
           status: 'credit_generated',
           metadata: {
             ...metadataBase,
-            credit_id: insertedCredit.id,
             credit_amount: creditAmount,
-            credit_currency: payment.currency ?? 'BRL',
-            payment_id: payment.id,
+            credit_currency: payment?.currency ?? 'BRL',
+            payment_id: payment?.id || walletPayment?.id,
           },
         };
 
