@@ -116,7 +116,7 @@ const ProfessionalHubPage = () => {
                 
                 <div className="flex items-center gap-4 border-l border-gray-200 pl-4">
                   {professional.image_url ? (
-                    <img src={professional.image_url} alt={professional.name} className="w-12 h-12 rounded-full object-cover border-2 border-purple-100" />
+                    <img src={professional.image_url} alt={professional.name} className="w-12 h-12 rounded-full object-cover border-2 border-purple-100" width={48} height={48} loading="lazy" />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-lg">
                       {professional.name?.charAt(0) || '?'}

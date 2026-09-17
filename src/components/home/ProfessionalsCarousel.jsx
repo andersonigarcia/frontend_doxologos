@@ -80,7 +80,7 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
                 <div className="w-full pt-6 pb-2 flex justify-center bg-gradient-to-b from-[#f4efe6]/50 to-white">
                   <div className="relative w-32 h-32 md:w-36 md:h-36 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-sm bg-[#f4efe6]">
                     <img
-                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105" width={128} height={128} loading="lazy"
                       alt={prof.name}
                       src={
                         prof.image_url ||
@@ -150,7 +150,7 @@ const ProfessionalsCarousel = ({ professionals = [] }) => {
                 <img
                   src={selectedProfessional.image_url || 'https://images.unsplash.com/photo-1603991414220-51b87b89a371?w=400&h=300&fit=crop&crop=face'}
                   alt={selectedProfessional.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover" width={128} height={128} loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent md:hidden" />
               </div>

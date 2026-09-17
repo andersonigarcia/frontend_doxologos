@@ -714,7 +714,7 @@ const EventoDetalhePage = () => {
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <Link to="/">
@@ -757,7 +757,7 @@ const EventoDetalhePage = () => {
             <div className="min-h-screen bg-gray-50">
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2"><img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
+                        <Link to="/" className="flex items-center space-x-2"><img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
                         <Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link>
                     </nav>
                 </header>
@@ -804,7 +804,7 @@ const EventoDetalhePage = () => {
                                             <h3 className="text-2xl font-bold mb-4">Ministrado por</h3>
                                             <div className="flex items-center gap-4">
                                                 <img
-                                                    className="w-20 h-20 rounded-full object-cover"
+                                                    className="w-20 h-20 rounded-full object-cover" loading="lazy"
                                                     alt={`Foto de ${event.professional.name}`}
                                                     src={event.professional.image_url || "https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5?w=400&h=400&fit=crop&crop=face"}
                                                 />

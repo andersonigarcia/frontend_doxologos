@@ -232,7 +232,7 @@ const ProfileTab = ({ professional, onUpdate }) => {
                 <div className="w-24 h-24 rounded-full bg-white border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden shrink-0 relative group shadow-sm">
                   {formData.image_url ? (
                     <>
-                      <img src={formData.image_url} alt="Avatar" className="w-full h-full object-cover" />
+                      <img src={formData.image_url} alt="Avatar" className="w-full h-full object-cover" width={128} height={128} loading="lazy" />
                       <button 
                         type="button"
                         onClick={() => setFormData(prev => ({ ...prev, image_url: '' }))}

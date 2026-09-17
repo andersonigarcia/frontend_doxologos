@@ -602,7 +602,7 @@ function PixWaitingState({ pixData, onManualCheck }) {
                         <img
                             src={`data:image/png;base64,${pixData.qr_code_base64}`}
                             alt="QR Code PIX"
-                            className="w-44 h-44 object-contain"
+                            className="w-44 h-44 object-contain" loading="lazy"
                         />
                     ) : (
                         <QRCodeSVG value={pixData.qr_code} size={176} />

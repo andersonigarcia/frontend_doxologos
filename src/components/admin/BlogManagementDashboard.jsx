@@ -231,7 +231,7 @@ const BlogManagementDashboard = () => {
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             {article.cover_image_url && (
-                                                <img src={article.cover_image_url} alt="Capa" className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
+                                                <img src={article.cover_image_url} alt="Capa" className="w-12 h-12 object-cover rounded-md flex-shrink-0" width={48} height={48} loading="lazy" />
                                             )}
                                             <div>
                                                 <p className="font-medium text-gray-900 line-clamp-1">{article.title}</p>

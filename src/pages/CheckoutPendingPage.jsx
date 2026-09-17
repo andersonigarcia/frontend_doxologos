@@ -420,7 +420,7 @@ const CheckoutPendingPage = () => {
                                         <img
                                             src={booking.professional.image_url}
                                             alt={booking.professional.name}
-                                            className="w-12 h-12 rounded-full object-cover mr-3"
+                                            className="w-12 h-12 rounded-full object-cover mr-3" width={48} height={48} loading="lazy"
                                         />
                                     )}
                                     <div>

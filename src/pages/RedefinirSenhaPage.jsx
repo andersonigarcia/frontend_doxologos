@@ -321,7 +321,7 @@ export default function RedefinirSenhaPage() {
             className="text-center mb-8"
           >
             <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
-              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
+              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
               Doxologos
             </Link>
           </motion.div>

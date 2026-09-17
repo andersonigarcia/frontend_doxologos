@@ -86,7 +86,7 @@ const VideoShowcase = ({
                   <img
                     src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
                     alt={safeCurrentVideo.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover" width={128} height={128}
                     loading="lazy"
                   />
                 )}
@@ -182,7 +182,7 @@ const VideoShowcase = ({
           >
             <img
               src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" width={128} height={128}
               alt={video.title}
               loading="lazy"
             />

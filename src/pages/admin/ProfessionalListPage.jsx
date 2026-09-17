@@ -186,7 +186,7 @@ const ProfessionalListPage = ({ isEmbedded = false }) => {
                 >
                   <div className="flex items-center gap-4">
                     {prof.image_url ? (
-                      <img src={prof.image_url} alt={prof.name} className="w-12 h-12 rounded-full object-cover border" />
+                      <img src={prof.image_url} alt={prof.name} className="w-12 h-12 rounded-full object-cover border" width={48} height={48} loading="lazy" />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold">
                         {prof.name?.charAt(0) || '?'}

@@ -393,7 +393,7 @@ export function PaymentFormModal({
                                             <img
                                                 src={formData.payment_proof_url}
                                                 alt="Comprovante"
-                                                className="h-20 w-auto object-contain rounded border cursor-pointer hover:opacity-90"
+                                                className="h-20 w-auto object-contain rounded border cursor-pointer hover:opacity-90" loading="lazy"
                                                 onClick={() => window.open(formData.payment_proof_url, '_blank')}
                                             />
                                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">

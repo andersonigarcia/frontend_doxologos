@@ -1559,7 +1559,7 @@ const AgendamentoPage = () => {
         <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
+              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
               <span className="text-2xl font-bold gradient-text">Doxologos</span>
             </Link>
             <div className="flex items-center space-x-4">

@@ -178,7 +178,7 @@ const DateTimeStep = ({
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-[#2d8659] rounded-full flex items-center justify-center flex-shrink-0">
               {professional?.image_url ? (
-                <img src={professional.image_url} alt={professional.name} className="w-12 h-12 rounded-full object-cover" />
+                <img src={professional.image_url} alt={professional.name} className="w-12 h-12 rounded-full object-cover" width={48} height={48} loading="lazy" />
               ) : (
                 <User className="w-6 h-6 text-white" />
               )}

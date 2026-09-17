@@ -205,7 +205,7 @@ const DepoimentoPage = () => {
                 <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" aria-hidden="true" />
+                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" aria-hidden="true" />
                             <span className="text-2xl font-bold gradient-text">Doxologos</span>
                         </Link>
                         <div className="flex items-center space-x-4">
@@ -440,7 +440,7 @@ const DepoimentoPage = () => {
                                 <p className="text-gray-600 text-sm">contato@doxologos.com.br</p>
                             </Card>
                             <Card className="p-6">
-                                <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
+                                <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
                                 <h3 className="font-semibold mb-2">Presencialmente</h3>
                                 <p className="text-gray-600 text-sm">Durante sua consulta</p>
                             </Card>

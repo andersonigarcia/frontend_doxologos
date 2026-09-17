@@ -103,7 +103,7 @@ const BlogPage = () => {
                     <img
                       src={artigo.cover_image_url}
                       alt={artigo.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" width={128} height={128}
                       loading="lazy"
                     />
                   ) : (

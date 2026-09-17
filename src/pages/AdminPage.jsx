@@ -4092,7 +4092,7 @@ const AdminPage = () => {
                                                                             <img
                                                                                 src={prof.image_url}
                                                                                 alt={prof.name}
-                                                                                className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                                                                                className="w-12 h-12 rounded-full object-cover border-2 border-gray-200" width={48} height={48} loading="lazy"
                                                                             />
                                                                         )}
                                                                         <div>
@@ -4431,7 +4431,7 @@ const AdminPage = () => {
                                                             <img
                                                                 src={professionalFormData.image_url}
                                                                 alt="Preview"
-                                                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm"
+                                                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 shadow-sm" loading="lazy"
                                                                 onError={(e) => {
                                                                     e.target.style.display = 'none';
                                                                 }}
