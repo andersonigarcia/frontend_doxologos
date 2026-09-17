@@ -65,7 +65,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 ((s.revenue / monthlyRevenue) * 100).toFixed(1)
             ]),
             [''],
-            ['Aguardando Pagamento (Pacientes)'],
+            ['Sessões com Pagamento Pendente'],
             ['Paciente', 'Data', 'Horário', 'Valor (R$)'],
             ...pendingPayments.map(p => [
                 p.patient_name,
@@ -258,9 +258,9 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 className="bg-white rounded-xl border border-gray-200 shadow-sm p-6"
             >
                 <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-orange-500" />
-                        <h3 className="text-lg font-semibold">Aguardando Pagamento (Pacientes)</h3>
+                    <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-amber-500" />
+                        <h3 className="font-bold text-gray-900">Sessões com Pagamento Pendente</h3>
                     </div>
                     <span className="text-2xl font-bold text-orange-600">
                         R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

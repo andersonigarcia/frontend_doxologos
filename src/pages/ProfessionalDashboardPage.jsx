@@ -1606,6 +1606,7 @@ const ProfessionalDashboardPage = () => {
 
             const amountForStatus = isAdminUser ? patientValue : professionalValue;
 
+            // Mantém os totais globais para admin, mas nós usaremos os calculados abaixo para UX
             totals.totalValue += patientValue;
             totals.totalProfessionalValue += professionalValue;
             totals.totalPlatformFee += platformFee;
@@ -1637,6 +1638,11 @@ const ProfessionalDashboardPage = () => {
                     break;
             }
         });
+
+        // Valores calculados com base em status ativos (exclui cancelados)
+        totals.activeBookings = bookingsList.filter(b => !b.status?.includes('cancelled') && b.status !== 'expired' && !b.status?.includes('refunded')).length;
+        totals.projectedValue = totals.confirmedValue + totals.completedValue + totals.pendingValue;
+        totals.toReceiveValue = totals.confirmedValue + totals.pendingValue;
 
         return totals;
     };
@@ -2710,7 +2716,7 @@ const ProfessionalDashboardPage = () => {
                                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 text-xs">
                                             <div className="flex items-center gap-2">
                                                 <Calendar className="w-4 h-4 text-[#2d8659]" />
-                                                <span className="text-slate-500 font-medium">Agendamentos:</span>
+                                                <span className="text-slate-500 font-medium">Agendamentos Totais:</span>
                                                 <span className="font-extrabold text-slate-900">{filteredTotals.totalBookings}</span>
                                             </div>
 
@@ -2722,8 +2728,8 @@ const ProfessionalDashboardPage = () => {
                                             )}
 
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-slate-500">{userRole === 'admin' ? 'Repassado:' : 'Ganhos Projetados:'}</span>
-                                                <span className="font-bold text-blue-700">R$ {filteredTotals.totalProfessionalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-slate-500">{userRole === 'admin' ? 'Total Projetado:' : 'Ganhos Projetados:'}</span>
+                                                <span className="font-bold text-blue-700">R$ {filteredTotals.projectedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
                                             {userRole === 'admin' && (
@@ -2734,13 +2740,13 @@ const ProfessionalDashboardPage = () => {
                                             )}
 
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-slate-500 font-medium">Recebidos:</span>
+                                                <span className="text-slate-500 font-medium">Ganhos Realizados:</span>
                                                 <span className="font-bold text-emerald-800">R$ {filteredTotals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
                                             <div className="flex items-center gap-1.5">
-                                                <span className="text-slate-500 font-medium">Pendentes:</span>
-                                                <span className="font-bold text-amber-600">R$ {filteredTotals.pendingValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                                <span className="text-slate-500 font-medium">A Receber:</span>
+                                                <span className="font-bold text-amber-600">R$ {filteredTotals.toReceiveValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                             </div>
 
                                             {filteredTotals.cancelledValue > 0 && userRole === 'admin' && (
@@ -3877,23 +3883,11 @@ const ProfessionalDashboardPage = () => {
                         <TabsContent value="patients" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <div className="space-y-6">
-                                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                            <Users className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h2 className="text-xl font-bold text-gray-900">Gestão de Pacientes</h2>
-                                            <p className="text-sm text-gray-600">Visualize e gerencie os pacientes da plataforma</p>
-                                        </div>
-                                    </div>
-
-                                    <PatientList
-                                        patients={patientData.patients}
-                                        onPatientClick={handlePatientClick}
-                                        loading={patientData.loading}
-                                    />
-                                </div>
+                                <PatientList
+                                    patients={patientData.patients}
+                                    onPatientClick={handlePatientClick}
+                                    loading={patientData.loading}
+                                />
                             </div>
 
                             <PatientDetailsModal

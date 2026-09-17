@@ -36,7 +36,9 @@ async function fetchPatientData(professionalId) {
                 phone: booking.patient_phone || '',
                 bookings: [],
                 totalBookings: 0,
+                validBookings: 0,
                 totalSpent: 0,
+                totalRepasse: 0,
                 lastBookingDate: null,
                 firstBookingDate: null,
                 completedBookings: 0,
@@ -49,8 +51,14 @@ async function fetchPatientData(professionalId) {
         patient.bookings.push(booking);
         patient.totalBookings++;
 
+        const isCancelled = booking.status && booking.status.includes('cancelled');
+        if (!isCancelled && booking.status !== 'expired') {
+            patient.validBookings++;
+        }
+
         if (['confirmed', 'paid', 'completed'].includes(booking.status)) {
-            patient.totalSpent += parseFloat(booking.valor_consulta || booking.valor_repasse_profissional) || 0;
+            patient.totalSpent += parseFloat(booking.valor_consulta || booking.service?.price) || 0;
+            patient.totalRepasse += parseFloat(booking.valor_repasse_profissional || booking.service?.professional_payout || booking.valor_consulta) || 0;
         }
 
         if (booking.status === 'completed') {

@@ -122,9 +122,9 @@ export const PatientList = ({
                     </div>
                     <div>
                         <h3 className="text-xl font-bold text-gray-900">
-                            Pacientes Cadastrados
+                            Gestão de Pacientes
                         </h3>
-                        <p className="text-sm text-gray-500 font-medium">Total de {filteredPatients.length} pacientes</p>
+                        <p className="text-sm text-gray-500 font-medium">Total de {filteredPatients.length} pacientes cadastrados</p>
                     </div>
                 </div>
 
@@ -157,7 +157,7 @@ export const PatientList = ({
                         <option value="name-asc">Nome (A-Z)</option>
                         <option value="name-desc">Nome (Z-A)</option>
                         <option value="totalBookings-desc">Mais Consultas</option>
-                        <option value="totalSpent-desc">Maior Gasto</option>
+                        <option value="totalRepasse-desc">Maior Ganho Gerado</option>
                     </select>
                 </div>
             </div>
@@ -199,15 +199,15 @@ export const PatientList = ({
                         {/* Estatísticas Rápidas */}
                         <div className="flex items-center justify-center gap-6 px-5 py-2.5 bg-gray-50 rounded-xl border border-gray-100 w-full lg:w-auto">
                             <div className="text-center">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Consultas</p>
-                                <p className="font-bold text-gray-900 text-lg">{patient.totalBookings}</p>
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Sessões</p>
+                                <p className="font-bold text-gray-900 text-lg">{patient.validBookings}</p>
                             </div>
                             <div className="w-px h-8 bg-gray-200"></div>
                             <div className="text-center">
-                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Total Gasto</p>
+                                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-bold mb-0.5">Ganho Gerado</p>
                                 <p className="font-bold text-emerald-600 text-lg">
                                     <span className="text-xs mr-0.5">R$</span>
-                                    {patient.totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    {(patient.totalRepasse || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
                         </div>
