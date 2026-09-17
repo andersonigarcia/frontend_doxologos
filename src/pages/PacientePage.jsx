@@ -21,6 +21,7 @@ import { SessionValidator } from '@/components/auth/SessionValidator';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { DashboardCard } from '@/components/shared/DashboardCard';
 import BookShelfSection from '@/components/shared/BookShelfSection';
+import { PatientAcompanhamento } from '@/components/shared/PatientAcompanhamento';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner';
@@ -1443,6 +1444,11 @@ const PacientePage = () => {
                                 )}
                             </div>
                         )}
+                    </div>
+
+                    {/* Meu Acompanhamento */}
+                    <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+                        <PatientAcompanhamento />
                     </div>
 
                     {/* Seção Meus Materiais do Livro */}

@@ -48,6 +48,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                         chief_complaint: patient.chief_complaint || '',
                         session_development: patient.session_development || '',
                         homework: patient.homework || '',
+                        homework_visible_to_patient: patient.homework_visible_to_patient || false,
                         notes: patient.notes || '',
                         session_date: patient.session_date || new Date().toISOString().split('T')[0],
                         lastLoadedEmail: patient.email
@@ -124,11 +125,12 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                 chief_complaint: form.chief_complaint,
                 session_development: form.session_development,
                 homework: form.homework,
+                homework_visible_to_patient: form.homework_visible_to_patient,
                 session_date: form.session_date,
             });
             toast({ title: '✅ Prontuário salvo', description: 'Sessão registrada no histórico.' });
-            // Limpar campos para próxima sessão, mantendo só notas livres
-            setForm(prev => ({ ...prev, chief_complaint: '', session_development: '', homework: '' }));
+            // Limpar todos os campos para a próxima sessão
+            setForm(prev => ({ ...prev, chief_complaint: '', session_development: '', homework: '', notes: '', homework_visible_to_patient: false }));
             // Recarregar histórico
             await loadHistory();
         } catch (error) {
@@ -305,6 +307,18 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                                                 rows={2}
                                                 className={fieldClass}
                                             />
+                                            <div className="flex items-center space-x-2 mt-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="homework_visible"
+                                                    checked={form.homework_visible_to_patient}
+                                                    onChange={e => setForm(f => ({ ...f, homework_visible_to_patient: e.target.checked }))}
+                                                    className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
+                                                />
+                                                <label htmlFor="homework_visible" className="text-xs text-gray-600 cursor-pointer select-none font-medium">
+                                                    Liberar visualização desta tarefa para o paciente
+                                                </label>
+                                            </div>
                                         </div>
 
                                         {/* Observações Livres */}

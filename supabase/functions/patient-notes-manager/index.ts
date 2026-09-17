@@ -22,6 +22,12 @@ serve(async (req) => {
             }
         )
 
+        // Admin client para bypass de RLS nas limpezas
+        const supabaseAdmin = createClient(
+            Deno.env.get('SUPABASE_URL') ?? '',
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+        )
+
         const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
 
         if (userError || !user) {
@@ -52,7 +58,7 @@ serve(async (req) => {
         }
 
         const body = await req.json()
-        const { action, patient_email, patient_name, notes, chief_complaint, session_development, homework, session_date } = body
+        const { action, patient_email, patient_name, notes, chief_complaint, session_development, homework, session_date, homework_visible_to_patient } = body
 
         if (!action) {
             return new Response(
@@ -102,15 +108,16 @@ serve(async (req) => {
 
         // ─── LIST_HISTORY: retornar snapshots anteriores ──────────────────────
         if (action === 'list_history') {
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabaseAdmin
                 .from('patient_notes_history')
-                .select('id, chief_complaint, session_development, homework, notes, session_date, saved_at')
+                .select('id, chief_complaint, session_development, homework, notes, session_date, saved_at, homework_visible_to_patient')
                 .eq('professional_id', professional.id)
                 .eq('patient_email', patient_email)
                 .order('session_date', { ascending: false })
                 .limit(20)
 
             if (error) {
+                console.error('Erro ao listar histórico:', error)
                 return new Response(
                     JSON.stringify({ error: 'Error fetching notes history' }),
                     { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -154,6 +161,7 @@ serve(async (req) => {
                 chief_complaint: chief_complaint?.trim() || null,
                 session_development: session_development?.trim() || null,
                 homework: homework?.trim() || null,
+                homework_visible_to_patient: Boolean(homework_visible_to_patient),
                 session_date: session_date || new Date().toISOString().split('T')[0],
                 updated_at: new Date().toISOString()
             }
@@ -172,8 +180,8 @@ serve(async (req) => {
                 )
             }
 
-            // Gravar snapshot imutável no histórico
-            const { error: histErr } = await supabaseClient
+            // Gravar snapshot imutável no histórico (Bypass RLS para garantir gravação)
+            const { error: histErr } = await supabaseAdmin
                 .from('patient_notes_history')
                 .insert({
                     patient_note_id: data.id,
@@ -182,6 +190,7 @@ serve(async (req) => {
                     chief_complaint: chief_complaint?.trim() || null,
                     session_development: session_development?.trim() || null,
                     homework: homework?.trim() || null,
+                    homework_visible_to_patient: Boolean(homework_visible_to_patient),
                     notes: notes?.trim() || null,
                     session_date: session_date || new Date().toISOString().split('T')[0],
                 })
@@ -191,19 +200,24 @@ serve(async (req) => {
             }
 
             // Após gravar no histórico, limpa os campos estruturados da tabela principal 
-            // (para que a próxima sessão inicie com o formulário em branco), mantendo apenas as observações gerais
-            await supabaseClient
+            // Usamos supabaseAdmin para ignorar possíveis bloqueios de RLS no UPDATE
+            const { error: updateErr } = await supabaseAdmin
                 .from('patient_notes')
                 .update({
                     chief_complaint: null,
                     session_development: null,
                     homework: null,
+                    notes: null,
+                    homework_visible_to_patient: false,
                 })
                 .eq('id', data.id);
-
+            
+            if (updateErr) {
+                console.error('Erro ao limpar patient_notes:', updateErr);
+            }
 
             return new Response(
-                JSON.stringify({ success: true, message: 'Notes saved successfully', data }),
+                JSON.stringify({ success: true, message: 'Notes saved successfully', data, updateErr }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }

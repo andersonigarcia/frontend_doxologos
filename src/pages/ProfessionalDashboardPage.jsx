@@ -478,6 +478,7 @@ const ProfessionalDashboardPage = () => {
                     chief_complaint: structuredFields.chief_complaint || null,
                     session_development: structuredFields.session_development || null,
                     homework: structuredFields.homework || null,
+                    homework_visible_to_patient: structuredFields.homework_visible_to_patient || false,
                     session_date: structuredFields.session_date || null,
                 },
                 headers: {
@@ -492,10 +493,11 @@ const ProfessionalDashboardPage = () => {
             if (selectedPatient) {
                 setSelectedPatient(prev => ({ 
                     ...prev, 
-                    notes,
+                    notes: '',
                     chief_complaint: '',
                     session_development: '',
-                    homework: ''
+                    homework: '',
+                    homework_visible_to_patient: false
                 }));
             }
 
