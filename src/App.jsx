@@ -60,6 +60,7 @@ const TerapiaBurnoutPage = lazy(() => import('@/pages/TerapiaBurnoutPage'));
 const TerapiaDependenciaPage = lazy(() => import('@/pages/TerapiaDependenciaPage'));
 const TerapiaVicioApostasPage = lazy(() => import('@/pages/TerapiaVicioApostasPage'));
 const TerapiaAbusoEspiritualPage = lazy(() => import('@/pages/TerapiaAbusoEspiritualPage'));
+const FaturamentoMensalPage = lazy(() => import('@/pages/FaturamentoMensalPage'));
 
 
 
@@ -175,6 +176,13 @@ function AppContent() {
             <PageErrorBoundary pageName="Sala de Espera">
               <SalaEsperaPage />
             </PageErrorBoundary>
+          } />
+          <Route path="/faturamento-mensal" element={
+            <ProtectedRoute>
+              <PageErrorBoundary pageName="Faturamento Mensal">
+                <FaturamentoMensalPage />
+              </PageErrorBoundary>
+            </ProtectedRoute>
           } />
           <Route path="/recuperar-senha" element={
             <PageErrorBoundary pageName="Recuperar Senha">

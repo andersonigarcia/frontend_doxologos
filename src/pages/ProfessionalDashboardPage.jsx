@@ -9,8 +9,8 @@ import { ProfessionalSidebar } from '@/components/admin/ProfessionalSidebar';
 import { useAdminData } from '@/hooks/useAdminData';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter, AlertTriangle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
@@ -147,6 +147,7 @@ const formatNumberToCurrencyInput = (value) => {
 const ProfessionalDashboardPage = () => {
     const { toast } = useToast();
     const { user, userRole, signIn, signOut, updatePassword } = useAuth();
+    const navigate = useNavigate();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isEmergencyBookingModalOpen, setIsEmergencyBookingModalOpen] = useState(false);
 
@@ -457,8 +458,9 @@ const ProfessionalDashboardPage = () => {
     const [costToDelete, setCostToDelete] = useState(null);
     const [costRefreshKey, setCostRefreshKey] = useState(0);
 
-    // Handler para salvar observações do paciente
-    const handleSavePatientNotes = async (patientEmail, notes) => {
+
+    // Handler para salvar prontuário estruturado do paciente
+    const handleSavePatientNotes = async (patientEmail, notes, structuredFields = {}) => {
         try {
             const { data: sessionData } = await supabase.auth.getSession();
             const accessToken = sessionData?.session?.access_token;
@@ -472,7 +474,11 @@ const ProfessionalDashboardPage = () => {
                     action: 'save',
                     patient_email: patientEmail,
                     patient_name: selectedPatient?.name || null,
-                    notes
+                    notes,
+                    chief_complaint: structuredFields.chief_complaint || null,
+                    session_development: structuredFields.session_development || null,
+                    homework: structuredFields.homework || null,
+                    session_date: structuredFields.session_date || null,
                 },
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -482,19 +488,20 @@ const ProfessionalDashboardPage = () => {
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
 
-            // Atualizar o paciente selecionado com as novas observações
+            // Atualizar o paciente selecionado com os novos dados
             if (selectedPatient) {
-                setSelectedPatient(prev => ({ ...prev, notes }));
+                setSelectedPatient(prev => ({ ...prev, notes, ...structuredFields }));
             }
 
             return data;
         } catch (error) {
-            console.error('Erro ao salvar observações:', error);
+            console.error('Erro ao salvar prontuário:', error);
             throw error;
         }
     };
 
-    // Handler para abrir modal de paciente e carregar observações
+
+    // Handler para abrir modal de paciente e carregar prontuário completo
     const handlePatientClick = async (patient) => {
         try {
             const { data: sessionData } = await supabase.auth.getSession();
@@ -504,29 +511,25 @@ const ProfessionalDashboardPage = () => {
                 throw new Error('Sessão expirada');
             }
 
-            // Carregar observações do paciente
+            // Carregar prontuário completo do paciente
             const { data } = await supabase.functions.invoke('patient-notes-manager', {
-                body: {
-                    action: 'get',
-                    patient_email: patient.email
-                },
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
+                body: { action: 'get', patient_email: patient.email },
+                headers: { Authorization: `Bearer ${accessToken}` },
             });
 
             setSelectedPatient({
                 ...patient,
-                notes: data?.notes || ''
+                notes: data?.notes || '',
+                chief_complaint: data?.chief_complaint || '',
+                session_development: data?.session_development || '',
+                homework: data?.homework || '',
+                session_date: data?.session_date || new Date().toISOString().split('T')[0],
             });
             setIsPatientModalOpen(true);
         } catch (error) {
-            console.error('Erro ao carregar observações do paciente:', error);
-            // Abrir modal mesmo se falhar ao carregar observações
-            setSelectedPatient({
-                ...patient,
-                notes: ''
-            });
+            console.error('Erro ao carregar prontuário do paciente:', error);
+            // Abrir modal mesmo se falhar ao carregar prontuário
+            setSelectedPatient({ ...patient, notes: '', chief_complaint: '', session_development: '', homework: '' });
             setIsPatientModalOpen(true);
         }
     };
@@ -2495,6 +2498,14 @@ const ProfessionalDashboardPage = () => {
                                             description: 'Gerenciar seus dados',
                                             icon: UserCircle,
                                             onClick: () => setActiveTab('professionals'),
+                                            variant: 'outline',
+                                        },
+                                        {
+                                            id: 'faturamento-mensal',
+                                            label: 'Faturamento',
+                                            description: 'NFSe e fechamento mensal',
+                                            icon: FileText,
+                                            onClick: () => navigate('/faturamento-mensal'),
                                             variant: 'outline',
                                         },
                                     ]}
