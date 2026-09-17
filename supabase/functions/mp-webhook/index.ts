@@ -555,11 +555,49 @@ serve(async (req: Request) => {
           console.warn(`⚠️ [M-03] Transição bloqueada: ${existingBooking.status} → ${newStatus} para booking ${bookingId}. Webhook ignorado.`);
           success = true; // considera processado sem erro
         } else if (newStatus) {
+          // ==========================================
+          // LAZY REGISTRATION (Guest Checkout)
+          // ==========================================
+          if (newStatus === 'confirmed' && !existingBooking.user_id && existingBooking.patient_email) {
+            try {
+              console.log(`👤 Criando conta para novo paciente (Lazy Registration): ${existingBooking.patient_email}`);
+              const randomPassword = crypto.randomUUID() + 'A1@';
+              
+              const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
+                email: existingBooking.patient_email,
+                password: randomPassword,
+                email_confirm: true,
+                user_metadata: {
+                  full_name: existingBooking.patient_name,
+                  name: existingBooking.patient_name,
+                  is_lazy_registered: true
+                }
+              });
+
+              if (createUserError) {
+                if (createUserError.message.includes('already registered')) {
+                    const { data: rpcUserId } = await supabase.rpc('get_user_id_by_email', { user_email: existingBooking.patient_email });
+                    if (rpcUserId) {
+                        existingBooking.user_id = rpcUserId;
+                    }
+                } else {
+                    console.error('❌ Erro ao criar conta lazy:', createUserError);
+                }
+              } else if (newUser?.user?.id) {
+                console.log(`✅ Conta criada com sucesso via Lazy Registration. ID: ${newUser.user.id}`);
+                existingBooking.user_id = newUser.user.id;
+              }
+            } catch (err) {
+              console.error('⚠️ Erro inesperado na criação lazy:', err);
+            }
+          }
+
           const { error: updateError } = await supabase.from('bookings')
             .update({
               status: newStatus,
               payment_status: mpPayment.status,
               marketplace_payment_id: paymentId.toString(),
+              user_id: existingBooking.user_id, // Atualiza o user_id caso tenha sido criado via lazy registration
               updated_at: new Date().toISOString()
             })
             .eq('id', bookingId);

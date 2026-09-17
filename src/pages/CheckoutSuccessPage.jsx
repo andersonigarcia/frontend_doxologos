@@ -36,7 +36,7 @@ const CheckoutSuccessPage = () => {
                         .from('bookings')
                         .select(`
                             *,
-                            professional:professionals(name, specialty),
+                            professional:professionals(name, specialty, personal_meet_link),
                             service:services(name, price, duration_minutes)
                         `)
                         .eq('id', bookingId)
@@ -208,8 +208,8 @@ const CheckoutSuccessPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Zoom Link - Destaque especial */}
-                                    {booking.zoom_link && (
+                                    {/* Zoom / Meet Link - Destaque especial */}
+                                    {(booking.zoom_link || booking.professional?.personal_meet_link) && (
                                         <motion.div
                                             initial={{ scale: 0.95, opacity: 0 }}
                                             animate={{ scale: 1, opacity: 1 }}
@@ -226,7 +226,7 @@ const CheckoutSuccessPage = () => {
                                                         Acesse este link no dia e horário da consulta
                                                     </p>
                                                     <a
-                                                        href={booking.zoom_link}
+                                                        href={booking.zoom_link || booking.professional?.personal_meet_link}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="inline-flex items-center bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition-colors"

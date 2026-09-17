@@ -201,7 +201,7 @@ const PatientAccountStep = ({
 
       {!authUser ? (
         <AnimatePresence>
-          {emailExists !== null && (
+          {emailExists === true && (
             <motion.div
               className="mt-8 overflow-hidden"
               initial={{ opacity: 0, height: 0 }}

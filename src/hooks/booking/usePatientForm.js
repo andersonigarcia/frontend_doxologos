@@ -144,8 +144,8 @@ export function usePatientForm({ authUser, resetPassword, toast } = {}) {
     () =>
       buildPatientSchema({
         requireIdentityFields: !authUser && !isExistingPatient,
-        requirePassword: !authUser,
-        requireConfirmation: !authUser && !isExistingPatient,
+        requirePassword: !authUser && isExistingPatient,
+        requireConfirmation: false,
       }),
     [authUser, isExistingPatient]
   );

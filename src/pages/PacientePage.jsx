@@ -908,6 +908,27 @@ const PacientePage = () => {
                         />
                     </div>
 
+                    {/* Banner de Upsell de Pacote */}
+                    <div className="mb-8">
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-6 shadow-md text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div>
+                                <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                    <Star className="w-5 h-5 text-yellow-300" fill="currentColor" />
+                                    Pacote Mensal de Consultas
+                                </h3>
+                                <p className="text-emerald-50">
+                                    Garanta 4 consultas com seu profissional pelo mesmo valor e tenha mais praticidade.
+                                    Ideal para manter a constância do seu tratamento.
+                                </p>
+                            </div>
+                            <Link to="/agendamento?pacote=4">
+                                <Button className="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold whitespace-nowrap">
+                                    Adquirir Pacote
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+
                     {creditError && (
                         <div className="mb-6">
                             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">

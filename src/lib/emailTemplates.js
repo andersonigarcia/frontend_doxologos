@@ -1334,7 +1334,37 @@ export class EmailTemplates {
     return this.baseTemplate(content, "Relatorio de Autoavaliacao - Doxologos");
   }
 
+  upsellPackageOffer(booking) {
+    const content = `
+      <h2 style="color: ${this.brandColor}; font-size: 22px; margin: 0 0 10px 0;">🎉 Como foi sua sessão?</h2>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
+        Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
+      </p>
+      <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
+        Esperamos que sua consulta com <strong>${this.sanitizeForHtml(booking.professional_name)}</strong> tenha sido ótima. 
+        Para manter o seu acompanhamento, preparamos uma opção especial para você: o <strong>Pacote Mensal</strong>.
+      </p>
+      
+      <div style="background: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #10b981;">
+        <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 18px;">🎁 Benefícios do Pacote:</h3>
+        <ul style="margin: 0; padding-left: 20px; color: #065f46; line-height: 1.8;">
+          <li>✓ <strong>4 Consultas</strong> já garantidas</li>
+          <li>✓ Mais praticidade: não precisa pagar a cada sessão</li>
+          <li>✓ Continuidade no tratamento</li>
+        </ul>
+      </div>
 
+      <p style="text-align: center; margin-top: 30px;">
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #f59e0b; padding: 14px 32px; font-size: 15px;">Adquirir Pacote Mensal</a>
+      </p>
+
+      <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+        Estamos à disposição para ajudar.<br>
+        <strong>Abraços,<br>Equipe Doxologos</strong>
+      </p>
+    `;
+    return this.baseTemplate(content, "Mantenha seu acompanhamento - Doxologos");
+  }
 }
 
 

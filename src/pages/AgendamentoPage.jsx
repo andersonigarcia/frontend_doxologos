@@ -477,13 +477,7 @@ const AgendamentoPage = () => {
       );
     }
 
-    return (
-      Boolean(patientData.password) &&
-      Boolean(patientData.confirmPassword) &&
-      patientData.password.length >= MIN_PASSWORD_LENGTH &&
-      patientData.password === patientData.confirmPassword &&
-      Boolean(meetingPlatform)
-    );
+    return Boolean(meetingPlatform);
   }, [
     authUser,
     emailError,
@@ -524,20 +518,12 @@ const AgendamentoPage = () => {
       return '';
     }
 
-    if (!patientData.password) {
-      return 'Informe uma senha para acessar a área do paciente';
+    if (isExistingPatient && !patientData.password) {
+      return 'Informe sua senha de acesso';
     }
 
-    if (patientData.password.length < MIN_PASSWORD_LENGTH) {
+    if (isExistingPatient && patientData.password.length < MIN_PASSWORD_LENGTH) {
       return `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`;
-    }
-
-    if (!isExistingPatient && !patientData.confirmPassword) {
-      return 'Confirme sua senha';
-    }
-
-    if (!isExistingPatient && patientData.password !== patientData.confirmPassword) {
-      return 'As senhas precisam ser iguais';
     }
 
     return '';

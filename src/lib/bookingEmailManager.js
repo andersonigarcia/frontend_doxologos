@@ -408,6 +408,40 @@ class BookingEmailManager {
   }
 
   /**
+   * 8.1 Email de Upsell (Pacote Mensal)
+   * Enviado 2h após a conclusão da consulta (via Edge Function)
+   */
+  async sendUpsellPackageOffer(bookingData, sendCopy = false) {
+    try {
+      const html = this.templates.upsellPackageOffer({
+        patient_name: bookingData.patient_name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+      });
+
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '🎁 Uma oferta especial para o seu acompanhamento - Doxologos',
+        html,
+        type: 'upsell_package_offer'
+      };
+
+      if (sendCopy) {
+        emailConfig.cc = this.emailService.backofficeEmail;
+      }
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de upsell de pacote enviado', { to: bookingData.patient_email });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar upsell de pacote', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * 9. Email URGENTE para o Profissional (Agendamento para HOJE <= 4h)
    */
   async sendUrgentProfessionalNotification(bookingData) {
