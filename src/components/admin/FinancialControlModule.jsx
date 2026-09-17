@@ -126,10 +126,10 @@ export function FinancialControlModule({
         </div>
 
         {/* Sub-Navegação da Controladoria */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200 overflow-x-auto w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <button
             onClick={() => setSubTab('dre')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
               subTab === 'dre' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -137,7 +137,7 @@ export function FinancialControlModule({
           </button>
           <button
             onClick={() => setSubTab('ledger')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
               subTab === 'ledger' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
@@ -145,7 +145,7 @@ export function FinancialControlModule({
           </button>
           <button
             onClick={() => onNavigateTab?.('payments')}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg whitespace-nowrap shrink-0"
           >
             Checkout MP
           </button>
@@ -178,7 +178,7 @@ export function FinancialControlModule({
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
+                className="flex-1 min-w-0 bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
               >
                 <option value="all">Todos os Meses (Acumulado)</option>
                 {Array.from({ length: 12 }, (_, i) => (
@@ -191,7 +191,7 @@ export function FinancialControlModule({
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
+                className="shrink-0 w-24 sm:w-auto bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
               >
                 <option value="all">Todos os Anos</option>
                 {[2024, 2025, 2026, 2027].map((yr) => (
