@@ -488,9 +488,15 @@ const ProfessionalDashboardPage = () => {
             if (error) throw error;
             if (data?.error) throw new Error(data.error);
 
-            // Atualizar o paciente selecionado com os novos dados
+            // Atualizar o paciente selecionado com as novas observações e limpar campos da sessão
             if (selectedPatient) {
-                setSelectedPatient(prev => ({ ...prev, notes, ...structuredFields }));
+                setSelectedPatient(prev => ({ 
+                    ...prev, 
+                    notes,
+                    chief_complaint: '',
+                    session_development: '',
+                    homework: ''
+                }));
             }
 
             return data;

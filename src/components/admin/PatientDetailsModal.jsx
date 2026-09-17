@@ -37,18 +37,27 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
     const [historyLoading, setHistoryLoading] = useState(false);
     const [expandedEntry, setExpandedEntry] = useState(null);
 
-    // Sync form quando o paciente muda
+    // Sync form quando o paciente muda (apenas ao abrir o modal)
     useEffect(() => {
-        if (patient) {
-            setForm({
-                chief_complaint: patient.chief_complaint || '',
-                session_development: patient.session_development || '',
-                homework: patient.homework || '',
-                notes: patient.notes || '',
-                session_date: patient.session_date || new Date().toISOString().split('T')[0],
+        if (patient && isOpen) {
+            setForm(prev => {
+                // Só carrega os dados se os campos estiverem vazios (evita sobrescrever após um save onde limpamos de propósito)
+                // ou se o email do paciente mudou
+                if (prev.lastLoadedEmail !== patient.email) {
+                    return {
+                        chief_complaint: patient.chief_complaint || '',
+                        session_development: patient.session_development || '',
+                        homework: patient.homework || '',
+                        notes: patient.notes || '',
+                        session_date: patient.session_date || new Date().toISOString().split('T')[0],
+                        lastLoadedEmail: patient.email
+                    };
+                }
+                // Se for o mesmo paciente, apenas atualiza as notas gerais (que são persistentes)
+                return { ...prev, notes: patient.notes || '' };
             });
         }
-    }, [patient?.email, patient?.notes, patient?.chief_complaint]);
+    }, [patient, isOpen]);
 
     // Carregar histórico ao abrir aba
     const loadHistory = useCallback(async () => {

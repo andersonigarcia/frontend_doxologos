@@ -190,6 +190,18 @@ serve(async (req) => {
                 console.error('Erro ao gravar histórico (não bloqueante):', histErr)
             }
 
+            // Após gravar no histórico, limpa os campos estruturados da tabela principal 
+            // (para que a próxima sessão inicie com o formulário em branco), mantendo apenas as observações gerais
+            await supabaseClient
+                .from('patient_notes')
+                .update({
+                    chief_complaint: null,
+                    session_development: null,
+                    homework: null,
+                })
+                .eq('id', data.id);
+
+
             return new Response(
                 JSON.stringify({ success: true, message: 'Notes saved successfully', data }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
