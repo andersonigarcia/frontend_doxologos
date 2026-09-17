@@ -310,6 +310,18 @@ export default defineConfig({
 					if (id.includes('node_modules/@tanstack/')) {
 						return 'vendor-query';
 					}
+					// Radix UI e Componentes Base
+					if (id.includes('node_modules/@radix-ui/')) {
+						return 'vendor-radix';
+					}
+					// Formulários e Validação
+					if (id.includes('node_modules/react-hook-form/') || id.includes('node_modules/zod/')) {
+						return 'vendor-forms';
+					}
+					// Gráficos (Dashboard)
+					if (id.includes('node_modules/recharts/')) {
+						return 'vendor-charts';
+					}
 					// Animations e ícones
 					if (id.includes('node_modules/framer-motion/') || id.includes('node_modules/lucide-react/')) {
 						return 'vendor-ui';
