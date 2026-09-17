@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key',
 };
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 Deno.serve(async (req) => {
   console.log('[MP] === FUNÇÃO INICIADA ===');
   console.log('[MP] Method:', req.method);
@@ -17,6 +19,34 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+    const SERVICE_ROLE = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    // ==========================================
+    // M-07: RATE LIMITING (Backend Protection)
+    // ==========================================
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    if (SUPABASE_URL && SERVICE_ROLE && clientIp !== 'unknown') {
+      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+      
+      const { data: rlData, error: rlError } = await supabase.rpc('check_rate_limit', {
+        p_action: 'mp_create_preference',
+        p_key: clientIp,
+        p_max_hits: 15,
+        p_window_seconds: 60
+      });
+
+      if (rlError) {
+        console.error('[MP] Rate limit check error:', rlError);
+      } else if (rlData && !rlData.allowed) {
+        console.warn(`[MP] 🛑 Rate limit exceeded for IP: ${clientIp}`);
+        return new Response(
+          JSON.stringify({ error: 'Muitas requisições. Tente novamente em alguns minutos.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     console.log('[MP] Parseando body...');
     const body = await req.json();
     console.log('[MP] Body recebido:', JSON.stringify(body));
@@ -31,8 +61,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-    const SERVICE_ROLE = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN') || '';
     const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
 

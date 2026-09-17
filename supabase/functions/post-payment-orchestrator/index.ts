@@ -298,7 +298,20 @@ Deno.serve(async (req: Request) => {
 
         if (emailErr) {
           console.error('[Orchestrator] Erro ao enviar email ao paciente:', emailErr);
-          results.patient_email = 'failed';
+          
+          // M-08: Inserir na fila de retentativas
+          await supabase.from('background_tasks_queue').insert([{
+            task_type: 'email',
+            payload: {
+              to: booking.patient_email,
+              subject: '✅ Sua consulta está confirmada — Doxologos',
+              html: patientHtml,
+            },
+            status: 'pending',
+            last_error: emailErr.message || JSON.stringify(emailErr)
+          }]);
+          
+          results.patient_email = 'queued_for_retry';
         } else {
           console.log(`[Orchestrator] Email enviado ao paciente ${booking.patient_email}`);
           results.patient_email = 'sent';
@@ -327,7 +340,20 @@ Deno.serve(async (req: Request) => {
 
         if (profEmailErr) {
           console.error('[Orchestrator] Erro ao enviar email ao profissional:', profEmailErr);
-          results.professional_email = 'failed';
+          
+          // M-08: Inserir na fila de retentativas
+          await supabase.from('background_tasks_queue').insert([{
+            task_type: 'email',
+            payload: {
+              to: profEmail,
+              subject: `📅 Nova consulta confirmada — ${booking.patient_name} — Doxologos`,
+              html: profHtml,
+            },
+            status: 'pending',
+            last_error: profEmailErr.message || JSON.stringify(profEmailErr)
+          }]);
+          
+          results.professional_email = 'queued_for_retry';
         } else {
           console.log(`[Orchestrator] Email enviado ao profissional ${profEmail}`);
           results.professional_email = 'sent';
@@ -374,6 +400,8 @@ Deno.serve(async (req: Request) => {
     let notificationStatus: string;
     if (hasSent && !hasFailed) {
       notificationStatus = 'sent';
+    } else if (allChannels.some(s => s === 'queued_for_retry')) {
+      notificationStatus = 'queued_for_retry';
     } else if (hasSent && hasFailed) {
       notificationStatus = 'partial_failure';
     } else {
