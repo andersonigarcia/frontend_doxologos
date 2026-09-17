@@ -129,11 +129,37 @@ const CheckoutPendingPage = () => {
         fetchData();
     }, [paymentId, externalReference, payment?.booking_id]);
 
-    // Auto-check payment status every 5 seconds
+    // Fase 2: Auto-check via Realtime + Fallback de Polling (30s)
     useEffect(() => {
         if (!payment?.mp_payment_id) return;
 
-        const interval = setInterval(async () => {
+        // 1. Subscription via Realtime
+        const channel = supabase.channel(`payment-${payment.mp_payment_id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'payments',
+                    filter: `mp_payment_id=eq.${payment.mp_payment_id}`
+                },
+                (payload) => {
+                    const status = payload.new.status;
+                    if (status === 'approved') {
+                        navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                    } else if (status === 'rejected' || status === 'cancelled') {
+                        navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                    }
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('Realtime inscrito no pagamento:', payment.mp_payment_id);
+                }
+            });
+
+        // 2. Fallback de Polling seguro (a cada 30s)
+        const checkStatus = async () => {
             try {
                 const { data: updatedPayment } = await supabase
                     .from('payments')
@@ -142,16 +168,16 @@ const CheckoutPendingPage = () => {
                     .single();
 
                 if (updatedPayment?.status === 'approved') {
-                    // Payment approved! Redirect to success
                     navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
                 } else if (updatedPayment?.status === 'rejected' || updatedPayment?.status === 'cancelled') {
-                    // Payment failed, redirect to failure
                     navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
                 }
             } catch (error) {
-                console.error('Erro ao verificar status:', error);
+                console.error('Erro ao verificar status (fallback):', error);
             }
-        }, 5000);
+        };
+
+        const interval = setInterval(checkStatus, 30000);
 
         // Stop checking after 10 minutes
         const timeout = setTimeout(() => clearInterval(interval), 600000);
@@ -159,6 +185,7 @@ const CheckoutPendingPage = () => {
         return () => {
             clearInterval(interval);
             clearTimeout(timeout);
+            supabase.removeChannel(channel);
         };
     }, [payment?.mp_payment_id, booking?.id, navigate]);
 

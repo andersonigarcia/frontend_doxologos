@@ -1318,6 +1318,39 @@ const ProfessionalDashboardPage = () => {
         });
     };
 
+    // Fase 2: Controle de Sessão em Sala de Espera
+    const handleSessionAction = async (bookingId, action) => {
+        // action pode ser 'start' ou 'end'
+        const newStatus = action === 'start' ? 'in_progress' : 'finished';
+        
+        await withItemLoading(`session_${action}`, bookingId, async () => {
+            try {
+                const { error } = await supabase
+                    .from('bookings')
+                    .update({ session_status: newStatus })
+                    .eq('id', bookingId);
+
+                if (error) throw error;
+
+                toast({
+                    title: action === 'start' ? 'Sessão Iniciada' : 'Sessão Finalizada',
+                    description: action === 'start' 
+                        ? 'O paciente agora pode entrar na sala de espera.' 
+                        : 'A sessão foi encerrada na sala de espera.'
+                });
+
+                await fetchAllData();
+            } catch (error) {
+                secureLog.error('Erro ao atualizar status da sessão:', error?.message || error);
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro de Sessão',
+                    description: error.message
+                });
+            }
+        });
+    };
+
     const getStatusLabel = (status) => {
         const labels = {
             'pending': 'Pendente Pagamento',
@@ -3025,19 +3058,45 @@ const ProfessionalDashboardPage = () => {
 
                                                                                         <td className="p-3 text-right">
                                                                                             <div className="flex items-center justify-end gap-1.5">
-                                                                                                {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
-                                                                                                    <a
-                                                                                                        href={b.meeting_link}
-                                                                                                        target="_blank"
-                                                                                                        rel="noopener noreferrer"
-                                                                                                        className="bg-emerald-50 text-[#2d8659] border border-emerald-200 px-2 py-1 rounded-md text-[11px] font-bold hover:bg-emerald-100 transition-colors"
-                                                                                                    >
-                                                                                                        {b.meeting_link.toLowerCase().includes('meet.google.com') || b.meeting_link.toLowerCase().includes('google')
-                                                                                                            ? 'Google Meet'
-                                                                                                            : b.meeting_link.toLowerCase().includes('zoom')
-                                                                                                                ? 'Zoom'
-                                                                                                                : 'Sala Virtual'}
-                                                                                                    </a>
+                                                                                                {/* Controle da Sala de Espera */}
+                                                                                                {(b.status === 'confirmed' || b.status === 'paid') && (
+                                                                                                    <>
+                                                                                                        {(!b.session_status || b.session_status === 'not_started') && (
+                                                                                                            <LoadingButton
+                                                                                                                size="sm"
+                                                                                                                loadingId={`session_start_${b.id}`}
+                                                                                                                onClick={() => handleSessionAction(b.id, 'start')}
+                                                                                                                className="h-7 px-2 text-[11px] font-bold bg-[#2d8659] text-white hover:bg-[#236b47]"
+                                                                                                            >
+                                                                                                                Iniciar Sessão
+                                                                                                            </LoadingButton>
+                                                                                                        )}
+                                                                                                        {b.session_status === 'in_progress' && (
+                                                                                                            <div className="flex items-center gap-1">
+                                                                                                                {b.meeting_link && (
+                                                                                                                    <a
+                                                                                                                        href={b.meeting_link}
+                                                                                                                        target="_blank"
+                                                                                                                        rel="noopener noreferrer"
+                                                                                                                        className="bg-emerald-50 text-[#2d8659] border border-emerald-200 px-2 py-1 rounded-md text-[11px] font-bold hover:bg-emerald-100 transition-colors"
+                                                                                                                    >
+                                                                                                                        Ir p/ Reunião
+                                                                                                                    </a>
+                                                                                                                )}
+                                                                                                                <LoadingButton
+                                                                                                                    size="sm"
+                                                                                                                    loadingId={`session_end_${b.id}`}
+                                                                                                                    onClick={() => handleSessionAction(b.id, 'end')}
+                                                                                                                    className="h-7 px-2 text-[11px] font-bold bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                                                                                                >
+                                                                                                                    Finalizar
+                                                                                                                </LoadingButton>
+                                                                                                            </div>
+                                                                                                        )}
+                                                                                                        {b.session_status === 'finished' && (
+                                                                                                            <span className="text-[10px] text-slate-400 font-medium px-2">Encerrada</span>
+                                                                                                        )}
+                                                                                                    </>
                                                                                                 )}
                                                                                                 <Dialog>
                                                                                                     <DialogTrigger asChild>
@@ -3354,9 +3413,8 @@ const ProfessionalDashboardPage = () => {
                                                                                 </div>
                                                                             </div>
 
-                                                                            {/* Exibir dados do Zoom para consultas confirmadas ou pagas */}
-                                                                            {/* Exibir dados do Zoom/Meet para consultas confirmadas ou pagas */}
-                                                                            {(b.status === 'confirmed' || b.status === 'paid') && b.meeting_link && (
+                                                                            {/* Exibir dados do Zoom/Meet e Controle da Sala de Espera */}
+                                                                            {(b.status === 'confirmed' || b.status === 'paid') && (
                                                                                 <div className="mt-5 pt-5 border-t border-dashed border-gray-200">
                                                                                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                                                                         <div>
@@ -3369,16 +3427,47 @@ const ProfessionalDashboardPage = () => {
                                                                                                     Iniciar como anfitrião (Host)
                                                                                                 </a>
                                                                                             )}
+                                                                                            {b.session_status === 'finished' && (
+                                                                                                <p className="text-xs text-red-500 font-bold mt-1">Esta sessão foi encerrada.</p>
+                                                                                            )}
                                                                                         </div>
-                                                                                        <a
-                                                                                            href={b.meeting_link}
-                                                                                            target="_blank"
-                                                                                            rel="noopener noreferrer"
-                                                                                            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-[#2d8659] hover:bg-[#236b47] text-white text-sm font-medium rounded-full shadow-sm hover:shadow-md transition-all"
-                                                                                        >
-                                                                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                                                                            Entrar na Sala Virtual
-                                                                                        </a>
+                                                                                        
+                                                                                        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                                                                                            {(!b.session_status || b.session_status === 'not_started') && (
+                                                                                                <LoadingButton
+                                                                                                    loadingId={`session_start_card_${b.id}`}
+                                                                                                    onClick={() => handleSessionAction(b.id, 'start')}
+                                                                                                    className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-[#2d8659] hover:bg-[#236b47] text-white text-sm font-medium rounded-full shadow-sm hover:shadow-md transition-all"
+                                                                                                >
+                                                                                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                                                                    Iniciar Sessão
+                                                                                                </LoadingButton>
+                                                                                            )}
+                                                                                            
+                                                                                            {b.session_status === 'in_progress' && (
+                                                                                                <>
+                                                                                                    {b.meeting_link && (
+                                                                                                        <a
+                                                                                                            href={b.meeting_link}
+                                                                                                            target="_blank"
+                                                                                                            rel="noopener noreferrer"
+                                                                                                            className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-white border border-[#2d8659] text-[#2d8659] hover:bg-emerald-50 text-sm font-medium rounded-full shadow-sm hover:shadow-md transition-all"
+                                                                                                        >
+                                                                                                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                                                                                            Ir para Reunião
+                                                                                                        </a>
+                                                                                                    )}
+                                                                                                    <LoadingButton
+                                                                                                        loadingId={`session_end_card_${b.id}`}
+                                                                                                        onClick={() => handleSessionAction(b.id, 'end')}
+                                                                                                        className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-full shadow-sm hover:shadow-md transition-all"
+                                                                                                    >
+                                                                                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 10h6v4H9z" /></svg>
+                                                                                                        Finalizar
+                                                                                                    </LoadingButton>
+                                                                                                </>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             )}

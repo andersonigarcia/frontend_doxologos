@@ -1071,27 +1071,19 @@ const PacientePage = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO SIMPLIFICADA */}
-                                            {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
-                                                <div className="mb-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                            {/* Fase 2: Redirecionar para Sala de Espera em vez do link direto */}
+                                            {(booking.status === 'confirmed' || booking.status === 'paid') && (
+                                                <div className="mb-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
                                                     <div>
-                                                        <h4 className="font-semibold text-blue-900 text-sm">🎥 Sala Virtual</h4>
-                                                        {booking.meeting_password && (
-                                                            <p className="text-xs text-blue-700 mt-1">Senha: <strong>{booking.meeting_password}</strong></p>
-                                                        )}
+                                                        <h4 className="font-semibold text-emerald-900 text-sm">🎥 Sala de Espera</h4>
+                                                        <p className="text-xs text-emerald-700 mt-1">Acesse a sala com antecedência e aguarde o profissional.</p>
                                                     </div>
-                                                    <a
-                                                        href={booking.meeting_link}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center justify-center w-full md:w-auto px-5 py-2.5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium text-sm shadow-sm"
+                                                    <Link
+                                                        to={`/sala-espera/${booking.id}`}
+                                                        className="inline-flex items-center justify-center w-full md:w-auto px-5 py-2.5 bg-[#2d8659] text-white rounded-full hover:bg-[#236b47] transition-colors font-medium text-sm shadow-sm"
                                                     >
-                                                        {booking.meeting_link.toLowerCase().includes('zoom')
-                                                            ? 'Entrar na Sala Zoom'
-                                                            : booking.meeting_link.toLowerCase().includes('meet.google.com') || booking.meeting_link.toLowerCase().includes('google')
-                                                            ? 'Entrar na Sala Google Meet'
-                                                            : 'Entrar na Sala Virtual'}
-                                                    </a>
+                                                        Entrar na Sala de Espera
+                                                    </Link>
                                                 </div>
                                             )}
 

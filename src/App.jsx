@@ -45,6 +45,7 @@ const FloatingWhatsAppButton = lazy(() => import('@/components/FloatingWhatsAppB
 const ManagementDashboardPage = lazy(() => import('@/pages/ManagementDashboardPage'));
 const ProfessionalListPage = lazy(() => import('@/pages/admin/ProfessionalListPage'));
 const ProfessionalHubPage = lazy(() => import('@/pages/admin/ProfessionalHubPage'));
+const SalaEsperaPage = lazy(() => import('@/pages/SalaEsperaPage'));
 const BlogPage = lazy(() => import('@/pages/BlogPage'));
 const ArticlePage = lazy(() => import('@/pages/ArticlePage'));
 const LgpdCookieBanner = lazy(() => import('@/components/common/LgpdCookieBanner'));
@@ -168,6 +169,11 @@ function AppContent() {
           <Route path="/area-do-paciente" element={
             <PageErrorBoundary pageName="Área do Paciente">
               <PacientePage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/sala-espera/:id" element={
+            <PageErrorBoundary pageName="Sala de Espera">
+              <SalaEsperaPage />
             </PageErrorBoundary>
           } />
           <Route path="/recuperar-senha" element={
