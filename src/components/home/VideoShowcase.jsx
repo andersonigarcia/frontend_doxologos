@@ -12,13 +12,16 @@ const VideoShowcase = ({
   stopVideoPlayback,
   handleIframeError,
   openVideoInNewTab,
+  priority = false,
 }) => {
   const safeCurrentVideo = currentVideo || videos[0];
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(priority);
   const videoRef = useRef(null);
 
   // Intersection Observer para lazy loading
   useEffect(() => {
+    if (priority) return; // Não usa lazy load se for prioritário
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -44,7 +47,7 @@ const VideoShowcase = ({
         observer.disconnect();
       }
     };
-  }, []);
+  }, [priority]);
 
   if (!safeCurrentVideo) {
     return null;
@@ -84,10 +87,11 @@ const VideoShowcase = ({
               <>
                 {isVisible && (
                   <img
-                    src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
+                    src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/hqdefault.jpg`}
                     alt={safeCurrentVideo.title}
-                    className="w-full h-full object-cover" width={128} height={128}
-                    loading="lazy"
+                    className="w-full h-full object-cover" width="480" height="360"
+                    loading={priority ? "eager" : "lazy"}
+                    fetchpriority={priority ? "high" : "auto"}
                   />
                 )}
                 <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white text-center p-6">
@@ -118,11 +122,14 @@ const VideoShowcase = ({
           <>
             {isVisible ? (
               <img
-                src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/maxresdefault.jpg`}
+                src={`https://img.youtube.com/vi/${safeCurrentVideo.videoId}/hqdefault.jpg`}
                 alt={safeCurrentVideo.title}
+                width="480"
+                height="360"
                 className={`w-full h-full object-cover transition-opacity duration-300 pointer-events-none ${isVideoLoading ? 'opacity-50' : 'opacity-100'
                   }`}
-                loading="lazy"
+                loading={priority ? "eager" : "lazy"}
+                fetchpriority={priority ? "high" : "auto"}
               />
             ) : (
               <div className="w-full h-full bg-gray-200 animate-pulse" />
@@ -141,23 +148,22 @@ const VideoShowcase = ({
               disabled={isVideoLoading}
               type="button"
             >
-              <div className="bg-red-600 hover:bg-red-700 rounded-full p-6 shadow-2xl transition-all duration-200">
-                <Play className="w-12 h-12 text-white ml-1" fill="currentColor" />
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:bg-red-700 transition-colors">
+                <Play className="w-8 h-8 md:w-10 md:h-10 text-white ml-1" fill="currentColor" />
               </div>
             </button>
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-2xl font-bold">{safeCurrentVideo.title}</h3>
-                <div className="flex space-x-2">
+            <div className="absolute bottom-4 left-4 right-4 text-white pointer-events-none">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg md:text-xl font-bold line-clamp-1">{safeCurrentVideo.title}</h3>
+                <div className="flex items-center space-x-2 pointer-events-auto">
                   <button
                     onClick={() => openVideoInNewTab(safeCurrentVideo.videoId)}
-                    className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition-colors"
+                    className="bg-black/70 hover:bg-black/90 text-white px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-colors"
                   >
                     Abrir no YouTube
                   </button>
                 </div>
               </div>
-              <p className="text-white/90">{safeCurrentVideo.description}</p>
             </div>
           </>
         )}
@@ -181,8 +187,8 @@ const VideoShowcase = ({
             aria-label={`Assistir vídeo: ${video.title}`}
           >
             <img
-              src={`https://img.youtube.com/vi/${video.videoId}/maxresdefault.jpg`}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" width={128} height={128}
+              src={`https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" width={480} height={360}
               alt={video.title}
               loading="lazy"
             />

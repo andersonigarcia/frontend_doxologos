@@ -144,26 +144,6 @@ const BlogPage = () => {
             ))}
           </div>
         )}
-
-        {/* Newsletter Substack - após os artigos */}
-        <div className="mt-20">
-          <div className="max-w-2xl mx-auto bg-[#2d8659] rounded-2xl p-8 text-center text-white shadow-lg">
-            <Rss className="w-10 h-10 mx-auto mb-4 opacity-80" />
-            <h2 className="text-2xl font-bold mb-2">Receba novos artigos por e-mail</h2>
-            <p className="text-green-100 mb-6 text-sm">
-              Inscreva-se na nossa newsletter gratuita e receba reflexões exclusivas semanalmente diretamente no seu inbox.
-            </p>
-            <a
-              href="https://doxologosoficial.substack.com/subscribe"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-white text-[#2d8659] font-semibold px-6 py-3 rounded-xl hover:bg-green-50 transition-colors"
-            >
-              Inscrever-se gratuitamente
-              <ArrowRight className="w-4 h-4" />
-            </a>
-          </div>
-        </div>
       </main>
 
       <footer className="bg-gray-900 text-white py-12 mt-auto">

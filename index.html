@@ -4,21 +4,19 @@
 <head>
 	<meta charset="UTF-8" />
 
-	<!-- Preconnect for Performance -->
-	<link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-	<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-	<link rel="dns-prefetch" href="https://img.youtube.com" />
-	<link rel="dns-prefetch" href="https://i.ytimg.com" />
-	<link rel="preconnect" href="https://sdk.mercadopago.com" crossorigin />
-
-	<!-- Mercado Pago SDK -->
-	<script defer src="https://sdk.mercadopago.com/js/v2"></script>
-
-	<!-- Google Fonts: Editorial Serif (Trust) e Sans (Neue Haas Grotesk) -->
+	<!-- Performance Preconnects (estritamente necessários) -->
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+	<link rel="dns-prefetch" href="https://img.youtube.com">
+
+	<!-- Preload LCP Hero Video Thumbnail -->
+	<link rel="preload" as="image" href="https://img.youtube.com/vi/InxlTnye_9Y/hqdefault.jpg" fetchpriority="high">
+
+	<!-- Google Fonts: Editorial Serif (Trust), Sans (Plus Jakarta Sans) e Montserrat (Headings) -->
+	<link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Montserrat:wght@400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+	<noscript>
+		<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+	</noscript>
 
 	<!-- Primary Meta Tags -->
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -63,10 +61,6 @@
 	<meta name="twitter:image" content="https://doxologos.com.br/twitter-image.jpg" />
 	<meta name="twitter:image:alt" content="Doxologos - Psicologia Online" />
 
-	<!-- Preconnect to external domains for performance -->
-	<link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
-	<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
-	<link rel="dns-prefetch" href="https://www.google-analytics.com" />
 
 	<!-- Preload critical resources -->
 	
@@ -168,18 +162,32 @@
 		}
 		</script>
 
-	<!-- Google Analytics 4 e Google Ads -->
-	<script async src="https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC"></script>
+	<!-- Google Analytics 4 e Google Ads (carregamento não-bloqueante com fila no dataLayer) -->
 	<script>
 		window.dataLayer = window.dataLayer || [];
 		function gtag() { dataLayer.push(arguments); }
 		gtag('js', new Date());
 
-		// Google Tag container (carrega GA4 + Google Ads automaticamente)
+		// Configurações enfileiradas imediatamente no dataLayer
 		gtag('config', 'G-FSXFYQVCEC');
-
-		// Google Ads — configuração explícita para conversões
 		gtag('config', 'AW-18137070850');
+
+		// Carrega o script gtag.js de forma não bloqueante para zerar o TBT inicial
+		window.addEventListener('load', function () {
+			function loadGTM() {
+				if (document.getElementById('gtag-js')) return;
+				var s = document.createElement('script');
+				s.id = 'gtag-js';
+				s.src = 'https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC';
+				s.async = true;
+				document.head.appendChild(s);
+			}
+			if ('requestIdleCallback' in window) {
+				requestIdleCallback(loadGTM, { timeout: 2000 });
+			} else {
+				setTimeout(loadGTM, 1500);
+			}
+		});
 	</script>
 	<script type="module">
 		const gaMeasurementId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-1RMKGB754J';
@@ -252,11 +260,19 @@
 		}
 	</script>
 
-	<title>Doxologos - Cuidado Integral para sua Saúde Mental</title>
 </head>
 
 <body>
-	<div id="root"></div>
+	<div id="root">
+		<!-- Pré-renderização da primeira dobra para LCP instantâneo no primeiro paint -->
+		<div style="min-height:100vh;background-color:#faf8f5;display:flex;flex-direction:column;align-items:center;padding:80px 16px 20px;">
+			<div style="width:100%;max-width:540px;">
+				<div style="position:relative;width:100%;aspect-ratio:16/9;background-color:#1b3c37;border-radius:12px;overflow:hidden;box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);">
+					<img src="https://img.youtube.com/vi/InxlTnye_9Y/hqdefault.jpg" alt="Como a Psicologia pode Transformar sua Vida" width="480" height="360" fetchpriority="high" style="width:100%;height:100%;object-fit:cover;display:block;" />
+				</div>
+			</div>
+		</div>
+	</div>
 	<script type="module" src="/src/main.jsx"></script>
 </body>
 

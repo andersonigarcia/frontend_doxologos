@@ -57,22 +57,46 @@ const CheckoutDirectPage = () => {
     }, [emailParam, payerEmail]);
 
     useEffect(() => {
-        // Inicializar Mercado Pago
+        // Inicializar Mercado Pago (carrega dinamicamente o SDK sob demanda se necessário)
+        const initMP = () => {
+            try {
+                if (window.MercadoPago) {
+                    const mercadopago = new window.MercadoPago('APP_USR-4fdd0ea3-c204-438a-9eea-4f503bca869d', {
+                        locale: 'pt-BR'
+                    });
+                    setMp(mercadopago);
+                    console.log('✅ Mercado Pago SDK inicializado');
+                }
+            } catch (err) {
+                console.error('❌ Erro ao inicializar Mercado Pago:', err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro',
+                    description: 'Não foi possível inicializar o sistema de pagamento.'
+                });
+            }
+        };
+
         if (window.MercadoPago) {
-            const mercadopago = new window.MercadoPago('APP_USR-4fdd0ea3-c204-438a-9eea-4f503bca869d', {
-                locale: 'pt-BR'
-            });
-            setMp(mercadopago);
-            console.log('✅ Mercado Pago SDK inicializado');
+            initMP();
         } else {
-            console.error('❌ Mercado Pago SDK não carregado');
-            toast({
-                variant: 'destructive',
-                title: 'Erro',
-                description: 'Não foi possível carregar o sistema de pagamento.'
-            });
+            const script = document.createElement('script');
+            script.src = 'https://sdk.mercadopago.com/js/v2';
+            script.async = true;
+            script.onload = () => {
+                initMP();
+            };
+            script.onerror = () => {
+                console.error('❌ Mercado Pago SDK não carregado');
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro',
+                    description: 'Não foi possível carregar o sistema de pagamento.'
+                });
+            };
+            document.body.appendChild(script);
         }
-    }, []);
+    }, [toast]);
 
     useEffect(() => {
         if (type === 'evento' && inscricaoId) {

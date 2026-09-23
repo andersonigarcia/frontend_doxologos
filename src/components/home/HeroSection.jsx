@@ -103,6 +103,7 @@ const HeroSection = ({
               stopVideoPlayback={stopVideoPlayback}
               handleIframeError={handleIframeError}
               openVideoInNewTab={openVideoInNewTab}
+              priority={true}
             />
           </motion.div>
         </div>
