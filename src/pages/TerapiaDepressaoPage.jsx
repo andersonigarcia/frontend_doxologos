@@ -74,7 +74,7 @@ const TerapiaDepressaoPage = () => {
               Quando a vida perde as cores, a terapia é uma ferramenta de Deus para ajudar a restaurar a sua mente, corpo e propósito.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/agendamento" className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 rounded-full font-bold text-lg transition-colors flex items-center justify-center">
+              <Link to="/agendamento" onClick={handleCtaClick} className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 rounded-full font-bold text-lg transition-colors flex items-center justify-center">
                 <Calendar className="w-5 h-5 mr-2" />
                 Agendar Consulta
               </Link>

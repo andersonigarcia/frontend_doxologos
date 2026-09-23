@@ -65,7 +65,7 @@ const SiteFooter = () => {
             <h3 className="font-bold text-lg mb-4">Contato</h3>
             <div className="space-y-2 text-gray-400 text-sm">
               <p>contato@doxologos.com.br</p>
-              <p>(31) 97198-2947</p>
+              <p>(11) 91728-7583</p>
             </div>
           </div>
         </div>

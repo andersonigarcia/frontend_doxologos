@@ -237,7 +237,7 @@ export class EmailTemplates {
   // EMAIL 2.1: Resumo Diário para o PROFISSIONAL (24h)
   professionalDailySummary(professionalName, bookings) {
     const sortedBookings = [...bookings].sort((a, b) => a.booking_time.localeCompare(b.booking_time));
-    
+
     let bookingsHtml = sortedBookings.map(booking => `
       <div style="background: white; border-left: 4px solid ${this.brandColor}; padding: 15px; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
         <p style="margin: 0 0 5px 0;"><strong>⏰ ${this.sanitizeForHtml(booking.booking_time)}</strong> - ${this.sanitizeForHtml(booking.services?.name || 'Consulta')}</p>
@@ -589,7 +589,7 @@ export class EmailTemplates {
       <div style="background: #fee2e2; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #ef4444; text-align: center;">
         <p style="margin: 0 0 10px 0; color: #991b1b; font-weight: 600; font-size: 16px;">⚠️ Problemas Técnicos?</p>
         <p style="margin: 0; color: #7f1d1d; font-size: 14px;">
-          <strong>WhatsApp:</strong> <a href="https://wa.me/5531971982947" style="color: #991b1b; text-decoration: underline;">+55 31 97198-2947</a><br>
+          <strong>WhatsApp:</strong> <a href="https://wa.me/551191728-7583" style="color: #991b1b; text-decoration: underline;">+55 11 91728-7583</a><br>
           <strong>Email:</strong> <a href="mailto:${this.supportEmail}" style="color: #991b1b; text-decoration: underline;">${this.supportEmail}</a>
         </p>
       </div>
@@ -1170,7 +1170,7 @@ export class EmailTemplates {
         ${meeting_link ? `<p><strong>🔗 Sala de Atendimento:</strong> <a href="${meeting_link}" target="_blank" style="color: ${this.brandColor};">${meeting_link}</a></p>` : ''}
       </div>
 
-      <p style="font-size: 14px; color: #6b7280;">Por favor, acesse seu painel profissional para mais detalhes. Caso haja algum imprevisto, entre em contato imediatamente com o suporte Doxologos no WhatsApp (31) 97198-2947.</p>
+      <p style="font-size: 14px; color: #6b7280;">Por favor, acesse seu painel profissional para mais detalhes. Caso haja algum imprevisto, entre em contato imediatamente com o suporte Doxologos no WhatsApp (11) 91728-7583.</p>
     `;
     return this.baseTemplate(content, `🚨 URGENTE: Novo Agendamento para HOJE às ${appointment_time}`);
   }
@@ -1195,7 +1195,7 @@ export class EmailTemplates {
 
       <div class="info-box">
         <p>Precisa de ajuda com o pagamento ou dúvidas sobre a consulta?</p>
-        <p>Fale diretamente com nossa equipe no WhatsApp: <strong>(31) 97198-2947</strong></p>
+        <p>Fale diretamente com nossa equipe no WhatsApp: <strong>(11) 91728-7583</strong></p>
       </div>
     `;
     return this.baseTemplate(content, `⏰ Seu tempo de pagamento expirou - Doxologos`);
