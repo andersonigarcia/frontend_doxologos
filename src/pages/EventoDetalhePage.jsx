@@ -421,7 +421,7 @@ const EventoDetalhePage = () => {
 
             if (parseFloat(event.valor) === 0 || event.valor === null) {
                 // ========================================
-                // EVENTO GRATUITO: Enviar link Zoom imediatamente
+                // EVENTO GRATUITO: Enviar link de acesso imediatamente
                 // ========================================
                 try {
                     const emailHtml = emailTemplates.eventoGratuitoConfirmado(inscricao, event);
@@ -451,7 +451,7 @@ const EventoDetalhePage = () => {
                 setStep(3);
                 toast({
                     title: "✅ Inscrição confirmada!",
-                    description: "Enviamos um email com o link da sala Zoom e instruções de acesso."
+                    description: "Enviamos um email com o link da sala Google Meet e instruções de acesso."
                 });
 
             } else {
@@ -514,7 +514,7 @@ const EventoDetalhePage = () => {
                                         <li>Acesse a <strong>Área do Paciente</strong> no site</li>
                                         <li>Escolha o evento e realize o pagamento </li>
                                         <li>Aguarde a confirmação automática (até 5 minutos)</li>
-                                        <li>O <strong>link da sala Zoom</strong> será disponibilizado na Área do Paciente</li>
+                                        <li>O <strong>link da sala Google Meet</strong> será disponibilizado na Área do Paciente</li>
                                     </ol>
                                 </div>
                                 <p className="text-sm text-gray-500 mt-4">
@@ -527,7 +527,7 @@ const EventoDetalhePage = () => {
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left">
                                     <p className="text-sm font-semibold text-green-800 mb-2">📧 Email enviado com:</p>
                                     <ul className="text-sm space-y-1 list-disc list-inside text-green-900">
-                                        <li><strong>Link da sala Zoom</strong></li>
+                                        <li><strong>Link da sala Google Meet</strong></li>
                                         <li>Senha de acesso</li>
                                         <li>Instruções para primeiro acesso</li>
                                         <li>Checklist de preparação</li>

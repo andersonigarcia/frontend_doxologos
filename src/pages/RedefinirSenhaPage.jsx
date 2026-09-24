@@ -67,7 +67,7 @@ export default function RedefinirSenhaPage() {
               description: 'O link de recuperação expirou ou já foi utilizado. Solicite um novo link.',
             });
           } else {
-            console.log('✅ Sessão de recuperação criada para:', data?.user?.email);
+            console.log('✅ Sessão de recuperação criada para:', data?.user?.email ? `${data.user.email.substring(0, 2)}***@***` : 'N/A');
           }
         } catch (err) {
           console.error('❌ Erro inesperado ao verificar token:', err);
@@ -95,7 +95,7 @@ export default function RedefinirSenhaPage() {
               description: 'O link de recuperação expirou. Solicite um novo link.',
             });
           } else {
-            console.log('✅ Sessão de recuperação criada via PKCE para:', data?.user?.email);
+            console.log('✅ Sessão de recuperação criada via PKCE para:', data?.user?.email ? `${data.user.email.substring(0, 2)}***@***` : 'N/A');
           }
         } catch (err) {
           console.error('❌ Erro inesperado ao processar código:', err);
@@ -114,7 +114,7 @@ export default function RedefinirSenhaPage() {
 
       // ─── Prioridade 4: usuário já autenticado (ex: recarregou a página) ───
       if (user) {
-        console.log('✅ Usuário já autenticado:', user.email);
+        console.log('✅ Usuário já autenticado (session activa)');
         setValidatingToken(false);
         return;
       }

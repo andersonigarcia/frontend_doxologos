@@ -28,7 +28,6 @@ import { useBookingTracking, useFormTracking } from '@/hooks/useAnalytics';
 import { BookingEmailManager } from '@/lib/bookingEmailManager';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { zoomService } from '@/lib/zoomService';
 import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 import { useBookingData } from '@/hooks/booking/useBookingData';
@@ -1045,64 +1044,8 @@ const AgendamentoPage = () => {
         ...bookingData,
         user_id: bookingData.user_id ? '***' : null
       });
-      console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
-
-      // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
-      let zoomMeetingData = null;
-      if (meetingPlatform === 'zoom') {
-        try {
-          console.log('🎥 Criando sala do Zoom...', {
-            booking_date: selectedDate,
-            booking_time: selectedTime,
-            patient_name: safePatientName,
-            service_name: serviceDetails?.name,
-            professional_name: professionalDetails?.name
-          });
-
-          zoomMeetingData = await zoomService.createBookingMeeting({
-            booking_date: selectedDate,
-            booking_time: selectedTime,
-            patient_name: safePatientName,
-            service_name: serviceDetails?.name || 'Consulta',
-            professional_name: professionalDetails?.name || 'Profissional',
-            professional_email: professionalDetails?.email,
-            duration: 60
-          });
-
-          if (zoomMeetingData) {
-            secureLog.success('Sala do Zoom criada com sucesso!');
-            secureLog.info('Link:', zoomMeetingData.meeting_link);
-            // Adicionar dados do Zoom ao booking
-            bookingData.meeting_link = zoomMeetingData.meeting_link;
-            bookingData.meeting_password = zoomMeetingData.meeting_password || null;
-            bookingData.meeting_id = zoomMeetingData.meeting_id;
-            bookingData.meeting_start_url = zoomMeetingData.start_url;
-          } else {
-            console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
-            toast({
-              title: 'Vamos finalizar o link da sala',
-              description: 'Não conseguimos gerar a sala do Zoom agora. Nossa equipe enviará o link completo por email assim que estiver pronto.',
-              variant: 'default'
-            });
-          }
-        } catch (zoomError) {
-          console.error('❌ Erro ao criar sala do Zoom:', zoomError);
-          console.error('❌ Detalhes do erro:', {
-            name: zoomError.name,
-            message: zoomError.message,
-            stack: zoomError.stack
-          });
-
-          // Mostrar aviso ao usuário mas não bloquear o fluxo
-          toast({
-            title: 'Link do encontro em validação',
-            description: 'Ainda não geramos a sala do Zoom. Você receberá o link confirmado por email em breve.',
-            variant: 'default'
-          });
-        }
-      } else {
-        console.log('ℹ️ Paciente preferiu Google Meet. Pular criação automática do Zoom.');
-      }
+      // 4.5. O link do Google Meet é informado manualmente pelo profissional no painel
+      //      e salvo em bookingData.meeting_link antes da inserção.
 
       // 5. Criar o agendamento
       console.log('💾 Dados do agendamento antes de inserir no banco:', {
@@ -1232,12 +1175,12 @@ const AgendamentoPage = () => {
           appointment_date: selectedDate,
           appointment_time: selectedTime,
           status: 'pending',
-          meeting_link: zoomMeetingData?.meeting_link,
-          meeting_password: zoomMeetingData?.meeting_password,
-          meeting_platform: bookingInsertData?.meeting_platform || (supportsMeetingPlatform ? bookingData.meeting_platform : undefined)
+          meeting_link: bookingInsertData?.meeting_link,
+          meeting_password: bookingInsertData?.meeting_password,
+          meeting_platform: 'google_meet'
         };
 
-        console.log('📧 Enviando email para o paciente:', normalizedPatientEmail);
+        console.log('📧 Enviando email para o paciente (endereço redactado por LGPD)');
         await emailManager.sendBookingConfirmation(bookingDetails);
 
         console.log('📧 Enviando email de confirmação para o profissional...');

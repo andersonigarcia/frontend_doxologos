@@ -63,6 +63,6 @@ test.describe('Checkout & Consentimento TCLE/CFP', () => {
 
     const termsLink = page.getByRole('link', { name: /Ver termos completos/i });
     await expect(termsLink).toBeVisible();
-    await expect(termsLink).toHaveAttribute('href', '/termos');
+    await expect(termsLink).toHaveAttribute('href', '/termos-e-condicoes');
   });
 });

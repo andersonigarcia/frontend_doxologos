@@ -864,9 +864,9 @@ export class EmailTemplates {
       <div style="background: #dcfce7; padding: 20px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #16a34a;">
         <h3 style="margin: 0 0 12px 0; color: #15803d; font-size: 16px;">✅ Após o Pagamento</h3>
         <ul style="margin: 0; padding-left: 20px; color: #166534; line-height: 1.8; font-size: 14px;">
-          <li>Você receberá um <strong>email de confirmação</strong> com o link da sala Zoom</li>
+          <li>Você receberá um <strong>email de confirmação</strong> com o link do Google Meet</li>
           <li>Sua inscrição será confirmada automaticamente</li>
-          <li>Guarde o email com o link Zoom para acessar o evento no dia</li>
+          <li>Guarde o email com o link para acessar o evento no dia</li>
         </ul>
       </div>
       

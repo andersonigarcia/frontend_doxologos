@@ -5403,7 +5403,7 @@ const AdminPage = () => {
                                                 <section className="rounded-2xl border border-gray-100 p-5 space-y-4">
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div>
-                                                            <h3 className="text-base font-semibold text-gray-800">Sala Zoom e links</h3>
+                                                            <h3 className="text-base font-semibold text-gray-800">Link da Videochamada (Google Meet)</h3>
                                                             <p className="text-xs text-gray-500">Usamos criação automática, mas você pode informar manualmente.</p>
                                                         </div>
                                                         <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
@@ -5431,7 +5431,7 @@ const AdminPage = () => {
                                                         <div className="rounded-lg border border-dashed border-[#2d8659]/50 bg-[#2d8659]/5 p-4 text-xs text-gray-600">
                                                             <p className="font-medium text-gray-800">Criação automática habilitada</p>
                                                             <p>
-                                                                Ao salvar um novo evento, tentaremos criar a sala Zoom com os dados acima.
+                                                                Informe o link do Google Meet manualmente para o evento.
                                                                 Caso prefira informar o link manualmente, ative a opção “Preencher manualmente”.
                                                             </p>
                                                         </div>

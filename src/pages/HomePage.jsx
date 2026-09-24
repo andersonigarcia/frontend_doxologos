@@ -71,7 +71,7 @@ const faqs = [
   },
   { 
     question: 'Como funciona o atendimento online?', 
-    answer: 'Nosso atendimento é 100% online através de plataformas seguras como Zoom ou Google Meet. Após a confirmação do agendamento, o link da sala virtual ficará disponível na sua Área do Paciente. Cada sessão dura em média 50 minutos.',
+    answer: 'Nosso atendimento é 100% online através do Google Meet, plataforma segura e acessível via navegador. Após a confirmação do agendamento, o link da sala virtual ficará disponível na sua Área do Paciente. Cada sessão dura em média 50 minutos.',
   },
   { 
     question: 'A Doxologos atende apenas pessoas cristãs?', 

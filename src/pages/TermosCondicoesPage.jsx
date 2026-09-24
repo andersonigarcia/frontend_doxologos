@@ -48,7 +48,7 @@ const TermosCondicoesPage = () => {
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">4. Atendimentos Online</h2>
               <p className="mb-6">
-                As plataformas de comunicação utilizadas são ZOOM e Google Meet. Elas oferecem segurança, estabilidade e são acessíveis via navegador em celular ou computador. Certifique-se de que sua conexão de internet, câmera e microfone estejam configurados antes do início do atendimento. Em alguns casos, pode ser necessário instalar o aplicativo desses serviços.
+                A plataforma de comunicação utilizada é o Google Meet. Ela oferece segurança, estabilidade e é acessível via navegador em celular ou computador, sem necessidade de instalação. Certifique-se de que sua conexão de internet, câmera e microfone estejam configurados antes do início do atendimento.
               </p>
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">5. Requisitos Técnicos</h2>

@@ -444,7 +444,7 @@ export default function MinhasInscricoesPage() {
                           <MapPin className="w-5 h-5 text-[#2d8659]" />
                           <div>
                             <p className="text-sm text-gray-500">Local</p>
-                            <p className="font-medium">Online (Zoom)</p>
+                            <p className="font-medium">Online (Google Meet)</p>
                           </div>
                         </div>
 
@@ -630,7 +630,7 @@ export default function MinhasInscricoesPage() {
                                 ⏳ Pagamento Pendente
                               </p>
                               <p className="text-sm text-amber-800 mb-3">
-                                Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Zoom após a confirmação do pagamento.
+                                Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Google Meet após a confirmação do pagamento.
                               </p>
 
                               <Button
@@ -659,7 +659,7 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
-                      {/* Mensagem se Zoom não disponível mas confirmado */}
+                      {/* Mensagem se link de videochamada não disponível mas confirmado */}
                     </div>
                   </motion.div>
                 );

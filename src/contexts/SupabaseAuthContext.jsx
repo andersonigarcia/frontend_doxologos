@@ -28,7 +28,7 @@ export function AuthProvider({ children }) {
       // Após todos os usuários serem migrados via admin-create-user, remover o fallback.
       const role = currentUser.app_metadata?.role ?? currentUser.user_metadata?.role ?? 'user';
       setUserRole(role);
-      console.log('👤 Usuário logado:', currentUser.email, '| role fonte:', currentUser.app_metadata?.role ? 'app_metadata' : 'user_metadata (legado)');
+      console.log('👤 Usuário autenticado | role fonte:', currentUser.app_metadata?.role ? 'app_metadata' : 'user_metadata (legado)');
     } else {
       setUserRole(null);
       console.log('👤 Usuário deslogado');
