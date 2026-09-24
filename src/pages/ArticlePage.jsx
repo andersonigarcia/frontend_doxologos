@@ -86,19 +86,34 @@ const ArticlePage = () => {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <Helmet>
-        <title>{artigo.title} - Doxologos</title>
+        {/* Title ≤60 chars — uses article title, naturally SEO-friendly */}
+        <title>{artigo.title} | Doxologos</title>
         <meta name="description" content={artigo.description} />
+        <link rel="canonical" href={`https://doxologos.com.br/artigos/${artigo.slug}`} />
+        {/* Open Graph */}
+        <meta property="og:type" content="article" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content="Doxologos" />
         <meta property="og:title" content={artigo.title} />
         <meta property="og:description" content={artigo.description} />
-        <meta property="og:type" content="article" />
+        <meta property="og:url" content={`https://doxologos.com.br/artigos/${artigo.slug}`} />
         {artigo.cover_image_url && <meta property="og:image" content={artigo.cover_image_url} />}
+        {artigo.cover_image_url && <meta property="og:image:alt" content={artigo.title} />}
+        {!artigo.cover_image_url && <meta property="og:image" content="https://doxologos.com.br/og-image.jpg" />}
+        {/* Twitter / X Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={artigo.title} />
+        <meta name="twitter:description" content={artigo.description} />
+        <meta name="twitter:image" content={artigo.cover_image_url || 'https://doxologos.com.br/og-image.jpg'} />
+        {/* Schema: Article (BlogPosting) */}
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
-            '@type': 'Article',
+            '@type': 'BlogPosting',
             headline: artigo.title,
             description: artigo.description,
             image: artigo.cover_image_url || 'https://doxologos.com.br/og-image.jpg',
+            url: `https://doxologos.com.br/artigos/${artigo.slug}`,
             author: {
               '@type': 'Person',
               name: artigo.author || 'Equipe Doxologos'
@@ -112,7 +127,11 @@ const ArticlePage = () => {
               }
             },
             datePublished: artigo.published_at || new Date().toISOString(),
-            dateModified: artigo.updated_at || artigo.published_at || new Date().toISOString()
+            dateModified: artigo.updated_at || artigo.published_at || new Date().toISOString(),
+            mainEntityOfPage: {
+              '@type': 'WebPage',
+              '@id': `https://doxologos.com.br/artigos/${artigo.slug}`
+            }
           })}
         </script>
       </Helmet>

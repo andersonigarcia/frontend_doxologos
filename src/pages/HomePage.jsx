@@ -295,16 +295,65 @@ const HomePage = () => {
   return (
     <>
       <Helmet>
-        <title>Psicologia de Espiritualidade Cristã Online | Terapia que Une Ciência e Fé | Doxologos</title>
+        {/* Title ≤60 chars — keyword: psicologia cristã online */}
+        <title>Psicologia Cristã Online | Terapia Integrativa | Doxologos</title>
+        {/* Meta description ≤155 chars com CTA natural */}
         <meta
           name="description"
-          content="Psicologia de espiritualidade cristã online. Equipe especializada em terapia que integra ciência e fé. Primeira consulta em até 24h. Atendimento 100% online para todo o Brasil."
+          content="Cuide da sua saúde mental com apoio cristão. Equipe de psicólogos online para todo o Brasil. Agende sua primeira consulta ainda hoje."
         />
         <link rel="canonical" href="https://doxologos.com.br" />
-        <meta property="og:title" content="Psicologia de Espiritualidade Cristã Online | Terapia que Une Ciência e Fé | Doxologos" />
-        <meta property="og:description" content="Psicologia de espiritualidade cristã online. Equipe especializada em terapia que integra ciência e fé. Primeira consulta em até 24h. Atendimento 100% online para todo o Brasil." />
-        <meta property="og:url" content="https://doxologos.com.br" />
+        {/* Open Graph */}
         <meta property="og:type" content="website" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content="Doxologos" />
+        <meta property="og:title" content="Psicologia Cristã Online | Terapia Integrativa | Doxologos" />
+        <meta property="og:description" content="Cuide da sua saúde mental com apoio cristão. Equipe de psicólogos online para todo o Brasil. Agende sua primeira consulta ainda hoje." />
+        <meta property="og:url" content="https://doxologos.com.br" />
+        <meta property="og:image" content="https://doxologos.com.br/og-image.jpg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Doxologos — Psicologia Cristã Online" />
+        {/* Twitter / X Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Psicologia Cristã Online | Doxologos" />
+        <meta name="twitter:description" content="Cuide da sua saúde mental com apoio cristão. Psicólogos online para todo o Brasil. Agende agora." />
+        <meta name="twitter:image" content="https://doxologos.com.br/og-image.jpg" />
+        {/* Schema: MedicalBusiness (runtime) */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'MedicalBusiness',
+            '@id': 'https://doxologos.com.br/#organization',
+            name: 'Doxologos — Instituto de Cuidado Integral',
+            url: 'https://doxologos.com.br',
+            logo: 'https://doxologos.com.br/brand/logo-doxologos-horizontal.svg',
+            image: 'https://doxologos.com.br/og-image.jpg',
+            description: 'Clínica de psicologia online com atendimento humanizado e abordagem cristã integrativa para todo o Brasil.',
+            email: 'contato@doxologos.com.br',
+            address: {
+              '@type': 'PostalAddress',
+              addressCountry: 'BR',
+              addressRegion: 'Brasil'
+            },
+            areaServed: { '@type': 'Country', name: 'Brasil' },
+            availableLanguage: { '@type': 'Language', name: 'Português' },
+            medicalSpecialty: ['Psychology', 'Psychotherapy', 'Mental Health'],
+            potentialAction: {
+              '@type': 'ReserveAction',
+              target: {
+                '@type': 'EntryPoint',
+                urlTemplate: 'https://doxologos.com.br/agendamento',
+                actionPlatform: [
+                  'http://schema.org/DesktopWebPlatform',
+                  'http://schema.org/MobileWebPlatform'
+                ]
+              },
+              result: { '@type': 'Reservation', name: 'Consulta Psicológica' }
+            }
+          })}
+        </script>
+        {/* Schema: FAQPage */}
         <script type="application/ld+json">
           {JSON.stringify({
             '@context': 'https://schema.org',
@@ -312,10 +361,7 @@ const HomePage = () => {
             mainEntity: faqs.map((faq) => ({
               '@type': 'Question',
               name: faq.question,
-              acceptedAnswer: {
-                '@type': 'Answer',
-                text: faq.answer
-              }
+              acceptedAnswer: { '@type': 'Answer', text: faq.answer }
             }))
           })}
         </script>

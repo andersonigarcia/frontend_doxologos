@@ -28,6 +28,11 @@
   - *Decisão:* Adoção mandatória do componente `DoxologosLogo` (`h-9 md:h-10 w-auto`) em 100% das páginas e alinhamento de copywriting garantindo envio por e-mail e acesso na Área do Paciente.
   - *Consequências:* Identidade visual homogênea e expectativas alinhadas sem ruído operacional.
 
+- **Data (2026-09-24):** **Otimização de SEO Clínico — Title, Meta, OG, Schema.org e Canonical (ADR 004).**
+  - *Contexto:* Títulos acima de 60 chars, descriptions sem CTA, ausência de OG/Twitter Card e Schema.org incompleto nas páginas prioritárias. Canonical de `/ferramentas` apontava para `novo.doxologos.com.br`.
+  - *Decisão:* Implementar `react-helmet-async` completo (padrão do projeto) em Home, `/agendamento`, `/artigos` e `/ferramentas` com: titles ≤60 chars, descriptions ≤155 chars com CTA natural, OG + Twitter Card, Schema.org (`MedicalBusiness`, `Service`, `WebApplication`, `BlogPosting`), canonical com domínio produção. **Restrição CFP ativa:** zero promessas de cura ou resultados garantidos.
+  - *Consequências:* Pages elegíveis para Google Rich Results. Canonical corrigido elimina risco de indexação duplicada. `index.html` sincronizado como fallback SSR.
+
 ---
 
 ## 3. Padrões de Arquitetura e Engenharia

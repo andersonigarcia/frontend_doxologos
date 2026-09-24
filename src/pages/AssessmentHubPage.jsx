@@ -13,12 +13,50 @@ const AssessmentHubPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/40 via-white to-gray-50/60 text-gray-800">
       <Helmet>
-        <title>Ferramentas de Autoavaliação Psicométrica | Doxologos Psicologia</title>
+        {/* Title ≤60 chars — keyword: autoavaliação psicológica gratuita */}
+        <title>Autoavaliação Psicológica Gratuita | Ferramentas Doxologos</title>
+        {/* Meta description ≤155 chars com CTA natural */}
         <meta
           name="description"
-          content="Faça autoavaliações clínicas gratuitas e confidenciais de ansiedade, estresse e bem-estar emocional baseadas em escalas científicas validadas."
+          content="Ferramentas clínicas gratuitas e anônimas de autoavaliação emocional baseadas em escalas científicas. Identifique sinais de ansiedade, estresse e bem-estar."
         />
-        <link rel="canonical" href="https://novo.doxologos.com.br/ferramentas" />
+        <link rel="canonical" href="https://doxologos.com.br/ferramentas" />
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content="Doxologos" />
+        <meta property="og:title" content="Autoavaliação Psicológica Gratuita | Ferramentas Doxologos" />
+        <meta property="og:description" content="Ferramentas clínicas gratuitas para autoavaliação emocional baseadas em escalas psicométricas validadas internacionalmente." />
+        <meta property="og:url" content="https://doxologos.com.br/ferramentas" />
+        <meta property="og:image" content="https://doxologos.com.br/og-image.jpg" />
+        <meta property="og:image:alt" content="Ferramentas de autoavaliação psicológica — Doxologos" />
+        {/* Twitter / X Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Autoavaliação Psicológica Gratuita | Doxologos" />
+        <meta name="twitter:description" content="Ferramentas clínicas gratuitas de autoavaliação emocional baseadas em escalas científicas validadas." />
+        <meta name="twitter:image" content="https://doxologos.com.br/og-image.jpg" />
+        {/* Schema: HealthcareOrganization oferecendo WebApplication */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: 'Ferramentas de Autoavaliação Psicológica — Doxologos',
+            url: 'https://doxologos.com.br/ferramentas',
+            description: 'Instrumentos clínicos gratuitos e confidenciais para autoavaliação emocional, baseados em escalas psicométricas validadas como GAD-7.',
+            applicationCategory: 'HealthApplication',
+            operatingSystem: 'Web',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'BRL'
+            },
+            provider: {
+              '@type': 'MedicalBusiness',
+              '@id': 'https://doxologos.com.br/#organization',
+              name: 'Doxologos'
+            }
+          })}
+        </script>
       </Helmet>
 
       {/* Header */}

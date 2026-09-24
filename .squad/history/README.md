@@ -11,6 +11,7 @@ Esta pasta armazena o histórico formal de decisões arquiteturais (ADRs), regis
 | [ADR 001](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-09-24_ADR_001_MIGRACAO_GOOGLE_MEET_EXCLUSIVO.md) | 2026-09-24 | Plataforma Única de Teleconsulta — Google Meet Exclusivo e Depreciação do Zoom | Concluído | Product Lead, Tech Lead, Dev |
 | [ADR 002](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-09-24_ADR_002_DIRETRIZES_CRO_MOBILE_CHECKOUT.md) | 2026-09-24 | Otimização de Conversão Mobile (CRO) no Checkout e Agendamento | Concluído | UX Design, Product Lead, Dev |
 | [ADR 003](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-09-24_ADR_003_PADRONIZACAO_VISUAL_MARCA_E_COMUNICACAO_WHATSAPP.md) | 2026-09-24 | Padronização Visual da Marca (DoxologosLogo) e Política de Comunicação WhatsApp | Concluído | UX Design, Tech Lead, Dev |
+| [ADR 004](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/ADR-004-seo-clinico.md) | 2026-09-24 | Otimização de SEO Clínico — Title, Meta, OG, Twitter Card, Schema.org e Canonical | Concluído | Data & Growth, Fullstack Dev |
 
 ---
 

@@ -1482,8 +1482,49 @@ const AgendamentoPage = () => {
   return (
     <>
       <Helmet>
-        <title>Agendamento - Doxologos Clínica Online</title>
-        <meta name="description" content="Agende sua consulta online com nossos profissionais qualificados." />
+        {/* Title ≤60 chars — keyword: agendamento psicólogo online */}
+        <title>Agende sua Consulta de Psicologia Online | Doxologos</title>
+        {/* Meta description ≤155 chars com CTA natural */}
+        <meta
+          name="description"
+          content="Escolha seu psicólogo, selecione o horário ideal e agende sua consulta online com segurança. Processo simples e acolhedor. Comece agora."
+        />
+        <link rel="canonical" href="https://doxologos.com.br/agendamento" />
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content="Doxologos" />
+        <meta property="og:title" content="Agende sua Consulta de Psicologia Online | Doxologos" />
+        <meta property="og:description" content="Escolha seu psicólogo, selecione o horário ideal e agende sua consulta online com segurança. Processo simples e acolhedor." />
+        <meta property="og:url" content="https://doxologos.com.br/agendamento" />
+        <meta property="og:image" content="https://doxologos.com.br/og-image.jpg" />
+        <meta property="og:image:alt" content="Agendamento de consulta psicológica online — Doxologos" />
+        {/* Twitter / X Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Agende sua Consulta Online | Doxologos" />
+        <meta name="twitter:description" content="Escolha seu psicólogo e horário ideal para sua consulta online. Processo acolhedor e seguro." />
+        <meta name="twitter:image" content="https://doxologos.com.br/og-image.jpg" />
+        {/* Schema: Service */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Service',
+            name: 'Consulta Psicológica Online',
+            description: 'Atendimento psicológico individual online com profissionais habilitados pelo CRP, com abordagem integrativa e acolhedora.',
+            provider: {
+              '@type': 'MedicalBusiness',
+              '@id': 'https://doxologos.com.br/#organization',
+              name: 'Doxologos'
+            },
+            areaServed: { '@type': 'Country', name: 'Brasil' },
+            availableChannel: {
+              '@type': 'ServiceChannel',
+              serviceUrl: 'https://doxologos.com.br/agendamento',
+              serviceType: 'Online'
+            },
+            url: 'https://doxologos.com.br/agendamento'
+          })}
+        </script>
       </Helmet>
       <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
         <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">

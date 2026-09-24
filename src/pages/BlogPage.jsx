@@ -49,8 +49,28 @@ const BlogPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Helmet>
-        <title>Blog e Artigos - Doxologos</title>
-        <meta name="description" content="Leia nossos artigos sobre psicologia, fé e bem-estar." />
+        {/* Title ≤60 chars — keyword: artigos psicologia cristã */}
+        <title>Artigos sobre Saúde Mental e Fé | Blog Doxologos</title>
+        {/* Meta description ≤155 chars com CTA natural */}
+        <meta
+          name="description"
+          content="Reflexões sobre saúde mental, fé e bem-estar integral. Leia artigos escritos por psicólogos e descubra caminhos de cuidado que unem ciência e espiritualidade."
+        />
+        <link rel="canonical" href="https://doxologos.com.br/artigos" />
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content="Doxologos" />
+        <meta property="og:title" content="Artigos sobre Saúde Mental e Fé | Blog Doxologos" />
+        <meta property="og:description" content="Reflexões sobre saúde mental, fé e bem-estar integral escritas por psicólogos especializados." />
+        <meta property="og:url" content="https://doxologos.com.br/artigos" />
+        <meta property="og:image" content="https://doxologos.com.br/og-image.jpg" />
+        <meta property="og:image:alt" content="Blog Doxologos — Psicologia e Espiritualidade" />
+        {/* Twitter / X Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Blog Doxologos | Saúde Mental e Fé" />
+        <meta name="twitter:description" content="Artigos sobre saúde mental, fé e bem-estar escritos por psicólogos especializados." />
+        <meta name="twitter:image" content="https://doxologos.com.br/og-image.jpg" />
       </Helmet>
 
       <HomeHeader
