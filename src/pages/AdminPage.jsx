@@ -1126,7 +1126,9 @@ const AdminPage = () => {
                         professional_id: bookingEditData.professional_id,
                         patient_name: bookingEditData.patient_name,
                         patient_email: bookingEditData.patient_email,
-                        patient_phone: bookingEditData.patient_phone
+                        patient_phone: bookingEditData.patient_phone,
+                        meeting_link: bookingEditData.meeting_link?.trim() || null,
+                        meeting_start_url: bookingEditData.meeting_link?.trim() || null
                     });
                 }
 
@@ -3075,7 +3077,8 @@ const AdminPage = () => {
                                                                                                                     valor_consulta: formatNumberToCurrencyInput(b.valor_consulta ?? ''),
                                                                                                                     valor_repasse_profissional: formatNumberToCurrencyInput(
                                                                                                                         b.valor_repasse_profissional ?? b.valor_consulta ?? ''
-                                                                                                                    )
+                                                                                                                    ),
+                                                                                                                    meeting_link: b.meeting_link || ''
                                                                                                                 });
                                                                                                             }}
                                                                                                         >
@@ -3134,6 +3137,19 @@ const AdminPage = () => {
                                                                                                                 </select>
                                                                                                             </div>
                                                                                                         </div>
+                                                                                                        {isAdminView && (
+                                                                                                            <div className="pt-2">
+                                                                                                                <label className="block text-sm font-medium mb-1">Link da Sala (Google Meet / Zoom)</label>
+                                                                                                                <input
+                                                                                                                    type="url"
+                                                                                                                    value={bookingEditData.meeting_link || ''}
+                                                                                                                    onChange={e => setBookingEditData({ ...bookingEditData, meeting_link: e.target.value })}
+                                                                                                                    className="w-full input text-sm"
+                                                                                                                    placeholder="https://meet.google.com/abc-defg-hij"
+                                                                                                                />
+                                                                                                                <p className="text-xs text-gray-400 mt-1">Deixe em branco para usar o link cadastrado no perfil do profissional.</p>
+                                                                                                            </div>
+                                                                                                        )}
                                                                                                         <DialogFooter>
                                                                                                             <DialogClose asChild>
                                                                                                                 <Button variant="outline">Cancelar</Button>

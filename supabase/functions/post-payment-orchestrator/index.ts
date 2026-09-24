@@ -266,8 +266,26 @@ Deno.serve(async (req: Request) => {
       ? booking.professional[0]
       : booking.professional;
 
-    // meeting_link: prioridade para o salvo no booking, fallback para o perfil do profissional
-    const meetLink = booking.meeting_link || professional?.personal_meet_link || null;
+    // meeting_link: prioridade para o personal_meet_link ATUAL do profissional (fonte de verdade),
+    // fallback para o que estava salvo no booking (pode ser um link antigo ou legado).
+    const currentProfLink = professional?.personal_meet_link || null;
+    const meetLink = currentProfLink || booking.meeting_link || null;
+
+    // Sincronizar meeting_link no banco se estiver ausente ou desatualizado.
+    // Isso corrige casos em que o booking foi criado com um link antigo do profissional
+    // ou quando o profissional atualizou seu personal_meet_link após o agendamento.
+    if (meetLink && meetLink !== booking.meeting_link) {
+      console.log(`[Orchestrator] Sincronizando meeting_link do booking ${booking_id}: "${booking.meeting_link}" → "${meetLink}"`);
+      const { error: syncErr } = await supabase
+        .from('bookings')
+        .update({ meeting_link: meetLink, meeting_start_url: meetLink })
+        .eq('id', booking_id);
+      if (syncErr) {
+        console.error('[Orchestrator] Falha ao sincronizar meeting_link:', syncErr);
+      } else {
+        console.log(`[Orchestrator] meeting_link sincronizado com sucesso para booking ${booking_id}`);
+      }
+    }
 
     if (!meetLink) {
       console.warn(`[Orchestrator] Profissional ${professional?.id} sem personal_meet_link cadastrado.`);
