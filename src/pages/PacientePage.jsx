@@ -875,8 +875,8 @@ const PacientePage = () => {
             <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-24">
                 <div className="container mx-auto px-3 md:px-4 max-w-4xl">
                     <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
-                    <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
-                    <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
+                    <h1 className="text-4xl font-bold mb-2">Seu Espaço de Cuidado</h1>
+                    <p className="text-gray-500 mb-8">Acompanhe suas consultas, acesse sua sala virtual e cuide do seu bem-estar.</p>
 
                     {/* Dashboard com Métricas */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -914,16 +914,15 @@ const PacientePage = () => {
                             <div>
                                 <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
                                     <Star className="w-5 h-5 text-yellow-300" fill="currentColor" />
-                                    Pacote Mensal de Consultas
+                                    Mantenha a constância do seu processo
                                 </h3>
                                 <p className="text-emerald-50">
-                                    Garanta 4 consultas com seu profissional pelo mesmo valor e tenha mais praticidade.
-                                    Ideal para manter a constância do seu tratamento.
+                                    A terapia traz resultados mais profundos quando contínua. Com o acompanhamento mensal de 4 sessões, você assegura seu horário regular com mais tranquilidade e praticidade.
                                 </p>
                             </div>
                             <Link to="/agendamento?pacote=4">
                                 <Button className="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold whitespace-nowrap">
-                                    Adquirir Pacote
+                                    Conhecer o Acompanhamento Mensal
                                 </Button>
                             </Link>
                         </div>
@@ -1047,9 +1046,16 @@ const PacientePage = () => {
                             )}
                         </div>
                         {loading ? <p>Carregando seus agendamentos...</p> : bookings.length === 0 ? (
-                            <div className="text-center py-10">
-                                <p className="text-gray-500 mb-4">Você ainda não tem agendamentos.</p>
-                                <Link to="/agendamento"><Button className="bg-[#2d8659] hover:bg-[#236b47]">Agendar sua primeira consulta</Button></Link>
+                            <div className="text-center py-12 px-4 max-w-md mx-auto">
+                                <p className="text-gray-700 font-semibold text-lg mb-2">Você ainda não possui sessões agendadas.</p>
+                                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                                    Dar o primeiro passo pode parecer desafiador, mas você não está sozinho(a). Quando se sentir pronto(a), estamos aqui para caminhar com você.
+                                </p>
+                                <Link to="/agendamento">
+                                    <Button className="bg-[#2d8659] hover:bg-[#236b47] rounded-full px-6 py-2.5 font-medium shadow-sm">
+                                        Encontrar um Profissional
+                                    </Button>
+                                </Link>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -1102,14 +1108,14 @@ const PacientePage = () => {
                                             {(booking.status === 'confirmed' || booking.status === 'paid') && (
                                                 <div className="mb-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
                                                     <div>
-                                                        <h4 className="font-semibold text-emerald-900 text-sm">🎥 Sala de Espera</h4>
-                                                        <p className="text-xs text-emerald-700 mt-1">Acesse a sala com antecedência e aguarde o profissional.</p>
+                                                        <h4 className="font-semibold text-emerald-900 text-sm">🌱 Sua Consulta está Confirmada</h4>
+                                                        <p className="text-xs text-emerald-700 mt-1">O link da sua sessão no Google Meet já está pronto. Sugerimos entrar 5 minutinhos antes para respirar e se acomodar.</p>
                                                     </div>
                                                     <Link
                                                         to={`/sala-espera/${booking.id}`}
                                                         className="inline-flex items-center justify-center w-full md:w-auto px-5 py-2.5 bg-[#2d8659] text-white rounded-full hover:bg-[#236b47] transition-colors font-medium text-sm shadow-sm"
                                                     >
-                                                        Entrar na Sala de Espera
+                                                        Acessar Sala do Google Meet
                                                     </Link>
                                                 </div>
                                             )}
@@ -1120,10 +1126,10 @@ const PacientePage = () => {
                                                         <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
                                                         <div className="flex-1">
                                                             <h4 className="font-semibold text-amber-900 mb-1">
-                                                                Pagamento Pendente
+                                                                Quase lá! Seu horário está pré-reservado
                                                             </h4>
                                                             <p className="text-sm text-amber-800 mb-3">
-                                                                {latestPaymentMessage || 'Complete o pagamento para confirmar seu agendamento.'}
+                                                                {latestPaymentMessage || 'Basta finalizar o pagamento para garantirmos a sua vaga exclusiva com o profissional.'}
                                                             </p>
 
                                                             {/* Exibir QR Code PIX se disponível */}

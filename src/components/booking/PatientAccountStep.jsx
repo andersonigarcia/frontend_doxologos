@@ -59,8 +59,8 @@ const PatientAccountStep = ({
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Falta pouco! Como podemos chamar você?</h2>
-        <p className="text-gray-600 text-lg">Estamos quase lá. Preencha seus dados básicos para finalizarmos o agendamento.</p>
+        <h2 className="text-3xl font-bold mb-3">Quem estará conosco nessa jornada?</h2>
+        <p className="text-gray-600 text-lg">Seus dados são sigilosos e protegidos pelo sigilo ético profissional e pela LGPD.</p>
       </div>
 
       {!authUser && (
@@ -105,7 +105,7 @@ const PatientAccountStep = ({
                 className="flex items-center gap-2 text-sm text-green-600 mt-2 bg-green-50 px-3 py-2 rounded-2xl border border-green-200"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span className="font-medium">✓ Email encontrado - Bem-vindo de volta!</span>
+                <span className="font-medium">✓ Que bom ter você de volta! Reconhecemos seu e-mail.</span>
               </motion.div>
             )}
 
@@ -116,7 +116,7 @@ const PatientAccountStep = ({
                 className="flex items-center gap-2 text-sm text-blue-600 mt-2 bg-blue-50 px-3 py-2 rounded-2xl border border-blue-200"
               >
                 <Sparkles className="w-4 h-4" />
-                <span className="font-medium">✓ Novo por aqui? Vamos criar sua conta!</span>
+                <span className="font-medium">✓ Seja muito bem-vindo(a)! Criaremos seu espaço seguro.</span>
               </motion.div>
             )}
 
@@ -247,8 +247,8 @@ const PatientAccountStep = ({
                 {/* Descrição */}
                 <p className="text-sm text-gray-600 mb-6 leading-relaxed">
                   {isExistingPatient
-                    ? 'Informe sua senha atual para vincular este agendamento à sua conta.'
-                    : `Defina uma senha com pelo menos ${minPasswordLength} caracteres para acessar a Área do Paciente.`}
+                    ? 'Digite sua senha para manter suas consultas organizadas no mesmo lugar.'
+                    : `Defina uma senha segura com pelo menos ${minPasswordLength} caracteres para acompanhar suas consultas e acessar sua sala virtual.`}
                 </p>
 
                 {/* Campos de Senha */}
@@ -256,7 +256,7 @@ const PatientAccountStep = ({
                   {/* Campo de Senha */}
                   <div className="relative">
                     <label className="block text-sm font-medium mb-2 text-gray-700">
-                      {isExistingPatient ? 'Senha do paciente*' : 'Crie uma senha*'}
+                      {isExistingPatient ? 'Sua senha de acesso*' : 'Crie uma senha de acesso*'}
                     </label>
                     <input
                       type={showPassword ? 'text' : 'password'}
@@ -384,10 +384,10 @@ const PatientAccountStep = ({
       <div className="mt-8">
         <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <Video className="w-5 h-5 text-[#2d8659]" />
-          Como prefere acessar a consulta?
+          Sua sala de atendimento online
         </h3>
         <p className="text-sm text-gray-600 mt-1">
-          A Doxologos utiliza o Google Meet para as consultas online.
+          As sessões acontecem via Google Meet: seguro, confidencial e direto no navegador, sem precisar instalar nada.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 mt-4">
           {meetingOptions.map((option) => {

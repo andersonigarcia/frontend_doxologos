@@ -414,8 +414,8 @@ const CheckoutPage = () => {
         if (!acceptedTcle) {
             toast({
                 variant: 'destructive',
-                title: 'Consentimento Necessário',
-                description: 'Você precisa aceitar os termos de consentimento (TCLE/CFP) para prosseguir com o pagamento.'
+                title: 'Precisamos do seu consentimento',
+                description: 'Por favor, confirme que está de acordo com as normas éticas de atendimento online para continuarmos.'
             });
             return;
         }
@@ -1096,7 +1096,7 @@ const CheckoutPage = () => {
                                     />
                                     <span className="text-xs text-amber-900 leading-relaxed">
                                         Li e concordo com o <strong>Termo de Consentimento Livre e Esclarecido (TCLE) de Atendimento Psicológico Online</strong> (Resolução CFP nº 11/2018) e com a <strong>Política de Cancelamento e Reagendamento</strong> (com até 24h de antecedência). Entendo que meus dados clínicos e de atendimento estão protegidos por sigilo profissional e pela LGPD.{' '}
-                                        <Link to="/termos" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
+                                        <Link to="/termos-e-condicoes" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
                                             Ver termos completos
                                         </Link>
                                     </span>

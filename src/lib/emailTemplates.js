@@ -122,9 +122,9 @@ export class EmailTemplates {
   // EMAIL 1: Confirmação de Agendamento (para o PACIENTE)
   bookingConfirmation(booking) {
     const content = `
-      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${this.sanitizeForHtml(booking.patient_name)}!</h2>
+      <h2 style="color: #1f2937; font-size: 22px; margin: 0 0 10px 0;">Olá, ${this.sanitizeForHtml(booking.patient_name)}! 🌿</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Seu agendamento foi realizado com sucesso! Seguem os detalhes:
+        Recebemos seu pedido com muito carinho. O horário escolhido já está reservado para você enquanto concluímos a confirmação:
       </p>
       
       <div class="info-box">
@@ -135,43 +135,40 @@ export class EmailTemplates {
       </div>
 
       <div style="background: #fef3c7; padding: 20px; margin: 25px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
-        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">⏳ Próximo Passo: Confirme seu Pagamento</h3>
+        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">🌿 Próximo Passo: Garantir sua vaga exclusiva</h3>
         <p style="margin: 0 0 15px 0; color: #78350f; font-size: 15px;">
-          Para finalizar sua reserva, é necessário confirmar o pagamento. 
-          Você pode fazer isso acessando sua área do cliente.
+          Para que o profissional reserve este momento exclusivo na agenda, basta confirmar seu pagamento de forma rápida e segura:
         </p>
         <p style="text-align: center; margin: 0;">
           <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #f59e0b; padding: 14px 32px; font-size: 15px; font-weight: 600;">
-            💳 Finalizar Pagamento na Minha Área
+            Confirmar Meu Horário com Segurança
           </a>
         </p>
       </div>
 
       <div class="tips-box">
-        <h3>📋 O que você irá encontrar na sua área:</h3>
+        <h3>📋 O que você encontra no Seu Espaço de Cuidado:</h3>
         <ul>
-          <li><strong>Status do Pagamento:</strong> Acompanhe a confirmação em tempo real</li>
-          <li><strong>Link da Consulta:</strong> Após pagamento, o link da sala Google Meet aparecerá aqui</li>
-          <li><strong>Histórico:</strong> Visualize todos seus agendamentos passados e futuros</li>
-          <li><strong>Reagendamento:</strong> Altere a data/hora se necessário</li>
+          <li><strong>Confirmação em Tempo Real:</strong> Acompanhe a aprovação do seu horário</li>
+          <li><strong>Link da Consulta:</strong> Acesso direto e seguro à sua sala no Google Meet</li>
+          <li><strong>Histórico e Tranquilidade:</strong> Consulte seus horários ou remarque quando precisar</li>
         </ul>
       </div>
 
       <div style="background: #dbeafe; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #3b82f6; text-align: center;">
-        <p style="margin: 0 0 15px 0; color: #1e40af; font-size: 15px;">
-          <strong>🔐 Segurança e Praticidade</strong>
+        <p style="margin: 0 0 10px 0; color: #1e40af; font-size: 15px;">
+          <strong>🔐 Segurança, Privacidade e Praticidade</strong>
         </p>
         <p style="margin: 0; color: #1e3a8a; font-size: 14px;">
-          O link do Google Meet será exibido com segurança na sua área, 
-          apenas após a confirmação do pagamento. Funciona direto no navegador, sem instalações!
+          Sua sala virtual no Google Meet é protegida por sigilo ético e funciona direto no navegador do celular ou computador, sem necessidade de baixar aplicativos.
         </p>
       </div>
 
       <p style="text-align: center; margin-top: 30px;">
-        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="margin-bottom: 15px;">Acessar Minha Área</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="margin-bottom: 15px;">Acessar Meu Espaço de Cuidado</a>
         <br>
         <a href="${this.getGoogleCalendarLink(
-      "Consulta Psicológica - Doxologos",
+      "Consulta - Doxologos",
       `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}`,
       booking.appointment_date,
       booking.appointment_time
@@ -181,11 +178,11 @@ export class EmailTemplates {
       </p>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
-        Qualquer dúvida ou imprevisto, conte com a equipe de suporte.<br>
-        <strong>Abraços,<br>Equipe Doxologos</strong>
+        Qualquer dúvida, conte sempre com nossa equipe de apoio.<br>
+        <strong>Com carinho,<br>Equipe Doxologos</strong>
       </p>
     `;
-    return this.baseTemplate(content, "Agendamento Confirmado - Doxologos");
+    return this.baseTemplate(content, "Seu horário foi pré-reservado! Falta apenas um passo para confirmar sua consulta 🌿");
   }
 
   // EMAIL 2: Novo Agendamento (para o PROFISSIONAL)
@@ -278,12 +275,12 @@ export class EmailTemplates {
   // EMAIL 3: Pagamento Aprovado
   paymentApproved(booking) {
     const content = `
-      <h2 style="color: #059669; font-size: 22px; margin: 0 0 10px 0;">✅ Pagamento Confirmado - Consulta Garantida!</h2>
+      <h2 style="color: #059669; font-size: 22px; margin: 0 0 10px 0;">✅ Consulta Confirmada!</h2>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
         Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 25px 0;">
-        Ótimas notícias! Seu pagamento foi processado com sucesso e sua consulta está <strong>confirmada</strong>. 🎉
+        Tudo certo! Seu pagamento foi processado e sua sessão com <strong>${this.sanitizeForHtml(booking.professional_name)}</strong> está confirmada. Este será um momento dedicado exclusivamente ao seu cuidado e bem-estar. 🤝
       </p>
       
       <div class="info-box">
@@ -294,16 +291,15 @@ export class EmailTemplates {
       </div>
 
       <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
-        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🎥 Link da Reunião Pronto!</h3>
+        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🎥 Sua Sala Virtual no Google Meet está Pronta!</h3>
         <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
-          O link da sala Google Meet está aguardando você na sua área do cliente. 
-          Clique no botão abaixo para acessar agora:
+          Você pode acessar a sala direto pelo botão abaixo ou na sua Área do Paciente no dia do encontro:
         </p>
-        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px; padding: 14px 30px; text-decoration: none;">🔐 Acessar Minha Área - Link da Reunião</a>
+        <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px; padding: 14px 30px; text-decoration: none;">Acessar Meu Espaço de Cuidado</a>
         
         <div style="margin-top: 20px;">
           <a href="${this.getGoogleCalendarLink(
-      "Consulta Psicológica Doxologos (Meet)",
+      "Consulta Doxologos (Meet)",
       `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}\n${booking.meeting_link ? `Link da Reunião: ${booking.meeting_link}` : 'Link da reunião disponível na Área do Paciente.'}`,
       booking.appointment_date,
       booking.appointment_time
@@ -313,50 +309,47 @@ export class EmailTemplates {
         </div>
 
         <p style="margin: 20px 0 0 0; font-size: 13px; color: #1e3a8a;">
-          💡 Salve este email! Você precisará consultar o link da reunião no dia da consulta.
+          💡 Guarde este e-mail para consultar o link da reunião facilmente no dia da sua sessão.
         </p>
       </div>
 
       <div style="background: #fef3c7; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #f59e0b;">
-        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">📱 Como Acessar o Google Meet</h3>
+        <h3 style="margin: 0 0 12px 0; color: #92400e; font-size: 16px;">📱 Como Acessar sua Sessão</h3>
         <ol style="margin: 0; padding-left: 20px; color: #78350f; line-height: 1.8;">
-          <li>Acesse sua <strong>área do paciente</strong> e clique no link da consulta</li>
-          <li>O Google Meet abrirá <strong>direto no navegador</strong> (Chrome, Edge, Firefox ou Safari)</li>
+          <li>Acesse sua <strong>Área do Paciente</strong> e clique no botão de entrar na sala</li>
+          <li>O Google Meet abrirá <strong>direto no seu navegador</strong> (celular ou computador)</li>
           <li>Clique em <strong>"Pedir para participar"</strong></li>
-          <li>Digite seu <strong>nome</strong> quando solicitado</li>
-          <li>Aguarde na <strong>sala de espera</strong> - o profissional irá admiti-lo(a)</li>
-          <li>Permita o acesso à <strong>câmera e microfone</strong> quando solicitado</li>
+          <li>O profissional admitirá sua entrada pontualmente no horário agendado</li>
         </ol>
         <p style="margin: 15px 0 0 0; color: #92400e; font-size: 14px;">
-          💡 <strong>Dica:</strong> Não precisa instalar nada! Funciona direto no navegador.
+          💡 <strong>Simples e leve:</strong> Não é necessário baixar nem instalar nenhum aplicativo!
         </p>
       </div>
 
       <div class="tips-box">
-        <h3>💡 Dicas para uma consulta tranquila:</h3>
+        <h3>💡 Para seu conforto e privacidade:</h3>
         <ul>
-          <li>Entre na sala <strong>5 minutos antes</strong> do horário agendado</li>
-          <li>Esteja em um local <strong>tranquilo e com boa iluminação</strong></li>
-          <li>Tenha <strong>fones de ouvido</strong> se possível (melhora o áudio)</li>                    
-          <li>Verifique sua <strong>conexão de internet</strong> e o funcionamento de câmera/microfone</li>
-          <li>Tenha sempre um <strong>lenço </strong> por perto</li>
-          <li>Lembre-se:<strong>não é permitido gravar e ou tirar print das sessões</strong></li>                    
+          <li>Entre na sala <strong>5 minutos antes</strong> para respirar e se acomodar</li>
+          <li>Esteja em um local <strong>tranquilo e privado</strong> onde você se sinta livre para falar</li>
+          <li>Tenha <strong>fones de ouvido</strong> e um copo d'água por perto</li>                    
+          <li>Verifique sua conexão de internet e microfone</li>
+          <li>Por ética profissional e proteção mútua do sigilo, as sessões são estritamente confidenciais e <strong>não devem ser gravadas</strong></li>                    
         </ul>
       </div>
 
       <div style="background: #f3f4f6; padding: 15px; margin: 20px 0; border-radius: 6px; text-align: center;">
         <p style="margin: 0; font-size: 14px; color: #4b5563;">
-          <strong>⚠️ Problemas técnicos?</strong><br>
-          Entre em contato conosco: <a href="mailto:${this.supportEmail}" style="color: ${this.brandColor};">${this.supportEmail}</a>
+          <strong>Alguma dúvida ou imprevisto?</strong><br>
+          Estamos à disposição: <a href="mailto:${this.supportEmail}" style="color: ${this.brandColor};">${this.supportEmail}</a>
         </p>
       </div>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
-        Estamos ansiosos para atendê-lo(a)!<br>
-        <strong>Abraços,<br>Equipe Doxologos</strong>
+        Estamos muito felizes em poder caminhar com você!<br>
+        <strong>Com carinho,<br>Equipe Doxologos</strong>
       </p>
     `;
-    return this.baseTemplate(content, "Pagamento Aprovado - Doxologos");
+    return this.baseTemplate(content, "Tudo confirmado! Sua consulta está garantida 🤝");
   }
 
   // EMAIL 4: Reagendamento
@@ -533,7 +526,7 @@ export class EmailTemplates {
         Olá <strong>${this.sanitizeForHtml(booking.patient_name)}</strong>,
       </p>
       <p style="font-size: 16px; color: #4b5563; margin: 0 0 20px 0;">
-        Este é um lembrete de que sua consulta está próxima. Prepare-se para um momento de acolhimento e cuidado!
+        Passando para lembrar que sua sessão começará em instantes (às <strong>${this.sanitizeForHtml(booking.appointment_time)}</strong>). Separe os próximos minutos para desacelerar e se acomodar em um ambiente acolhedor e tranquilo. 🕊️
       </p>
       
       <div style="background: #fef3c7; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #f59e0b;">
@@ -549,11 +542,11 @@ export class EmailTemplates {
             Clique no botão abaixo para entrar direto na sala do Google Meet agora:
           </p>
           <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 18px; padding: 16px 40px; margin-bottom: 15px;">
-            🔗 Entrar na Consulta
+            Entrar na Sala Virtual (Google Meet)
           </a>
           <br>
           <a href="${this.getGoogleCalendarLink(
-      "Consulta Psicológica Doxologos (Meet)",
+      "Consulta Doxologos (Meet)",
       `Consulta com ${booking.professional_name}\nServiço: ${booking.service_name}\nLink: ${booking.meeting_link}`,
       booking.appointment_date,
       booking.appointment_time
@@ -561,33 +554,32 @@ export class EmailTemplates {
             📅 Adicionar ao Google Agenda
           </a>
           <p style="margin: 20px 0 0 0; font-size: 14px; color: #1e3a8a;">
-            💡 Recomendamos entrar na sala <strong>5 minutos antes</strong> do horário.
+            💡 Se sentir aquele friozinho na barriga antes da sessão, é perfeitamente normal. O profissional estará pronto para te acolher sem nenhum julgamento.
           </p>
         </div>
       ` : `
         <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
           <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 18px;">🔗 Link da Consulta</h3>
           <p style="margin: 0 0 20px 0; color: #1e3a8a; font-size: 15px;">
-            Acesse sua área do paciente para visualizar o link do Google Meet
+            Acesse seu espaço do paciente para visualizar o link do Google Meet
           </p>
-          <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px;">Acessar Minha Área</a>
+          <a href="${this.baseUrl}/area-do-paciente" class="btn" style="background: #3b82f6; font-size: 16px;">Acessar Meu Espaço de Cuidado</a>
         </div>
       `}
 
       <div style="background: #f0fdf4; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #10b981;">
         <h3 style="margin: 0 0 12px 0; color: #065f46; font-size: 16px;">✅ Checklist Rápido:</h3>
         <ul style="margin: 0; padding-left: 20px; color: #065f46; line-height: 1.8;">
-          <li>✓ Local tranquilo e privado</li>
-          <li>✓ Boa iluminação</li>
-          <li>✓ Fones de ouvido (se possível)</li>
+          <li>✓ Local tranquilo e privado onde possa conversar livremente</li>
+          <li>✓ Boa iluminação e copo d'água por perto</li>
+          <li>✓ Fones de ouvido (ajudam no foco e na privacidade)</li>
           <li>✓ Conexão de internet estável</li>
-          <li>✓ Câmera e microfone funcionando</li>
-          <li>✓ Tenha um lenço por perto</li>
+          <li>✓ Câmera e microfone habilitados</li>
         </ul>
       </div>
 
       <div style="background: #fee2e2; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #ef4444; text-align: center;">
-        <p style="margin: 0 0 10px 0; color: #991b1b; font-weight: 600; font-size: 16px;">⚠️ Problemas Técnicos?</p>
+        <p style="margin: 0 0 10px 0; color: #991b1b; font-weight: 600; font-size: 16px;">Precisa de Apoio Técnico?</p>
         <p style="margin: 0; color: #7f1d1d; font-size: 14px;">
           <strong>WhatsApp:</strong> <a href="https://wa.me/551191728-7583" style="color: #991b1b; text-decoration: underline;">+55 11 91728-7583</a><br>
           <strong>Email:</strong> <a href="mailto:${this.supportEmail}" style="color: #991b1b; text-decoration: underline;">${this.supportEmail}</a>
@@ -595,11 +587,11 @@ export class EmailTemplates {
       </div>
 
       <p style="margin-top: 25px; font-size: 14px; color: #6b7280; line-height: 1.6;">
-        Estamos aqui para você!<br>
-        <strong>Abraços,<br>Equipe Doxologos</strong>
+        Estamos aqui com você!<br>
+        <strong>Com carinho,<br>Equipe Doxologos</strong>
       </p>
     `;
-    return this.baseTemplate(content, "⏰ Sua Consulta é Daqui a 2 Horas - Doxologos");
+    return this.baseTemplate(content, "Em 2 horas: seu momento de cuidado está chegando 🕊️");
   }
 
   // EMAIL 8: Lembrete 2h Antes (para PROFISSIONAL)

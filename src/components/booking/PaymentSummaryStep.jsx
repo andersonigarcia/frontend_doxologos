@@ -58,9 +58,9 @@ const PaymentSummaryStep = ({
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3 flex items-center justify-center gap-3">
-          Confirme seu agendamento
+          Tudo pronto para o seu encontro de cuidado
         </h2>
-        <p className="text-gray-600">Verifique os dados abaixo antes de seguir para o pagamento</p>
+        <p className="text-gray-600">Confira os detalhes abaixo antes de reservar o seu horário</p>
       </div>
 
       {/* Container Estilo Ticket */}
@@ -162,8 +162,8 @@ const PaymentSummaryStep = ({
         <Zap className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
         <p className="text-sm text-blue-800 leading-relaxed">
           {isPackage
-            ? 'Após o pagamento, você receberá os links das salas de vídeo para cada uma das consultas agendadas.'
-            : 'Após o pagamento, você receberá o link da sala de vídeo. A sessão começa pontualmente.'}
+            ? 'Após a confirmação, suas salas no Google Meet estarão prontas. O atendimento é 100% individual, confidencial e seguro.'
+            : 'Após a confirmação, sua sala no Google Meet estará pronta. O atendimento é 100% individual, confidencial e seguro.'}
         </p>
       </div>
 
@@ -188,9 +188,9 @@ const PaymentSummaryStep = ({
           <div className="flex items-center gap-3">
             <input type="checkbox" id="acceptTerms" className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-[#2d8659]" {...acceptTermsField} />
             <label htmlFor="acceptTerms" className="text-sm text-gray-700 font-medium cursor-pointer">
-              Li e concordo com os{' '}
+              Estou ciente sobre o sigilo profissional e concordo com os{' '}
               <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
-                Termos e Condições
+                Termos de Atendimento
               </a>
             </label>
           </div>
@@ -214,13 +214,13 @@ const PaymentSummaryStep = ({
           >
             {isSubmitting
               ? 'Processando...'
-              : submitButtonTitle || (isPackage ? `Ir para Pagamento (R$ ${formatPrice(totalPrice)})` : 'Ir para Pagamento')}
+              : submitButtonTitle || (isPackage ? `Confirmar e Reservar Horário (R$ ${formatPrice(totalPrice)})` : 'Confirmar e Reservar Horário')}
           </Button>
         </motion.div>
         {onSupport && (
           <Button onClick={onSupport} variant="outline" className="rounded-full border-green-600 text-[#2d8659] hover:bg-green-50">
             <MessageCircle className="w-4 h-4 mr-2" />
-            Tirar dúvidas no WhatsApp
+            Precisa de ajuda? Fale conosco no WhatsApp
           </Button>
         )}
       </div>

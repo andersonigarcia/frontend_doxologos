@@ -1152,8 +1152,8 @@ const AgendamentoPage = () => {
         console.error('Erro ao criar agendamento:', bookingError);
         toast({
           variant: 'destructive',
-          title: 'Não conseguimos concluir o agendamento',
-          description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.'
+          title: 'Não foi possível reservar este horário agora',
+          description: 'Pode ter ocorrido uma oscilação momentânea. Seus dados estão preservados; tente novamente ou fale com nossa equipe de apoio.'
         });
         return;
       }
