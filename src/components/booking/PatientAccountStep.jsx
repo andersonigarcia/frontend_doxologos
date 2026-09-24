@@ -57,10 +57,10 @@ const PatientAccountStep = ({
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Quem estará conosco nessa jornada?</h2>
-        <p className="text-gray-600 text-lg">Seus dados são sigilosos e protegidos pelo sigilo ético profissional e pela LGPD.</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">Quem estará conosco nessa jornada?</h2>
+        <p className="text-gray-600 text-sm sm:text-base">Seus dados são protegidos pelo sigilo ético profissional e pela LGPD.</p>
       </div>
 
       {!authUser && (
@@ -130,7 +130,7 @@ const PatientAccountStep = ({
           </div>
 
           <AnimatePresence>
-            {emailExists === false && !isExistingPatient && (
+            {!isExistingPatient && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -381,56 +381,23 @@ const PatientAccountStep = ({
         </div>
       )}
 
-      <div className="mt-8">
-        <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-          <Video className="w-5 h-5 text-[#2d8659]" />
-          Sua sala de atendimento online
-        </h3>
-        <p className="text-sm text-gray-600 mt-1">
-          As sessões acontecem via Google Meet: seguro, confidencial e direto no navegador, sem precisar instalar nada.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2 mt-4">
-          {meetingOptions.map((option) => {
-            const Icon = option.icon || Video;
-            const isActive = meetingPlatform === option.id;
-            return (
-              <button
-                type="button"
-                key={option.id}
-                onClick={() => onSelectMeetingPlatform?.(option.id)}
-                aria-pressed={isActive}
-                className={`w-full text-left border rounded-2xl p-5 transition-all ${isActive
-                  ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
-                  }`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-[#2d8659] text-white' : 'bg-gray-100 text-[#2d8659]'
-                    }`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-lg">{option.label}</p>
-                    <p className="text-sm text-gray-600">{option.description}</p>
-                  </div>
-                </div>
-                <ul className="space-y-1 text-sm text-gray-600 pl-1">
-                  {(option.highlights || []).map((highlight) => (
-                    <li key={highlight} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-[#2d8659] mt-0.5 flex-shrink-0" />
-                      <span>{highlight}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div
-                  className={`mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${isActive ? 'text-[#2d8659]' : 'text-gray-400'
-                    }`}
-                >
-                  {isActive ? 'Selecionado' : 'Selecionar'}
-                </div>
-              </button>
-            );
-          })}
+      {/* Banner Informativo da Sala Online - Compacto e Mobile-Friendly */}
+      <div className="mt-6 p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-[#2d8659]/10 text-[#2d8659] flex items-center justify-center flex-shrink-0">
+          <Video className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-gray-900">
+              Atendimento Online via Google Meet
+            </p>
+            <span className="text-[11px] font-semibold bg-[#2d8659]/15 text-[#236b47] px-2 py-0.5 rounded-full">
+              100% no navegador
+            </span>
+          </div>
+          <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+            Sessão individual, segura e sigilosa. O link exclusivo de acesso será enviado para seu e-mail e fica disponível na Área do Paciente.
+          </p>
         </div>
       </div>
     </motion.div>

@@ -110,7 +110,7 @@ const LeadCaptureSection = ({
           </div>
           <h4 className="text-lg font-bold text-gray-900">Relatório Solicitado com Sucesso!</h4>
           <p className="text-sm text-gray-600 max-w-md mx-auto">
-            Enviaremos seu relatório detalhado e orientações exclusivas em instantes. Fique atento(a) à sua caixa de entrada e WhatsApp.
+            Enviaremos seu relatório detalhado e orientações exclusivas em instantes diretamente para a sua caixa de entrada de e-mail.
           </p>
         </motion.div>
       ) : (

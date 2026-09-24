@@ -1136,17 +1136,17 @@ const PacientePage = () => {
                                                             {booking.payment?.[0]?.qr_code && (
                                                                 <div className="bg-white rounded-lg p-4 border-2 border-amber-200">
                                                                     <div className="flex flex-col md:flex-row gap-4 items-start">
-                                                                        {/* QR Code */}
-                                                                        <div className="flex flex-col items-center">
-                                                                            <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                                                                        {/* QR Code com tamanho mínimo de 200px para mobile */}
+                                                                        <div className="w-full sm:w-auto flex flex-col items-center">
+                                                                            <div className="bg-white p-3 rounded-xl border-2 border-gray-200 shadow-sm inline-block">
                                                                                 <QRCodeSVG
                                                                                     value={booking.payment[0].qr_code}
-                                                                                    size={160}
+                                                                                    size={200}
                                                                                     level="H"
                                                                                 />
                                                                             </div>
-                                                                            <p className="text-xs text-gray-600 mt-2 text-center">
-                                                                                Escaneie com seu app bancário
+                                                                            <p className="text-xs text-gray-600 mt-2 text-center font-medium">
+                                                                                Escaneie com a câmera do app do seu banco
                                                                             </p>
                                                                         </div>
 

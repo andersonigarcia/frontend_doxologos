@@ -34,6 +34,7 @@ import { useBookingData } from '@/hooks/booking/useBookingData';
 import { usePatientForm, formatPhoneNumber, validateEmail } from '@/hooks/booking/usePatientForm';
 import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import BookingStepper from '@/components/booking/BookingStepper';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 // Lazy load heavy components for better performance
 const ProfessionalStep = lazy(() => import('@/components/booking/ProfessionalStep'));
@@ -138,7 +139,7 @@ const MEETING_OPTIONS = [
     description: 'Link enviado pelo time da Doxologos ou pelo profissional.',
     highlights: [
       'Ideal se você já utiliza o Google Workspace',
-      'Link compartilhado por email e WhatsApp após confirmação',
+      'Link compartilhado por e-mail e disponível na Área do Paciente',
       'Funciona direto no navegador e aplicativos Google'
     ]
   }
@@ -1396,7 +1397,7 @@ const AgendamentoPage = () => {
                   <ul className="text-sm text-yellow-800 space-y-1">
                     <li>• Você será redirecionado para o pagamento</li>
                     <li>• Após confirmação, receberá email com detalhes</li>
-                    <li>• Link da consulta será enviado por email e WhatsApp</li>
+                    <li>• Link da consulta será enviado por email e fica disponível na Área do Paciente</li>
                     <li>• Lembre-se: a sessão começa pontualmente no horário marcado</li>
                   </ul>
                 </div>
@@ -1487,9 +1488,8 @@ const AgendamentoPage = () => {
       <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
         <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
-              <span className="text-2xl font-bold gradient-text">Doxologos</span>
+            <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+              <DoxologosLogo className="h-9 md:h-10 w-auto" />
             </Link>
             <div className="flex items-center space-x-4">
               <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
@@ -1499,7 +1499,7 @@ const AgendamentoPage = () => {
           </div>
         </nav>
       </header>
-      <div className="min-h-screen bg-gray-50 py-12 pt-24">
+      <div className="min-h-screen bg-gray-50 pt-20 sm:pt-24 pb-36 sm:pb-16">
         <div className="container mx-auto px-4 max-w-4xl">
 
 
@@ -1577,26 +1577,36 @@ const AgendamentoPage = () => {
 
             {/* Continue Button */}
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (step === 1 && selectedService) {
                   setStep(2);
                 } else if (step === 2 && selectedProfessional) {
                   setStep(3);
-                } else if (step === 3 && selectedDate && selectedTime) {
+                } else if (step === 3 && (selectedSlots.length > 0 || (selectedDate && selectedTime))) {
                   setStep(4);
-                } else if (step === 4 && canProceedToSummary) {
-                  handleProceedToSummary();
+                } else if (step === 4) {
+                  if (canProceedToSummary) {
+                    handleProceedToSummary();
+                  } else {
+                    const valid = await trigger();
+                    if (!valid) {
+                      toast({
+                        variant: 'destructive',
+                        title: 'Complete seus dados',
+                        description: 'Por favor, informe seu nome, e-mail e telefone para podermos confirmar seu agendamento.',
+                      });
+                    }
+                  }
                 }
               }}
               disabled={(
                 (step === 1 && !selectedService) ||
                 (step === 2 && !selectedProfessional) ||
-                (step === 3 && (!selectedDate || !selectedTime)) ||
-                (step === 4 && !canProceedToSummary)
+                (step === 3 && selectedSlots.length === 0 && (!selectedDate || !selectedTime))
               )}
-              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold"
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold shadow-md flex items-center justify-center gap-1"
             >
-              Continuar <ChevronRight className="w-5 h-5 ml-1" />
+              {step === 4 ? 'Avançar para Pagamento' : 'Continuar'} <ChevronRight className="w-5 h-5 ml-1" />
             </Button>
           </div>
         </motion.div>

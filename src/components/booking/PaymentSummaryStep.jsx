@@ -55,12 +55,12 @@ const PaymentSummaryStep = ({
     parseFloat(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3 flex items-center justify-center gap-3">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-8">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 flex items-center justify-center gap-3">
           Tudo pronto para o seu encontro de cuidado
         </h2>
-        <p className="text-gray-600">Confira os detalhes abaixo antes de reservar o seu horário</p>
+        <p className="text-gray-600 text-sm sm:text-base">Confira os detalhes abaixo antes de reservar o seu horário</p>
       </div>
 
       {/* Container Estilo Ticket */}
@@ -198,31 +198,34 @@ const PaymentSummaryStep = ({
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-4 mt-6">
-        <Button onClick={onBack} variant="outline" className="rounded-full">
-          Voltar
-        </Button>
-        <motion.div
-          whileHover={!isSubmitting && effectiveCanSubmit ? { scale: 1.02, y: -1 } : {}}
-          whileTap={!isSubmitting && effectiveCanSubmit ? { scale: 0.98 } : {}}
-          className="flex-1"
-        >
-          <Button
-            onClick={onSubmit}
-            disabled={isSubmitting || !effectiveCanSubmit}
-            className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed"
+      {/* Botões de Ação - Sticky no Mobile para garantir CTA sempre visível acima da dobra */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:static sm:bg-transparent sm:p-0 sm:border-0 sm:shadow-none sm:z-auto">
+        <div className="container max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-3">
+          <Button onClick={onBack} variant="outline" className="hidden sm:inline-flex rounded-full">
+            Voltar
+          </Button>
+          <motion.div
+            whileHover={!isSubmitting && effectiveCanSubmit ? { scale: 1.02, y: -1 } : {}}
+            whileTap={!isSubmitting && effectiveCanSubmit ? { scale: 0.98 } : {}}
+            className="w-full flex-1"
           >
-            {isSubmitting
-              ? 'Processando...'
-              : submitButtonTitle || (isPackage ? `Confirmar e Reservar Horário (R$ ${formatPrice(totalPrice)})` : 'Confirmar e Reservar Horário')}
-          </Button>
-        </motion.div>
-        {onSupport && (
-          <Button onClick={onSupport} variant="outline" className="rounded-full border-green-600 text-[#2d8659] hover:bg-green-50">
-            <MessageCircle className="w-4 h-4 mr-2" />
-            Precisa de ajuda? Fale conosco no WhatsApp
-          </Button>
-        )}
+            <Button
+              onClick={onSubmit}
+              disabled={isSubmitting || !effectiveCanSubmit}
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-3.5 sm:py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed h-auto"
+            >
+              {isSubmitting
+                ? 'Processando...'
+                : submitButtonTitle || (isPackage ? `Confirmar e Reservar Horário (R$ ${formatPrice(totalPrice)})` : 'Confirmar e Reservar Horário')}
+            </Button>
+          </motion.div>
+          {onSupport && (
+            <Button onClick={onSupport} variant="outline" className="hidden sm:inline-flex rounded-full border-green-600 text-[#2d8659] hover:bg-green-50">
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Precisa de ajuda? Fale conosco no WhatsApp
+            </Button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

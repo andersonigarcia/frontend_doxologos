@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Heart, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserCreator from '@/components/UserCreator';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 const CreateUsersPage = () => {
   return (
@@ -15,9 +16,8 @@ const CreateUsersPage = () => {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center space-x-2">
-            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
-            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+          <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+            <DoxologosLogo className="h-9 md:h-10 w-auto" />
           </Link>
           <Link to="/">
             <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">

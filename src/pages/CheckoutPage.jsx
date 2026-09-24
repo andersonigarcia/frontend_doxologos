@@ -13,6 +13,7 @@ import { safeRedirect } from '@/lib/securityUtils';
 import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import ExistingPaymentModal from '@/components/payment/ExistingPaymentModal';
 import { paymentOrchestrator } from '@/lib/payment';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
@@ -132,8 +133,8 @@ const CheckoutPage = () => {
         } else {
             toast({
                 variant: 'destructive',
-                title: 'Erro',
-                description: 'Informações de pagamento não encontradas'
+                title: 'Agendamento não localizado',
+                description: 'Não encontramos as informações desta consulta. Vamos te direcionar para escolher um horário disponível.'
             });
             navigate('/');
         }
@@ -212,8 +213,8 @@ const CheckoutPage = () => {
             logger.error('CheckoutPage.fetchPackage:error', error, buildLogContext({ packageId }));
             toast({
                 variant: 'destructive',
-                title: 'Erro',
-                description: 'Não foi possível carregar os dados do pacote'
+                title: 'Dados do pacote indisponíveis',
+                description: 'Não conseguimos carregar as sessões do pacote no momento. Por favor, tente novamente ou fale com nosso suporte.'
             });
             navigate('/');
         } finally {
@@ -253,8 +254,8 @@ const CheckoutPage = () => {
             logger.error('CheckoutPage.fetchBooking:error', error, buildLogContext({ bookingId }));
             toast({
                 variant: 'destructive',
-                title: 'Erro',
-                description: 'Não foi possível carregar o agendamento'
+                title: 'Consulta não localizada',
+                description: 'Houve uma instabilidade ao recuperar os detalhes do agendamento. Vamos retornar para você escolher seu horário com calma.'
             });
             navigate('/');
         } finally {
@@ -336,8 +337,8 @@ const CheckoutPage = () => {
             logger.error('CheckoutPage.fetchInscricao:error', error, buildLogContext({ inscricaoId }));
             toast({
                 variant: 'destructive',
-                title: 'Erro',
-                description: 'Não foi possível carregar a inscrição'
+                title: 'Inscrição não localizada',
+                description: 'Não encontramos as informações deste evento. Por favor, tente novamente a partir da página do evento.'
             });
             navigate('/');
         } finally {
@@ -642,8 +643,8 @@ const CheckoutPage = () => {
 
             toast({
                 variant: 'destructive',
-                title: 'Erro ao processar pagamento',
-                description: friendlyMsg
+                title: 'Não foi possível concluir o pagamento',
+                description: friendlyMsg || 'Houve uma oscilação momentânea no processamento. Você pode tentar novamente em instantes ou escolher outro meio de pagamento.'
             });
         } finally {
             setProcessing(false);
@@ -809,9 +810,8 @@ const CheckoutPage = () => {
             {/* Header com navegação */}
             <header className="bg-white shadow-sm sticky top-0 z-50">
                 <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                    <Link to="/" className="flex items-center space-x-2">
-                        <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
-                        <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                    <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                        <DoxologosLogo className="h-9 md:h-10 w-auto" />
                     </Link>
                     <Button
                         variant="outline"
@@ -824,11 +824,38 @@ const CheckoutPage = () => {
                 </nav>
             </header>
 
-            <div className="max-w-4xl mx-auto py-8 px-4">
+            <div className="max-w-4xl mx-auto pt-4 sm:pt-8 pb-36 md:pb-12 px-4">
                 {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold mb-2">Finalizar Pagamento</h1>
-                    <p className="text-gray-600">Complete seu agendamento</p>
+                <div className="text-center mb-6 sm:mb-8">
+                    <h1 className="text-2xl sm:text-4xl font-bold mb-2">Finalizar Pagamento</h1>
+                    <p className="text-gray-600 text-sm sm:text-base">Complete sua reserva com segurança e rapidez</p>
+                </div>
+
+                {/* Mini-resumo do Pedido no Mobile (Visível acima do fold) */}
+                <div className="md:hidden mb-5 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
+                    <div className="min-w-0 pr-3">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block">
+                            {type === 'evento' ? 'Evento' : packageData ? 'Pacote' : 'Consulta Online'}
+                        </span>
+                        <p className="font-bold text-gray-900 text-sm truncate">
+                            {type === 'evento'
+                                ? (inscricao?.evento?.titulo || tituloParam)
+                                : packageData
+                                    ? `${packageData.total_sessions} Sessões com ${packageData.professional_name || 'Profissional'}`
+                                    : (booking?.service?.name || 'Psicoterapia')}
+                        </p>
+                        {booking?.professional?.name && (
+                            <p className="text-xs text-gray-500 truncate mt-0.5">
+                                com {booking.professional.name}
+                            </p>
+                        )}
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                        <span className="text-[11px] text-gray-500 block">Total</span>
+                        <span className="text-xl font-bold text-[#2d8659]">
+                            {MercadoPagoService.formatCurrency(bookingTotal)}
+                        </span>
+                    </div>
                 </div>
 
                 {friendlyCheckoutMessage && (
@@ -843,7 +870,7 @@ const CheckoutPage = () => {
                 <div className="grid md:grid-cols-3 gap-6">
                     {/* Métodos de Pagamento */}
                     <div className="md:col-span-2">
-                        {type !== 'evento' && (
+                        {type !== 'evento' && availableCreditAmount > 0 && (
                             <Card className="p-6 mb-6">
                                 <h2 className="text-xl font-bold mb-4 flex items-center">
                                     <CreditCard className="w-5 h-5 mr-2 text-green-600" />
@@ -857,10 +884,6 @@ const CheckoutPage = () => {
                                     </div>
                                 ) : creditError ? (
                                     <p className="text-sm text-red-600">{creditError}</p>
-                                ) : availableCreditAmount === 0 ? (
-                                    <p className="text-sm text-gray-600">
-                                        Nenhum saldo disponível na carteira no momento. Cancelamentos com antecedência de 24h geram saldos automáticos.
-                                    </p>
                                 ) : (
                                     <div className="space-y-4">
                                         <label className="flex items-center gap-3">
@@ -1008,17 +1031,17 @@ const CheckoutPage = () => {
 
                         {/* QR Code e Código Copia e Cola do PIX */}
                         {pixPayment && selectedMethod === 'pix' && (
-                            <Card className="p-6 border-2 border-emerald-500/30 shadow-lg">
+                            <Card className="p-5 sm:p-6 border-2 border-emerald-500/30 shadow-lg">
                                 <h3 className="text-xl font-bold mb-4 text-center text-emerald-900 flex items-center justify-center gap-2">
                                     <Smartphone className="w-5 h-5 text-emerald-600" />
                                     Pague com PIX
                                 </h3>
 
                                 <div className="flex flex-col items-center">
-                                    {/* Destaque Mobile First: Botão Copiar PIX */}
-                                    <div className="w-full bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl mb-4 text-center">
+                                    {/* Destaque Mobile: Copia e Cola no mesmo aparelho */}
+                                    <div className="w-full bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl mb-5 text-center">
                                         <p className="text-xs font-semibold text-emerald-800 mb-2">
-                                            📲 No celular: Copie o código abaixo e cole no app do seu banco
+                                            📲 Pagamento no celular: Copie o código abaixo e cole no app do seu banco
                                         </p>
 
                                         <Button
@@ -1027,7 +1050,7 @@ const CheckoutPage = () => {
                                                 navigator.clipboard.writeText(pixPayment.qrCode);
                                                 toast({
                                                     title: '✅ Código PIX Copiado!',
-                                                    description: 'Abra o app do seu banco e escolha PIX Copia e Cola.',
+                                                    description: 'Abra o app do seu banco e escolha a opção PIX Copia e Cola.',
                                                 });
                                             }}
                                             className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all touch-manipulation"
@@ -1046,24 +1069,22 @@ const CheckoutPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* QR Code para Desktop ou Escaneamento Secundário */}
-                                    <details className="w-full text-center group mb-4">
-                                        <summary className="text-xs text-gray-600 cursor-pointer hover:text-emerald-700 font-medium py-1 select-none">
-                                            🔍 Prefere escanear o QR Code? Clique para exibir
-                                        </summary>
-                                        <div className="mt-3 flex flex-col items-center animate-in fade-in duration-200">
-                                            <div className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-sm inline-block">
-                                                <QRCodeSVG
-                                                    value={pixPayment.qrCode}
-                                                    size={220}
-                                                    level="M"
-                                                />
-                                            </div>
-                                            <p className="text-xs text-gray-500 mt-2">
-                                                Escaneie a imagem com a câmera do app do seu banco
-                                            </p>
+                                    {/* QR Code visível com mínimo de 200px (220px) para escaneamento */}
+                                    <div className="w-full text-center mb-5 flex flex-col items-center">
+                                        <p className="text-xs font-semibold text-gray-700 mb-2">
+                                            📷 Ou escaneie o QR Code abaixo com a câmera do app do banco:
+                                        </p>
+                                        <div className="bg-white p-3 rounded-2xl border-2 border-emerald-100 shadow-sm inline-block">
+                                            <QRCodeSVG
+                                                value={pixPayment.qrCode}
+                                                size={220}
+                                                level="M"
+                                            />
                                         </div>
-                                    </details>
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            Aprovação instantânea em até 3 segundos após o pagamento
+                                        </p>
+                                    </div>
 
                                     <div className="w-full text-center border-t border-gray-100 pt-4">
                                         <div className="flex items-center justify-center gap-2 text-amber-700 mb-1">
@@ -1075,7 +1096,7 @@ const CheckoutPage = () => {
                                             </p>
                                         </div>
                                         <p className="text-xs text-gray-500">
-                                            Status: <span className="font-mono font-bold text-gray-700">{paymentStatus?.status || 'pendente'}</span> • A confirmação é automática (sem recarregar).
+                                            Status: <span className="font-mono font-bold text-gray-700">{paymentStatus?.status || 'pendente'}</span> • A confirmação é automática (sem precisar recarregar a tela).
                                         </p>
                                     </div>
                                 </div>
@@ -1387,7 +1408,69 @@ const CheckoutPage = () => {
                     />
                 )
             }
-        </div >
+
+            {/* Barra Sticky de Ação no Mobile (CTA acima da dobra) */}
+            {!pixPayment && (
+                <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 md:hidden">
+                    <div className="container max-w-md mx-auto flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <span className="text-[11px] text-gray-500 font-medium block">Total</span>
+                            <span className="text-lg font-bold text-[#2d8659] block leading-tight">
+                                {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : bookingTotal)}
+                            </span>
+                        </div>
+                        <div className="flex-1">
+                            {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') ? (
+                                <Button
+                                    onClick={() => {
+                                        if (!acceptedTcle) {
+                                            setAcceptedTcle(true);
+                                        }
+                                        const params = new URLSearchParams({
+                                            ...(bookingId && { booking_id: bookingId }),
+                                            ...(inscricaoId && { inscricao_id: inscricaoId }),
+                                            ...(packageId && { package_id: packageId }),
+                                            ...(type && { type }),
+                                            ...(valorParam && { valor: valorParam }),
+                                            ...(tituloParam && { titulo: tituloParam }),
+                                        });
+                                        navigate(`/checkout-direct?${params.toString()}`);
+                                    }}
+                                    disabled={processing}
+                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 rounded-xl shadow-md text-sm flex items-center justify-center gap-1.5"
+                                >
+                                    <CreditCard className="w-4 h-4" />
+                                    Pagar com Cartão
+                                </Button>
+                            ) : (
+                                <Button
+                                    onClick={() => {
+                                        if (!acceptedTcle) {
+                                            setAcceptedTcle(true);
+                                        }
+                                        handlePayment();
+                                    }}
+                                    disabled={processing}
+                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 rounded-xl shadow-md text-sm flex items-center justify-center gap-1.5"
+                                >
+                                    {processing ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                            Gerando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Smartphone className="w-4 h-4" />
+                                            {selectedMethod === 'pix' ? 'Gerar PIX (Aprovação 3s)' : 'Continuar'}
+                                        </>
+                                    )}
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

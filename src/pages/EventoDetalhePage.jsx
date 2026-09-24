@@ -11,6 +11,7 @@ import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, Alert
 import emailService from '@/lib/emailService';
 import emailTemplates from '@/lib/emailTemplates'; // NOVO: Templates para eventos
 import { logger } from '@/lib/logger.js';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 const EventoDetalhePage = () => {
     const { slug } = useParams();
@@ -713,9 +714,8 @@ const EventoDetalhePage = () => {
             <div className="min-h-screen bg-gray-50">
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
-                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                            <DoxologosLogo className="h-9 md:h-10 w-auto" />
                         </Link>
                         <Link to="/">
                             <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
@@ -757,7 +757,9 @@ const EventoDetalhePage = () => {
             <div className="min-h-screen bg-gray-50">
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2"><img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                            <DoxologosLogo className="h-9 md:h-10 w-auto" />
+                        </Link>
                         <Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link>
                     </nav>
                 </header>

@@ -320,9 +320,8 @@ export default function RedefinirSenhaPage() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
-              <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
-              Doxologos
+            <Link to="/" className="inline-flex items-center justify-center" aria-label="Doxologos - Página inicial">
+              <DoxologosLogo className="h-10 md:h-12 w-auto" />
             </Link>
           </motion.div>
 

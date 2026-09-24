@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { useToast } from '../components/ui/use-toast';
 import { QRCodeSVG } from 'qrcode.react';
+import DoxologosLogo from '../components/brand/DoxologosLogo';
 
 const DoacaoPage = () => {
     const [pixCopied, setPixCopied] = useState(false);
@@ -59,7 +60,7 @@ const DoacaoPage = () => {
             impact: "R$ 200 = Manutenção de equipamentos"
         },
         {
-            icon: <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />,
+            icon: <Heart className="w-8 h-8 text-[#2d8659]" />,
             title: "Programas Sociais",
             description: "Desenvolvemos programas de prevenção e educação em saúde mental para a comunidade.",
             impact: "R$ 100 = Material educativo"
@@ -102,9 +103,8 @@ const DoacaoPage = () => {
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
                 <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" width={32} height={32} loading="lazy" />
-                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                            <DoxologosLogo className="h-9 md:h-10 w-auto" />
                         </Link>
                         <div className="flex items-center space-x-4">
                             <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
