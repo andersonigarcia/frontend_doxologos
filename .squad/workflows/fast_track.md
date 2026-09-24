@@ -23,6 +23,7 @@ flowchart LR
 ### **Passo 2: Implementação Defensiva (Fullstack Dev)**
 - Modificar o código garantindo tipagem TypeScript e alinhamento com TailwindCSS.
 
-### **Passo 3: Verificação de Build e Testes (Gatekeeper 3)**
+### **Passo 3: Verificação de Build, Testes e Memória (Gatekeeper 3)**
 - Executar `npm run build` e `npm test` no terminal.
+- Se a alteração introduzir novo padrão ou resolver bug/inconsistência, atualizar imediatamente [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md) e arquivar a ADR em [`.squad/history/`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/).
 - Se os testes passarem sem erros, declarar a tarefa **CONCLUÍDA**.

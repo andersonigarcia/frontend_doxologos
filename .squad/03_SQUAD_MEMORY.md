@@ -23,9 +23,19 @@
   - *Decisão:* Menu de navegação focado em CTA direto ("Agendar Consulta"), FAQ interativo com suporte a JSX e rodapé dividido por personas (Pacientes, Psicólogos, Sobre).
   - *Consequências:* Aumento no fluxo de agendamentos e redução de dúvidas frequentes.
 
+- **Data (2026-09-24):** **Padronização Visual da Marca & Política de Mensageria WhatsApp (ADR 003).**
+  - *Contexto:* Inconsistência nos cabeçalhos (uso de favicon + gradient-text em páginas internas) e falsas promessas de envio de link por WhatsApp no agendamento (`WHATSAPP_BOOKING_CONFIRMATION: false`).
+  - *Decisão:* Adoção mandatória do componente `DoxologosLogo` (`h-9 md:h-10 w-auto`) em 100% das páginas e alinhamento de copywriting garantindo envio por e-mail e acesso na Área do Paciente.
+  - *Consequências:* Identidade visual homogênea e expectativas alinhadas sem ruído operacional.
+
 ---
 
 ## 3. Padrões de Arquitetura e Engenharia
+- **Data (2026-09-24):** **Plataforma Única Google Meet & Depreciação do Zoom (ADR 001).**
+  - *Contexto:* Código legado do Zoom (`testezoom.js` e funções) desnecessário em produção; ausência da coluna `meeting_platform` na tabela `bookings`.
+  - *Decisão:* Remover scripts de teste legados do Zoom e consolidar o Google Meet como plataforma exclusiva de teleconsulta, com fallback para o `personal_meet_link` do profissional.
+  - *Consequências:* Simplificação do modelo de dados e zero risco de queries a campos inexistentes.
+
 - **Data (2025-01-28):** **Edge Functions em Deno para Regras de Negócio e Integrações (v2.0).**
   - *Contexto:* Necessidade de processar transações financeiras e credenciais secretas (Mercado Pago, Zoom OAuth, SMTP) fora do browser do cliente.
   - *Decisão:* Centralizar todas as rotas sensíveis em 28+ Deno Edge Functions no Supabase (`supabase/functions/`), como `mp-process-card-payment`, `mp-webhook`, `zoom-create-meeting` e `send-email`.
@@ -52,6 +62,11 @@
 ---
 
 ## 5. Observabilidade, SRE e Resolução de Bugs
+- **Data (2026-09-24):** **Diretrizes de Conversão Mobile (CRO) & Sticky CTAs (ADR 002).**
+  - *Contexto:* Mais de 80% do tráfego é mobile; botões de ação e QR Code PIX ficavam abaixo da dobra ou ocultos em details retráteis, elevando o abandono.
+  - *Decisão:* Adicionar barra inferior sticky no mobile para Checkout e Resumo de Agendamento, fixar tamanho mínimo de QR Code PIX em 200px e adotar mensagens de erro empáticas e humanizadas.
+  - *Consequências:* Experiência de compra fluida em telas reduzidas e redução drástica no tempo de conclusão do agendamento.
+
 - **Data (2026-08-14):** **Otimização da Experiência Mobile & Hardening de Conversão (FASE 3.1 - CRO & Mobile-First).**
   - *Contexto:* Tráfego predominantemente mobile (>80%) demandou reposicionamento de elementos flutuantes e botões PIX.
   - *Decisão:* Reposicionar botão do WhatsApp, adicionar `inputMode` e `autoComplete` nativos e destacar o código PIX copia e cola no mobile.

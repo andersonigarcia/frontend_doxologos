@@ -79,6 +79,7 @@ Independentemente da esteira ativada, as seguintes regras NUNCA podem ser violad
 3. **Pre-flight Check Real (Sem Alucinação de QA):** Nenhuma funcionalidade é declarada concluída sem verificação empírica no terminal via `npm test` e `npm run build`.
 4. **Silent Diagnosis First:** Em incidentes, o Bug Hunter deve confirmar a Root Cause ANTES de qualquer proposta de código ou solução.
 5. **ARCH.md como Fonte de Verdade:** Qualquer decisão de schema de banco, contrato de Edge Function ou integração deve ser validada contra [`ARCH.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/ARCH.md) antes da implementação.
+6. **Persistência de Memória Mandatória:** Nenhuma tarefa que introduza novo padrão visual, regra de negócio, decisão arquitetural ou resolução de bug pode ser dada como concluída sem atualizar a memória viva em [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md) e arquivar a ADR em [`.squad/history/`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/).
 
 ---
 

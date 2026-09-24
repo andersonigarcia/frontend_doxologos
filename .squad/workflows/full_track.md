@@ -44,3 +44,5 @@ flowchart TD
    - Execução bem-sucedida da suíte E2E Playwright e RLS ativo no Supabase.
 6. **Gatekeeper 5: Governança & LGPD**
    - Zero vazamento de PII em logs e consentimento do paciente auditado.
+7. **Gatekeeper 6: Memória do Squad & Registro de ADR**
+   - Registro da ADR formal em [`.squad/history/`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/) e atualização consolidada em [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).
