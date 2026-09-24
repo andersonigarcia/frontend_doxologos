@@ -56,3 +56,23 @@
   - *Contexto:* Tráfego predominantemente mobile (>80%) demandou reposicionamento de elementos flutuantes e botões PIX.
   - *Decisão:* Reposicionar botão do WhatsApp, adicionar `inputMode` e `autoComplete` nativos e destacar o código PIX copia e cola no mobile.
   - *Consequências:* Redução de atritos no checkout mobile e aumento da taxa de conversão.
+
+---
+
+## 6. Bugs Conhecidos e Root Causes (RCA Log)
+
+*Use esta seção para registrar bugs já investigados e resolvidos. Antes de investigar qualquer bug, pesquise aqui para evitar reinvestigação. Siga o template abaixo.*
+
+**Template de entrada:**
+```
+### Bug: [Título curto e descritivo]
+- **Data:** YYYY-MM-DD
+- **Camada:** [Frontend React | Edge Function | Banco Supabase | Integração Externa]
+- **Sintoma:** [O que o usuário/sistema observou]
+- **Root Cause:** [Causa raiz confirmada — seja específico, não genérico]
+- **Solução Aplicada:** [O que foi modificado e em qual arquivo]
+- **Prevenção:** [Teste adicionado / regra documentada para evitar recorrência]
+```
+
+<!-- Adicione novos bugs abaixo deste comentário, do mais recente ao mais antigo -->
+

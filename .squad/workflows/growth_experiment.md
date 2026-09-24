@@ -8,6 +8,10 @@ Esta esteira é ativada para tarefas estritamente comerciais e focadas em cresci
 - Setup de rastreamento de novos eventos personalizados no Google Analytics 4 (GA4).
 - Desenvolvimento de fluxos B2B ou Quiz de Triagem para captação de leads (Inbound).
 
+**Personas Ativas:** [`data_growth_analyst.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/data_growth_analyst.md) (líder) + [`product_lead.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/product_lead.md) + [`ux_design.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/ux_design.md) + [`fullstack_dev.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/fullstack_dev.md)
+
+> **Regra de Entrada:** Nenhum experimento é implementado sem uma hipótese estruturada com dados reais (GA4, Supabase, ou relatórios do usuário). O Data & Growth Analyst deve validar a hipótese antes do Passo 2.
+
 ---
 
 ## 🚀 Fluxo Orientado a Dados (4 Passos)

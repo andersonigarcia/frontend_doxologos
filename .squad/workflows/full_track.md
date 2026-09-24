@@ -8,6 +8,8 @@ Esta esteira é obrigatoriamente ativada para alterações de **alto risco**, ta
 - Tratamento de dados sensíveis de psicologia, prontuários ou normas CFP/LGPD/HIPAA.
 - Emissão automatizada de Nota Fiscal Eletrônica (NFS-e) e conciliação de Ledger.
 
+**Personas Ativas:** `Product Lead` + `Tech Lead` + `Fullstack Dev` + `Platform & Security` + `QA Automation` + `UX Design` (Etapa 2)
+
 ---
 
 ## 🚀 Fluxo Rigoroso de Execução (6 Etapas & 6 Gatekeepers)
@@ -15,7 +17,7 @@ Esta esteira é obrigatoriamente ativada para alterações de **alto risco**, ta
 ```mermaid
 flowchart TD
     E1["Etapa 1: Product Lead (ROI & Unit Economics)"] --> G0["Gatekeeper 0: Visão de Dono"]
-    G0 --> E2["Etapa 2: Design & UX (Acessibilidade WCAG 2.1)"]
+    G0 --> E2["Etapa 2: UX Design (Acessibilidade WCAG 2.1 + CRO Mobile-First)"]
     E2 --> G1["Gatekeeper 1: Negócio & UX"]
     G1 --> E3["Etapa 3: Tech Lead & Dev (Edge Functions & RLS)"]
     E3 --> G2["Gatekeeper 2: Finanças & Fiscal"]

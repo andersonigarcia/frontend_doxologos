@@ -55,3 +55,28 @@ Copie e cole estes prompts para iniciar rapidamente uma tarefa na sua IDE/Termin
 
 > "Orquestrador Doxologos, convoque todas as personas para um **Diagnóstico 360° (Code Review e Business Audit)** sobre o arquivo/pasta **[Caminho do Código]**.
 > Verifiquem possíveis vazamentos de memória no React, falhas de PII/LGPD, oportunidades de simplificação (Boring Tech) e apresentem um relatório executivo dos gaps encontrados."
+
+---
+
+### 7. 🐛 Bug Hunt com Evidências (Bug Hunter Track)
+*Ativa o Bug Hunter para diagnóstico estruturado por camada. Sempre forneça os dados abaixo para economizar tokens.*
+
+> "Orquestrador Doxologos, ative o **Bug Hunter**.
+>
+> **URL / Contexto:** [ex: `/checkout` em produção | Edge Function `mp-webhook`]
+>
+> **Comportamento esperado:** [O que deveria acontecer]
+>
+> **Comportamento real / Sintoma:** [O que está acontecendo de fato]
+>
+> **Mensagem de erro / Stack trace:**
+> ```
+> [COLE AQUI O ERRO EXATO]
+> ```
+>
+> **Logs disponíveis:** [Cole aqui logs do Supabase Dashboard, console do browser ou painel Mercado Pago]
+>
+> **Último deploy / alteração relacionada:** [Data e o que foi mudado, se souber]
+>
+> Execute o protocolo de triage por camada e entregue a Root Cause confirmada antes de qualquer proposta de código."
+

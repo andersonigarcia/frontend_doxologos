@@ -19,6 +19,7 @@ Esta é a Constituição do Squad Multiagente. Ela estabelece os princípios inv
 - **Backend Serverless:** Supabase (PostgreSQL + Auth + Storage + RLS) + Deno Runtime (`supabase/functions/`).
 - **Integrações:** Mercado Pago API v1/v2 (Checkout Transparente e Webhook idempotente) + Zoom OAuth API + SMTP Hostinger / Nodemailer.
 - **Qualidade:** Jest (unitários/integração) + Playwright (E2E).
+- **Arquitetura Documentada:** [`ARCH.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/ARCH.md) é a **fonte única de verdade** para ERD, RLS, Edge Functions e fluxos de negócio. Deve ser consultado antes de qualquer decisão de banco, contrato de API ou criação de Edge Function.
 
 ---
 
