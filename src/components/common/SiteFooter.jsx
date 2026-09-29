@@ -27,7 +27,7 @@ const SiteFooter = () => {
             <div className="space-y-2 text-sm">
               <Link to="/" className="block text-gray-400 hover:text-white transition-colors">Início</Link>
               <Link to="/agendamento" className="block text-gray-400 hover:text-[#2d8659] transition-colors font-medium">Agendamento</Link>
-              <Link to="/#profissionais" className="block text-gray-400 hover:text-white transition-colors">Profissionais</Link>
+              <a href="/#profissionais" className="block text-gray-400 hover:text-white transition-colors">Profissionais</a>
               <Link to="/artigos" className="block text-gray-400 hover:text-white transition-colors font-medium">Blog (Artigos)</Link>
               <Link to="/ferramentas" className="block text-gray-400 hover:text-white transition-colors">Testes & Ferramentas</Link>
               <Link to="/area-do-paciente" className="block text-gray-400 hover:text-white transition-colors">Área do Paciente</Link>

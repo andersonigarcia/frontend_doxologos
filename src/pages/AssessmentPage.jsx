@@ -45,7 +45,7 @@ const AssessmentPage = () => {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={metaDescription} />
         <meta property="og:type" content="website" />
-        <link rel="canonical" href={`https://novo.doxologos.com.br/ferramentas/${assessment.slug}`} />
+        <link rel="canonical" href={`https://doxologos.com.br/ferramentas/${assessment.slug}`} />
       </Helmet>
 
       {/* Header Compacto da Avaliação */}

@@ -57,7 +57,7 @@ const featuredAssessments = [
     description: 'Avalie a qualidade do diálogo, alinhamento de valores e cumplicidade a dois.',
   },
   {
-    slug: 'teste-burnout-esgotamento',
+    slug: 'teste-burnout',
     title: 'Burnout & Sobrecarga',
     category: 'Trabalho & Esgotamento',
     icon: Flame,
