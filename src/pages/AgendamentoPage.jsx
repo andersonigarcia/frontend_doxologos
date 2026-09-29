@@ -720,7 +720,28 @@ const AgendamentoPage = () => {
     if (!date) return true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    if (date < today) return true;
+
+    // Verificar se o dia inteiro está bloqueado para o profissional selecionado.
+    // Bloqueios de intervalo (com start_time/end_time) são filtrados nos horários
+    // disponíveis em getAvailableTimesForDate — aqui só desabilitamos dias inteiros.
+    if (selectedProfessional && blockedDates.length > 0) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+
+      const isFullDayBlocked = blockedDates.some(
+        (b) =>
+          b.professional_id === selectedProfessional &&
+          b.blocked_date === dateStr &&
+          !b.start_time &&
+          !b.end_time
+      );
+      if (isFullDayBlocked) return true;
+    }
+
+    return false;
   };
 
   const formatDateToString = (date) => {
