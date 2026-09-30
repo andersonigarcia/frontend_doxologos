@@ -332,10 +332,10 @@ const AgendamentoPage = () => {
             .select('*')
             .eq('professional_id', selectedProfessional);
 
-          console.log('✅ Prefetched availability data');
+          secureLog.success('Prefetched availability data');
         } catch (error) {
           // Silent fail - not critical
-          console.log('Prefetch failed (non-critical)');
+          secureLog.debug('Prefetch failed (non-critical)');
         }
       }
     };
@@ -357,7 +357,7 @@ const AgendamentoPage = () => {
           setIsFirstBooking(!data || data.length === 0);
           setUserName(authUser.user_metadata?.full_name?.split(' ')[0] || '');
         } catch (error) {
-          console.log('Error checking booking history:', error);
+          secureLog.warn('Error checking booking history:', error);
         }
       }
     };
@@ -770,8 +770,8 @@ const AgendamentoPage = () => {
 
 
   const handleBooking = async () => {
-    console.log('🚀 [handleBooking] INÍCIO - Iniciando processo de agendamento');
-    console.log('🚀 [handleBooking] Dados do formulário:', {
+    secureLog.info('[handleBooking] INÍCIO - Iniciando processo de agendamento');
+    secureLog.info('[handleBooking] Dados do formulário:', {
       selectedDate,
       selectedTime,
       selectedService,
@@ -862,13 +862,13 @@ const AgendamentoPage = () => {
       let userId;
       let dynamicAuthMetadata = {};
 
-      console.log('👤 [handleBooking] Verificando autenticação...');
+      secureLog.info('[handleBooking] Verificando autenticação...');
 
       if (authUser) {
         userId = authUser.id;
-        console.log('✅ [handleBooking] Usuário autenticado:', userId);
+        secureLog.success('[handleBooking] Usuário autenticado:', userId);
       } else if (isExistingPatient) {
-        console.log('👤 [handleBooking] Paciente existente - tentando login com senha informada...');
+        secureLog.info('[handleBooking] Paciente existente - tentando login com senha informada...');
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: patientData.email,
           password: patientData.password
@@ -893,7 +893,7 @@ const AgendamentoPage = () => {
           description: 'Reconhecemos seu cadastro e vamos prosseguir com o agendamento.'
         });
       } else {
-        console.log('👤 [handleBooking] Usuário não autenticado - criando conta com senha informada...');
+        secureLog.info('[handleBooking] Usuário não autenticado - criando conta com senha informada...');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: patientData.email,
           password: patientData.password,
@@ -909,7 +909,7 @@ const AgendamentoPage = () => {
 
         if (signUpError) {
           if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
-            console.log('⚠️ [handleBooking] Email já cadastrado - tentando login automático...');
+            secureLog.warn('[handleBooking] Email já cadastrado - tentando login automático...');
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email: patientData.email,
               password: patientData.password
@@ -952,7 +952,7 @@ const AgendamentoPage = () => {
 
           try {
             if (!signUpData.session) {
-              console.log('🔐 [handleBooking] Criando sessão pós-cadastro para garantir acesso imediato...');
+              secureLog.info('[handleBooking] Criando sessão pós-cadastro para garantir acesso imediato...');
               const { data: autoSignInData, error: autoSignInError } = await supabase.auth.signInWithPassword({
                 email: patientData.email,
                 password: patientData.password
@@ -965,7 +965,7 @@ const AgendamentoPage = () => {
                 if (sessionUserId) {
                   userId = sessionUserId;
                   dynamicAuthMetadata = autoSignInData.session?.user?.user_metadata || autoSignInData.user?.user_metadata || dynamicAuthMetadata;
-                  console.log('✅ [handleBooking] Sessão autenticada após cadastro:', sessionUserId);
+                  secureLog.success('[handleBooking] Sessão autenticada após cadastro:', sessionUserId);
                 }
               }
             }
@@ -976,19 +976,19 @@ const AgendamentoPage = () => {
       }
 
       if (!userId) {
-        console.log('⚠️ [handleBooking] userId não disponível imediatamente - tentando recuperar via RPC...');
+        secureLog.info('[handleBooking] userId não disponível imediatamente - tentando recuperar via RPC...');
         try {
           const { data: rpcUserId } = await supabase.rpc('get_user_id_by_email', { user_email: patientData.email });
           if (rpcUserId) {
             userId = rpcUserId;
-            console.log('✅ user_id recuperado via RPC:', userId);
+            secureLog.success('user_id recuperado via RPC:', userId);
           }
         } catch (rpcError) {
           console.warn('Não foi possível recuperar user_id via RPC:', rpcError);
         }
       }
 
-      console.log('💰 [handleBooking] Buscando detalhes do serviço...');
+      secureLog.info('[handleBooking] Buscando detalhes do serviço...');
 
       // 3. Get service details to capture current price
       const serviceDetails = services.find(s => s.id === selectedService);
@@ -1001,14 +1001,14 @@ const AgendamentoPage = () => {
         ? valorRepasseProfissionalRaw
         : valorConsulta;
 
-      console.log('💰 [handleBooking] Serviço encontrado:', {
+      secureLog.info('[handleBooking] Serviço encontrado:', {
         serviceName: serviceDetails?.name,
         price: valorConsulta,
         professionalPayout: valorRepasseProfissional,
         platformFee: Math.max(valorConsulta - valorRepasseProfissional, 0)
       });
 
-      console.log('📝 [handleBooking] Preparando dados do agendamento...');
+      secureLog.info('[handleBooking] Preparando dados do agendamento...');
 
       const authMetadata = Object.keys(authUser?.user_metadata || {}).length > 0 ? authUser.user_metadata : dynamicAuthMetadata || {};
       const normalizedPatientEmail = (patientData.email || authUser?.email || authMetadata.email || '').trim();
@@ -1054,7 +1054,7 @@ const AgendamentoPage = () => {
         bookingData.meeting_password = null;
         bookingData.meeting_id = null;
         bookingData.meeting_start_url = personalLink;
-        console.log('🎥 Link Google Meet do profissional utilizado:', personalLink || 'Nenhum link cadastrado');
+        secureLog.info('Link Google Meet do profissional utilizado:', personalLink || 'Nenhum link cadastrado');
       }
 
       // Adicionar user_id se disponível
@@ -1062,7 +1062,7 @@ const AgendamentoPage = () => {
         bookingData.user_id = userId;
       }
 
-      console.log('✅ [handleBooking] bookingData preparado:', {
+      secureLog.info('[handleBooking] bookingData preparado:', {
         ...bookingData,
         user_id: bookingData.user_id ? '***' : null
       });
@@ -1070,7 +1070,7 @@ const AgendamentoPage = () => {
       //      e salvo em bookingData.meeting_link antes da inserção.
 
       // 5. Criar o agendamento
-      console.log('💾 Dados do agendamento antes de inserir no banco:', {
+      secureLog.info('Dados do agendamento antes de inserir no banco:', {
         ...bookingData,
         has_meeting_link: !!bookingData.meeting_link,
         has_meeting_password: !!bookingData.meeting_password,
@@ -1080,7 +1080,7 @@ const AgendamentoPage = () => {
 
       // 5. Se houver mais de 1 slot no carrinho, criar registro em public.packages e agendamentos filhos
       if (selectedSlots.length > 1) {
-        console.log('📦 Criando pacote para', selectedSlots.length, 'sessões...');
+        secureLog.info('Criando pacote para', selectedSlots.length, 'sessões...');
         const servicePrice = parseFloat(serviceDetails?.price || 150);
         const totalSessions = selectedSlots.length;
         const grossAmount = servicePrice * totalSessions;
@@ -1103,7 +1103,7 @@ const AgendamentoPage = () => {
         if (pkgError) {
           console.error('❌ Erro ao criar pacote:', pkgError);
         } else if (pkgRecord) {
-          console.log('✅ Pacote criado com sucesso:', pkgRecord.id);
+          secureLog.success('Pacote criado com sucesso:', pkgRecord.id);
 
           // Criar agendamentos filhos vinculados ao package_id
           const childBookings = selectedSlots.map(slot => ({
@@ -1162,7 +1162,7 @@ const AgendamentoPage = () => {
         }
       }
 
-      console.log('💾 Resultado do insert:', {
+      secureLog.info('Resultado do insert:', {
         success: !bookingError,
         data: bookingInsertData,
         error: bookingError,
@@ -1184,7 +1184,7 @@ const AgendamentoPage = () => {
 
       // 5.5. Enviar email de confirmação do agendamento
       try {
-        console.log('📧 Preparando envio de email de confirmação...');
+        secureLog.info('Preparando envio de email de confirmação...');
         const emailManager = new BookingEmailManager();
 
         const bookingDetails = {
@@ -1202,10 +1202,10 @@ const AgendamentoPage = () => {
           meeting_platform: 'google_meet'
         };
 
-        console.log('📧 Enviando email para o paciente (endereço redactado por LGPD)');
+        secureLog.info('Enviando email para o paciente (endereço redactado por LGPD)');
         await emailManager.sendBookingConfirmation(bookingDetails);
 
-        console.log('📧 Enviando email de confirmação para o profissional...');
+        secureLog.info('Enviando email de confirmação para o profissional...');
         await emailManager.sendProfessionalConfirmation({
           ...bookingDetails,
           professional_email: professionalDetails?.email
@@ -1214,21 +1214,21 @@ const AgendamentoPage = () => {
         // Se for agendamento para o mesmo dia (<= 4h), disparar notificação urgente para o profissional e cópia para o backoffice
         const todayStr = new Date().toISOString().split('T')[0];
         if (selectedDate === todayStr) {
-          console.log('🚨 Enviando notificação URGENTE para profissional e backoffice...');
+          secureLog.info('Enviando notificação URGENTE para profissional e backoffice...');
           await emailManager.sendUrgentProfessionalNotification({
             ...bookingDetails,
             professional_email: professionalDetails?.email
           });
         }
 
-        console.log('✅ Email de confirmação e alertas enviados com sucesso!');
+        secureLog.success('Email de confirmação e alertas enviados com sucesso!');
       } catch (emailError) {
         // Não bloquear o fluxo se o email falhar
         console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
       }
 
       // 6. Redirecionar para checkout
-      console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
+      secureLog.success('[handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
 
       // Registrar etapa de funil: booking criado (aguardando pagamento no checkout)
       try {

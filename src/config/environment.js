@@ -108,7 +108,7 @@ class EnvironmentConfig {
             environment: 'production',
             version: baseConfig.version
           },
-          samplingRate: 1, // 1% sampling em produção (ajustar conforme tráfego)
+          samplingRate: 100, // 100% sampling em produção (captura integral de eventos)
           enhancedEcommerce: true,
           conversionTracking: true
         },
