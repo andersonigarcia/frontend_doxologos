@@ -7,10 +7,14 @@ export const usePageTracking = (pageName, pageTitle) => {
   const location = useLocation();
 
   useEffect(() => {
-    const title = pageTitle || document.title;
-    const finalPath = pageName || location.pathname;
-    // 1. Google Ecosystem Tracking (DataLayer & Gtag)
-    analytics.trackPageView(finalPath, title);
+    // Delay de 120ms para permitir que o React Helmet conclua a mutação do document.title no DOM
+    const timer = setTimeout(() => {
+      const title = pageTitle || document.title;
+      const finalPath = pageName || location.pathname;
+      analytics.trackPageView(finalPath, title);
+    }, 120);
+
+    return () => clearTimeout(timer);
   }, [location.pathname, pageName, pageTitle]);
 };
 

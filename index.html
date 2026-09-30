@@ -168,8 +168,8 @@
 		function gtag() { dataLayer.push(arguments); }
 		gtag('js', new Date());
 
-		// Configurações enfileiradas imediatamente no dataLayer
-		gtag('config', 'G-FSXFYQVCEC');
+		// Configurações enfileiradas imediatamente no dataLayer (SPA gerencia page_view via usePageTracking)
+		gtag('config', 'G-FSXFYQVCEC', { send_page_view: false });
 		gtag('config', 'AW-18137070850');
 
 		// Carrega o script gtag.js de forma não bloqueante para zerar o TBT inicial

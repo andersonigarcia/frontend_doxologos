@@ -355,17 +355,27 @@ export const monitorResourceTiming = () => {
 };
 
 
-// Memory monitoring
+// Memory monitoring (protegido contra loops e limitado a 2 disparos por sessão)
 export const monitorMemoryUsage = () => {
   if (!('memory' in performance)) return;
   
+  let memoryAlertCount = 0;
+  const MAX_MEMORY_ALERTS = 2;
+
   const checkMemory = () => {
+    if (memoryAlertCount >= MAX_MEMORY_ALERTS) return;
+
+    // Ignora rotas administrativas e internas
+    if (/^\/(admin|profissional|faturamento-mensal|gestao)/i.test(window.location.pathname)) return;
+
     const memory = performance.memory;
     const usedMemory = memory.usedJSHeapSize;
     const totalMemory = memory.totalJSHeapSize;
     const memoryUsagePercent = (usedMemory / totalMemory) * 100;
     
-    if (memoryUsagePercent > 80) {
+    // Alerta apenas quando o consumo for severo (> 90%)
+    if (memoryUsagePercent > 90) {
+      memoryAlertCount++;
       analytics.trackEvent('high_memory_usage', {
         event_category: 'Performance',
         event_label: 'Memory Usage',
@@ -374,8 +384,8 @@ export const monitorMemoryUsage = () => {
     }
   };
   
-  // Check memory every 30 seconds
-  setInterval(checkMemory, 30000);
+  // Avalia a cada 60 segundos
+  setInterval(checkMemory, 60000);
 };
 
 // Initialize monitoring

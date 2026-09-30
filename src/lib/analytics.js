@@ -78,27 +78,48 @@ class AnalyticsManager {
     });
   }
 
+  isInternalRoute(path = window.location.pathname) {
+    return /^\/(admin|profissional|faturamento-mensal|gestao|criar-usuarios)/i.test(path);
+  }
+
   // Core tracking methods
   trackPageView(pageName, pageTitle = document.title) {
     if (!this.isProduction) return;
 
-    // 1. DataLayer Push for GTM (Best Practice)
+    const currentPath = pageName || window.location.pathname;
+
+    // 1. Filtrar rotas administrativas internas (evita poluir relatórios de marketing/funil)
+    if (this.isInternalRoute(currentPath)) {
+      return;
+    }
+
+    // 2. Desduplicação de pageview no SPA (evita disparos redundantes em transições rápidas)
+    const now = Date.now();
+    if (this.lastTrackedPage === currentPath && (now - (this.lastTrackedAt || 0)) < 1500) {
+      return;
+    }
+    this.lastTrackedPage = currentPath;
+    this.lastTrackedAt = now;
+
+    const userType = this.getUserType();
+
+    // 3. DataLayer Push for GTM (Best Practice)
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'page_view',
-      page_path: window.location.pathname,
+      page_path: currentPath,
       page_title: pageTitle,
       page_name: pageName,
-      user_type: this.getUserType()
+      user_type: userType
     });
 
-    // 2. Direct gtag fallback
+    // 4. Direct gtag fallback
     if (typeof gtag === 'function') {
       gtag('config', this.gaId, {
         page_title: pageTitle,
-        page_location: window.location.href,
+        page_location: window.location.origin + currentPath,
         custom_parameter_1: pageName,
-        custom_parameter_2: this.getUserType()
+        custom_parameter_2: userType
       });
     }
   }
@@ -106,11 +127,26 @@ class AnalyticsManager {
   trackEvent(eventName, parameters = {}) {
     if (!this.isProduction) return;
 
+    // Se estiver em rota interna, não poluir GA4 com métricas de performance ou telemetria genérica
+    const isInternal = this.isInternalRoute();
+    const isTelemetry = ['performance_metric', 'web_vital', 'high_memory_usage', 'route_change_time', 'component_render'].some(
+      (prefix) => eventName.startsWith(prefix)
+    );
+    if (isInternal && isTelemetry) {
+      return;
+    }
+
+    const userType = this.getUserType();
+    const enrichedParams = {
+      ...parameters,
+      ...(userType === 'staff_internal' ? { traffic_type: 'internal' } : {})
+    };
+
     // 1. DataLayer Push for GTM (Best Practice)
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: eventName,
-      ...parameters
+      ...enrichedParams
     });
 
     // 2. Direct gtag fallback
@@ -118,12 +154,14 @@ class AnalyticsManager {
       gtag('event', eventName, {
         session_id: this.sessionId,
         timestamp: Date.now(),
-        ...parameters
+        ...enrichedParams
       });
     }
   }
 
   trackPerformanceMetric(metricName, value) {
+    if (this.isInternalRoute()) return;
+
     this.trackEvent('performance_metric', {
       event_category: 'Performance',
       event_label: metricName,
@@ -215,10 +253,21 @@ class AnalyticsManager {
 
   // User segmentation
   getUserType() {
-    // Determine user type based on behavior/authentication
-    const isAuthenticated = localStorage.getItem('supabase.auth.token');
-    
-    return isAuthenticated ? 'returning_user' : 'new_visitor';
+    try {
+      const authRaw = localStorage.getItem('doxologos-auth');
+      if (authRaw) {
+        const parsed = JSON.parse(authRaw);
+        const role = parsed?.user?.user_metadata?.role || parsed?.user?.role;
+        if (role === 'admin' || role === 'professional') {
+          return 'staff_internal';
+        }
+        return 'returning_patient';
+      }
+    } catch {
+      // ignore parsing errors
+    }
+
+    return 'new_visitor';
   }
 
   // Performance monitoring methods
