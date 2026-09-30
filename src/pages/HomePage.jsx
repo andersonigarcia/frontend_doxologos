@@ -23,6 +23,7 @@ import AnxietyGuideModal from '@/components/home/AnxietyGuideModal';
 import FloatingWhatsAppButton from '@/components/FloatingWhatsAppButton';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import analytics from '@/lib/analytics';
 import BlogPreviewSection from '@/components/home/BlogPreviewSection.jsx';
 import AssessmentsHighlightSection from '@/components/home/AssessmentsHighlightSection';
 import SiteFooter from '@/components/common/SiteFooter';
@@ -63,7 +64,19 @@ const faqs = [
     content: (
       <div className="space-y-4">
         <p>Basta acessar nossa página de agendamento, escolher o profissional, o serviço e o horário ideal para você. Após o pagamento, você receberá a confirmação por email.</p>
-        <Link to="/agendamento" className="inline-flex items-center text-[#2d8659] font-bold hover:underline">
+        <Link
+          to="/agendamento"
+          className="inline-flex items-center text-[#2d8659] font-bold hover:underline"
+          onClick={() => {
+            try {
+              analytics.trackEvent('cta_click', {
+                event_category: 'Conversion',
+                event_label: 'agendar_consulta',
+                page_section: 'faq'
+              });
+            } catch (e) {}
+          }}
+        >
           Agendar minha primeira consulta <span className="ml-1">→</span>
         </Link>
       </div>

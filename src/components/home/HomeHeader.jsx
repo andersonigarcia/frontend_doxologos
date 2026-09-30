@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import UserBadge from '@/components/UserBadge';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { getAllAssessments } from '@/data/assessments';
+import analytics from '@/lib/analytics';
 
 const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMenuOpen, onToggleMenu }) => {
   const assessmentsCount = getAllAssessments().length;
@@ -62,7 +63,18 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 <UserBadge user={user} userRole={userRole} onLogout={onLogout} layout="row" showLogoutButton />
               </>
             ) : (
-              <Link to="/agendamento">
+              <Link
+                to="/agendamento"
+                onClick={() => {
+                  try {
+                    analytics.trackEvent('cta_click', {
+                      event_category: 'Conversion',
+                      event_label: 'agendar_consulta',
+                      page_section: 'header_desktop'
+                    });
+                  } catch (e) {}
+                }}
+              >
                 <Button className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] flex items-center gap-2 shadow-sm font-medium">
                   <Calendar className="w-4 h-4" />
                   Agendar Consulta
@@ -122,7 +134,19 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 />
               </div>
             ) : (
-              <Link to="/agendamento" className="block pt-2">
+              <Link
+                to="/agendamento"
+                className="block pt-2"
+                onClick={() => {
+                  try {
+                    analytics.trackEvent('cta_click', {
+                      event_category: 'Conversion',
+                      event_label: 'agendar_consulta',
+                      page_section: 'header_mobile'
+                    });
+                  } catch (e) {}
+                }}
+              >
                 <Button className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] flex items-center justify-center gap-2">
                   <Calendar className="w-4 h-4" />
                   Agendar Consulta

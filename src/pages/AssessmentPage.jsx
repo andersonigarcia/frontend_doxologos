@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, Sparkles, Heart } from 'lucide-react';
 import AssessmentRunner from '@/components/assessment/AssessmentRunner';
 import { getAssessmentByIdentifier } from '@/data/assessments';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
+import analytics from '@/lib/analytics';
 
 const AssessmentPage = () => {
   const { slug } = useParams();
@@ -13,6 +14,18 @@ const AssessmentPage = () => {
   const assessment = useMemo(() => {
     return getAssessmentByIdentifier(slug || 'gad-7');
   }, [slug]);
+
+  useEffect(() => {
+    if (assessment) {
+      try {
+        analytics.trackEvent('assessment_view', {
+          event_category: 'Engagement',
+          assessment_id: assessment.id || assessment.slug,
+          assessment_title: assessment.title
+        });
+      } catch (e) {}
+    }
+  }, [assessment]);
 
   if (!assessment) {
     return (
@@ -67,6 +80,16 @@ const AssessmentPage = () => {
             <Link
               to="/agendamento"
               className="bg-[#2d8659] hover:bg-[#236b46] text-white text-xs sm:text-sm font-semibold px-4 py-2 rounded-xl shadow-sm transition-colors"
+              onClick={() => {
+                try {
+                  analytics.trackEvent('cta_click', {
+                    event_category: 'Conversion',
+                    event_label: 'agendar_consulta',
+                    page_section: 'assessment_header',
+                    assessment_id: assessment?.id || assessment?.slug
+                  });
+                } catch (e) {}
+              }}
             >
               Agendar Consulta
             </Link>

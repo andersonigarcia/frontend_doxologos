@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, MessageCircle, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import analytics from '@/lib/analytics';
 
 /**
  * Touch-Optimized "Como Funciona" Component
@@ -91,6 +92,15 @@ const ComoFuncionaSection = () => {
 
     const handleStepClick = (target) => {
         if (target) {
+            if (target === '/agendamento') {
+                try {
+                    analytics.trackEvent('cta_click', {
+                        event_category: 'Conversion',
+                        event_label: 'agendar_consulta',
+                        page_section: 'como_funciona'
+                    });
+                } catch (e) {}
+            }
             navigate(target);
         }
     };

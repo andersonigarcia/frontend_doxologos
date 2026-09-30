@@ -4,7 +4,7 @@
 class AnalyticsManager {
   constructor() {
     this.isProduction = import.meta.env.PROD;
-    this.gaId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-XXXXXXXXXX';
+    this.gaId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-FSXFYQVCEC';
     this.sessionId = this.generateSessionId();
     this.pageLoadTime = performance.now();
 

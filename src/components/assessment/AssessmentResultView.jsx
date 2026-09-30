@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import AssessmentGauge from './AssessmentGauge';
 import LeadCaptureSection from './LeadCaptureSection';
 import { getSeverityTheme } from '@/lib/assessmentEngine';
+import analytics from '@/lib/analytics';
 
 const AssessmentResultView = ({
   assessment,
@@ -150,6 +151,17 @@ const AssessmentResultView = ({
             <Link
               to={range?.ctaLink || '/agendamento'}
               className="w-full sm:flex-1"
+              onClick={() => {
+                try {
+                  analytics.trackEvent('cta_click', {
+                    event_category: 'Conversion',
+                    event_label: 'agendar_consulta',
+                    page_section: 'assessment_result',
+                    assessment_id: assessment?.id,
+                    severity: severity
+                  });
+                } catch (e) {}
+              }}
             >
               <Button
                 className="w-full bg-[#2d8659] hover:bg-[#236b46] text-white py-4 sm:py-6 rounded-2xl font-bold text-base shadow-lg shadow-emerald-900/15 flex items-center justify-center gap-2 group transition-all"
@@ -165,6 +177,17 @@ const AssessmentResultView = ({
               target="_blank"
               rel="noopener noreferrer"
               className="w-full sm:w-auto"
+              onClick={() => {
+                try {
+                  analytics.trackEvent('whatsapp_click', {
+                    event_category: 'Conversion',
+                    event_label: 'falar_whatsapp_assessment',
+                    page_section: 'assessment_result',
+                    assessment_id: assessment?.id,
+                    severity: severity
+                  });
+                } catch (e) {}
+              }}
             >
               <Button
                 type="button"

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Shield, CheckCircle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import VideoShowcase from './VideoShowcase';
+import analytics from '@/lib/analytics';
 
 const HeroSection = ({
   videos = [],
@@ -63,7 +64,19 @@ const HeroSection = ({
             {/* CTAs - Mobile Optimized */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
               {/* CTA Primário - Encontre seu psicólogo */}
-              <Link to="/agendamento" className="w-full sm:w-auto">
+              <Link
+                to="/agendamento"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  try {
+                    analytics.trackEvent('cta_click', {
+                      event_category: 'Conversion',
+                      event_label: 'agendar_consulta',
+                      page_section: 'hero'
+                    });
+                  } catch (e) {}
+                }}
+              >
                 <Button size="lg" className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 w-full sm:w-auto whitespace-nowrap shadow-md hover:shadow-lg transition-all font-semibold">
                   <Calendar className="w-5 h-5 mr-2" />
                   Encontre seu psicólogo
@@ -71,7 +84,19 @@ const HeroSection = ({
               </Link>
 
               {/* CTA Secundário / Lead Magnet - Teste de Ansiedade Gratuito */}
-              <Link to="/ferramentas/teste-ansiedade-gad7" className="w-full sm:w-auto">
+              <Link
+                to="/ferramentas/teste-ansiedade-gad7"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  try {
+                    analytics.trackEvent('cta_click', {
+                      event_category: 'Engagement',
+                      event_label: 'teste_ansiedade_gad7',
+                      page_section: 'hero'
+                    });
+                  } catch (e) {}
+                }}
+              >
                 <Button size="lg" variant="outline" className="border-[#1b3c37]/30 bg-white/80 hover:bg-white text-[#1b3c37] text-base px-6 py-3 sm:py-4 w-full sm:w-auto font-semibold flex items-center justify-center gap-2 shadow-xs transition-all">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                   <span>Fazer Teste de Ansiedade (2 min)</span>
