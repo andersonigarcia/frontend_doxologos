@@ -246,9 +246,18 @@ export const useEngagementTracking = () => {
     });
   }, [trackEvent]);
 
+  const trackElementView = useCallback((elementName, data = {}) => {
+    trackEvent('element_view', {
+      event_category: 'Engagement',
+      event_label: elementName,
+      ...data
+    });
+  }, [trackEvent]);
+
   return {
     trackScrollDepth,
-    trackTimeOnPage
+    trackTimeOnPage,
+    trackElementView
   };
 };
 

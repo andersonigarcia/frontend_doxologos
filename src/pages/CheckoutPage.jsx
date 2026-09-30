@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { CreditCard, Smartphone, Barcode, Calendar, Lock, CheckCircle, XCircle, Clock, ArrowLeft, Heart } from 'lucide-react';
@@ -14,6 +14,7 @@ import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import ExistingPaymentModal from '@/components/payment/ExistingPaymentModal';
 import { paymentOrchestrator } from '@/lib/payment';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
+import analytics from '@/lib/analytics';
 
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
@@ -49,6 +50,7 @@ const CheckoutPage = () => {
     const [payerEmail, setPayerEmail] = useState(''); // E-mail editável pelo usuário no checkout
     const [payerEmailError, setPayerEmailError] = useState(''); // Mensagem de erro do campo e-mail
     const [acceptedTcle, setAcceptedTcle] = useState(false); // Aceite do TCLE Telepsicologia / CFP Resolução 11/2018
+    const checkoutTrackedRef = useRef(false);
 
     // Helper de validação de e-mail (RFC básico + domínio com pelo menos 2 chars)
     const isValidEmail = (email) => {
@@ -158,6 +160,24 @@ const CheckoutPage = () => {
             loadCreditData();
         }
     }, [booking, packageData, type]);
+
+    // Tracking de funil: checkout_start disparado uma vez após carregar os dados
+    useEffect(() => {
+        if (!checkoutTrackedRef.current && (booking || packageData || inscricao)) {
+            checkoutTrackedRef.current = true;
+            try {
+                analytics.trackEvent('checkout_start', {
+                    event_category: 'Checkout',
+                    booking_id: bookingId || inscricaoId || packageId || null,
+                    checkout_type: type || (packageId ? 'package' : 'booking'),
+                    payment_method: selectedMethod,
+                    value: bookingTotal || undefined
+                });
+            } catch (err) {
+                logger.warn('CheckoutPage.analytics:checkout_start error', err);
+            }
+        }
+    }, [booking, packageData, inscricao, bookingTotal, bookingId, inscricaoId, packageId, type, selectedMethod]);
 
     const bookingTotal = type === 'evento'
         ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
@@ -478,6 +498,19 @@ const CheckoutPage = () => {
             } else {
                 // Para bookings, usar valor_consulta ou service.price
                 amount = booking?.valor_consulta || booking?.service?.price || parseFloat(valorParam) || 0;
+            }
+
+            // Tracking de funil: payment_initiated disparado ao submeter pagamento
+            try {
+                analytics.trackEvent('payment_initiated', {
+                    event_category: 'Checkout',
+                    payment_method: usingCredit && creditCoversTotal ? 'wallet' : selectedMethod,
+                    booking_id: referenceId,
+                    checkout_type: type || (packageId ? 'package' : 'booking'),
+                    value: amount
+                });
+            } catch (trackingError) {
+                logger.warn('CheckoutPage.analytics:payment_initiated error', trackingError);
             }
 
             const description = packageId
@@ -976,7 +1009,18 @@ const CheckoutPage = () => {
                                 {paymentMethods.map((method) => (
                                     <button
                                         key={method.id}
-                                        onClick={() => setSelectedMethod(method.id)}
+                                        onClick={() => {
+                                            setSelectedMethod(method.id);
+                                            try {
+                                                analytics.trackEvent('payment_method_selected', {
+                                                    event_category: 'Checkout',
+                                                    payment_method: method.id,
+                                                    booking_id: bookingId || inscricaoId || packageId || null
+                                                });
+                                            } catch (err) {
+                                                // Silencioso
+                                            }
+                                        }}
                                         disabled={!method.available || processing || creditCoversTotal}
                                         className={`p-4 rounded-lg border-2 transition-all ${selectedMethod === method.id
                                             ? 'border-[#2d8659] bg-[#2d8659]/5'

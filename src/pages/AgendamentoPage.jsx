@@ -1230,13 +1230,14 @@ const AgendamentoPage = () => {
       // 6. Redirecionar para checkout
       console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
 
-      // Registrar conversão de funil: booking criado com sucesso
+      // Registrar etapa de funil: booking criado (aguardando pagamento no checkout)
       try {
-        trackBookingCompleted({
-          id: bookingId,
-          professionalId: selectedProfessional,
-          serviceId: selectedService,
-          amount: valorConsulta
+        analytics.trackEvent('booking_created', {
+          event_category: 'Booking Flow',
+          booking_id: bookingId,
+          professional_id: selectedProfessional,
+          service_id: selectedService,
+          value: valorConsulta
         });
       } catch (trackingError) {
         // Não bloquear o fluxo se o tracking falhar
