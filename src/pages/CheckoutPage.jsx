@@ -161,7 +161,16 @@ const CheckoutPage = () => {
         }
     }, [booking, packageData, type]);
 
-    // Tracking de funil: checkout_start disparado uma vez após carregar os dados
+    const bookingTotal = type === 'evento'
+        ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
+        : packageId
+            ? Number(packageData?.gross_amount || parseFloat(valorParam) || 0)
+            : Number(booking?.valor_consulta || booking?.service?.price || valorParam || 0);
+
+    const availableCreditAmount = type === 'evento' ? 0 : (creditState.balance?.available_amount || 0);
+    const creditCoversTotal = usingCredit && availableCreditAmount >= bookingTotal && bookingTotal > 0;
+
+    // Tracking de funil: checkout_start disparado uma vez após carregar os dados e calcular o total
     useEffect(() => {
         if (!checkoutTrackedRef.current && (booking || packageData || inscricao)) {
             checkoutTrackedRef.current = true;
@@ -178,15 +187,6 @@ const CheckoutPage = () => {
             }
         }
     }, [booking, packageData, inscricao, bookingTotal, bookingId, inscricaoId, packageId, type, selectedMethod]);
-
-    const bookingTotal = type === 'evento'
-        ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
-        : packageId
-            ? Number(packageData?.gross_amount || parseFloat(valorParam) || 0)
-            : Number(booking?.valor_consulta || booking?.service?.price || valorParam || 0);
-
-    const availableCreditAmount = type === 'evento' ? 0 : (creditState.balance?.available_amount || 0);
-    const creditCoversTotal = usingCredit && availableCreditAmount >= bookingTotal && bookingTotal > 0;
 
     const fetchPackage = async () => {
         try {
