@@ -181,7 +181,7 @@ const TerapiaTdahPage = () => {
 
       <SiteFooter />
 
-      <FloatingWhatsAppButton phoneNumber="5531971982947" message="Olá! Gostaria de saber mais sobre a terapia para TDAH em adultos." />
+      <FloatingWhatsAppButton phoneNumber="5511917287583" message="Olá! Gostaria de saber mais sobre a terapia para TDAH em adultos." />
     </div>
   );
 };

@@ -64,8 +64,8 @@ const SiteFooter = () => {
           <div>
             <h3 className="font-bold text-lg mb-4">Contato</h3>
             <div className="space-y-2 text-gray-400 text-sm">
-              <p>contato@doxologos.com.br</p>
-              <p>(11) 91728-7583</p>
+              <a href="mailto:contato@doxologos.com.br" className="block hover:text-white transition-colors">contato@doxologos.com.br</a>
+              <a href="https://wa.me/5511917287583" target="_blank" rel="noopener noreferrer" className="block hover:text-white transition-colors">(11) 91728-7583</a>
             </div>
           </div>
         </div>

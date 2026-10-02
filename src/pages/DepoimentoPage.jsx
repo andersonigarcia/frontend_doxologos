@@ -429,11 +429,18 @@ const DepoimentoPage = () => {
                             Além do depoimento, você pode entrar em contato conosco através de:
                         </p>
                         <div className="grid md:grid-cols-3 gap-6">
-                            <Card className="p-6">
-                                <MessageCircle className="w-8 h-8 text-[#2d8659] mx-auto mb-3" />
-                                <h3 className="font-semibold mb-2">WhatsApp</h3>
-                                <p className="text-gray-600 text-sm">Fale diretamente conosco</p>
-                            </Card>
+                            <a
+                                href="https://wa.me/5511917287583?text=Ol%C3%A1!%20Gostaria%20de%20tirar%20uma%20d%C3%BAvida%20sobre%20os%20atendimentos%20da%20Doxologos."
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block group focus:outline-none"
+                            >
+                                <Card className="p-6 transition-all duration-200 group-hover:border-[#2d8659] group-hover:shadow-md cursor-pointer">
+                                    <MessageCircle className="w-8 h-8 text-[#2d8659] mx-auto mb-3" />
+                                    <h3 className="font-semibold mb-2 group-hover:text-[#2d8659] transition-colors">WhatsApp</h3>
+                                    <p className="text-gray-600 text-sm">(11) 91728-7583</p>
+                                </Card>
+                            </a>
                             <Card className="p-6">
                                 <Mail className="w-8 h-8 text-[#2d8659] mx-auto mb-3" />
                                 <h3 className="font-semibold mb-2">Email</h3>

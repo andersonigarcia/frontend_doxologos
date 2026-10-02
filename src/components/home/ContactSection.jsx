@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { Phone, Mail, MapPin, MessageCircle, Lock, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import { CLINIC_CONTACT } from '@/constants/contact';
+
 const ContactSection = ({
   formData,
   emailError,
@@ -12,9 +14,9 @@ const ContactSection = ({
   onPhoneChange,
   onFieldChange,
 }) => {
-  const phoneNumber = '+5531971982947';
-  const email = 'contato@doxologos.com.br';
-  const whatsappNumber = '5531971982947';
+  const phoneNumber = CLINIC_CONTACT.phoneTel;
+  const email = CLINIC_CONTACT.email;
+  const whatsappNumber = CLINIC_CONTACT.whatsappNumber;
   const whatsappMessage = 'Olá! Gostaria de saber mais sobre os atendimentos.';
 
   return (

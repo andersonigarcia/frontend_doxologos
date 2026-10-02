@@ -166,7 +166,7 @@ const FaqSection = ({ faqs = [] }) => {
             </p>
             <Button
               onClick={() => {
-                window.open('https://wa.me/5531971982947', '_blank');
+                window.open('https://wa.me/5511917287583', '_blank');
               }}
               className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1]
                 active:scale-95 transition-all touch-manipulation gap-2"
@@ -183,7 +183,7 @@ const FaqSection = ({ faqs = [] }) => {
             <p className="text-[#262624]/80 mb-6">Nossa equipe está pronta para ajudar você a entender melhor nossos serviços e iniciar sua jornada de cuidado.</p>
             <Button
               onClick={() => {
-                window.open('https://wa.me/5531971982947', '_blank');
+                window.open('https://wa.me/5511917287583', '_blank');
               }}
               className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] active:scale-95 transition-all text-base px-8 py-6 rounded-xl shadow-md gap-2"
             >

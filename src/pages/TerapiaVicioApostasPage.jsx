@@ -177,7 +177,7 @@ const TerapiaVicioApostasPage = () => {
       </main>
 
       <SiteFooter />
-      <FloatingWhatsAppButton phoneNumber="5531971982947" message="Olá! Preciso de ajuda urgente e sigilosa sobre vício em apostas/jogos." />
+      <FloatingWhatsAppButton phoneNumber="5511917287583" message="Olá! Preciso de ajuda urgente e sigilosa sobre vício em apostas/jogos." />
     </div>
   );
 };

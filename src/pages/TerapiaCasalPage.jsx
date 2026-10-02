@@ -181,7 +181,7 @@ const TerapiaCasalPage = () => {
 
       <SiteFooter />
 
-      <FloatingWhatsAppButton phoneNumber="5531971982947" message="Olá! Gostaria de saber mais sobre a terapia de casal." />
+      <FloatingWhatsAppButton phoneNumber="5511917287583" message="Olá! Gostaria de saber mais sobre a terapia de casal." />
     </div>
   );
 };

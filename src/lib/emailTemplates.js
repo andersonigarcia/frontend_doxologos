@@ -581,7 +581,7 @@ export class EmailTemplates {
       <div style="background: #fee2e2; padding: 20px; margin: 20px 0; border-radius: 6px; border-left: 4px solid #ef4444; text-align: center;">
         <p style="margin: 0 0 10px 0; color: #991b1b; font-weight: 600; font-size: 16px;">Precisa de Apoio Técnico?</p>
         <p style="margin: 0; color: #7f1d1d; font-size: 14px;">
-          <strong>WhatsApp:</strong> <a href="https://wa.me/551191728-7583" style="color: #991b1b; text-decoration: underline;">+55 11 91728-7583</a><br>
+          <strong>WhatsApp:</strong> <a href="https://wa.me/5511917287583" style="color: #991b1b; text-decoration: underline;">+55 11 91728-7583</a><br>
           <strong>Email:</strong> <a href="mailto:${this.supportEmail}" style="color: #991b1b; text-decoration: underline;">${this.supportEmail}</a>
         </p>
       </div>
@@ -1307,7 +1307,7 @@ export class EmailTemplates {
           <a href="${this.baseUrl}/agendamento" class="btn" style="background-color: #2d8659; margin: 5px;">
             Agendar Consulta
           </a>
-          <a href="https://wa.me/5531971982947" class="btn" style="background-color: #25D366; margin: 5px;">
+          <a href="https://wa.me/5511917287583" class="btn" style="background-color: #25D366; margin: 5px;">
             Falar no WhatsApp
           </a>
         </div>

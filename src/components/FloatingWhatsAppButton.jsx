@@ -4,10 +4,15 @@ import { MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import analytics from '@/lib/analytics';
 
-const FloatingWhatsAppButton = ({ isHidden = false }) => {
-  const phoneNumber = '5531971982947'; // Número da clínica Doxologos
-  const message = 'Olá, gostaria de mais informações sobre os atendimentos da Doxologos.';
-  const whatsappLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+import { CLINIC_CONTACT } from '@/constants/contact';
+
+const FloatingWhatsAppButton = ({
+  isHidden = false,
+  phoneNumber = CLINIC_CONTACT.whatsappNumber,
+  message = CLINIC_CONTACT.defaultWhatsAppMessage
+}) => {
+  const cleanPhone = (phoneNumber || CLINIC_CONTACT.whatsappNumber).replace(/\D/g, '');
+  const whatsappLink = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 
   const handleClick = () => {
     analytics.trackEvent('whatsapp_click', {

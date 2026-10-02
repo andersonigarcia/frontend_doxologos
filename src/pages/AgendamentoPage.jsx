@@ -222,7 +222,7 @@ const AgendamentoPage = () => {
   } = usePatientForm({ authUser, resetPassword, toast });
   const formErrors = patientFormState?.errors || {};
 
-  const whatsappSupportNumber = '5531971982947';
+  const whatsappSupportNumber = '5511917287583';
   const servicePriceRange = useMemo(() => {
     if (!services || services.length === 0) return null;
     const parsedPrices = services

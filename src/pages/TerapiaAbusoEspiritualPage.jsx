@@ -177,7 +177,7 @@ const TerapiaAbusoEspiritualPage = () => {
       </main>
 
       <SiteFooter />
-      <FloatingWhatsAppButton phoneNumber="5531971982947" message="Olá! Gostaria de saber mais sobre a terapia para vítimas de abuso espiritual." />
+      <FloatingWhatsAppButton phoneNumber="5511917287583" message="Olá! Gostaria de saber mais sobre a terapia para vítimas de abuso espiritual." />
     </div>
   );
 };

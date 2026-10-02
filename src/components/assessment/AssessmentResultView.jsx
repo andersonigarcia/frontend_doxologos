@@ -40,7 +40,7 @@ const AssessmentResultView = ({
   } = result;
   const theme = getSeverityTheme(range?.badgeColor);
 
-  const clinicPhone = '5531971982947';
+  const clinicPhone = '5511917287583';
   const whatsappText = encodeURIComponent(
     `Olá! Fiz a autoavaliação de ${assessment.title} no site da Doxologos e obtive o resultado de "${range?.label || 'Avaliação'}" (Score: ${score}/${maxScore}). Gostaria de tirar dúvidas e conversar com um psicólogo.`
   );

@@ -96,3 +96,11 @@
 
 <!-- Adicione novos bugs abaixo deste comentário, do mais recente ao mais antigo -->
 
+### Bug: Discrepância e Divergência no WhatsApp Oficial da Clínica (11 91728-7583)
+- **Data:** 2026-10-02
+- **Camada:** Frontend React / Configurações de Comunicação
+- **Sintoma:** Ao clicar no botão flutuante e nos CTAs de WhatsApp, o usuário recebia erro da Meta informando que o número não estava no WhatsApp.
+- **Root Cause:** O número de contato estava misturado entre números de teste de Minas Gerais (31 97198-2947) e placeholders de checkout (`5511999999999`). O número oficial e ativo no WhatsApp é `(11) 91728-7583` (`5511917287583`).
+- **Solução Aplicada:** Criado módulo centralizado `src/constants/contact.js` (`CLINIC_CONTACT`) e atualizados 100% dos links e referências (`FloatingWhatsAppButton`, `ContactSection`, `FaqSection`, `SiteFooter`, `CheckoutFailurePage`, `DateTimeStep`, `AgendamentoPage`, `DepoimentoPage`, `HomePage`, `emailTemplates` e 8 landing pages especializadas) para o número oficial `(11) 91728-7583` (`5511917287583`).
+- **Prevenção:** Centralização dos dados de contato em `src/constants/contact.js` para evitar divergências e placeholders espalhados no código.
+

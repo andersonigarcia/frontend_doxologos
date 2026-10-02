@@ -580,7 +580,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                   </Button>
 
                   <a
-                    href="https://wa.me/5531971982947?text=Ol%C3%A1%2C%20acabei%20de%20responder%20o%20quiz%20no%20site%20e%20gostaria%20de%20falar%20com%20a%20equipe!"
+                    href="https://wa.me/5511917287583?text=Ol%C3%A1%2C%20acabei%20de%20responder%20o%20quiz%20no%20site%20e%20gostaria%20de%20falar%20com%20a%20equipe!"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-2 text-sm font-bold text-[#1b3c37] hover:underline pt-2"

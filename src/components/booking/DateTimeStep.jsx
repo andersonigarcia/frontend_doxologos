@@ -157,7 +157,7 @@ const DateTimeStep = ({
 
   // Support contact handler
   const handleContactSupport = () => {
-    const whatsappNumber = '5511999999999'; // Replace with actual number
+    const whatsappNumber = '5511917287583'; // Número oficial de suporte Doxologos (DDD 11)
     const message = encodeURIComponent(
       `Olá! Estou tentando agendar ${selectedServiceDetails?.name || 'uma consulta'} mas não encontrei horários disponíveis para ${selectedDate ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', timeZone: 'UTC' }) : 'a data selecionada'}. Podem me ajudar?`
     );
