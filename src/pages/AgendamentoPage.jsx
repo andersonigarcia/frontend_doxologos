@@ -377,6 +377,29 @@ const AgendamentoPage = () => {
   };
 
   const handleProceedToSummary = async () => {
+    // Se for novo paciente deslogado, validar senha e confirmação antes de prosseguir
+    if (!authUser && !isExistingPatient) {
+      if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+        setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+        toast({
+          variant: 'destructive',
+          title: 'Senha muito curta',
+          description: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a área do paciente.`
+        });
+        return;
+      }
+
+      if (patientData.password !== patientData.confirmPassword) {
+        setPasswordError('As senhas precisam ser iguais.');
+        toast({
+          variant: 'destructive',
+          title: 'Senhas não conferem',
+          description: 'Digite a mesma senha nos dois campos para continuar.'
+        });
+        return;
+      }
+    }
+
     // Se for paciente existente, validar senha antes de prosseguir
     if (!authUser && isExistingPatient) {
       if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
@@ -477,7 +500,13 @@ const AgendamentoPage = () => {
       );
     }
 
-    return Boolean(meetingPlatform);
+    return (
+      Boolean(patientData.password) &&
+      Boolean(patientData.confirmPassword) &&
+      patientData.password.length >= MIN_PASSWORD_LENGTH &&
+      patientData.password === patientData.confirmPassword &&
+      Boolean(meetingPlatform)
+    );
   }, [
     authUser,
     emailError,
@@ -518,12 +547,20 @@ const AgendamentoPage = () => {
       return '';
     }
 
-    if (isExistingPatient && !patientData.password) {
-      return 'Informe sua senha de acesso';
+    if (!patientData.password) {
+      return isExistingPatient ? 'Informe sua senha de acesso' : 'Crie uma senha para acessar a área do paciente';
     }
 
-    if (isExistingPatient && patientData.password.length < MIN_PASSWORD_LENGTH) {
+    if (patientData.password.length < MIN_PASSWORD_LENGTH) {
       return `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres`;
+    }
+
+    if (!isExistingPatient && !patientData.confirmPassword) {
+      return 'Confirme sua senha';
+    }
+
+    if (!isExistingPatient && patientData.password !== patientData.confirmPassword) {
+      return 'As senhas precisam ser iguais';
     }
 
     return '';

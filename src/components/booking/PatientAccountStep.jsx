@@ -201,14 +201,14 @@ const PatientAccountStep = ({
 
       {!authUser ? (
         <AnimatePresence>
-          {emailExists === true && (
-            <motion.div
-              className="mt-8 overflow-hidden"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
+          <motion.div
+            key={isExistingPatient ? 'existing-patient-card' : 'new-patient-card'}
+            className="mt-8 overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
               {/* Card Simplificado */}
               <div className={`relative rounded-2xl p-4 md:p-5 border transition-all duration-300 ${isExistingPatient
                 ? 'bg-green-50 border-green-200'
@@ -373,7 +373,6 @@ const PatientAccountStep = ({
                 )}
               </div>
             </motion.div>
-          )}
         </AnimatePresence>
       ) : (
         <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-2xl text-sm text-green-800">
