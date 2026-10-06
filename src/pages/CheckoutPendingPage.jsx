@@ -145,10 +145,11 @@ const CheckoutPendingPage = () => {
                 },
                 (payload) => {
                     const status = payload.new.status;
+                    const refParam = booking?.id || payment.external_reference || externalReference || '';
                     if (status === 'approved') {
-                        navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                        navigate(`/checkout/success?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
                     } else if (status === 'rejected' || status === 'cancelled') {
-                        navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                        navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
                     }
                 }
             )
@@ -167,10 +168,11 @@ const CheckoutPendingPage = () => {
                     .eq('mp_payment_id', payment.mp_payment_id)
                     .single();
 
+                const refParam = booking?.id || payment.external_reference || externalReference || '';
                 if (updatedPayment?.status === 'approved') {
-                    navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                    navigate(`/checkout/success?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
                 } else if (updatedPayment?.status === 'rejected' || updatedPayment?.status === 'cancelled') {
-                    navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                    navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
                 }
             } catch (error) {
                 console.error('Erro ao verificar status (fallback):', error);
@@ -198,10 +200,11 @@ const CheckoutPendingPage = () => {
                 .eq('mp_payment_id', payment.mp_payment_id)
                 .single();
 
+            const refParam = booking?.id || payment.external_reference || externalReference || '';
             if (updatedPayment?.status === 'approved') {
-                navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                navigate(`/checkout/success?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
             } else if (updatedPayment?.status === 'rejected' || updatedPayment?.status === 'cancelled') {
-                navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
             } else {
                 alert('O pagamento ainda está pendente. Aguarde a confirmação.');
             }

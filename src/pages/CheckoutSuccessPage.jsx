@@ -22,68 +22,140 @@ const CheckoutSuccessPage = () => {
     // Pegar dados do state (quando vem do CheckoutPage)
     const stateBookingId = location.state?.bookingId;
     const statePaymentId = location.state?.paymentId;
+    const statePackageId = location.state?.packageId;
+    const stateInscricaoId = location.state?.inscricaoId;
 
     const paymentId = statePaymentId || searchParams.get('payment_id');
-    const externalReference = stateBookingId || searchParams.get('external_reference'); // booking_id
+    const externalReference = stateBookingId || statePackageId || stateInscricaoId || searchParams.get('external_reference') || searchParams.get('booking_id') || searchParams.get('package_id') || searchParams.get('inscricao_id');
 
     useEffect(() => {
         const fetchPaymentAndBooking = async () => {
             try {
-                // Buscar agendamento primeiro
-                const bookingId = externalReference || payment?.booking_id;
-                if (bookingId) {
-                    const { data: bookingData, error: bookingError } = await supabase
+                // 1. Buscar pagamento se paymentId estiver presente
+                let fetchedPayment = null;
+                if (paymentId) {
+                    const { data: paymentData, error: paymentError } = await supabase
+                        .from('payments')
+                        .select('*')
+                        .eq('mp_payment_id', paymentId.toString())
+                        .maybeSingle();
+
+                    if (paymentError) {
+                        console.error('Erro ao buscar pagamento:', paymentError);
+                    }
+                    if (paymentData) {
+                        fetchedPayment = paymentData;
+                        setPayment(paymentData);
+                    }
+                }
+
+                // 2. Determinar o identificador de referência (booking, pacote ou evento)
+                const targetRefId = externalReference || fetchedPayment?.booking_id || fetchedPayment?.package_id || fetchedPayment?.external_reference;
+
+                if (targetRefId) {
+                    // Tentar encontrar na tabela bookings
+                    const { data: bookingData } = await supabase
                         .from('bookings')
                         .select(`
                             *,
                             professional:professionals(name, specialty, personal_meet_link),
                             service:services(name, price, duration_minutes)
                         `)
-                        .eq('id', bookingId)
-                        .single();
-                    
-                    if (bookingError) {
-                        console.error('Erro ao buscar booking:', bookingError);
+                        .eq('id', targetRefId)
+                        .maybeSingle();
+
+                    let resolvedItem = bookingData;
+
+                    // Se não encontrou em bookings, verificar se é um pacote (packages)
+                    if (!resolvedItem) {
+                        const { data: pkgData } = await supabase
+                            .from('packages')
+                            .select(`
+                                *,
+                                professional:professionals(name, specialty, personal_meet_link)
+                            `)
+                            .eq('id', targetRefId)
+                            .maybeSingle();
+
+                        if (pkgData) {
+                            const { data: childBookings } = await supabase
+                                .from('bookings')
+                                .select(`
+                                    *,
+                                    professional:professionals(name, specialty, personal_meet_link),
+                                    service:services(name, price, duration_minutes)
+                                `)
+                                .eq('package_id', pkgData.id)
+                                .order('booking_date', { ascending: true })
+                                .limit(1);
+
+                            const firstChild = childBookings?.[0];
+                            resolvedItem = {
+                                id: pkgData.id,
+                                professional_id: pkgData.professional_id,
+                                professional: pkgData.professional || firstChild?.professional,
+                                booking_date: firstChild?.booking_date || pkgData.created_at,
+                                booking_time: firstChild?.booking_time || 'Multiplas sessões',
+                                service: {
+                                    name: `Pacote (${pkgData.total_sessions} sessões)`,
+                                    price: pkgData.gross_amount
+                                },
+                                isPackage: true,
+                                totalSessions: pkgData.total_sessions,
+                                zoom_link: firstChild?.zoom_link,
+                                meeting_link: firstChild?.meeting_link
+                            };
+                        }
                     }
-                    
-                    if (bookingData) {
-                        setBooking(bookingData);
-                        
-                        // Track successful booking conversion (only once)
+
+                    // Se não for pacote nem booking, verificar se é uma inscrição em evento
+                    if (!resolvedItem) {
+                        const { data: inscricaoData } = await supabase
+                            .from('inscricoes_eventos')
+                            .select(`
+                                *,
+                                evento:eventos(titulo, descricao, valor, data_inicio)
+                            `)
+                            .eq('id', targetRefId)
+                            .maybeSingle();
+
+                        if (inscricaoData) {
+                            resolvedItem = {
+                                id: inscricaoData.id,
+                                isEvent: true,
+                                professional: { name: inscricaoData.evento?.titulo || 'Evento Doxologos' },
+                                service: {
+                                    name: inscricaoData.evento?.titulo || 'Inscrição em Evento',
+                                    price: inscricaoData.evento?.valor || 0
+                                },
+                                booking_date: inscricaoData.evento?.data_inicio,
+                                booking_time: ''
+                            };
+                        }
+                    }
+
+                    if (resolvedItem) {
+                        setBooking(resolvedItem);
+
+                        // Disparar conversão apenas uma vez
                         if (!conversionTrackedRef.current) {
                             conversionTrackedRef.current = true;
+                            const finalPrice = resolvedItem.service?.price || resolvedItem.valor_consulta || fetchedPayment?.transaction_amount || 0;
 
                             logger.success('Booking completed successfully', {
-                                bookingId: bookingData.id,
-                                professionalId: bookingData.professional_id,
-                                serviceId: bookingData.service_id,
-                                amount: bookingData.service?.price
+                                bookingId: resolvedItem.id,
+                                professionalId: resolvedItem.professional_id || 'clinic',
+                                serviceId: resolvedItem.service_id || (resolvedItem.isPackage ? 'package' : 'consultation'),
+                                amount: finalPrice
                             });
 
                             analytics.trackBookingCompleted(
-                                bookingData.id,
-                                bookingData.professional_id,
-                                bookingData.service_id,
-                                bookingData.service?.price || 0
+                                resolvedItem.id,
+                                resolvedItem.professional_id || 'clinic',
+                                resolvedItem.service_id || (resolvedItem.isPackage ? 'package' : 'consultation'),
+                                finalPrice
                             );
                         }
-                    }
-                }
-
-                // Buscar pagamento
-                if (paymentId) {
-                    const { data: paymentData, error: paymentError } = await supabase
-                        .from('payments')
-                        .select('*')
-                        .eq('mp_payment_id', paymentId)
-                        .single();
-                    
-                    if (paymentError) {
-                        console.error('Erro ao buscar pagamento:', paymentError);
-                    }
-                    
-                    if (paymentData) {
-                        setPayment(paymentData);
                     }
                 }
             } catch (error) {
@@ -94,7 +166,7 @@ const CheckoutSuccessPage = () => {
         };
 
         fetchPaymentAndBooking();
-    }, [paymentId, externalReference, payment?.booking_id]);
+    }, [paymentId, externalReference]);
 
     if (loading) {
         return (
@@ -168,7 +240,7 @@ const CheckoutSuccessPage = () => {
                             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 mb-6 border border-blue-100">
                                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                     <Calendar className="w-5 h-5 mr-2 text-blue-600" />
-                                    Detalhes da Sua Consulta
+                                    {booking.isPackage ? 'Detalhes do Seu Pacote' : (booking.isEvent ? 'Detalhes do Evento' : 'Detalhes da Sua Consulta')}
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-50">
@@ -188,12 +260,12 @@ const CheckoutSuccessPage = () => {
                                             <div className="flex items-center text-gray-700">
                                                 <Calendar className="w-4 h-4 mr-2 text-blue-600" />
                                                 <span className="font-medium">
-                                                    {new Date(booking.booking_date).toLocaleDateString('pt-BR', {
+                                                    {booking.booking_date ? new Date(booking.booking_date).toLocaleDateString('pt-BR', {
                                                         weekday: 'long',
                                                         year: 'numeric',
                                                         month: 'long',
                                                         day: 'numeric'
-                                                    })}
+                                                    }) : 'A combinar'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center text-gray-700">

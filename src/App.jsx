@@ -272,6 +272,11 @@ function AppContent() {
               <CheckoutSuccessPage />
             </PageErrorBoundary>
           } />
+          <Route path="/checkout-success" element={
+            <PageErrorBoundary pageName="Checkout Success">
+              <CheckoutSuccessPage />
+            </PageErrorBoundary>
+          } />
           <Route path="/checkout/failure" element={
             <PageErrorBoundary pageName="Checkout Failure">
               <CheckoutFailurePage />

@@ -1152,6 +1152,21 @@ const AgendamentoPage = () => {
 
           await supabase.from('bookings').insert(childBookings);
 
+          // Registrar etapa de funil: booking criado para pacote
+          try {
+            analytics.trackEvent('booking_created', {
+              event_category: 'Booking Flow',
+              booking_id: pkgRecord.id,
+              package_id: pkgRecord.id,
+              professional_id: selectedProfessional,
+              service_id: selectedService,
+              session_count: totalSessions,
+              value: grossAmount
+            });
+          } catch (trackingError) {
+            console.warn('⚠️ [handleBooking] Erro no tracking de pacote (não crítico):', trackingError);
+          }
+
           setIsSubmitting(false);
           navigate(`/checkout?package_id=${pkgRecord.id}`, {
             state: {

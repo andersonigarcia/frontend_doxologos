@@ -121,6 +121,11 @@ class AnalyticsManager {
         custom_parameter_1: pageName,
         custom_parameter_2: userType
       });
+      gtag('event', 'page_view', {
+        page_title: pageTitle,
+        page_location: window.location.origin + currentPath,
+        page_path: currentPath
+      });
     }
   }
 
@@ -180,38 +185,56 @@ class AnalyticsManager {
   }
 
   trackBookingCompleted(bookingId, professionalId, serviceId, amount) {
+    if (!bookingId) return;
+
+    // Deduplicação para garantir que cada reserva/pacote dispare apenas uma conversão por sessão
+    if (!this.completedBookings) {
+      this.completedBookings = new Set();
+    }
+    const dedupeKey = String(bookingId);
+    if (this.completedBookings.has(dedupeKey)) {
+      return;
+    }
+    this.completedBookings.add(dedupeKey);
+
+    const safeAmount = Number(amount) || 0;
+
+    // GA4 Custom Funnel Step 6
     this.trackEvent('booking_completed', {
       event_category: 'Conversion',
-      transaction_id: bookingId,
-      value: amount,
+      booking_id: dedupeKey,
+      transaction_id: dedupeKey,
+      value: safeAmount,
       currency: 'BRL',
       custom_parameter_1: professionalId,
       custom_parameter_2: serviceId
     });
 
     // Enhanced ecommerce purchase event
-    gtag('event', 'purchase', {
-      transaction_id: bookingId,
-      value: amount,
-      currency: 'BRL',
-      items: [{
-        item_id: serviceId,
-        item_name: 'Consulta Psicológica',
-        category: 'Healthcare',
-        quantity: 1,
-        price: amount
-      }]
-    });
+    if (typeof gtag === 'function') {
+      gtag('event', 'purchase', {
+        transaction_id: dedupeKey,
+        value: safeAmount,
+        currency: 'BRL',
+        items: [{
+          item_id: String(serviceId || 'consulta'),
+          item_name: 'Consulta Psicológica',
+          category: 'Healthcare',
+          quantity: 1,
+          price: safeAmount
+        }]
+      });
+    }
 
     // Meta Pixel Purchase Event
     if (typeof fbq === 'function') {
       fbq('track', 'Purchase', {
-        value: amount,
+        value: safeAmount,
         currency: 'BRL',
         content_name: 'Consulta Psicológica',
-        content_ids: [serviceId],
+        content_ids: [String(serviceId || 'consulta')],
         content_type: 'product',
-        order_id: bookingId
+        order_id: dedupeKey
       });
     }
 
@@ -219,9 +242,9 @@ class AnalyticsManager {
     if (typeof gtag === 'function') {
       gtag('event', 'conversion', {
         'send_to': 'AW-18137070850/X0LkCPvR2qYcEIL6tshD',
-        'value': amount || 1.0,
+        'value': safeAmount || 1.0,
         'currency': 'BRL',
-        'transaction_id': bookingId,
+        'transaction_id': dedupeKey,
         'new_customer': this.getUserType() === 'new_visitor'
       });
     }

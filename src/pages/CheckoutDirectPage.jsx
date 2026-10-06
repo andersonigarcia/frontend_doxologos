@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
 import { CreditCard, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import MercadoPagoService from '@/lib/mercadoPagoService';
 import { paymentOrchestrator } from '@/lib/payment';
 import { logger } from '@/lib/logger';
+import analytics from '@/lib/analytics';
 
 const CheckoutDirectPage = () => {
     const [searchParams] = useSearchParams();
@@ -29,6 +30,41 @@ const CheckoutDirectPage = () => {
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [stopMonitoring, setStopMonitoring] = useState(null);
+    const checkoutTrackedRef = useRef(false);
+
+    const checkoutTotal = type === 'evento'
+        ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
+        : packageId
+            ? Number(packageData?.gross_amount || parseFloat(valorParam) || 0)
+            : Number(booking?.valor_consulta || booking?.services?.price || valorParam || 0);
+
+    useEffect(() => {
+        if (!checkoutTrackedRef.current && (booking || packageData || inscricao)) {
+            checkoutTrackedRef.current = true;
+            try {
+                analytics.trackEvent('checkout_start', {
+                    event_category: 'Checkout',
+                    booking_id: bookingId || inscricaoId || packageId || null,
+                    checkout_type: type || (packageId ? 'package' : 'booking'),
+                    payment_method: 'credit_card',
+                    value: checkoutTotal || undefined
+                });
+                analytics.trackEvent('begin_checkout', {
+                    event_category: 'Ecommerce',
+                    value: checkoutTotal || undefined,
+                    currency: 'BRL',
+                    items: [{
+                        item_id: bookingId || inscricaoId || packageId || 'consulta',
+                        item_name: type === 'evento' ? (inscricao?.evento?.titulo || 'Inscrição em Evento') : (packageId ? 'Pacote de Consultas' : 'Consulta Psicológica'),
+                        price: checkoutTotal || undefined,
+                        quantity: 1
+                    }]
+                });
+            } catch (err) {
+                console.warn('CheckoutDirectPage.analytics error:', err);
+            }
+        }
+    }, [booking, packageData, inscricao, checkoutTotal, bookingId, inscricaoId, packageId, type]);
 
     // Estado do formulário
     const [cardNumber, setCardNumber] = useState('');
@@ -350,12 +386,23 @@ const CheckoutDirectPage = () => {
                             });
                             setProcessing(false);
 
+                            try {
+                                analytics.trackBookingCompleted(
+                                    bookingId || packageId,
+                                    booking?.professional_id || packageData?.professional_id,
+                                    booking?.service_id || 'credit_card',
+                                    checkoutTotal
+                                );
+                            } catch (trackErr) {
+                                console.warn('CheckoutDirectPage.analytics completion error', trackErr);
+                            }
+
                             if (type === 'evento') {
-                                navigate(`/checkout-success?type=evento&inscricao_id=${inscricaoId}`);
+                                navigate(`/checkout/success?type=evento&inscricao_id=${inscricaoId}`);
                             } else if (packageId) {
-                                navigate(`/checkout-success?package_id=${packageId}`);
+                                navigate(`/checkout/success?package_id=${packageId}`);
                             } else {
-                                navigate(`/checkout-success?booking_id=${bookingId}`);
+                                navigate(`/checkout/success?booking_id=${bookingId}`);
                             }
                         } else if (statusUpdate.status === 'rejected') {
                             toast({

@@ -182,6 +182,17 @@ const CheckoutPage = () => {
                     payment_method: selectedMethod,
                     value: bookingTotal || undefined
                 });
+                analytics.trackEvent('begin_checkout', {
+                    event_category: 'Ecommerce',
+                    value: bookingTotal || undefined,
+                    currency: 'BRL',
+                    items: [{
+                        item_id: bookingId || inscricaoId || packageId || 'consulta',
+                        item_name: type === 'evento' ? (inscricao?.evento?.titulo || 'Inscrição em Evento') : (packageId ? 'Pacote de Consultas' : 'Consulta Psicológica'),
+                        price: bookingTotal || undefined,
+                        quantity: 1
+                    }]
+                });
             } catch (err) {
                 logger.warn('CheckoutPage.analytics:checkout_start error', err);
             }
@@ -415,9 +426,21 @@ const CheckoutPage = () => {
 
             logger.success('CheckoutPage.processCreditCheckout:success', buildLogContext({ bookingId }));
 
+            try {
+                analytics.trackBookingCompleted(
+                    bookingId || packageId,
+                    booking?.professional_id || packageData?.professional_id,
+                    booking?.service_id || 'wallet',
+                    bookingTotal
+                );
+            } catch (trackErr) {
+                logger.warn('CheckoutPage.processCreditCheckout:analytics error', trackErr);
+            }
+
             navigate('/checkout/success', {
                 state: {
                     bookingId,
+                    packageId,
                     paymentStatus: 'approved',
                     paymentMethod: 'wallet',
                 },
@@ -467,8 +490,18 @@ const CheckoutPage = () => {
                             title: 'Pagamento já aprovado',
                             description: 'Este agendamento já foi pago com sucesso.'
                         });
+                        try {
+                            analytics.trackBookingCompleted(
+                                bookingId || packageId,
+                                booking?.professional_id || packageData?.professional_id,
+                                booking?.service_id || 'booking',
+                                bookingTotal
+                            );
+                        } catch (trackErr) {
+                            logger.warn('CheckoutPage.existingPayment:analytics error', trackErr);
+                        }
                         navigate('/checkout/success', {
-                            state: { bookingId, paymentId: existing.mp_payment_id }
+                            state: { bookingId, packageId, paymentId: existing.mp_payment_id }
                         });
                         setProcessing(false);
                         return;
@@ -605,6 +638,17 @@ const CheckoutPage = () => {
                             description: 'Seu pagamento foi confirmado com sucesso.'
                         });
 
+                        try {
+                            analytics.trackBookingCompleted(
+                                bookingId || packageId,
+                                booking?.professional_id || packageData?.professional_id,
+                                booking?.service_id || 'booking',
+                                bookingTotal
+                            );
+                        } catch (trackErr) {
+                            logger.warn('CheckoutPage.onSuccess:analytics error', trackErr);
+                        }
+
                         // Redirecionar para página de sucesso
                         navigate('/checkout/success', {
                             state: {
@@ -713,10 +757,23 @@ const CheckoutPage = () => {
                         // Atualizar status no Supabase (passa o paymentId)
                         await updateBookingPaymentStatus(paymentId);
 
+                        try {
+                            analytics.trackBookingCompleted(
+                                bookingId || packageId,
+                                booking?.professional_id || packageData?.professional_id,
+                                booking?.service_id || 'booking',
+                                bookingTotal
+                            );
+                        } catch (trackErr) {
+                            logger.warn('CheckoutPage.startPaymentPolling:analytics error', trackErr);
+                        }
+
                         // Redirecionar para página de sucesso
                         navigate('/checkout/success', {
                             state: {
-                                bookingId: booking.id,
+                                bookingId: booking?.id || bookingId,
+                                packageId: packageId,
+                                inscricaoId: inscricaoId,
                                 paymentId: paymentId,
                                 paymentStatus: 'approved'
                             }
@@ -789,6 +846,23 @@ const CheckoutPage = () => {
                     logger.error('CheckoutPage.updateBookingPaymentStatus:inscricao-error', inscricaoError, buildLogContext({ paymentId, inscricaoId }));
                 } else {
                     logger.success('CheckoutPage.updateBookingPaymentStatus:inscricao-updated', buildLogContext({ paymentId, inscricaoId }));
+                }
+            } else if (packageId) {
+                // Atualizar status do pacote e dos agendamentos vinculados
+                const { error: pkgError } = await supabase
+                    .from('packages')
+                    .update({ status: 'paid' })
+                    .eq('id', packageId);
+
+                const { error: childError } = await supabase
+                    .from('bookings')
+                    .update({ status: 'confirmed' })
+                    .eq('package_id', packageId);
+
+                if (pkgError || childError) {
+                    logger.error('CheckoutPage.updateBookingPaymentStatus:package-error', pkgError || childError, buildLogContext({ paymentId, packageId }));
+                } else {
+                    logger.success('CheckoutPage.updateBookingPaymentStatus:package-updated', buildLogContext({ paymentId, packageId }));
                 }
             } else {
                 // 2. Atualizar status do booking para 'confirmed'
