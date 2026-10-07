@@ -167,7 +167,7 @@ const DoacaoPage = () => {
 
             {/* Valores Sugeridos */}
             <section className="py-16 px-4" role="main" aria-labelledby="donation-section">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-5xl xl:max-w-6xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -178,7 +178,7 @@ const DoacaoPage = () => {
                         <p className="text-gray-600">Qualquer valor faz a diferença na vida de alguém</p>
                     </motion.div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
                         <span id="amount-selection" className="sr-only">Selecione o valor da doação</span>
                         {donationOptions.map((option, index) => (
                             <motion.button
@@ -186,17 +186,17 @@ const DoacaoPage = () => {
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
+                                transition={{ delay: index * 0.05 }}
                                 onClick={() => setSelectedAmount(option.amount)}
-                                className={`p-6 rounded-xl border-2 transition-all duration-300 ${selectedAmount === option.amount
-                                    ? 'border-[#2d8659] bg-[#2d8659]/5 shadow-lg'
-                                    : 'border-gray-200 hover:border-[#2d8659]/50 hover:shadow-md'
+                                className={`px-2.5 py-4 sm:px-3 sm:py-5 lg:px-2 lg:py-4 xl:px-4 xl:py-5 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center text-center ${selectedAmount === option.amount
+                                    ? 'border-[#2d8659] bg-[#2d8659]/5 shadow-lg ring-2 ring-[#2d8659]/20'
+                                    : 'border-gray-200 hover:border-[#2d8659]/50 hover:shadow-md bg-white'
                                     }`}
                             >
-                                <div className="text-2xl font-bold text-[#2d8659] mb-2">
+                                <div className="text-base sm:text-lg lg:text-base xl:text-xl font-bold text-[#2d8659] mb-1.5 whitespace-nowrap tracking-tight">
                                     {formatCurrency(option.amount)}
                                 </div>
-                                <div className="text-sm text-gray-600">
+                                <div className="text-xs sm:text-sm text-gray-600 font-medium leading-tight">
                                     {option.label}
                                 </div>
                             </motion.button>
