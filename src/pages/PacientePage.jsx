@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X, Video } from 'lucide-react';
+import { ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X, Video, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -32,7 +32,7 @@ const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
 
 const PacientePage = () => {
     const { toast } = useToast();
-    const { user, session, signIn, signOut } = useAuth();
+    const { user, session, userRole, signIn, signOut } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [bookings, setBookings] = useState([]);
     const [reviews, setReviews] = useState([]);
@@ -794,7 +794,7 @@ const PacientePage = () => {
                             <div className="h-6 w-px bg-gray-300"></div>
                             <UserBadge
                                 user={user}
-                                userRole="patient"
+                                userRole={userRole}
                                 onLogout={handleLogout}
                                 layout="row"
                                 showLogoutButton={true}
@@ -838,7 +838,7 @@ const PacientePage = () => {
                         >
                             <UserBadge
                                 user={user}
-                                userRole="patient"
+                                userRole={userRole}
                                 onLogout={() => {
                                     handleLogout();
                                     setMobileMenuOpen(false);
@@ -875,6 +875,21 @@ const PacientePage = () => {
             <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-24">
                 <div className="container mx-auto px-3 md:px-4 max-w-4xl">
                     <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
+                    {['professional', 'admin'].includes(userRole) && (
+                        <div className="mb-6 p-4 rounded-xl bg-blue-50/90 border border-blue-200 text-blue-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-3">
+                                <Stethoscope className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                                <p className="text-sm">
+                                    Você está conectado com sua conta de <strong>{userRole === 'admin' ? 'Administrador' : 'Profissional'}</strong>. Este é o seu espaço pessoal de paciente.
+                                </p>
+                            </div>
+                            <Link to={userRole === 'admin' ? '/admin' : '/profissional'}>
+                                <Button size="sm" variant="outline" className="border-blue-300 text-blue-800 hover:bg-blue-100 text-xs whitespace-nowrap">
+                                    Ir para Painel {userRole === 'admin' ? 'Admin' : 'Profissional'} →
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
                     <h1 className="text-4xl font-bold mb-2">Seu Espaço de Cuidado</h1>
                     <p className="text-gray-500 mb-8">Acompanhe suas consultas, acesse sua sala virtual e cuide do seu bem-estar.</p>
 

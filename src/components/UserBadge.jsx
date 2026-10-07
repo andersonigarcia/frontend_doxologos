@@ -20,7 +20,7 @@ const ROLE_DISPLAY = {
     Icon: UserCircle 
   },
   user: { 
-    label: 'Usuário', 
+    label: 'Paciente', 
     classes: 'bg-gray-100 text-gray-800 border-gray-200', 
     Icon: UserCircle 
   }
@@ -91,9 +91,11 @@ const UserBadge = ({
     
     switch (normalizedRole) {
       case 'admin':
-      case 'professional':
         return '/admin';
+      case 'professional':
+        return '/profissional';
       case 'patient':
+      case 'user':
       default:
         return '/area-do-paciente';
     }

@@ -96,6 +96,17 @@
 
 <!-- Adicione novos bugs abaixo deste comentário, do mais recente ao mais antigo -->
 
+### Bug: Máscara Visual de Role em PacientePage e Divergência no Header da Home
+- **Data:** 2026-10-07
+- **Camada:** Frontend React / RBAC & Navegação
+- **Sintoma:** Usuário com role real de 'professional' logava em `/area-do-paciente`, via badge 'Paciente' (cinza), mas ao voltar para a Home o badge exibia 'Profissional' (azul) e redirecionava para o painel profissional.
+- **Root Cause:** A `PacientePage.jsx` forçava `userRole="patient"` de forma hardcoded nas linhas 797 e 841, ignorando o `userRole` real de `useAuth()`. Além disso, a role 'user' em `UserBadge.jsx` exibia rótulo "Usuário" em vez de "Paciente", e o redirecionamento de 'professional' passava por rota intermediária `/admin` em vez da rota canônica direta `/profissional`.
+- **Solução Aplicada:** 
+  1. `PacientePage.jsx` atualizado para consumir `userRole` real de `useAuth()` e exibir banner contextual informativo quando um profissional ou administrador acessa suas consultas pessoais de paciente.
+  2. `UserBadge.jsx` padronizado para mapear role `'user'` com rótulo "Paciente" (unificando taxonomia RBAC) e redirecionar `'professional'` diretamente para `/profissional`.
+  3. Adicionado teste unitário `src/components/__tests__/UserBadge.test.jsx`.
+- **Prevenção:** Testes unitários para mapeamento e roteamento do `UserBadge`, e proibição de roles hardcoded em componentes de cabeçalho.
+
 ### Bug: Discrepância e Divergência no WhatsApp Oficial da Clínica (11 91728-7583)
 - **Data:** 2026-10-02
 - **Camada:** Frontend React / Configurações de Comunicação
