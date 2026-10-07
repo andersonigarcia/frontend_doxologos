@@ -104,7 +104,20 @@
 - **Prevenção:** [Teste adicionado / regra documentada para evitar recorrência]
 ```
 
-<!-- Adicione novos bugs abaixo deste comentário, do mais recente ao mais antigo -->
+### Bug: Tela em Branco para Administrador em /profissional e Falta de Roteamento Bidirecional
+- **Data:** 2026-10-07
+- **Camada:** Frontend React / RBAC & Roteamento
+- **Sintoma:** Usuário Administrador acessando `/profissional` via URL ou login via rodapé via a tela do psicólogo com a aba principal (dashboard) totalmente em branco.
+- **Root Cause:** 
+  1. Em `ProfessionalDashboardPage.jsx`, a aba dashboard continha o condicional `{isAdminView ? null : (...)`, herança da duplicação de `AdminPage.jsx`, resultando em retorno `null` caso a role ativa fosse `admin`.
+  2. `ProtectedRoute.jsx` possuía redirecionamento unilateral (`professional` para `/profissional`), mas não tratava o redirecionamento inverso de administradores com `activeRole === 'admin'` para a visão canônica `/admin`.
+  3. No `SiteFooter.jsx`, o link "Área do Profissional" apontava incorretamente para `/admin`.
+- **Solução Aplicada:**
+  1. Adicionado redirecionamento inteligente bidirecional em `ProtectedRoute.jsx` (`admin` -> `/admin`).
+  2. Removido o bloqueio condicional `{isAdminView ? null : (...)` em `ProfessionalDashboardPage.jsx`, garantindo que dados do profissional sempre sejam renderizados.
+  3. Corrigido link de "Área do Profissional" em `SiteFooter.jsx` para `/profissional`.
+  4. Adicionado teste unitário de roteamento bidirecional em `src/components/__tests__/ProtectedRoute.test.jsx`.
+- **Prevenção:** Testes unitários para ambas as direções de redirecionamento no `ProtectedRoute`.
 
 ### Bug: Máscara Visual de Role em PacientePage e Divergência no Header da Home
 - **Data:** 2026-10-07

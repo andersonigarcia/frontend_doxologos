@@ -108,4 +108,47 @@ describe('ProtectedRoute Component (Multi-Perfil Híbrido)', () => {
     expect(screen.getByText('Acesso Restrito')).toBeInTheDocument();
     expect(screen.queryByText('Painel Administrativo')).not.toBeInTheDocument();
   });
+
+  test('deve redirecionar profissional tentando acessar /admin para /profissional', () => {
+    mockAuthContext = {
+      user: { id: 'prof-1', email: 'prof@doxologos.com.br' },
+      userRole: 'professional',
+      activeRole: 'professional',
+      availableRoles: ['professional', 'patient'],
+      switchActiveRole: mockSwitchActiveRole,
+      loading: false,
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <ProtectedRoute requiredRoles={['admin']}>
+          <div>Painel Admin</div>
+        </ProtectedRoute>
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText('Painel Admin')).not.toBeInTheDocument();
+  });
+
+  test('deve redirecionar admin tentando acessar /profissional para /admin', () => {
+    mockAuthContext = {
+      user: { id: 'admin-1', email: 'adm@doxologos.com.br' },
+      userRole: 'admin',
+      activeRole: 'admin',
+      availableRoles: ['admin', 'professional', 'patient'],
+      switchActiveRole: mockSwitchActiveRole,
+      loading: false,
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/profissional']}>
+        <ProtectedRoute requiredRoles={['professional']}>
+          <div>Painel Profissional</div>
+        </ProtectedRoute>
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByText('Painel Profissional')).not.toBeInTheDocument();
+  });
 });
+

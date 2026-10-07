@@ -142,6 +142,17 @@ export const ProtectedRoute = ({
     return <EmbeddedLoginForm />;
   }
 
+  // Roteamento inteligente bidirecional:
+  // 1. Se um profissional tentar acessar rota de administração (/admin), redirecione para /profissional
+  if (currentRole === 'professional' && location.pathname.startsWith('/admin')) {
+    return <Navigate to="/profissional" replace />;
+  }
+
+  // 2. Se um administrador com activeRole 'admin' tentar acessar a rota do profissional (/profissional), redirecione para /admin
+  if (currentRole === 'admin' && location.pathname.startsWith('/profissional')) {
+    return <Navigate to="/admin" replace />;
+  }
+
   // Verificar roles se necessário
   if (requiredRoles.length > 0 && !requiredRoles.includes(currentRole)) {
     // Multi-Perfil Híbrido: Se o usuário possui um dos papéis requeridos em availableRoles,
@@ -154,11 +165,6 @@ export const ProtectedRoute = ({
     }
 
     console.log('🔒 Acesso negado: role insuficiente', { required: requiredRoles, current: currentRole, available: availableRoles });
-    
-    // Roteamento inteligente: Se um profissional tentar acessar /admin, envie-o para /profissional
-    if (currentRole === 'professional' && location.pathname.startsWith('/admin')) {
-      return <Navigate to="/profissional" replace />;
-    }
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">

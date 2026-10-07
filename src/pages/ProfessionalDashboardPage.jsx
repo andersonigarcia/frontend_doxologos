@@ -2428,8 +2428,7 @@ const ProfessionalDashboardPage = () => {
 
                         {/* Dashboard Tab - Cockpit Estratégico ou Visão do Profissional */}
                         <TabsContent value="dashboard" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                            {isAdminView ? null : (
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                             <div className="space-y-6">
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
@@ -2608,7 +2607,6 @@ const ProfessionalDashboardPage = () => {
                                     </div>
                                 )}
                             </div>
-                            )}
                         </Suspense>
 </TabsContent>
 

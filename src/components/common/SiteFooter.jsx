@@ -55,7 +55,7 @@ const SiteFooter = () => {
             <div className="space-y-2 text-sm">
               <Link to="/quem-somos" className="block text-gray-400 hover:text-white transition-colors">Quem Somos</Link>
               <Link to="/trabalhe-conosco" className="block text-gray-400 hover:text-white transition-colors">Trabalhe Conosco</Link>
-              <Link to="/admin" className="block text-gray-400 hover:text-white transition-colors">Área do Profissional</Link>
+              <Link to="/profissional" className="block text-gray-400 hover:text-white transition-colors">Área do Profissional</Link>
               <Link to="/doacao" className="block text-gray-400 hover:text-white transition-colors">Faça uma Doação</Link>
             </div>
           </div>
