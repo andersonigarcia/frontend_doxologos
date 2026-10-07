@@ -29,7 +29,7 @@ const SalaEsperaPage = () => {
                     session_status,
                     meeting_link,
                     meeting_password,
-                    professional:professionals(name, specialty, avatar_url)
+                    professional:professionals(name, specialty, image_url, personal_meet_link)
                 `)
                 .eq('id', id)
                 .eq('user_id', user.id)
@@ -101,6 +101,7 @@ const SalaEsperaPage = () => {
     
     const isReady = booking.session_status === 'in_progress';
     const isFinished = booking.session_status === 'finished';
+    const actualMeetingLink = booking?.meeting_link || booking?.professional?.personal_meet_link || (Array.isArray(booking?.professional) ? booking.professional[0]?.personal_meet_link : null);
     
     return (
         <>
@@ -146,8 +147,8 @@ const SalaEsperaPage = () => {
                                 <Button 
                                     className="w-full h-14 text-lg bg-[#2d8659] hover:bg-[#236b47] shadow-lg hover:shadow-xl transition-all"
                                     onClick={() => {
-                                        if (booking.meeting_link) {
-                                            window.open(booking.meeting_link, '_blank');
+                                        if (actualMeetingLink) {
+                                            window.open(actualMeetingLink, '_blank');
                                         } else {
                                             alert("Link da reunião não encontrado.");
                                         }
@@ -187,8 +188,8 @@ const SalaEsperaPage = () => {
                                         variant="ghost" 
                                         className="text-[#2d8659] hover:bg-emerald-50 text-sm h-8"
                                         onClick={() => {
-                                            if (booking.meeting_link) {
-                                                window.open(booking.meeting_link, '_blank');
+                                            if (actualMeetingLink) {
+                                                window.open(actualMeetingLink, '_blank');
                                             } else {
                                                 alert("Link da reunião não disponível.");
                                             }
