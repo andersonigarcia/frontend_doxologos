@@ -97,7 +97,8 @@ const CheckoutDirectPage = () => {
         const initMP = () => {
             try {
                 if (window.MercadoPago) {
-                    const mercadopago = new window.MercadoPago('APP_USR-4fdd0ea3-c204-438a-9eea-4f503bca869d', {
+                    const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY || 'APP_USR-398a9c5c-782e-4b5a-a666-2d667e860173';
+                    const mercadopago = new window.MercadoPago(publicKey, {
                         locale: 'pt-BR'
                     });
                     setMp(mercadopago);

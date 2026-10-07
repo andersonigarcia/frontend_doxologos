@@ -1,0 +1,110 @@
+{
+  "description": "Dados oficiais de teste e simulação do Mercado Pago para QA e E2E",
+  "updated_at": "2026-10-06T22:38:00Z",
+  "test_account": {
+    "account_id": "3532332688",
+    "email": "doxologos@doxologos.com.br",
+    "cnpj": "35035127000120",
+    "pix_key": "35035127000120"
+  },
+  "status_simulation": [
+    {
+      "code": "APRO",
+      "status": "approved",
+      "description": "Pagamento aprovado",
+      "cpf": "12345678909",
+      "cardholder_name": "APRO Teste"
+    },
+    {
+      "code": "OTHE",
+      "status": "rejected",
+      "description": "Recusado por erro geral",
+      "cpf": "12345678909",
+      "cardholder_name": "OTHE Teste"
+    },
+    {
+      "code": "CONT",
+      "status": "in_process",
+      "description": "Pagamento pendente",
+      "cpf": "12345678909",
+      "cardholder_name": "CONT Teste"
+    },
+    {
+      "code": "CALL",
+      "status": "rejected",
+      "description": "Recusado com validação para autorizar",
+      "cpf": "12345678909",
+      "cardholder_name": "CALL Teste"
+    },
+    {
+      "code": "FUND",
+      "status": "rejected",
+      "description": "Recusado por quantia insuficiente",
+      "cpf": "12345678909",
+      "cardholder_name": "FUND Teste"
+    },
+    {
+      "code": "SECU",
+      "status": "rejected",
+      "description": "Recusado por código de segurança inválido",
+      "cpf": "12345678909",
+      "cardholder_name": "SECU Teste"
+    },
+    {
+      "code": "EXPI",
+      "status": "rejected",
+      "description": "Recusado por problema com a data de vencimento",
+      "cpf": "12345678909",
+      "cardholder_name": "EXPI Teste"
+    },
+    {
+      "code": "FORM",
+      "status": "rejected",
+      "description": "Recusado por erro no formulário",
+      "cpf": "12345678909",
+      "cardholder_name": "FORM Teste"
+    }
+  ],
+  "test_cards": [
+    {
+      "brand": "Mastercard",
+      "payment_method_id": "master",
+      "number": "5480 8328 0103 3311",
+      "number_clean": "5480832801033311",
+      "cvv": "123",
+      "expiration": "11/30",
+      "expiration_month": "11",
+      "expiration_year": "2030"
+    },
+    {
+      "brand": "Visa",
+      "payment_method_id": "visa",
+      "number": "4235 6477 2802 5682",
+      "number_clean": "4235647728025682",
+      "cvv": "123",
+      "expiration": "11/30",
+      "expiration_month": "11",
+      "expiration_year": "2030"
+    },
+    {
+      "brand": "American Express",
+      "payment_method_id": "amex",
+      "number": "3753 651535 56885",
+      "number_clean": "375365153556885",
+      "cvv": "1234",
+      "expiration": "11/30",
+      "expiration_month": "11",
+      "expiration_year": "2030"
+    },
+    {
+      "brand": "Elo Débito",
+      "payment_method_id": "debmaster",
+      "number": "5067 7667 8388 8311",
+      "number_clean": "5067766783888311",
+      "cvv": "123",
+      "expiration": "11/30",
+      "expiration_month": "11",
+      "expiration_year": "2030"
+    }
+  ]
+}

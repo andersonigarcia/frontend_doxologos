@@ -203,12 +203,16 @@ serve(async (req: Request) => {
       return new Response('Ignored non-payment event', { status: 200 });
     }
 
-    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN');
+    const environment = Deno.env.get('MP_ENVIRONMENT') || 'production';
+    const MP_ACCESS_TOKEN = environment === 'test'
+      ? Deno.env.get('MP_ACCESS_TOKEN_TEST')
+      : Deno.env.get('MP_ACCESS_TOKEN');
 
     let bookingId: string | null = null;
     let existingBooking: any = null;
     // FIX #6: flag para evitar dupla emissão de NFS-e quando já tratada inline
     let nfseHandledInline = false;
+    let didCancelBooking = false;
 
     // 1. Double Check with MP API (Self-Validation)
     // This confirms the payment status is real and not a spoofed payload
@@ -533,7 +537,7 @@ serve(async (req: Request) => {
 
 
         const newStatus = statusMap[mpPayment.status];
-        let didCancelBooking = false;
+        didCancelBooking = false;
 
         // M-03: Máquina de estados — impede regressões de status por webhooks tardios
         const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -663,7 +667,7 @@ serve(async (req: Request) => {
 
       if (payData) ledgerTransactionId = payData.id;
       
-      if (didCancelBooking && payData && Number(payData.wallet_balance_used) > 0) {
+      if (didCancelBooking && payData && Number(payData.wallet_balance_used) > 0 && existingBooking?.user_id) {
         console.log(`💰 Refunding wallet balance of ${payData.wallet_balance_used} for booking ${bookingId}`);
         const { error: refundError } = await supabase.rpc('process_wallet_transaction', {
             p_patient_id: existingBooking.user_id,

@@ -29,7 +29,10 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SERVICE_ROLE = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN') || '';
+    const environment = Deno.env.get('MP_ENVIRONMENT') || 'production';
+    const MP_ACCESS_TOKEN = (environment === 'test'
+      ? Deno.env.get('MP_ACCESS_TOKEN_TEST')
+      : Deno.env.get('MP_ACCESS_TOKEN')) || '';
 
     if (!MP_ACCESS_TOKEN) {
       return new Response(

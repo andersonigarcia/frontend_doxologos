@@ -14,12 +14,19 @@ const DoacaoPage = () => {
     const [pixPayload, setPixPayload] = useState('');
     const { toast } = useToast();
 
-    // PIX da clínica (substitua pela chave real)
-    const pixKey = "02369210613";
+    // PIX da clínica (chave CNPJ oficial)
+    const pixKey = "35035127000120";
     const recipientName = "Doxologos Clinica";
     const city = "Belo Horizonte";
 
-    const predefinedAmounts = [25, 50, 100, 200, 500];
+    const donationOptions = [
+        { amount: 25.01, label: "Medicamentos básicos" },
+        { amount: 50.01, label: "Consulta social" },
+        { amount: 100.01, label: "Material educativo" },
+        { amount: 150.01, label: "Doe uma consulta" },
+        { amount: 200.01, label: "Equipamento médico" },
+        { amount: 500.01, label: "Programa social" }
+    ];
 
     // Gerar payload PIX quando o valor for selecionado
     useEffect(() => {
@@ -41,7 +48,7 @@ const DoacaoPage = () => {
         const merchantName = name.substring(0, 25).padEnd(25);
         const merchantCity = city.substring(0, 15).padEnd(15);
         const txid = `DOA${Date.now()}`.substring(0, 25);
-        
+
         // Formato básico - EM PRODUÇÃO USE UMA BIBLIOTECA COMPLETA
         return `00020126${String(key.length + 14).padStart(2, '0')}0014BR.GOV.BCB.PIX01${String(key.length).padStart(2, '0')}${key}52040000530398654${String(amount.toFixed(2).length + 2).padStart(2, '0')}${amount.toFixed(2)}5802BR59${merchantName}60${merchantCity}62${String(txid.length + 8).padStart(2, '0')}05${String(txid.length).padStart(2, '0')}${txid}6304`;
     };
@@ -51,7 +58,7 @@ const DoacaoPage = () => {
             icon: <Users className="w-8 h-8 text-[#2d8659]" />,
             title: "Atendimento Gratuito",
             description: "Sua doação permite que oferecemos consultas gratuitas para famílias em situação de vulnerabilidade.",
-            impact: "R$ 50 = 1 consulta completa"
+            impact: "R$ 150,01 = 1 consulta completa"
         },
         {
             icon: <Target className="w-8 h-8 text-[#2d8659]" />,
@@ -137,7 +144,7 @@ const DoacaoPage = () => {
                             </p>
                         </div>
                         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                            Cada contribuição nos permite oferecer atendimento gratuito de qualidade, 
+                            Cada contribuição nos permite oferecer atendimento gratuito de qualidade,
                             investir em equipamentos modernos e expandir nossos programas sociais.
                         </p>
                         <div className="flex items-center justify-center gap-8 text-sm text-gray-500">
@@ -171,31 +178,26 @@ const DoacaoPage = () => {
                         <p className="text-gray-600">Qualquer valor faz a diferença na vida de alguém</p>
                     </motion.div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
-                            <span id="amount-selection" className="sr-only">Selecione o valor da doação</span>
-                        {predefinedAmounts.map((amount, index) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
+                        <span id="amount-selection" className="sr-only">Selecione o valor da doação</span>
+                        {donationOptions.map((option, index) => (
                             <motion.button
-                                key={amount}
+                                key={option.amount}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
                                 transition={{ delay: index * 0.1 }}
-                                onClick={() => setSelectedAmount(amount)}
-                                className={`p-6 rounded-xl border-2 transition-all duration-300 ${
-                                    selectedAmount === amount
-                                        ? 'border-[#2d8659] bg-[#2d8659]/5 shadow-lg'
-                                        : 'border-gray-200 hover:border-[#2d8659]/50 hover:shadow-md'
-                                }`}
+                                onClick={() => setSelectedAmount(option.amount)}
+                                className={`p-6 rounded-xl border-2 transition-all duration-300 ${selectedAmount === option.amount
+                                    ? 'border-[#2d8659] bg-[#2d8659]/5 shadow-lg'
+                                    : 'border-gray-200 hover:border-[#2d8659]/50 hover:shadow-md'
+                                    }`}
                             >
                                 <div className="text-2xl font-bold text-[#2d8659] mb-2">
-                                    {formatCurrency(amount)}
+                                    {formatCurrency(option.amount)}
                                 </div>
                                 <div className="text-sm text-gray-600">
-                                    {amount === 25 && "Medicamentos básicos"}
-                                    {amount === 50 && "Uma consulta"}
-                                    {amount === 100 && "Material educativo"}
-                                    {amount === 200 && "Equipamento médico"}
-                                    {amount === 500 && "Programa social"}
+                                    {option.label}
                                 </div>
                             </motion.button>
                         ))}
@@ -240,7 +242,7 @@ const DoacaoPage = () => {
                             <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300 mb-4">
                                 {pixPayload && selectedAmount ? (
                                     <div className="w-64 h-64 mx-auto flex items-center justify-center bg-white p-4">
-                                        <QRCodeSVG 
+                                        <QRCodeSVG
                                             value={pixPayload}
                                             size={240}
                                             level="M"
@@ -296,7 +298,7 @@ const DoacaoPage = () => {
                                     </Button>
                                 </div>
                             </div>
-                            
+
                             {selectedAmount && (
                                 <div className="bg-[#2d8659]/10 p-4 rounded-lg">
                                     <p className="text-sm text-gray-600 mb-2">Valor selecionado:</p>
@@ -408,9 +410,9 @@ const DoacaoPage = () => {
                             Sua generosidade é o combustível que move nossa missão de levar saúde mental de qualidade para todos.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <Button 
+                            <Button
                                 onClick={copyPixKey}
-                                size="lg" 
+                                size="lg"
                                 className="bg-white text-[#2d8659] hover:bg-gray-100 font-semibold px-8 py-3"
                             >
                                 {pixCopied ? 'PIX Copiado!' : 'Copiar Chave PIX'}
