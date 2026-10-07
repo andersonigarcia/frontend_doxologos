@@ -36,6 +36,16 @@
 ---
 
 ## 3. Padrões de Arquitetura e Engenharia
+- **Data (2026-10-07):** **Multi-Perfil Híbrido (Dual-Role RBAC & Zero-Downtime) (ADR 005).**
+  - *Contexto:* Profissionais de saúde e administradores também precisam agendar consultas como pacientes em sua vida pessoal. Anteriormente, possuíam role única e estática (`professional` ou `admin`), gerando estranheza visual quando navegavam na Área do Paciente ou na Home.
+  - *Decisão:* Implementar arquitetura de Multi-Perfil Híbrido no `SupabaseAuthContext`:
+    1. Resolução dinâmica de `availableRoles` com base em `app_metadata.role` e `app_metadata.roles` (ex: `professional` recebe automaticamente `['professional', 'patient']`; `admin` recebe `['admin', 'professional', 'patient']`; pacientes comuns recebem apenas `['patient']`).
+    2. Controle de contexto ativo (`activeRole`), persistido em `localStorage` (`doxologos_preferred_active_role`) e retrocompatibilidade 100% com o contrato legado `userRole = activeRole`.
+    3. `UserBadge` com menu dropdown interativo para usuários híbridos alternarem de perfil com 1 clique (desktop e mobile), mantendo botão simples nativo para pacientes exclusivos.
+    4. Auto-switching transparente em `ProtectedRoute`: se um profissional com perfil ativo 'patient' acessar `/profissional`, a rota restrita ativa o perfil correto de forma fluida sem barrar o acesso.
+    5. Auditoria estruturada de alternância de perfis (`auditLogger.ROLE_SWITCH`).
+  - *Consequências:* Zero migrações destrutivas de banco, zero impacto para pacientes em produção, escalabilidade para múltiplos perfis sem fragmentação de contas e conformidade total com testes automatizados.
+
 - **Data (2026-09-24):** **Plataforma Única Google Meet & Depreciação do Zoom (ADR 001).**
   - *Contexto:* Código legado do Zoom (`testezoom.js` e funções) desnecessário em produção; ausência da coluna `meeting_platform` na tabela `bookings`.
   - *Decisão:* Remover scripts de teste legados do Zoom e consolidar o Google Meet como plataforma exclusiva de teleconsulta, com fallback para o `personal_meet_link` do profissional.

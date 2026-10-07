@@ -3,14 +3,30 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import UserBadge from '../UserBadge';
 
 const mockNavigate = jest.fn();
+const mockSwitchActiveRole = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+let mockAuthContext = {
+  availableRoles: ['patient'],
+  activeRole: 'patient',
+  switchActiveRole: mockSwitchActiveRole,
+};
+
+jest.mock('@/contexts/SupabaseAuthContext', () => ({
+  useAuth: () => mockAuthContext,
+}));
+
 describe('UserBadge Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAuthContext = {
+      availableRoles: ['patient'],
+      activeRole: 'patient',
+      switchActiveRole: mockSwitchActiveRole,
+    };
   });
 
   const mockUser = {
@@ -26,7 +42,6 @@ describe('UserBadge Component', () => {
 
     expect(screen.getAllByText('Paciente').length).toBeGreaterThan(0);
     
-    // Clica no badge
     const badgeButton = screen.getByRole('button', { name: /paciente/i });
     fireEvent.click(badgeButton);
 
@@ -64,6 +79,32 @@ describe('UserBadge Component', () => {
     fireEvent.click(badgeButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('/admin');
+  });
+
+  test('deve renderizar dropdown para usuário híbrido com múltiplos papéis e alternar perfil', () => {
+    mockAuthContext = {
+      availableRoles: ['professional', 'patient'],
+      activeRole: 'professional',
+      switchActiveRole: mockSwitchActiveRole,
+    };
+
+    render(<UserBadge user={mockUser} userRole="professional" onLogout={jest.fn()} />);
+
+    // Deve ter título no botão de alternância
+    const trigger = screen.getByTitle('Clique para alternar de perfil');
+    expect(trigger).toBeInTheDocument();
+
+    // Abre o dropdown via teclado no JSDOM
+    fireEvent.keyDown(trigger, { key: 'ArrowDown', code: 'ArrowDown' });
+
+    // Deve listar a opção de alternar para Paciente
+    const patientOption = screen.getByText('Paciente');
+    expect(patientOption).toBeInTheDocument();
+
+    fireEvent.click(patientOption);
+
+    expect(mockSwitchActiveRole).toHaveBeenCalledWith('patient');
+    expect(mockNavigate).toHaveBeenCalledWith('/area-do-paciente');
   });
 
   test('não deve renderizar nada se o usuário for nulo', () => {

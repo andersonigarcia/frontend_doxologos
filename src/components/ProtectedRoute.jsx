@@ -113,8 +113,10 @@ export const ProtectedRoute = ({
   redirectTo = '/',
   fallback = null
 }) => {
-  const { user, userRole, loading } = useAuth();
+  const { user, userRole, activeRole, availableRoles, switchActiveRole, loading } = useAuth();
   const location = useLocation();
+
+  const currentRole = activeRole || userRole;
 
   // Mostrar loading enquanto verifica autenticação
   if (loading) {
@@ -141,11 +143,20 @@ export const ProtectedRoute = ({
   }
 
   // Verificar roles se necessário
-  if (requiredRoles.length > 0 && !requiredRoles.includes(userRole)) {
-    console.log('🔒 Acesso negado: role insuficiente', { required: requiredRoles, current: userRole });
+  if (requiredRoles.length > 0 && !requiredRoles.includes(currentRole)) {
+    // Multi-Perfil Híbrido: Se o usuário possui um dos papéis requeridos em availableRoles,
+    // auto-chavear o perfil ativo de forma transparente e autorizar o acesso.
+    const matchedRole = requiredRoles.find((r) => availableRoles?.includes(r));
+    if (matchedRole && switchActiveRole) {
+      console.log(`🔄 [ProtectedRoute] Usuário híbrido autorizado via '${matchedRole}'. Alternando perfil ativo...`);
+      switchActiveRole(matchedRole);
+      return null;
+    }
+
+    console.log('🔒 Acesso negado: role insuficiente', { required: requiredRoles, current: currentRole, available: availableRoles });
     
     // Roteamento inteligente: Se um profissional tentar acessar /admin, envie-o para /profissional
-    if (userRole === 'professional' && location.pathname.startsWith('/admin')) {
+    if (currentRole === 'professional' && location.pathname.startsWith('/admin')) {
       return <Navigate to="/profissional" replace />;
     }
 

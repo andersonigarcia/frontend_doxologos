@@ -29,6 +29,7 @@ export const AuditAction = {
     PASSWORD_RESET: 'auth:password_reset',
     PASSWORD_CHANGE: 'auth:password_change',
     SESSION_REFRESH: 'auth:session_refresh',
+    ROLE_SWITCH: 'auth:role_switch',
 
     // Agendamentos
     BOOKING_CREATE: 'booking:create',
