@@ -60,6 +60,11 @@ const CheckoutDirectPage = () => {
                         quantity: 1
                     }]
                 });
+                analytics.trackFunnelStep('booking', 5, {
+                    step_name: 'checkout_start',
+                    booking_id: bookingId || inscricaoId || packageId || null,
+                    value: checkoutTotal || undefined
+                });
             } catch (err) {
                 console.warn('CheckoutDirectPage.analytics error:', err);
             }

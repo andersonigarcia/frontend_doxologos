@@ -1173,6 +1173,11 @@ const AgendamentoPage = () => {
               session_count: totalSessions,
               value: grossAmount
             });
+            analytics.trackFunnelStep('booking', 4, {
+              step_name: 'booking_created',
+              booking_id: pkgRecord.id,
+              value: grossAmount
+            });
           } catch (trackingError) {
             console.warn('⚠️ [handleBooking] Erro no tracking de pacote (não crítico):', trackingError);
           }
@@ -1299,6 +1304,11 @@ const AgendamentoPage = () => {
           booking_id: bookingId,
           professional_id: selectedProfessional,
           service_id: selectedService,
+          value: valorConsulta
+        });
+        analytics.trackFunnelStep('booking', 4, {
+          step_name: 'booking_created',
+          booking_id: bookingId,
           value: valorConsulta
         });
       } catch (trackingError) {

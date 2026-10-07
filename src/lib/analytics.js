@@ -113,14 +113,20 @@ class AnalyticsManager {
       user_type: userType
     });
 
-    // 4. Direct gtag fallback
+    // 4. Direct gtag (explicit page_view event required in SPA since send_page_view: false is configured)
     if (typeof gtag === 'function') {
-      // gtag('config') sem send_page_view:false já dispara 1 page_view; não enviar evento extra (evita duplicidade)
+      const fullUrl = window.location.origin + currentPath;
       gtag('config', this.gaId, {
         page_title: pageTitle,
-        page_location: window.location.origin + currentPath,
+        page_location: fullUrl,
         custom_parameter_1: pageName,
         custom_parameter_2: userType
+      });
+      gtag('event', 'page_view', {
+        page_title: pageTitle,
+        page_location: fullUrl,
+        page_path: currentPath,
+        user_type: userType
       });
     }
   }
@@ -218,6 +224,16 @@ class AnalyticsManager {
       custom_parameter_1: professionalId,
       custom_parameter_2: serviceId
     });
+
+    try {
+      this.trackFunnelStep('booking', 6, {
+        step_name: 'booking_completed',
+        booking_id: dedupeKey,
+        value: safeAmount
+      });
+    } catch (funnelErr) {
+      console.warn('trackFunnelStep 6 error (non-critical):', funnelErr);
+    }
 
     // Enhanced ecommerce purchase event
     if (typeof gtag === 'function') {

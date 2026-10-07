@@ -171,7 +171,8 @@
 		}
 		</script>
 
-	<!-- Google Analytics 4 e Google Ads (carregamento não-bloqueante com fila no dataLayer) -->
+	<!-- Google Analytics 4 e Google Ads -->
+	<script async id="gtag-js" src="https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC"></script>
 	<script>
 		window.dataLayer = window.dataLayer || [];
 		function gtag() { dataLayer.push(arguments); }
@@ -180,23 +181,6 @@
 		// Configurações enfileiradas imediatamente no dataLayer (SPA gerencia page_view via usePageTracking)
 		gtag('config', 'G-FSXFYQVCEC', { send_page_view: false });
 		gtag('config', 'AW-18137070850');
-
-		// Carrega o script gtag.js de forma não bloqueante para zerar o TBT inicial
-		window.addEventListener('load', function () {
-			function loadGTM() {
-				if (document.getElementById('gtag-js')) return;
-				var s = document.createElement('script');
-				s.id = 'gtag-js';
-				s.src = 'https://www.googletagmanager.com/gtag/js?id=G-FSXFYQVCEC';
-				s.async = true;
-				document.head.appendChild(s);
-			}
-			if ('requestIdleCallback' in window) {
-				requestIdleCallback(loadGTM, { timeout: 2000 });
-			} else {
-				setTimeout(loadGTM, 1500);
-			}
-		});
 	</script>
 
 

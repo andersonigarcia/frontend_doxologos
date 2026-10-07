@@ -193,6 +193,11 @@ const CheckoutPage = () => {
                         quantity: 1
                     }]
                 });
+                analytics.trackFunnelStep('booking', 5, {
+                    step_name: 'checkout_start',
+                    booking_id: bookingId || inscricaoId || packageId || null,
+                    value: bookingTotal || undefined
+                });
             } catch (err) {
                 logger.warn('CheckoutPage.analytics:checkout_start error', err);
             }
