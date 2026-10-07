@@ -115,16 +115,12 @@ class AnalyticsManager {
 
     // 4. Direct gtag fallback
     if (typeof gtag === 'function') {
+      // gtag('config') sem send_page_view:false já dispara 1 page_view; não enviar evento extra (evita duplicidade)
       gtag('config', this.gaId, {
         page_title: pageTitle,
         page_location: window.location.origin + currentPath,
         custom_parameter_1: pageName,
         custom_parameter_2: userType
-      });
-      gtag('event', 'page_view', {
-        page_title: pageTitle,
-        page_location: window.location.origin + currentPath,
-        page_path: currentPath
       });
     }
   }
@@ -132,12 +128,25 @@ class AnalyticsManager {
   trackEvent(eventName, parameters = {}) {
     if (!this.isProduction) return;
 
-    // Se estiver em rota interna, não poluir GA4 com métricas de performance ou telemetria genérica
-    const isInternal = this.isInternalRoute();
-    const isTelemetry = ['performance_metric', 'web_vital', 'high_memory_usage', 'route_change_time', 'component_render'].some(
-      (prefix) => eventName.startsWith(prefix)
-    );
-    if (isInternal && isTelemetry) {
+    // 1. Não rastrear em rotas internas/administrativas
+    if (this.isInternalRoute()) {
+      return;
+    }
+
+    // 2. Filtrar ruído de telemetria e performance técnica para não esgotar cotas de eventos do GA4 nem poluir relatórios
+    const isTelemetry = [
+      'performance_',
+      'web_vital',
+      'web_vitals',
+      'high_memory_usage',
+      'route_change_time',
+      'component_render',
+      'console_error',
+      'javascript_error',
+      'promise_rejection'
+    ].some((prefix) => eventName.startsWith(prefix) || eventName === prefix);
+
+    if (isTelemetry) {
       return;
     }
 
@@ -156,9 +165,9 @@ class AnalyticsManager {
 
     // 2. Direct gtag fallback
     if (typeof gtag === 'function') {
+      // Não enviar 'session_id' (parâmetro interno do gtag/GA4, espera valor numérico) nem 'timestamp'
       gtag('event', eventName, {
-        session_id: this.sessionId,
-        timestamp: Date.now(),
+        client_session_ref: this.sessionId,
         ...enrichedParams
       });
     }
@@ -226,16 +235,20 @@ class AnalyticsManager {
       });
     }
 
-    // Meta Pixel Purchase Event
-    if (typeof fbq === 'function') {
-      fbq('track', 'Purchase', {
-        value: safeAmount,
-        currency: 'BRL',
-        content_name: 'Consulta Psicológica',
-        content_ids: [String(serviceId || 'consulta')],
-        content_type: 'product',
-        order_id: dedupeKey
-      });
+    // Meta Pixel Purchase Event (isolado: falha do pixel não pode impedir a conversão do Google Ads)
+    try {
+      if (typeof fbq === 'function') {
+        fbq('track', 'Purchase', {
+          value: safeAmount,
+          currency: 'BRL',
+          content_name: 'Consulta Psicológica',
+          content_ids: [String(serviceId || 'consulta')],
+          content_type: 'product',
+          order_id: dedupeKey
+        });
+      }
+    } catch (pixelError) {
+      console.warn('Meta Pixel error (non-critical):', pixelError);
     }
 
     // Google Ads Conversion Event
@@ -327,10 +340,14 @@ class AnalyticsManager {
     });
 
     // Notify Meta Pixel of Checkout Initiation if it's the beginning of a booking process
-    if (typeof fbq === 'function') {
-      if (funnelName.toLowerCase().includes('booking') && step === 1) {
-        fbq('track', 'InitiateCheckout');
+    try {
+      if (typeof fbq === 'function') {
+        if (funnelName.toLowerCase().includes('booking') && step === 1) {
+          fbq('track', 'InitiateCheckout');
+        }
       }
+    } catch (pixelError) {
+      console.warn('Meta Pixel error (non-critical):', pixelError);
     }
   }
 

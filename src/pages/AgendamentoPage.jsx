@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -312,13 +312,23 @@ const AgendamentoPage = () => {
   const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
   const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
 
-  // Disparar início do funil no carregamento da página
+  // Disparar início do funil no carregamento da página com delay (400ms)
+  // garantindo que o page_view (Etapa 2, disparado em ~120ms) seja registrado no GA4
+  // estritamente ANTES do booking_start (Etapa 3) na sequência cronológica do funil
+  const bookingStartTrackedRef = useRef(false);
   useEffect(() => {
-    try {
-      trackBookingStart();
-    } catch (err) {
-      console.warn('Erro ao disparar trackBookingStart:', err);
-    }
+    const timer = setTimeout(() => {
+      if (!bookingStartTrackedRef.current) {
+        bookingStartTrackedRef.current = true;
+        try {
+          trackBookingStart();
+        } catch (err) {
+          console.warn('Erro ao disparar trackBookingStart:', err);
+        }
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
   }, [trackBookingStart]);
 
   // Prefetch availability data for next step to improve performance
@@ -1323,7 +1333,14 @@ const AgendamentoPage = () => {
             selectedProfessional={selectedProfessional}
             onSelectService={handleServiceSelect}
             onSelectProfessional={handleProfessionalSelect}
-            onNext={() => { trackBookingStep(2, { step_name: 'professional_selected', professionalId: selectedProfessional, serviceId: selectedService }); setStep(2); }}
+            onNext={() => {
+              if (!bookingStartTrackedRef.current) {
+                bookingStartTrackedRef.current = true;
+                try { trackBookingStart(); } catch (e) { /* ignore */ }
+              }
+              trackBookingStep(2, { step_name: 'professional_selected', professionalId: selectedProfessional, serviceId: selectedService });
+              setStep(2);
+            }}
             availability={availability}
             displayMode="service-only"
           />

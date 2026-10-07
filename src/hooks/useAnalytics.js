@@ -104,11 +104,16 @@ export const useBookingTracking = () => {
 
   // Disparado quando o usuário abre a página de agendamento (step inicial)
   const trackBookingStart = useCallback(() => {
-    analytics.trackFunnelStep('booking', 1, { step_name: 'page_open' });
+    // booking_start (Etapa 3 do funil GA4) primeiro: não pode depender do evento auxiliar funnel_step
     trackEvent('booking_start', {
       event_category: 'Booking Flow',
       event_label: 'Step 1 - Início'
     });
+    try {
+      analytics.trackFunnelStep('booking', 1, { step_name: 'page_open' });
+    } catch (err) {
+      console.warn('trackFunnelStep error (non-critical):', err);
+    }
   }, [trackEvent]);
 
   const trackBookingStep = useCallback((step, data = {}) => {
