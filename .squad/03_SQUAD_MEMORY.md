@@ -247,3 +247,22 @@
   5. Expandir `scripts/check-architecture-guardrails.js` e `architectureGuardrails.test.js` para auditar a barreira de idempotência, não bloqueio de NFS-e e testes de idempotency.
 - **Consequências Positivas:** Ingestão de webhooks imune a retries e timeouts, zero duplicação de transações ou notas fiscais, tempo de resposta ao gateway reduzido de até 8s para < 250ms e conformidade com os melhores padrões de engenharia de fintechs.
 
+### ADR 014: Reatividade de Dados & Camada de Cache Canônica TanStack Query Universal (Onda 3)
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Consultas repetitivas a dados estáticos ou semi-estáticos (ex: profissionais, serviços cadastrados, regras de agenda) geravam roundtrips de rede excessivos e refetches frequentes sem cache explícito (`staleTime: 0`), provocando pequenos flickers na interface durante a navegação entre etapas de agendamento. Além disso, componentes como `PacientePage.jsx` gerenciavam estado de agendamentos e histórico manualmente através de `useState`/`useEffect` imperativos sem reatividade ou sincronização automática entre mutações e visualização.
+- **Decisão:**
+  1. Criar camada canônica de hooks de consulta reativa em `src/hooks/queries/`:
+     - `useProfessionalsQuery.js`: `useProfessionalsQuery` e `useProfessionalDetailQuery` (`staleTime: 5 min`, `gcTime: 15 min`).
+     - `useBookingsQuery.js`: `useBookingsQuery`, `useBookingDetailQuery`, `usePatientBookingsQuery`, `usePatientReviewsQuery`.
+     - `usePaymentStatusQuery.js`: `usePaymentStatusQuery`, `usePaymentByIdQuery`, `usePaymentByBookingIdQuery`, `usePaymentsListQuery`.
+     - `usePatientHistoryQuery.js`: `usePatientHomeworkTasksQuery`, `usePatientNotesHistoryQuery`.
+     - `useBookingMutations.js`: `useCreateBookingMutation`, `useUpdateBookingStatusMutation`, `useRescheduleBookingMutation` com invalidação automática de chaves (`bookings`, `patient-bookings`, `availability`).
+     - `index.js`: Barrel export de todos os hooks para consumo limpo em qualquer parte da aplicação.
+  2. Adicionar suporte a relações no serviço de agendamentos: `listBookings({ includeRelations = true })` e helper `listPatientBookings(userId)`.
+  3. Otimizar `src/hooks/booking/useBookingData.js` definindo `staleTime: 5 * 60 * 1000` (5 minutos) e `gcTime: 10 * 60 * 1000` (10 minutos) para todas as consultas do funil de conversão (profissionais, serviços, disponibilidade, bloqueios e depoimentos), eliminando efeito de flickering.
+  4. Refatorar `PacientePage.jsx` para consumir `usePatientBookingsQuery` e `usePatientReviewsQuery`, com invalidação atômica de cache ao cancelar ou reagendar consultas.
+  5. Expandir `scripts/check-architecture-guardrails.js` (Seção 7) e testes automatizados (`architectureGuardrails.test.js`, `canonicalQueries.test.jsx`) para auditar permanentemente a integridade da camada de cache reativa.
+- **Consequências Positivas:** Redução de requisições redundantes de rede, eliminação de flickers visuais no funil de agendamento, reatividade instantânea entre mutações e interface sem complexidade de sincronização manual de estado, e 100% de conformidade com os guardrails arquiteturais.
+
+

@@ -340,6 +340,77 @@ if (checkFileExists('src/services/paymentService.js', 'Serviço de pagamentos'))
   );
 }
 
+// 7. Verificação de Reatividade & Camada de Cache TanStack Query (Onda 3 / ADR 014)
+console.log('7️⃣  Validando camada de cache reativo TanStack Query e hooks canônicos (Onda 3)...');
+const requiredQueryFiles = [
+  ['src/hooks/queries/index.js', 'Barrel export de hooks de queries'],
+  ['src/hooks/queries/useProfessionalsQuery.js', 'Hook canônico de profissionais'],
+  ['src/hooks/queries/useBookingsQuery.js', 'Hook canônico de agendamentos'],
+  ['src/hooks/queries/usePaymentStatusQuery.js', 'Hook canônico de status de pagamento'],
+  ['src/hooks/queries/usePatientHistoryQuery.js', 'Hook canônico de histórico do paciente'],
+  ['src/hooks/queries/useBookingMutations.js', 'Mutações canônicas com invalidação de cache']
+];
+
+for (const [file, desc] of requiredQueryFiles) {
+  checkFileExists(file, desc);
+}
+
+if (checkFileExists('src/hooks/queries/useProfessionalsQuery.js', 'Hook de profissionais')) {
+  checkFileContains(
+    'src/hooks/queries/useProfessionalsQuery.js',
+    ['useProfessionalsQuery', 'useProfessionalDetailQuery', 'PROFESSIONALS_QUERY_KEY'],
+    'useProfessionalsQuery.js'
+  );
+}
+
+if (checkFileExists('src/hooks/queries/useBookingsQuery.js', 'Hook de agendamentos')) {
+  checkFileContains(
+    'src/hooks/queries/useBookingsQuery.js',
+    ['useBookingsQuery', 'usePatientBookingsQuery', 'BOOKINGS_QUERY_KEY', 'PATIENT_BOOKINGS_QUERY_KEY'],
+    'useBookingsQuery.js'
+  );
+}
+
+if (checkFileExists('src/hooks/queries/usePaymentStatusQuery.js', 'Hook de pagamentos')) {
+  checkFileContains(
+    'src/hooks/queries/usePaymentStatusQuery.js',
+    ['usePaymentStatusQuery', 'usePaymentByIdQuery', 'PAYMENTS_QUERY_KEY'],
+    'usePaymentStatusQuery.js'
+  );
+}
+
+if (checkFileExists('src/hooks/queries/usePatientHistoryQuery.js', 'Hook de histórico')) {
+  checkFileContains(
+    'src/hooks/queries/usePatientHistoryQuery.js',
+    ['usePatientHomeworkTasksQuery', 'usePatientNotesHistoryQuery', 'PATIENT_HISTORY_QUERY_KEY'],
+    'usePatientHistoryQuery.js'
+  );
+}
+
+if (checkFileExists('src/hooks/queries/useBookingMutations.js', 'Mutações de agendamento')) {
+  checkFileContains(
+    'src/hooks/queries/useBookingMutations.js',
+    ['useCreateBookingMutation', 'useUpdateBookingStatusMutation', 'useRescheduleBookingMutation', 'invalidateQueries'],
+    'useBookingMutations.js'
+  );
+}
+
+if (checkFileExists('src/hooks/booking/useBookingData.js', 'Hook de dados de agendamento')) {
+  checkFileContains(
+    'src/hooks/booking/useBookingData.js',
+    ['DEFAULT_STALE_TIME', 'DEFAULT_GC_TIME', 'staleTime: DEFAULT_STALE_TIME', 'gcTime: DEFAULT_GC_TIME'],
+    'useBookingData.js com configuração de cache explícita (anti-flicker)'
+  );
+}
+
+if (checkFileExists('src/pages/PacientePage.jsx', 'Portal do paciente')) {
+  checkFileContains(
+    'src/pages/PacientePage.jsx',
+    ['usePatientBookingsQuery', 'usePatientReviewsQuery', 'invalidateQueries'],
+    'PacientePage.jsx integrado ao TanStack Query reativo'
+  );
+}
+
 // Relatório Final
 console.log('\n--------------------------------------------------');
 if (errors.length === 0) {

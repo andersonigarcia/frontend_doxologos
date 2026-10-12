@@ -142,5 +142,40 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
       expect(pkg.scripts.dev).toContain('--host 0.0.0.0');
     });
   });
+
+  describe('Onda 3 — Reatividade de Dados & Camada de Cache (TanStack Query Universal)', () => {
+    it('deve possuir todos os hooks canônicos de query e mutação exportados', () => {
+      const hooks = [
+        'useProfessionalsQuery.js',
+        'useBookingsQuery.js',
+        'usePaymentStatusQuery.js',
+        'usePatientHistoryQuery.js',
+        'useBookingMutations.js',
+        'index.js'
+      ];
+      hooks.forEach(hookFile => {
+        const filePath = path.resolve(__dirname, '../../hooks/queries', hookFile);
+        expect(fs.existsSync(filePath)).toBe(true);
+      });
+    });
+
+    it('useBookingData deve conter staleTime e gcTime configurados explicitamente (anti-flicker)', () => {
+      const bookingDataPath = path.resolve(__dirname, '../../hooks/booking/useBookingData.js');
+      const content = fs.readFileSync(bookingDataPath, 'utf8');
+      expect(content).toContain('DEFAULT_STALE_TIME');
+      expect(content).toContain('DEFAULT_GC_TIME');
+      expect(content).toContain('staleTime: DEFAULT_STALE_TIME');
+      expect(content).toContain('gcTime: DEFAULT_GC_TIME');
+    });
+
+    it('PacientePage deve consumir usePatientBookingsQuery e invalidar cache em mutações', () => {
+      const pacientePagePath = path.resolve(__dirname, '../../pages/PacientePage.jsx');
+      const content = fs.readFileSync(pacientePagePath, 'utf8');
+      expect(content).toContain('usePatientBookingsQuery');
+      expect(content).toContain('usePatientReviewsQuery');
+      expect(content).toContain('queryClient.invalidateQueries');
+    });
+  });
 });
+
 

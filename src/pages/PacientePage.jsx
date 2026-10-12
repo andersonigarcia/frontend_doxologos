@@ -27,6 +27,8 @@ import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner';
 import { KeyRound } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { usePatientBookingsQuery, usePatientReviewsQuery } from '@/hooks/queries';
 
 const MAX_RESCHEDULE_ATTEMPTS = 2;
 const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
@@ -35,9 +37,24 @@ const PacientePage = () => {
     const { toast } = useToast();
     const { user, session, userRole, signIn, signOut } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
-    const [bookings, setBookings] = useState([]);
-    const [reviews, setReviews] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const {
+        data: patientBookingsData = [],
+        isLoading: bookingsLoading,
+        error: bookingsQueryError,
+        refetch: refetchBookings
+    } = usePatientBookingsQuery(user?.id);
+
+    const {
+        data: patientReviewsData = [],
+        isLoading: reviewsLoading,
+        refetch: refetchReviews
+    } = usePatientReviewsQuery(user?.id);
+
+    const bookings = patientBookingsData || [];
+    const reviews = patientReviewsData || [];
+    const loading = !user ? false : (bookingsLoading || reviewsLoading);
+
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
@@ -207,49 +224,22 @@ const PacientePage = () => {
         }));
     };
 
-    const fetchData = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        const { data: bookingsData, error: bookingsError } = await supabase
-            .from('bookings')
-            .select(`
-                *,
-                meeting_link,
-                meeting_password,
-                meeting_id,
-                meeting_start_url,
-                professional:professionals(name, personal_meet_link),
-                service:services(name),
-                payment:payments(id, mp_payment_id, status, qr_code, qr_code_base64, ticket_url, amount)
-            `)
-            .eq('user_id', user.id)
-            .order('booking_date', { ascending: false });
-
-        if (bookingsError) {
-            toast({ variant: 'destructive', title: 'Erro ao buscar agendamentos', description: bookingsError.message });
-        } else {
-            setBookings(bookingsData);
-        }
-
-        const { data: reviewsData, error: reviewsError } = await supabase
-            .from('reviews')
-            .select('booking_id')
-            .eq('patient_id', user.id);
-
-        if (reviewsError) {
-            logger.apiError('fetchReviews', reviewsError, { userId: user.id });
-        } else {
-            setReviews(reviewsData.map(r => r.booking_id));
-        }
-
-        setLoading(false);
-    }, [user, toast]);
-
     useEffect(() => {
-        if (user) {
-            fetchData();
+        if (bookingsQueryError) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao buscar agendamentos',
+                description: bookingsQueryError.message || 'Falha ao buscar agendamentos'
+            });
         }
-    }, [user, fetchData]);
+    }, [bookingsQueryError, toast]);
+
+    const fetchData = useCallback(() => {
+        return Promise.all([
+            refetchBookings(),
+            refetchReviews()
+        ]);
+    }, [refetchBookings, refetchReviews]);
 
     useEffect(() => {
         if (user) {
@@ -316,6 +306,9 @@ const PacientePage = () => {
             });
 
             await loadCreditSummary();
+            queryClient.invalidateQueries({ queryKey: ['patient-bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['availability'] });
             fetchData();
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro desconhecido ao cancelar';
@@ -662,6 +655,9 @@ const PacientePage = () => {
             setReschedulingBooking(null);
             setSelectedNewSlot(null);
             setAvailableSlots([]);
+            queryClient.invalidateQueries({ queryKey: ['patient-bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['availability'] });
             fetchData();
         } catch (error) {
             logger.error('Error rescheduling booking', error);
@@ -692,6 +688,7 @@ const PacientePage = () => {
             toast({ title: 'Avaliação enviada com sucesso!' });
             setReviewingBooking(null);
             setReviewData({ rating: 0, comment: '' });
+            queryClient.invalidateQueries({ queryKey: ['patient-reviews'] });
             fetchData();
         }
     };

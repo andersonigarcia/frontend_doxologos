@@ -19,24 +19,35 @@ export function useBookingData({ toast } = {}) {
     [toast]
   );
 
+  const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5 minutos de dados frescos
+  const DEFAULT_GC_TIME = 10 * 60 * 1000;   // 10 minutos de retenção em cache
+
   const professionalsQuery = useQuery({
     queryKey: ['professionals'],
     queryFn: fetchProfessionals,
+    staleTime: DEFAULT_STALE_TIME,
+    gcTime: DEFAULT_GC_TIME,
   });
 
   const servicesQuery = useQuery({
     queryKey: ['services'],
     queryFn: fetchServices,
+    staleTime: DEFAULT_STALE_TIME,
+    gcTime: DEFAULT_GC_TIME,
   });
 
   const availabilityQuery = useQuery({
     queryKey: ['availability'],
     queryFn: fetchAvailabilityMap,
+    staleTime: DEFAULT_STALE_TIME,
+    gcTime: DEFAULT_GC_TIME,
   });
 
   const blockedDatesQuery = useQuery({
     queryKey: ['blocked_dates'],
     queryFn: fetchBlockedDates,
+    staleTime: DEFAULT_STALE_TIME,
+    gcTime: DEFAULT_GC_TIME,
   });
 
   const testimonialsQuery = useQuery({
@@ -46,6 +57,8 @@ export function useBookingData({ toast } = {}) {
         limit: 5,
         columns: `*, professionals(name), bookings(patient_name, patient_email)`,
       }),
+    staleTime: DEFAULT_STALE_TIME,
+    gcTime: DEFAULT_GC_TIME,
   });
 
   useEffect(() => {

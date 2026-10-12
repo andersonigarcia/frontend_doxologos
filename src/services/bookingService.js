@@ -316,11 +316,19 @@ export async function listBookings({
   status,
   startDate,
   endDate,
-  limit = 100
+  limit = 100,
+  includeRelations = false
 } = {}) {
+  const selectClause = includeRelations
+    ? `*,
+       professional:professionals(id, name, specialty, image_url, personal_meet_link),
+       service:services(id, name, price, duration),
+       payment:payments(id, mp_payment_id, status, qr_code, qr_code_base64, ticket_url, amount)`
+    : '*';
+
   let query = supabase
     .from('bookings')
-    .select('*')
+    .select(selectClause)
     .order('booking_date', { ascending: false })
     .order('booking_time', { ascending: true });
 
@@ -360,3 +368,20 @@ export async function listBookings({
 
   return data || [];
 }
+
+/**
+ * Lista agendamentos do paciente com relações completas (profissionais, serviços, pagamentos).
+ * @param {string} userId - ID do usuário paciente
+ * @param {Object} [options]
+ * @returns {Promise<Array<Object>>}
+ */
+export async function listPatientBookings(userId, options = {}) {
+  if (!userId) return [];
+  return listBookings({
+    userId,
+    includeRelations: true,
+    limit: options.limit || 200,
+    ...options
+  });
+}
+

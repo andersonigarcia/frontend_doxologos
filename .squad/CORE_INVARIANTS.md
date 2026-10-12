@@ -46,6 +46,8 @@
   * Validação de papéis via `app_metadata.role` e `app_metadata.roles` (ADR 005 / ADR 012), `requireAdmin`, `hasAnyRole` e proteção CSP.
 * **Resiliência Fintech & Webhook Idempotente (SSOT):** [`supabase/functions/mp-webhook/index.ts`](file:///c:/Users/ander/source/repos/frontend_doxologos/supabase/functions/mp-webhook/index.ts)
   * Barreira atômica de idempotência por `mp_payment_id` e execução assíncrona não bloqueante de NFS-e (ADR 013).
+* **Reatividade de Dados & Camada de Cache (TanStack Query SSOT):** [`src/hooks/queries/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/hooks/queries/)
+  * Hooks canônicos de leitura e mutações com invalidação atômica e cache explícito (`staleTime`/`gcTime`) anti-flicker (ADR 014).
 
 ---
 
@@ -57,4 +59,5 @@
 * **Gatekeeper Completo do Squad:** `npm run squad:check`
 
 ---
-*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 013), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
+*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 014), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
+
