@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, Upload, X, User, Settings, DollarSign } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
+import { updateProfessional } from '@/services/professionalService';
 
 const ProfileTab = ({ professional, onUpdate }) => {
   const { toast } = useToast();
@@ -24,8 +25,27 @@ const ProfileTab = ({ professional, onUpdate }) => {
   const [selectedServices, setSelectedServices] = useState(professional?.services_ids || []);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Sincronizar formData caso o profissional seja carregado ou alterado externamente
+  useEffect(() => {
+    if (professional) {
+      setFormData(prev => ({
+        name: professional.name || prev.name || '',
+        email: professional.email || prev.email || '',
+        whatsapp: professional.whatsapp || professional.phone || prev.whatsapp || '',
+        mini_curriculum: professional.mini_curriculum !== undefined ? professional.mini_curriculum : prev.mini_curriculum,
+        personal_meet_link: professional.personal_meet_link !== undefined ? professional.personal_meet_link : prev.personal_meet_link,
+        image_url: professional.image_url || prev.image_url || '',
+        cpf: professional.cpf || prev.cpf || '',
+        cnpj: professional.cnpj || prev.cnpj || '',
+        crp: professional.crp || prev.crp || '',
+        specialty: professional.specialty || prev.specialty || ''
+      }));
+      setSelectedServices(professional.services_ids || []);
+    }
+  }, [professional]);
+
   // Buscar todos os serviços ativos
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchServices = async () => {
       try {
         const { data, error } = await supabase
@@ -94,52 +114,25 @@ const ProfileTab = ({ professional, onUpdate }) => {
     setIsSubmitting(true);
 
     try {
-      // 1. Atualizar auth via Edge Function
-      const { data: session } = await supabase.auth.getSession();
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: professional.id,
-            userData: {
-              email: formData.email,
-              user_metadata: {
-                full_name: formData.name,
-                role: 'professional'
-              }
-            },
-            professionalData: {
-              name: formData.name,
-              email: formData.email,
-              whatsapp: formData.whatsapp,
-              phone: formData.whatsapp,
-              mini_curriculum: formData.mini_curriculum,
-              personal_meet_link: formData.personal_meet_link,
-              image_url: formData.image_url,
-              cpf: formData.cpf,
-              cnpj: formData.cnpj,
-              crp: formData.crp,
-              specialty: formData.specialty,
-              services_ids: selectedServices
-            }
-          })
-        }
-      );
+      if (!professional?.id) {
+        throw new Error('ID do profissional não identificado.');
+      }
 
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Erro ao atualizar dados do profissional.');
+      // Utilizar serviço canônico com validação e separação atômica
+      const updated = await updateProfessional(professional.id, {
+        ...formData,
+        user_id: professional.user_id,
+        services_ids: selectedServices
+      });
+
+      // Atualizar o estado local imediatamente
+      if (updated?.email) {
+        setFormData(prev => ({ ...prev, email: updated.email }));
       }
 
       toast({
         title: "Sucesso!",
-        description: "Os dados do profissional foram atualizados."
+        description: "Os dados do profissional foram atualizados com sucesso."
       });
       
       if (onUpdate) onUpdate();

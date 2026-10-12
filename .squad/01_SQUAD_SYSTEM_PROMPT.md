@@ -29,6 +29,9 @@ Esta é a Constituição do Squad Multiagente. Ela estabelece os princípios inv
 2. **Zero-Downtime Database Migrations (*Expand & Contract*):** NUNCA executar `DROP TABLE` ou `DROP COLUMN` em migração direta.
 3. **Segurança Supabase RLS Mandatória:** 100% das tabelas devem possuir políticas de Row Level Security (RLS) ativas.
 4. **Tipagem Estrita com Zod:** Todas as Edge Functions devem validar payloads de entrada com schemas Zod.
+5. **Systemic RCA & Blast Radius Analysis Mandatório (Anti-Band-Aid):** Proibido aplicar correções pontuais isoladas que apenas silenciem o sintoma em uma tela. Qualquer alteração em um domínio exige mapear 100% dos consumidores no código e aplicar a correção de forma transversal.
+6. **Camada de Serviço Centralizada (Single Source of Truth):** Componentes de UI NUNCA devem conter lógica de persistência ou queries de domínio acopladas. Devem consumir exclusivamente a camada de serviços canônicos em `src/services/`.
+7. **Sincronia Mandatória de ARCH.md com o Banco Real:** É expressamente proibido haver divergência entre os modelos documentados em `ARCH.md` e a estrutura real do PostgreSQL. Toda tarefa que identificar discrepância deve retificar a documentação no mesmo commit.
 
 ---
 

@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { listProfessionals } from '@/services/professionalService';
 
 const ProfessionalListPage = ({ isEmbedded = false }) => {
   const { toast } = useToast();
@@ -39,16 +40,15 @@ const ProfessionalListPage = ({ isEmbedded = false }) => {
   const fetchProfessionals = async () => {
     setLoading(true);
     try {
-      const [profRes, appRes] = await Promise.all([
-        supabase.from('professionals').select('*').order('name', { ascending: true }),
+      const [profsData, appRes] = await Promise.all([
+        listProfessionals(),
         supabase.from('professional_applications').select('*').eq('status', 'pending').order('created_at', { ascending: false })
       ]);
       
-      if (profRes.error) throw profRes.error;
       if (appRes.error) throw appRes.error;
       
-      setProfessionals(profRes.data || []);
-      setFilteredProfessionals(profRes.data || []);
+      setProfessionals(profsData || []);
+      setFilteredProfessionals(profsData || []);
       setApplications(appRes.data || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);

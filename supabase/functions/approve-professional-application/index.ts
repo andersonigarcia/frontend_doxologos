@@ -97,10 +97,10 @@ serve(async (req) => {
     const { error: profError } = await supabaseAdmin
       .from('professionals')
       .insert([{
-        id: userId,
+        user_id: userId,
         name: application.name,
-        email: application.email,
         phone: application.phone,
+        whatsapp: application.phone,
         specialty: application.specialty,
         cpf: isCnpj ? null : application.cpf_cnpj,
         cnpj: isCnpj ? application.cpf_cnpj : null,

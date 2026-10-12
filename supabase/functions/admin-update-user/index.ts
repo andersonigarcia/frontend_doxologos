@@ -45,25 +45,56 @@ Deno.serve(async (req) => {
       throw new Error('ID do usuário não fornecido')
     }
 
-    // Atualizar usuário
-    const { data, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
+    // Tentar atualizar usuário (resolvendo fallback se userId for id de professionals)
+    let targetAuthUserId = userId
+    let updateResult = await supabaseAdmin.auth.admin.updateUserById(
+      targetAuthUserId,
       userData
     )
 
-    if (updateError) {
-      throw updateError
+    if (updateResult.error && (updateResult.error.message?.toLowerCase().includes('user not found') || updateResult.error.status === 404)) {
+      const { data: profRecord } = await supabaseAdmin
+        .from('professionals')
+        .select('user_id')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (profRecord?.user_id) {
+        targetAuthUserId = profRecord.user_id
+        updateResult = await supabaseAdmin.auth.admin.updateUserById(
+          targetAuthUserId,
+          userData
+        )
+      }
     }
 
-    // Sincronizar dados do profissional (Risco 2 - Mitigação)
-    if (professionalData) {
-      const { error: profError } = await supabaseAdmin
-        .from('professionals')
-        .upsert({ id: userId, ...professionalData })
+    if (updateResult.error) {
+      throw updateResult.error
+    }
 
-      if (profError) {
-        console.error('Erro ao sincronizar dados do profissional:', profError)
-        throw new Error('Falha ao sincronizar dados públicos do profissional: ' + profError.message)
+    const data = updateResult.data
+
+    // Sincronizar dados do profissional caso fornecidos
+    if (professionalData) {
+      // Remover campos inexistentes no banco (ex: email)
+      const { email, ...cleanProfData } = professionalData
+
+      const { data: existingProf } = await supabaseAdmin
+        .from('professionals')
+        .select('id, user_id')
+        .or(`id.eq.${userId},user_id.eq.${targetAuthUserId}`)
+        .maybeSingle()
+
+      if (existingProf) {
+        const { error: profError } = await supabaseAdmin
+          .from('professionals')
+          .update(cleanProfData)
+          .eq('id', existingProf.id)
+
+        if (profError) {
+          console.error('Erro ao sincronizar dados do profissional:', profError)
+          throw new Error('Falha ao sincronizar dados públicos do profissional: ' + profError.message)
+        }
       }
     }
 

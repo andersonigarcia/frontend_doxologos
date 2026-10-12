@@ -98,7 +98,7 @@ const AdminUsuariosPage = () => {
 
       // 3. Combinar dados
       const usersWithDetails = authUsers.map(authUser => {
-        const professionalData = profsData?.find(p => p.id === authUser.id);
+        const professionalData = profsData?.find(p => p.user_id === authUser.id || p.id === authUser.id);
         return {
           id: authUser.id,
           email: authUser.email,
@@ -203,7 +203,7 @@ const AdminUsuariosPage = () => {
 
       // 2. Se for profissional, atualizar tabela professionals
       if (editFormData.role === 'professional') {
-        const professionalExists = professionals.find(p => p.id === selectedUser.id);
+        const professionalExists = professionals.find(p => p.user_id === selectedUser.id || p.id === selectedUser.id);
         
         if (professionalExists) {
           // Atualizar
@@ -211,23 +211,21 @@ const AdminUsuariosPage = () => {
             .from('professionals')
             .update({
               name: editFormData.full_name,
-              email: editFormData.email,
-              whatsapp: editFormData.whatsapp,
-              phone: editFormData.whatsapp
+              whatsapp: editFormData.whatsapp || null,
+              phone: editFormData.whatsapp || null
             })
-            .eq('id', selectedUser.id);
+            .eq('id', professionalExists.id);
           
           if (profError) throw profError;
         } else {
-          // Inserir novo
+          // Inserir novo profissional associado ao usuário
           const { error: profError } = await supabase
             .from('professionals')
             .insert([{
-              id: selectedUser.id,
+              user_id: selectedUser.id,
               name: editFormData.full_name,
-              email: editFormData.email,
-              whatsapp: editFormData.whatsapp,
-              phone: editFormData.whatsapp,
+              whatsapp: editFormData.whatsapp || null,
+              phone: editFormData.whatsapp || null,
               specialty: 'Psicologia Clínica'
             }]);
           
@@ -240,7 +238,7 @@ const AdminUsuariosPage = () => {
         const { error: deleteError } = await supabase
           .from('professionals')
           .delete()
-          .eq('id', selectedUser.id);
+          .or(`user_id.eq.${selectedUser.id},id.eq.${selectedUser.id}`);
         
         if (deleteError) console.warn('Aviso ao remover profissional:', deleteError);
       }

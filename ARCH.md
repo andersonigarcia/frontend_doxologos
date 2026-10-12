@@ -219,7 +219,10 @@ Todas as funções rodam no Supabase Edge (Deno runtime). Chamadas via HTTPS com
 
 ```
 professionals ──────────────────────────────────────────────┐
-│ id (PK), name, specialty, email, bio, active              │
+│ id (PK), user_id (FK → auth.users), name, specialty,      │
+│ mini_curriculum, description, image_url, personal_meet_link,│
+│ whatsapp, phone, cpf, cnpj, crp, status, services_ids []   │
+│ * Nota: email e credenciais residem em auth.users         │
 └───────────────────────────────────────────────────────────┘
         │ 1                                         │ 1
         │                                           │

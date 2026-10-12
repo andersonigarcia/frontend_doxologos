@@ -21,6 +21,8 @@ import ProfileTab from '@/components/admin/professional-hub/ProfileTab';
 import ScheduleTab from '@/components/admin/professional-hub/ScheduleTab';
 import FinancialTab from '@/components/admin/professional-hub/FinancialTab';
 
+import { getProfessionalById, updateProfessionalStatus } from '@/services/professionalService';
+
 const ProfessionalHubPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -39,13 +41,7 @@ const ProfessionalHubPage = () => {
   const fetchProfessional = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('professionals')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) throw error;
+      const data = await getProfessionalById(id);
       setProfessional(data);
     } catch (error) {
       console.error('Erro ao carregar profissional:', error);
@@ -62,12 +58,7 @@ const ProfessionalHubPage = () => {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      const { error } = await supabase
-        .from('professionals')
-        .update({ status: newStatus })
-        .eq('id', professional.id);
-      
-      if (error) throw error;
+      await updateProfessionalStatus(professional.id, newStatus);
       
       setProfessional(prev => ({ ...prev, status: newStatus }));
       toast({

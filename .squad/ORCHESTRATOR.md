@@ -78,8 +78,10 @@ Independentemente da esteira ativada, as seguintes regras NUNCA podem ser violad
 2. **Backward Compatibility & RLS:** Nenhuma alteração de banco pode ser feita sem política de Row Level Security (RLS) ativa e sem compatibilidade regressiva (Zero-Downtime Expand & Contract).
 3. **Pre-flight Check Real (Sem Alucinação de QA):** Nenhuma funcionalidade é declarada concluída sem verificação empírica no terminal via `npm test` e `npm run build`.
 4. **Silent Diagnosis First:** Em incidentes, o Bug Hunter deve confirmar a Root Cause ANTES de qualquer proposta de código ou solução.
-5. **ARCH.md como Fonte de Verdade:** Qualquer decisão de schema de banco, contrato de Edge Function ou integração deve ser validada contra [`ARCH.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/ARCH.md) antes da implementação.
+5. **ARCH.md como Fonte de Verdade & Zero Schema Drift:** Qualquer decisão de schema de banco, contrato de Edge Function ou integração deve ser validada contra [`ARCH.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/ARCH.md). Se houver divergência entre o banco e o documento, a correção do documento é mandatória no mesmo ciclo.
 6. **Persistência de Memória Mandatória:** Nenhuma tarefa que introduza novo padrão visual, regra de negócio, decisão arquitetural ou resolução de bug pode ser dada como concluída sem atualizar a memória viva em [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md) e arquivar a ADR em [`.squad/history/`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/).
+7. **Blast Radius & Erradicação Sistêmica (Anti-Band-Aid):** Nenhuma alteração é aceita se consertar apenas o sintoma local em um único componente. É obrigatório identificar o raio de alcance (blast radius), mapear todos os consumidores do domínio e centralizar a lógica em camada de serviço (`src/services/`).
+8. **Eficiência de Tokens e Rigor Técnico:** Proibido gastar tokens com teatro de personas ou investigações repetidas. Consultar as ADRs e invariantes antes de propor código e usar ferramentas determinísticas.
 
 ---
 

@@ -138,3 +138,22 @@
 - **Solução Aplicada:** Criado módulo centralizado `src/constants/contact.js` (`CLINIC_CONTACT`) e atualizados 100% dos links e referências (`FloatingWhatsAppButton`, `ContactSection`, `FaqSection`, `SiteFooter`, `CheckoutFailurePage`, `DateTimeStep`, `AgendamentoPage`, `DepoimentoPage`, `HomePage`, `emailTemplates` e 8 landing pages especializadas) para o número oficial `(11) 91728-7583` (`5511917287583`).
 - **Prevenção:** Centralização dos dados de contato em `src/constants/contact.js` para evitar divergências e placeholders espalhados no código.
 
+### Bug: 400 Bad Request ("User not found") e Placeholders Vazios na Gestão de Profissionais (ADR 006)
+- **Data:** 2026-10-12
+- **Camada:** Frontend React & Backend Supabase (Service Layer & Edge Functions)
+- **Sintoma:** Ao editar os dados de um profissional no Hub 360 (`/admin/professionals/:id`), o salvamento falhava com status `400 Bad Request` ("User not found") ou os campos de email/documentos apareciam vazios com placeholders após o salvamento.
+- **Root Cause:** 
+  1. Fragmentação e concorrência: 5 telas diferentes manipulando a tabela `professionals` diretamente sem passar por camada de domínio.
+  2. A chave primária da tabela `professionals` (`id`) difere do identificador de `auth.users` (`user_id`). Ao enviar `userId: professional.id` para o Auth, o Supabase retornava "User not found".
+  3. Divergência de schema (Schema Drift): `ARCH.md` indicava erroneamente que `professionals` possuía a coluna `email`, quando o e-mail reside exclusivamente em `auth.users`. O envio de `email` para a tabela causava erro de coluna inexistente (código 42703).
+- **Solução Sistêmica Aplicada (Fases 1 e 2):**
+  1. Criado serviço canônico centralizado `src/services/professionalService.js` com funções puras de leitura, listagem, atualização e alteração de status.
+  2. Implementada separação atômica entre dados clínicos/cadastrais (Postgres) e credenciais (Auth).
+  3. Identificado que a Edge Function `admin-list-users` exigia token com role de admin e falhava via client anônimo/browser com 400, zerando o mapa de emails. A solução foi priorizar a RPC direta `admin_list_users` no Postgres (retorna 100% dos usuários autenticados sem overhead ou falhas de CORS/token) com fallback para a Edge Function.
+  4. Blindado o `ProfileTab.jsx` para que o estado do formulário (`formData`) não seja sobregravado por strings vazias durante refetches pós-salvamento.
+  5. Refatorados todos os consumidores do domínio: `ProfileTab.jsx`, `ProfessionalHubPage.jsx`, `ProfessionalListPage.jsx`, `AdminUsuariosPage.jsx`, `approve-professional-application` e `admin-update-user`.
+  6. Retificado o diagrama ERD em `ARCH.md` para refletir 100% a realidade do banco de dados.
+  7. Adicionada suíte de testes unitários `src/services/__tests__/professionalService.test.js` com 9 testes garantindo a invariante.
+- **Prevenção:** Proibição mandatória de queries diretas a `professionals` em componentes de UI; todas as operações devem consumir `professionalService.js`. 
+
+
