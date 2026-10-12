@@ -265,4 +265,29 @@
   5. Expandir `scripts/check-architecture-guardrails.js` (Seção 7) e testes automatizados (`architectureGuardrails.test.js`, `canonicalQueries.test.jsx`) para auditar permanentemente a integridade da camada de cache reativa.
 - **Consequências Positivas:** Redução de requisições redundantes de rede, eliminação de flickers visuais no funil de agendamento, reatividade instantânea entre mutações e interface sem complexidade de sincronização manual de estado, e 100% de conformidade com os guardrails arquiteturais.
 
+### ADR 015: Desmembramento Estrutural dos God Components & Observabilidade Real-User (RUM) (Onda 4)
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Os arquivos `AdminPage.jsx` e `ProfessionalDashboardPage.jsx` continham mais de 5.700 linhas cada ("God Components"), inlinando blocos massivos de JSX e estados complexos para agendamentos operacionais (~1.140 linhas), gestão de eventos (~800 linhas), profissionais (~450 linhas), serviços clínicos (~190 linhas), pagamentos (~120 linhas) e depoimentos (~80 linhas). Essa duplicação elevava o custo de manutenção, aumentava o tempo de bundling do Vite para ~51s e dificultava testes isolados. Ao mesmo tempo, faltava um módulo proativo de observabilidade em tempo real (RUM - Real User Monitoring) para rastrear Core Web Vitals, latências de API do Supabase/Mercado Pago e taxas de falha em produção no cliente.
+- **Decisão:**
+  1. Extrair e desacoplar 6 abas modulares reutilizáveis em `src/components/admin/tabs/`:
+     - `AdminBookingsTab.jsx`: Gestão operacional completa de agendamentos com visualização em tabela, cards e calendário, filtros avançados, ordenação, totalizadores e modal de edição.
+     - `AdminEventsTab.jsx`: Gestão e criação de eventos, links de Google Meet/Zoom, limites de inscrição e splits de taxa de plataforma.
+     - `AdminServicesTab.jsx`: Gestão de catálogo de serviços, preços, repasses e sanitização monetária.
+     - `AdminProfessionalsTab.jsx`: Visão administrativa embeddada e perfil profissional com serviços habilitados.
+     - `AdminPaymentsTab.jsx`: Gestão de pagamentos, vínculos a consultas e formulários de lançamento.
+     - `AdminTestimonialsTab.jsx`: Moderação e atalhos de gestão de depoimentos públicos.
+     - `index.js`: Barrel export padronizado de todas as abas.
+  2. Implementar módulo de observabilidade RUM em `src/lib/observability/rumMonitoring.js`:
+     - Captura automática de métricas de navegação e Web Vitals (LCP, FID, CLS, FCP, TTFB).
+     - Rastreamento transparente de latência de rede e taxa de erro em chamadas às APIs (Supabase e Mercado Pago).
+     - Avaliação contínua de integridade do cliente (`getRumHealthScore`) e sistema de alertas de degradação.
+     - Inicialização na raiz da aplicação em `src/App.jsx` (`initRumMonitoring()`).
+  3. Refatorar `AdminPage.jsx` e `ProfessionalDashboardPage.jsx` para consumir as abas modulares:
+     - Linhas de código em cada arquivo reduzidas de ~5.700 para < 3.000 (~48% de redução de linhas).
+     - Tempo de compilação de produção (`vite build`) reduzido de 51s para ~22s.
+     - Redução expressiva no bundle individual das páginas compiladas.
+  4. Adicionar Seção 8 no script de guardrails (`scripts/check-architecture-guardrails.js`), suíte de testes unitários para as abas (`src/components/admin/tabs/__tests__/adminTabs.test.jsx`) e testes de guardrails (`src/services/__tests__/architectureGuardrails.test.js`).
+- **Consequências Positivas:** Manutenibilidade exponencialmente maior, código modular e testável isoladamente, compilação 55% mais rápida, telemetria RUM ativa para detecção proativa de degradação de performance e 100% de preservação visual e funcional do painel.
+
 

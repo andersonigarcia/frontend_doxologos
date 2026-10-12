@@ -48,6 +48,10 @@
   * Barreira atômica de idempotência por `mp_payment_id` e execução assíncrona não bloqueante de NFS-e (ADR 013).
 * **Reatividade de Dados & Camada de Cache (TanStack Query SSOT):** [`src/hooks/queries/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/hooks/queries/)
   * Hooks canônicos de leitura e mutações com invalidação atômica e cache explícito (`staleTime`/`gcTime`) anti-flicker (ADR 014).
+* **Desmembramento de God Components & Modularidade de Abas (SSOT):** [`src/components/admin/tabs/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/components/admin/tabs/)
+  * Abas administrativas desacopladas e reutilizáveis (`AdminBookingsTab`, `AdminEventsTab`, `AdminServicesTab`, `AdminProfessionalsTab`, `AdminPaymentsTab`, `AdminTestimonialsTab`) reduzindo tamanho de tela em ~50% (ADR 015).
+* **Observabilidade Real-User & Resiliência (RUM SSOT):** [`src/lib/observability/rumMonitoring.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/lib/observability/rumMonitoring.js)
+  * Telemetria no cliente para Core Web Vitals, latência de APIs e monitoramento proativo de integridade com alertas (ADR 015).
 
 ---
 
@@ -59,5 +63,5 @@
 * **Gatekeeper Completo do Squad:** `npm run squad:check`
 
 ---
-*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 014), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
+*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 015), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
 

@@ -411,6 +411,57 @@ if (checkFileExists('src/pages/PacientePage.jsx', 'Portal do paciente')) {
   );
 }
 
+// 8. Verificação de Desmembramento Estrutural de God Components & Observabilidade RUM (Onda 4 / ADR 015)
+console.log('8️⃣  Validando desmembramento dos God Components & observabilidade RUM (Onda 4)...');
+const requiredModularTabFiles = [
+  ['src/lib/observability/rumMonitoring.js', 'Módulo de telemetria RUM e Web Vitals'],
+  ['src/lib/observability/__tests__/rumMonitoring.test.js', 'Testes unitários de RUM monitoring'],
+  ['src/components/admin/tabs/index.js', 'Barrel export de abas administrativas'],
+  ['src/components/admin/tabs/AdminBookingsTab.jsx', 'Aba modular de agendamentos operacionais'],
+  ['src/components/admin/tabs/AdminEventsTab.jsx', 'Aba modular de gestão de eventos'],
+  ['src/components/admin/tabs/AdminServicesTab.jsx', 'Aba modular de serviços clínicos'],
+  ['src/components/admin/tabs/AdminProfessionalsTab.jsx', 'Aba modular de perfil profissional'],
+  ['src/components/admin/tabs/AdminPaymentsTab.jsx', 'Aba modular de pagamentos e repasses'],
+  ['src/components/admin/tabs/AdminTestimonialsTab.jsx', 'Aba modular de moderação de depoimentos'],
+  ['src/components/admin/tabs/__tests__/adminTabs.test.jsx', 'Testes unitários das abas modulares']
+];
+
+for (const [file, desc] of requiredModularTabFiles) {
+  checkFileExists(file, desc);
+}
+
+if (checkFileExists('src/lib/observability/rumMonitoring.js', 'Módulo RUM')) {
+  checkFileContains(
+    'src/lib/observability/rumMonitoring.js',
+    ['recordMetric', 'trackApiLatency', 'initRumMonitoring', 'getRumHealthScore', 'addHealthAlertListener'],
+    'src/lib/observability/rumMonitoring.js'
+  );
+}
+
+if (checkFileExists('src/App.jsx', 'Aplicação raiz')) {
+  checkFileContains(
+    'src/App.jsx',
+    ['initRumMonitoring'],
+    'App.jsx com inicialização ativa de telemetria RUM'
+  );
+}
+
+if (checkFileExists('src/pages/AdminPage.jsx', 'AdminPage modular')) {
+  checkFileContains(
+    'src/pages/AdminPage.jsx',
+    ['AdminBookingsTab', 'AdminEventsTab', 'AdminServicesTab', 'AdminProfessionalsTab', 'AdminPaymentsTab', 'AdminTestimonialsTab'],
+    'AdminPage.jsx desmembrado consumindo abas modulares'
+  );
+}
+
+if (checkFileExists('src/pages/ProfessionalDashboardPage.jsx', 'ProfessionalDashboardPage modular')) {
+  checkFileContains(
+    'src/pages/ProfessionalDashboardPage.jsx',
+    ['AdminBookingsTab', 'AdminEventsTab', 'AdminServicesTab', 'AdminProfessionalsTab', 'AdminPaymentsTab', 'AdminTestimonialsTab'],
+    'ProfessionalDashboardPage.jsx desmembrado consumindo abas modulares'
+  );
+}
+
 // Relatório Final
 console.log('\n--------------------------------------------------');
 if (errors.length === 0) {

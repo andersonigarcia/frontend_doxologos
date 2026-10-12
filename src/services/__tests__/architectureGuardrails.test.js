@@ -176,6 +176,51 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
       expect(content).toContain('queryClient.invalidateQueries');
     });
   });
+
+  describe('Onda 4 — Desmembramento de God Components & Observabilidade RUM (ADR 015)', () => {
+    it('deve possuir todas as abas administrativas modulares e seu barrel export', () => {
+      const tabs = [
+        'AdminBookingsTab.jsx',
+        'AdminEventsTab.jsx',
+        'AdminServicesTab.jsx',
+        'AdminProfessionalsTab.jsx',
+        'AdminPaymentsTab.jsx',
+        'AdminTestimonialsTab.jsx',
+        'index.js'
+      ];
+      tabs.forEach(tabFile => {
+        const filePath = path.resolve(__dirname, '../../components/admin/tabs', tabFile);
+        expect(fs.existsSync(filePath)).toBe(true);
+      });
+    });
+
+    it('AdminPage e ProfessionalDashboardPage devem renderizar abas modulares', () => {
+      const adminPath = path.resolve(__dirname, '../../pages/AdminPage.jsx');
+      const profPath = path.resolve(__dirname, '../../pages/ProfessionalDashboardPage.jsx');
+      const adminContent = fs.readFileSync(adminPath, 'utf8');
+      const profContent = fs.readFileSync(profPath, 'utf8');
+
+      expect(adminContent).toContain('AdminBookingsTab');
+      expect(adminContent).toContain('AdminEventsTab');
+      expect(adminContent).toContain('AdminServicesTab');
+      expect(profContent).toContain('AdminBookingsTab');
+      expect(profContent).toContain('AdminEventsTab');
+      expect(profContent).toContain('AdminServicesTab');
+    });
+
+    it('deve possuir módulo RUM e inicialização ativa no App.jsx', () => {
+      const rumPath = path.resolve(__dirname, '../../lib/observability/rumMonitoring.js');
+      const appPath = path.resolve(__dirname, '../../App.jsx');
+      expect(fs.existsSync(rumPath)).toBe(true);
+
+      const rumContent = fs.readFileSync(rumPath, 'utf8');
+      const appContent = fs.readFileSync(appPath, 'utf8');
+
+      expect(rumContent).toContain('initRumMonitoring');
+      expect(rumContent).toContain('trackApiLatency');
+      expect(appContent).toContain('initRumMonitoring');
+    });
+  });
 });
 
 

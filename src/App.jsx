@@ -9,8 +9,10 @@ import { usePageTracking } from '@/hooks/useAnalytics';
 import { useComprehensiveErrorTracking } from '@/hooks/useErrorTracking';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 
-// Initialize Web Vitals monitoring
+// Initialize Web Vitals and RUM monitoring (Onda 4)
 import '@/lib/webVitals';
+import { rumMonitor, initRumMonitoring } from '@/lib/observability/rumMonitoring';
+initRumMonitoring();
 
 // PERF (P-01): HomePage permanece estático pois é a rota inicial —
 // não há benefício em lazy-load no primeiro acesso.
