@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -8,55 +9,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verificar autenticação
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('Token de autorização não fornecido')
-    }
-
     // Verificar variáveis de ambiente
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    
-    console.log('🔍 Verificando env vars:', {
-      hasUrl: !!supabaseUrl,
-      hasServiceKey: !!serviceRoleKey,
-      urlPrefix: supabaseUrl?.substring(0, 30)
-    })
 
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error('Variáveis de ambiente SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configuradas')
     }
 
-    // Criar cliente normal para validar o token do usuário
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
-    if (!supabaseAnonKey) {
-      throw new Error('SUPABASE_ANON_KEY não configurada')
-    }
-
-    const supabaseClient = createClient(
-      supabaseUrl,
-      supabaseAnonKey,
-      {
-        global: { headers: { Authorization: authHeader } }
-      }
-    )
-
-    console.log('🔍 Verificando token do usuário...')
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
-
-    if (userError || !user) {
-      console.error('❌ Erro ao verificar usuário:', userError)
-      throw new Error('Usuário não autenticado')
-    }
-
-    console.log('👤 Usuário verificado:', user.email, 'Role:', user.user_metadata?.role)
-
-    if (user.user_metadata?.role !== 'admin') {
-      throw new Error('Acesso negado. Apenas administradores podem acessar esta função.')
-    }
-
-    // Criar cliente admin (service role) APENAS para executar o RPC
+    // Criar cliente admin (service role)
     const supabaseAdmin = createClient(
       supabaseUrl,
       serviceRoleKey,
@@ -67,6 +28,9 @@ Deno.serve(async (req) => {
         }
       }
     )
+
+    // Validar autenticação e RBAC (ADR 005 / ADR 012)
+    const { user } = await requireAdmin(req, supabaseAdmin)
 
     // Listar todos os usuários usando função RPC (acesso direto ao auth.users)
     console.log('🔍 Listando usuários via RPC function...')

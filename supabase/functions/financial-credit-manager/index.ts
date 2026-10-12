@@ -3,6 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // @ts-ignore: Remote Deno URL import for Supabase Edge Functions
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { isAdminUser } from '../_shared/auth.ts';
 
 declare const Deno: {
   env: {
@@ -117,8 +118,8 @@ serve(async (req: Request) => {
   const functionKeyHeader = req.headers.get('x-function-key');
   const functionKeyEnv = Deno.env.get('FINANCIAL_CREDITS_FUNCTION_KEY') ?? '';
   const isPrivileged =
-    (authUser?.user_metadata?.role === 'admin') ||
-    (functionKeyHeader && functionKeyHeader === functionKeyEnv);
+    isAdminUser(authUser) ||
+    Boolean(functionKeyHeader && functionKeyHeader === functionKeyEnv);
 
   const ensureAuthenticated = () => {
     if (!authUser) {

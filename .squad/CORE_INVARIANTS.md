@@ -42,15 +42,17 @@
   * SSOT Mercado Pago, whitelisting de 39 colunas, busca por `mp_payment_id` e atualização atômica de status.
 * **Pacientes & Prontuários (`patient_notes`):** [`src/services/patientService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/patientService.js)
   * SSOT para tarefas de casa (homework), prontuários clínicos e histórico de sessões.
+* **Segurança & RBAC de Edge Functions (SSOT):** [`supabase/functions/_shared/auth.ts`](file:///c:/Users/ander/source/repos/frontend_doxologos/supabase/functions/_shared/auth.ts)
+  * Validação de papéis via `app_metadata.role` e `app_metadata.roles` (ADR 005 / ADR 012), `requireAdmin`, `hasAnyRole` e proteção CSP.
 
 ---
 
 ## 🧪 4. Fitness Functions & Comandos do Pipeline
 * **Sincronização de Esquema (Supabase):** `npm run schema:sync`
 * **Auditoria Arquitetural:** `npm run check:architecture`
-* **Suíte de Testes (171+ testes):** `npm test`
+* **Suíte de Testes:** `npm test`
 * **Compilação de Produção:** `npm run build`
 * **Gatekeeper Completo do Squad:** `npm run squad:check`
 
 ---
-*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 011), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
+*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 012), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*

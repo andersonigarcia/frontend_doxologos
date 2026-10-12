@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 // Helper: extrai o texto de dentro de uma tag XML
 function extractTag(xml: string, tag: string): string {
@@ -75,14 +76,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Token de autorização não fornecido.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 },
-      )
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -94,23 +87,8 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     })
 
-    const accessToken = authHeader.replace('Bearer ', '')
-    const { data: { user: currentUser }, error: currentUserError } = await supabaseAdmin.auth.getUser(accessToken)
-
-    if (currentUserError || !currentUser) {
-      return new Response(JSON.stringify({ error: 'Usuário não autenticado.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      })
-    }
-
-    const callerRole = currentUser.app_metadata?.role ?? currentUser.user_metadata?.role
-    if (callerRole !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Acesso negado. Apenas administradores podem sincronizar artigos.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 },
-      )
-    }
+    // Validar autenticação e RBAC (ADR 005 / ADR 012)
+    const { user: currentUser } = await requireAdmin(req, supabaseAdmin)
 
     const body = await req.json().catch(() => ({}))
     const substackUrl = body.substackUrl || 'https://doxologosoficial.substack.com/feed'

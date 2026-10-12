@@ -3,6 +3,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 // @ts-ignore: Remote import for Supabase Edge Functions
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { corsHeaders } from '../_shared/cors.ts';
+import { hasAnyRole } from '../_shared/auth.ts';
 
 declare const Deno: {
   env: {
@@ -170,13 +171,8 @@ serve(async (req: Request) => {
     return jsonResponse(401, { error: 'Invalid or expired token' });
   }
 
-  const userRole =
-    (user.user_metadata?.role as string | undefined) ??
-    (user.app_metadata?.role as string | undefined) ??
-    'user';
-
-  if (!allowedRoles.has(userRole)) {
-    console.warn('Unauthorized role attempting manual refund', userRole, user.email);
+  if (!hasAnyRole(user, allowedRoles)) {
+    console.warn('Unauthorized role attempting manual refund', user.email);
     return jsonResponse(403, { error: 'Access denied for this role' });
   }
 

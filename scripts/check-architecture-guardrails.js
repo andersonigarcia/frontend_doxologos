@@ -271,6 +271,48 @@ checkFileExists('src/services/__tests__/paymentService.test.js', 'Testes unitár
 checkFileExists('src/services/__tests__/patientService.test.js', 'Testes unitários de patientService');
 checkFileExists('src/services/__tests__/schemaValidator.test.js', 'Testes unitários de schemaValidator');
 
+// 5. Verificação de Blindagem de Segurança & RBAC (Onda 1 / ADR 012)
+console.log('5️⃣  Validando blindagem de segurança & RBAC centralizado (Onda 1)...');
+if (checkFileExists('supabase/functions/_shared/auth.ts', 'Módulo centralizado de autenticação e RBAC')) {
+  checkFileContains(
+    'supabase/functions/_shared/auth.ts',
+    [
+      'export function getUserRoles',
+      'export function isAdminUser',
+      'export async function requireAdmin',
+      'export function hasAnyRole',
+      'export class AuthError'
+    ],
+    'supabase/functions/_shared/auth.ts'
+  );
+}
+
+// Funções administrativas não devem validar permissão diretamente em user_metadata
+checkFileNotContains(
+  'supabase/functions/admin-update-user/index.ts',
+  ['user.user_metadata?.role'],
+  'admin-update-user deve usar requireAdmin e não user.user_metadata?.role'
+);
+checkFileNotContains(
+  'supabase/functions/admin-delete-user/index.ts',
+  ['user.user_metadata?.role'],
+  'admin-delete-user deve usar requireAdmin e não user.user_metadata?.role'
+);
+checkFileNotContains(
+  'supabase/functions/admin-list-users/index.ts',
+  ['user.user_metadata?.role'],
+  'admin-list-users deve usar requireAdmin e não user.user_metadata?.role'
+);
+
+// Content-Security-Policy em index.html
+if (checkFileExists('index.html', 'Página principal')) {
+  checkFileContains(
+    'index.html',
+    ['http-equiv="Content-Security-Policy"'],
+    'index.html com CSP estrita configurada'
+  );
+}
+
 // Relatório Final
 console.log('\n--------------------------------------------------');
 if (errors.length === 0) {

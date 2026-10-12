@@ -216,3 +216,19 @@
   4. Adicionar suítes de testes unitários `src/services/__tests__/paymentService.test.js` e `src/services/__tests__/patientService.test.js`.
   5. Expandir `scripts/check-architecture-guardrails.js` para auditar a ausência de chamadas diretas a `payments` e `patient_notes_history` em UI components.
 - **Consequências Positivas:** Blindagem total contra inconsistências no checkout Mercado Pago e na área clínica do paciente, conformidade 100% de arquitetura em 171+ testes unitários e zero efeitos colaterais.
+
+### ADR 012: Blindagem de Segurança, RBAC Centralizado em app_metadata e Defesa em Profundidade (Onda 1)
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Auditoria de segurança identificou que Edge Functions administrativas estavam verificando `user.user_metadata?.role !== 'admin'`. Como `user_metadata` pode ser modificado pelo cliente se não bloqueado no Supabase e não suporta o modelo Multi-Perfil Híbrido (ADR 005), isso gerava risco de elevação de privilégios e falso 403 para administradores com papéis múltiplos. Além disso, faltava uma Content Security Policy (CSP) explícita no HTML.
+- **Decisão:**
+  1. Criar `supabase/functions/_shared/auth.ts` como SSOT de validação de autenticação e RBAC no backend/Edge Functions com funções:
+     - `getUserRoles(user)`: extrai papéis priorizando estritamente `app_metadata.role` e o array `app_metadata.roles`, com fallback retrocompatível defensivo para `user_metadata.role`.
+     - `isAdminUser(user)`: verifica permissão de administrador ('admin' ou 'superadmin').
+     - `hasAnyRole(user, allowedRoles)`: valida permissão multi-perfil (financeiro, admin, etc.).
+     - `authenticateCaller(req, supabaseAdmin)`: extrai e valida token Bearer via Admin Auth.
+     - `requireAdmin(req, supabaseAdmin)`: lança `AuthError` caso não seja admin (401/403).
+  2. Refatorar todas as Edge Functions administrativas (`admin-update-user`, `admin-delete-user`, `admin-list-users`, `admin-create-user`, `admin-update-article`, `approve-professional-application`, `create-emergency-booking`, `sync-substack-manual`, `financial-credit-manager`, `manual-refund`, `manual-refund-overview`, `manual-refund-proof`, `event-get-meeting`) para utilizar `_shared/auth.ts`.
+  3. Implementar meta tag de Content Security Policy (CSP) estrita em `index.html` restringindo origens para Google Tag Manager, Mercado Pago SDK, Supabase REST/WebSockets, Google Fonts e YouTube.
+  4. Expandir `scripts/check-architecture-guardrails.js` e `architectureGuardrails.test.js` para garantir existência de `_shared/auth.ts`, meta tag CSP e ausência de verificações inseguras de `user.user_metadata?.role` em funções administrativas.
+- **Consequências Positivas:** Blindagem absoluta contra elevação indevida de privilégios, suporte nativo a perfis híbridos (ADR 005), padronização DRY do pipeline de autenticação Deno e proteção contra ataques XSS via CSP.

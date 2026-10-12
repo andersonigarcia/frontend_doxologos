@@ -137,16 +137,20 @@ src/
 | `checkPermission(permission)` | Verifica permissão RBAC |
 | `getSessionExpiry()` | Retorna timestamp de expiração |
 
-### Papéis (roles) e permissões
+### Papéis (roles) e permissões (ADR 005 & ADR 012)
 
-| Role | Fonte | Permissões |
+A fonte canônica soberana de papéis (RBAC) é `app_metadata.role` e o array `app_metadata.roles` (gravados exclusivamente com `service_role` key e imutáveis pelo cliente). O campo `user_metadata.role` é preservado estritamente como fallback defensivo para contas legadas.
+
+| Role | Fonte Canônica | Permissões |
 |---|---|---|
-| `user` (padrão) | `user_metadata.role` | `booking:create`, `booking:view_own`, `profile:*_own` |
-| `professional` | `user_metadata.role` | Tudo de `user` + `booking:view_assigned`, `availability:manage_own` |
-| `admin` | `user_metadata.role` | **Todas as permissões** |
+| `patient` / `user` (padrão) | `app_metadata.role` / `app_metadata.roles` | `booking:create`, `booking:view_own`, `profile:*_own`, `homework:view_own` |
+| `professional` | `app_metadata.role` / `app_metadata.roles` | Tudo de `patient` + `booking:view_assigned`, `availability:manage_own`, `patient_notes:manage` |
+| `admin` | `app_metadata.role` / `app_metadata.roles` | **Todas as permissões administrativas e de supervisão** |
 
 ### Controles de segurança
 
+- **Defesa em Profundidade (CSP):** Meta tag Content-Security-Policy em `index.html` restringindo scripts, estilos, conexões e frames autorizados.
+- **SSOT de RBAC em Edge Functions:** Módulo compartilhado `supabase/functions/_shared/auth.ts` (`requireAdmin`, `isAdminUser`, `hasAnyRole`).
 - **Rate Limiting client-side:** login (5 tentativas / 15 min), reset senha (3 tentativas / hora)
 - **Session Timeout:** inatividade 10 min, sessão total 1 hora, aviso 2 min antes
 - **Audit Logger:** registra `LOGIN`, `LOGOUT`, `PASSWORD_RESET`, `PASSWORD_CHANGE`
@@ -156,7 +160,14 @@ src/
 
 ## 5. Edge Functions (Backend)
 
-Todas as funções rodam no Supabase Edge (Deno runtime). Chamadas via HTTPS com `service_role` ou `anon` key conforme necessidade.
+Todas as funções rodam no Supabase Edge (Deno runtime). Chamadas via HTTPS com `service_role` ou `anon` key conforme necessidade. Todas as funções administrativas utilizam `_shared/auth.ts` para validação de RBAC.
+
+### Segurança & Utilitários Compartilhados (`_shared/`)
+
+| Arquivo | Descrição |
+|---|---|
+| `_shared/auth.ts` | **SSOT de Autenticação & RBAC:** `requireAdmin`, `isAdminUser`, `hasAnyRole`, `authenticateCaller`, `AuthError` |
+| `_shared/cors.ts` | Cabeçalhos CORS padronizados para respostas Deno |
 
 ### Pagamentos (Mercado Pago)
 

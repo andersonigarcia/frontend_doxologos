@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -8,12 +9,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verificar autenticação
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('Token de autorização não fornecido')
-    }
-
     // Criar cliente Supabase com service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -26,17 +21,8 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Verificar se o usuário logado é admin
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-
-    if (userError || !user) {
-      throw new Error('Usuário não autenticado')
-    }
-
-    if (user.user_metadata?.role !== 'admin') {
-      throw new Error('Acesso negado. Apenas administradores podem acessar esta função.')
-    }
+    // Validar autenticação e RBAC (ADR 005 / ADR 012)
+    await requireAdmin(req, supabaseAdmin)
 
     // Receber ID do usuário
     const { userId } = await req.json()

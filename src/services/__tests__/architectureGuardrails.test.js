@@ -85,4 +85,36 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
       expect(patientCols).toContain(field);
     }
   });
+
+  describe('Onda 1 — Blindagem de Segurança & RBAC Centralizado', () => {
+    it('_shared/auth.ts deve existir e conter funções canônicas de RBAC', () => {
+      const authPath = path.resolve(__dirname, '../../../supabase/functions/_shared/auth.ts');
+      expect(fs.existsSync(authPath)).toBe(true);
+
+      const content = fs.readFileSync(authPath, 'utf8');
+      expect(content).toContain('export function getUserRoles');
+      expect(content).toContain('export function isAdminUser');
+      expect(content).toContain('export async function requireAdmin');
+      expect(content).toContain('export function hasAnyRole');
+      expect(content).toContain('export class AuthError');
+    });
+
+    it('Edge functions administrativas não devem conter verificação direta de user.user_metadata?.role', () => {
+      const updatePath = path.resolve(__dirname, '../../../supabase/functions/admin-update-user/index.ts');
+      const deletePath = path.resolve(__dirname, '../../../supabase/functions/admin-delete-user/index.ts');
+      const listPath = path.resolve(__dirname, '../../../supabase/functions/admin-list-users/index.ts');
+
+      expect(fs.readFileSync(updatePath, 'utf8')).not.toContain('user.user_metadata?.role');
+      expect(fs.readFileSync(deletePath, 'utf8')).not.toContain('user.user_metadata?.role');
+      expect(fs.readFileSync(listPath, 'utf8')).not.toContain('user.user_metadata?.role');
+    });
+
+    it('index.html deve conter meta tag Content-Security-Policy', () => {
+      const htmlPath = path.resolve(__dirname, '../../../index.html');
+      const content = fs.readFileSync(htmlPath, 'utf8');
+      expect(content).toContain('http-equiv="Content-Security-Policy"');
+      expect(content).toContain('default-src');
+    });
+  });
 });
+

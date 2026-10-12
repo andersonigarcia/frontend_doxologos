@@ -5,6 +5,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,11 +13,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('Token de autorização não fornecido')
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -28,30 +24,9 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false }
     })
 
-    // Verificar o token do usuário logado (mesmo padrão de admin-list-users)
-    const token = authHeader.replace('Bearer ', '')
-    console.log('🔍 Verificando token do usuário...')
-
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-
-    if (userError || !user) {
-      console.error('❌ Erro ao verificar usuário:', userError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Usuário não autenticado', 
-          details: userError ? userError.message : 'Objeto do usuário é nulo' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
-      );
-    }
-
-    console.log('👤 Usuário verificado:', user.email, 'Role:', user.user_metadata?.role)
-
-    // Aceita role em user_metadata OU app_metadata (cobre ambos os casos)
-    const callerRole = user.app_metadata?.role ?? user.user_metadata?.role
-    if (callerRole !== 'admin') {
-      throw new Error('Acesso negado. Apenas administradores podem gerenciar artigos.')
-    }
+    // Validar autenticação e RBAC (ADR 005 / ADR 012)
+    const { user } = await requireAdmin(req, supabaseAdmin)
+    console.log('👤 Administrador verificado:', user.email)
 
     const body = await req.json()
     const { action, article_id, status } = body
