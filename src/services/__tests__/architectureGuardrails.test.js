@@ -54,4 +54,35 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
       expect(bookingCols).toContain(field);
     }
   });
+
+  it('CheckoutSuccessPage.jsx não deve conter queries diretas a payments', () => {
+    const filePath = path.resolve(__dirname, '../../pages/CheckoutSuccessPage.jsx');
+    const content = fs.readFileSync(filePath, 'utf8');
+    expect(content.includes(".from('payments')")).toBe(false);
+  });
+
+  it('PatientAcompanhamento.jsx não deve conter queries diretas a patient_notes_history', () => {
+    const filePath = path.resolve(__dirname, '../../components/shared/PatientAcompanhamento.jsx');
+    const content = fs.readFileSync(filePath, 'utf8');
+    expect(content.includes(".from('patient_notes_history')")).toBe(false);
+  });
+
+  it('ALLOWED_PAYMENT_FIELDS e ALLOWED_PATIENT_NOTE_FIELDS devem conter apenas colunas existentes no databaseCatalog.json', () => {
+    const catalogPath = path.resolve(__dirname, '../../constants/databaseCatalog.json');
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+
+    const paymentCols = catalog.tables.payments.columns;
+    const patientCols = catalog.tables.patient_notes.columns;
+
+    const { ALLOWED_PAYMENT_FIELDS } = require('../paymentService');
+    const { ALLOWED_PATIENT_NOTE_FIELDS } = require('../patientService');
+
+    for (const field of ALLOWED_PAYMENT_FIELDS) {
+      expect(paymentCols).toContain(field);
+    }
+
+    for (const field of ALLOWED_PATIENT_NOTE_FIELDS) {
+      expect(patientCols).toContain(field);
+    }
+  });
 });

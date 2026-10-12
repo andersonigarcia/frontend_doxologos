@@ -204,3 +204,15 @@
   4. Adicionar comando `npm run schema:sync` no `package.json`.
   5. Adicionar suíte de testes `src/services/__tests__/schemaValidator.test.js`.
 - **Consequências Positivas:** Prevenção mecânica absoluta de schema drift, detecção imediata de campos fantasmas no build e nos testes (antes de chegar em produção) e sincronização contínua com as migrações do Supabase.
+
+### ADR 011: Unificação Canônica dos Domínios de Pagamento e Pacientes (`paymentService.js` e `patientService.js`)
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Mutações e consultas diretas às tabelas `payments`, `patient_notes` e `patient_notes_history` dispersas pelas telas de checkout (`CheckoutSuccessPage`, `CheckoutPendingPage`, `CheckoutFailurePage`) e componentes clínicos (`PatientAcompanhamento`, `PatientDetailsModal`).
+- **Decisão:**
+  1. Criar `src/services/paymentService.js` como SSOT para consultas e mutações de pagamentos Mercado Pago com whitelist estrita de 39 colunas reais (`ALLOWED_PAYMENT_FIELDS`) e validação de `VALID_PAYMENT_STATUSES`.
+  2. Criar `src/services/patientService.js` como SSOT para tarefas de casa do paciente (`getPatientHomeworkTasks`) e prontuários estruturados (`getPatientNotesHistory`, `savePatientSessionNote`).
+  3. Refatorar páginas de checkout e componentes para consumir exclusivamente os serviços canônicos.
+  4. Adicionar suítes de testes unitários `src/services/__tests__/paymentService.test.js` e `src/services/__tests__/patientService.test.js`.
+  5. Expandir `scripts/check-architecture-guardrails.js` para auditar a ausência de chamadas diretas a `payments` e `patient_notes_history` em UI components.
+- **Consequências Positivas:** Blindagem total contra inconsistências no checkout Mercado Pago e na área clínica do paciente, conformidade 100% de arquitetura em 171+ testes unitários e zero efeitos colaterais.

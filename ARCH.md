@@ -73,8 +73,13 @@ src/
 │   ├── auditLogger.js         # Registro de ações críticas
 │   ├── rateLimiter.js         # Rate limiting client-side (login, reset senha)
 │   ├── secureStorage.js       # LocalStorage com sanitização
-│   └── emailTemplates.js      # Templates HTML de email
-├── services/                  # Integrações externas
+├── constants/
+│   └── databaseCatalog.json   # Catálogo canônico de 57 tabelas gerado via OpenAPI (npm run schema:sync)
+├── services/                  # Camada Canônica de Domínio (Single Source of Truth)
+│   ├── professionalService.js # Gestão de profissionais e enriquecimento com Auth
+│   ├── bookingService.js      # Ciclo de vida de agendamentos e transições de status
+│   ├── paymentService.js      # Operações de pagamentos Mercado Pago e reconciliação
+│   └── patientService.js      # Prontuários clínicos, histórico e tarefas do paciente
 └── utils/                     # Funções puras utilitárias
 ```
 

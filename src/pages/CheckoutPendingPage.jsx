@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Clock, Calendar, Copy, CheckCircle, AlertCircle, RefreshCw, Home, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getPaymentByMpId } from '@/services/paymentService';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import analytics from '@/lib/analytics';
@@ -77,12 +78,7 @@ const CheckoutPendingPage = () => {
         const fetchData = async () => {
             try {
                 if (paymentId) {
-                    const { data: paymentData } = await supabase
-                        .from('payments')
-                        .select('*')
-                        .eq('mp_payment_id', paymentId)
-                        .single();
-                    
+                    const paymentData = await getPaymentByMpId(paymentId);
                     if (paymentData) {
                         setPayment(paymentData);
                     }
@@ -162,11 +158,7 @@ const CheckoutPendingPage = () => {
         // 2. Fallback de Polling seguro (a cada 30s)
         const checkStatus = async () => {
             try {
-                const { data: updatedPayment } = await supabase
-                    .from('payments')
-                    .select('status')
-                    .eq('mp_payment_id', payment.mp_payment_id)
-                    .single();
+                const updatedPayment = await getPaymentByMpId(payment.mp_payment_id);
 
                 const refParam = booking?.id || payment.external_reference || externalReference || '';
                 if (updatedPayment?.status === 'approved') {
@@ -194,11 +186,7 @@ const CheckoutPendingPage = () => {
     const handleManualCheck = async () => {
         setChecking(true);
         try {
-            const { data: updatedPayment } = await supabase
-                .from('payments')
-                .select('status')
-                .eq('mp_payment_id', payment.mp_payment_id)
-                .single();
+            const updatedPayment = await getPaymentByMpId(payment.mp_payment_id);
 
             const refParam = booking?.id || payment.external_reference || externalReference || '';
             if (updatedPayment?.status === 'approved') {

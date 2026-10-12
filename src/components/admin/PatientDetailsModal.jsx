@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TimelineView } from '@/components/common/TimelineView';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getPatientNotesHistory } from '@/services/patientService';
 
 /**
  * PatientDetailsModal - Modal com detalhes completos do paciente e prontuário estruturado
@@ -65,18 +66,8 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
         if (!patient?.email) return;
         setHistoryLoading(true);
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (!token) return;
-
-            const { data, error } = await supabase.functions.invoke('patient-notes-manager', {
-                body: { action: 'list_history', patient_email: patient.email },
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!error && data?.history) {
-                setHistory(data.history);
-            }
+            const historyData = await getPatientNotesHistory(patient.email);
+            setHistory(historyData || []);
         } catch (err) {
             console.error('Erro ao carregar histórico:', err);
         } finally {

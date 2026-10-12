@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Calendar, Clock, AlertCircle } from 'lucide-react';
-import { supabase } from '@/lib/customSupabaseClient';
+import { getPatientHomeworkTasks } from '@/services/patientService';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 export const PatientAcompanhamento = () => {
@@ -16,14 +16,7 @@ export const PatientAcompanhamento = () => {
         const loadTasks = async () => {
             setLoading(true);
             try {
-                // RLS garante que o paciente só consiga ler se auth.email() = patient_email E homework_visible_to_patient = true
-                const { data, error } = await supabase
-                    .from('patient_notes_history')
-                    .select('id, session_date, homework, professional_id')
-                    .eq('patient_email', user.email)
-                    .order('session_date', { ascending: false });
-
-                if (error) throw error;
+                const data = await getPatientHomeworkTasks(user.email);
                 setTasks(data || []);
             } catch (err) {
                 console.error('Erro ao carregar tarefas:', err);

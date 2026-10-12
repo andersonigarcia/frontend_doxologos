@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, Download, Home, User, ExternalLink, Mail, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getPaymentByMpId } from '@/services/paymentService';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import analytics from '@/lib/analytics';
 import { logger } from '@/lib/logger';
@@ -34,15 +35,7 @@ const CheckoutSuccessPage = () => {
                 // 1. Buscar pagamento se paymentId estiver presente
                 let fetchedPayment = null;
                 if (paymentId) {
-                    const { data: paymentData, error: paymentError } = await supabase
-                        .from('payments')
-                        .select('*')
-                        .eq('mp_payment_id', paymentId.toString())
-                        .maybeSingle();
-
-                    if (paymentError) {
-                        console.error('Erro ao buscar pagamento:', paymentError);
-                    }
+                    const paymentData = await getPaymentByMpId(paymentId);
                     if (paymentData) {
                         fetchedPayment = paymentData;
                         setPayment(paymentData);
