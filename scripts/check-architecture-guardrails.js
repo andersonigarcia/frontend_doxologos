@@ -1,0 +1,166 @@
+/**
+ * Script de Verificação de Integridade Arquitetural e Guardrails (Fase 4)
+ * Impede regressões, schema drifts e chamadas diretas proibidas em componentes de UI.
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
+
+console.log('🛡️  Iniciando auditoria de Guardrails e Integridade Arquitetural...\n');
+
+let errors = [];
+
+function checkFileExists(relPath, description) {
+  const fullPath = path.join(rootDir, relPath);
+  if (!fs.existsSync(fullPath)) {
+    errors.push(`[ARQUIVO AUSENTE] ${description}: ${relPath}`);
+    return false;
+  }
+  return true;
+}
+
+function checkFileContains(relPath, requiredTokens, description) {
+  const fullPath = path.join(rootDir, relPath);
+  if (!fs.existsSync(fullPath)) return;
+  const content = fs.readFileSync(fullPath, 'utf8');
+
+  for (const token of requiredTokens) {
+    if (!content.includes(token)) {
+      errors.push(`[INTEGRIDADE DE CÓDIGO] ${description} em ${relPath} não contém o token obrigatório: "${token}"`);
+    }
+  }
+}
+
+function checkFileNotContains(relPath, forbiddenTokens, description) {
+  const fullPath = path.join(rootDir, relPath);
+  if (!fs.existsSync(fullPath)) return;
+  const content = fs.readFileSync(fullPath, 'utf8');
+
+  for (const token of forbiddenTokens) {
+    if (content.includes(token)) {
+      errors.push(`[VIOLAÇÃO DE GUARDRAIL] ${description} em ${relPath} contém padrão proibido: "${token}"`);
+    }
+  }
+}
+
+function parseExportedArray(relPath, arrayName) {
+  const fullPath = path.join(rootDir, relPath);
+  if (!fs.existsSync(fullPath)) return [];
+  const content = fs.readFileSync(fullPath, 'utf8');
+  const regex = new RegExp(`export const ${arrayName} = \\[([\\s\\S]*?)\\];`);
+  const match = content.match(regex);
+  if (!match) return [];
+  return match[1]
+    .split(',')
+    .map(s => s.replace(/['"\r\n\s]/g, ''))
+    .filter(Boolean);
+}
+
+// 1. Guardrail de Serviços Canônicos
+console.log('1️⃣  Validando camada de serviços canônicos...');
+if (checkFileExists('src/services/professionalService.js', 'Serviço canônico de profissionais')) {
+  checkFileContains(
+    'src/services/professionalService.js',
+    [
+      'export const ALLOWED_PROFESSIONAL_FIELDS',
+      'export function sanitizeProfessionalPayload',
+      'export async function getProfessionalById',
+      'export async function updateProfessional',
+      'export async function listProfessionals',
+      'export async function updateProfessionalStatus',
+      'admin_list_users'
+    ],
+    'professionalService.js'
+  );
+}
+
+if (checkFileExists('src/services/bookingService.js', 'Serviço canônico de agendamentos')) {
+  checkFileContains(
+    'src/services/bookingService.js',
+    [
+      'export const ALLOWED_BOOKING_FIELDS',
+      'export const VALID_BOOKING_STATUSES',
+      'export function sanitizeBookingPayload',
+      'export async function getBookingById',
+      'export async function createBooking',
+      'export async function createChildBookings',
+      'export async function updateBookingStatus',
+      'export async function rescheduleBooking',
+      'export async function listBookings'
+    ],
+    'bookingService.js'
+  );
+}
+
+// 2. Prevenção de Schema Drift (Campos Fantasmas)
+console.log('2️⃣  Validando ausência de Schema Drift e colunas fantasmas...');
+
+const allowedProfFields = parseExportedArray('src/services/professionalService.js', 'ALLOWED_PROFESSIONAL_FIELDS');
+if (allowedProfFields.includes('email')) {
+  errors.push('[SCHEMA DRIFT] ALLOWED_PROFESSIONAL_FIELDS não pode conter "email" (coluna inexistente em public.professionals).');
+}
+if (allowedProfFields.includes('password')) {
+  errors.push('[SCHEMA DRIFT] ALLOWED_PROFESSIONAL_FIELDS não pode conter "password" (pertence a auth.users).');
+}
+
+const allowedBookingFields = parseExportedArray('src/services/bookingService.js', 'ALLOWED_BOOKING_FIELDS');
+if (allowedBookingFields.includes('meeting_platform')) {
+  errors.push('[SCHEMA DRIFT] ALLOWED_BOOKING_FIELDS não pode conter "meeting_platform" (coluna inexistente em public.bookings).');
+}
+
+// Componente ProfileTab não deve tentar mutações diretas
+checkFileNotContains(
+  'src/components/admin/professional-hub/ProfileTab.jsx',
+  [".from('professionals').update", ".from('professionals').insert"],
+  'ProfileTab.jsx deve usar professionalService e não mutações diretas'
+);
+
+// Componente ScheduleTab não deve fazer queries diretas a bookings
+checkFileNotContains(
+  'src/components/admin/professional-hub/ScheduleTab.jsx',
+  [".from('bookings')"],
+  'ScheduleTab.jsx deve usar bookingService.listBookings e não .from(\'bookings\')'
+);
+
+// 3. Verificação de Memória e Documentação
+console.log('3️⃣  Validando integridade da memória do squad e documentação...');
+if (checkFileExists('ARCH.md', 'Documentação de Arquitetura')) {
+  checkFileContains(
+    'ARCH.md',
+    ['booking_date, booking_time', 'patient_name, patient_email, patient_phone'],
+    'ARCH.md com schema de bookings corrigido'
+  );
+}
+
+if (checkFileExists('.squad/03_SQUAD_MEMORY.md', 'Memória do Squad')) {
+  checkFileContains(
+    '.squad/03_SQUAD_MEMORY.md',
+    ['ADR 006', 'ADR 007'],
+    'Memória do Squad com ADR 006 e ADR 007'
+  );
+}
+
+// 4. Verificação de Testes Unitários de Domínio
+console.log('4️⃣  Validando presença de suítes de testes de domínio...');
+checkFileExists('src/services/__tests__/professionalService.test.js', 'Testes unitários de professionalService');
+checkFileExists('src/services/__tests__/bookingService.test.js', 'Testes unitários de bookingService');
+
+// Relatório Final
+console.log('\n--------------------------------------------------');
+if (errors.length === 0) {
+  console.log('✅ TODOS OS GUARDRAILS PASSARAM COM SUCESSO (100% CONFORME)!');
+  console.log('--------------------------------------------------\n');
+  process.exit(0);
+} else {
+  console.error('❌ FORAM ENCONTRADAS VIOLAÇÕES DE GUARDRAILS:');
+  errors.forEach((err, idx) => {
+    console.error(`  ${idx + 1}. ${err}`);
+  });
+  console.log('--------------------------------------------------\n');
+  process.exit(1);
+}

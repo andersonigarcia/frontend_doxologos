@@ -170,6 +170,15 @@
   3. Sanitizar payloads com `sanitizeBookingPayload` antes de qualquer `insert` ou `update`.
   4. Centralizar `updateBookingStatus` garantindo transições de status válidas (`VALID_BOOKING_STATUSES`) e disparo resiliente de notificações (`bookingEmailManager`).
   5. Manter 100% de compatibilidade retroativa com os contratos das páginas ativas para prevenir qualquer efeito colateral em faturamento e consultas.
-- **Consequências Positivas:** Prevenção definitiva de falhas no agendamento, testes automatizados cobrindo o ciclo de vida e código limpo desacoplado do cliente Supabase nas páginas.
+### ADR 008: Guardrails Automatizados de Pipeline e Prevenção de Schema Drift
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Necessidade de garantir que nenhuma regressão, correção paliativa ("band-aid") ou schema drift volte a acontecer com o passar do tempo ou com alterações de múltiplos desenvolvedores/agentes.
+- **Decisão:**
+  1. Criar script de validação estática `scripts/check-architecture-guardrails.js` que audita integridade de serviços, ausência de colunas fantasmas e proibição de mutações diretas em componentes de UI.
+  2. Integrar ao comando `npm run check:architecture` e ao script mestre de CI `npm run squad:check`.
+  3. Criar suíte automatizada de testes Jest `src/services/__tests__/architectureGuardrails.test.js` que roda automaticamente no pipeline de testes (`npm test`).
+- **Consequências Positivas:** 100% de cobertura contra schema drift e violações arquiteturais no ciclo de vida do código, protegendo a estabilidade financeira e operacional da clínica.
+
 
 
