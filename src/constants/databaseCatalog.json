@@ -1,0 +1,1344 @@
+{
+  "_metadata": {
+    "generated_at": "2026-10-12T18:48:13.509Z",
+    "supabase_url": "https://ppwjtvzrhvjinsutrjwk.supabase.co",
+    "tables_count": 57,
+    "description": "Catálogo canônico de tabelas e colunas extraído via OpenAPI do PostgREST. Fonte única de verdade contra Schema Drift."
+  },
+  "tables": {
+    "artigos": {
+      "columns": [
+        "author",
+        "content_html",
+        "cover_image_url",
+        "created_at",
+        "description",
+        "id",
+        "published_at",
+        "slug",
+        "status",
+        "title",
+        "updated_at"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "slug",
+        "title",
+        "content_html"
+      ],
+      "description": ""
+    },
+    "assessment_leads": {
+      "columns": [
+        "admin_notes",
+        "answers",
+        "assessment_id",
+        "assessment_title",
+        "contacted_at",
+        "contacted_by",
+        "converted_to_booking_id",
+        "created_at",
+        "functional_impact",
+        "id",
+        "lgpd_consent",
+        "max_score",
+        "patient_email",
+        "patient_name",
+        "patient_phone",
+        "score",
+        "severity",
+        "status",
+        "updated_at"
+      ],
+      "columns_count": 19,
+      "required": [
+        "id",
+        "assessment_id",
+        "assessment_title",
+        "score",
+        "max_score",
+        "severity",
+        "answers",
+        "status",
+        "lgpd_consent",
+        "created_at",
+        "updated_at"
+      ],
+      "description": ""
+    },
+    "audit_logs": {
+      "columns": [
+        "action",
+        "created_at",
+        "details",
+        "id",
+        "ip_address",
+        "level",
+        "resource_id",
+        "resource_type",
+        "user_agent",
+        "user_id"
+      ],
+      "columns_count": 10,
+      "required": [
+        "id",
+        "action"
+      ],
+      "description": "Registro de auditoria de ações críticas do usuário"
+    },
+    "availability": {
+      "columns": [
+        "available_times",
+        "day_of_week",
+        "id",
+        "month",
+        "professional_id",
+        "year"
+      ],
+      "columns_count": 6,
+      "required": [
+        "id",
+        "day_of_week",
+        "available_times"
+      ],
+      "description": ""
+    },
+    "background_tasks_queue": {
+      "columns": [
+        "attempts",
+        "created_at",
+        "id",
+        "last_error",
+        "max_attempts",
+        "next_retry_at",
+        "payload",
+        "status",
+        "task_type",
+        "updated_at"
+      ],
+      "columns_count": 10,
+      "required": [
+        "id",
+        "task_type",
+        "payload",
+        "status"
+      ],
+      "description": ""
+    },
+    "blocked_dates": {
+      "columns": [
+        "blocked_date",
+        "created_at",
+        "end_time",
+        "id",
+        "professional_id",
+        "reason",
+        "start_time"
+      ],
+      "columns_count": 7,
+      "required": [
+        "id",
+        "blocked_date"
+      ],
+      "description": ""
+    },
+    "book_resources": {
+      "columns": [
+        "book_title",
+        "bridge_text",
+        "chapter_context",
+        "chapter_number",
+        "created_at",
+        "description",
+        "download_count",
+        "free_file_label",
+        "free_file_url",
+        "has_paid_version",
+        "id",
+        "is_active",
+        "paid_description",
+        "paid_file_label",
+        "paid_file_url",
+        "paid_license_type",
+        "paid_price_brl",
+        "paid_title",
+        "purchase_count",
+        "slug",
+        "title",
+        "updated_at",
+        "view_count"
+      ],
+      "columns_count": 23,
+      "required": [
+        "id",
+        "slug",
+        "book_title",
+        "title",
+        "free_file_url"
+      ],
+      "description": "Recursos digitais complementares ao livro físico/digital, acessados via QR Code"
+    },
+    "booking_reschedule_history": {
+      "columns": [
+        "attempt_number",
+        "booking_id",
+        "created_at",
+        "id",
+        "metadata",
+        "new_booking_date",
+        "new_booking_time",
+        "previous_booking_date",
+        "previous_booking_time",
+        "status"
+      ],
+      "columns_count": 10,
+      "required": [
+        "id",
+        "booking_id",
+        "previous_booking_date",
+        "previous_booking_time",
+        "new_booking_date",
+        "new_booking_time",
+        "attempt_number",
+        "status",
+        "metadata",
+        "created_at"
+      ],
+      "description": "Histórico detalhado de todas as tentativas de reagendamento realizadas pelos pacientes ou equipe."
+    },
+    "bookings": {
+      "columns": [
+        "booking_date",
+        "booking_time",
+        "business_model",
+        "created_at",
+        "created_by_admin_id",
+        "id",
+        "last_payment_reminder_sent_at",
+        "marketplace_payment_id",
+        "meeting_id",
+        "meeting_link",
+        "meeting_password",
+        "meeting_provider",
+        "meeting_start_url",
+        "notification_sent_at",
+        "notification_status",
+        "package_id",
+        "patient_email",
+        "patient_name",
+        "patient_phone",
+        "payment_status",
+        "professional_id",
+        "reminder_2h_patient_sent",
+        "reminder_2h_professional_sent",
+        "reminder_2h_sent",
+        "reminder_2h_sent_at",
+        "reschedule_count",
+        "rescheduled_from_id",
+        "service_id",
+        "session_status",
+        "status",
+        "updated_at",
+        "upsell_sent",
+        "user_id",
+        "valor_consulta",
+        "valor_repasse_profissional",
+        "whatsapp_10min_sent_at",
+        "whatsapp_1h_sent_at",
+        "whatsapp_24h_sent_at"
+      ],
+      "columns_count": 38,
+      "required": [
+        "id",
+        "booking_date",
+        "booking_time",
+        "user_id",
+        "meeting_provider",
+        "reschedule_count",
+        "updated_at"
+      ],
+      "description": ""
+    },
+    "event_financial_report": {
+      "columns": [
+        "data_fim",
+        "data_inicio",
+        "evento_criado_em",
+        "evento_id",
+        "evento_titulo",
+        "inscricoes_confirmadas",
+        "platform_fee_type",
+        "platform_fee_value",
+        "professional_name",
+        "receita_plataforma",
+        "receita_profissional",
+        "receita_total",
+        "total_inscricoes",
+        "total_pagamentos",
+        "ultimo_pagamento_em",
+        "valor_evento"
+      ],
+      "columns_count": 16,
+      "required": [],
+      "description": "Relatório consolidado de performance financeira dos eventos"
+    },
+    "event_financial_splits": {
+      "columns": [
+        "created_at",
+        "evento_id",
+        "id",
+        "inscricao_id",
+        "payment_id",
+        "platform_amount",
+        "professional_amount",
+        "professional_id",
+        "split_calculation",
+        "total_amount",
+        "updated_at"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "evento_id",
+        "inscricao_id",
+        "total_amount",
+        "platform_amount",
+        "professional_amount",
+        "split_calculation"
+      ],
+      "description": "Registro de distribuição financeira de pagamentos de eventos entre plataforma e profissionais"
+    },
+    "event_meetings": {
+      "columns": [
+        "created_at",
+        "evento_id",
+        "host_start_url",
+        "meeting_id",
+        "meeting_link",
+        "meeting_password",
+        "raw_metadata",
+        "updated_at"
+      ],
+      "columns_count": 8,
+      "required": [
+        "evento_id",
+        "meeting_link",
+        "created_at",
+        "updated_at"
+      ],
+      "description": ""
+    },
+    "event_refunds": {
+      "columns": [
+        "amount",
+        "created_at",
+        "evento_id",
+        "id",
+        "inscricao_id",
+        "payment_id",
+        "processed_at",
+        "processed_by",
+        "reason",
+        "status",
+        "updated_at"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "evento_id",
+        "inscricao_id",
+        "amount"
+      ],
+      "description": "Registro de solicitações e processamento de reembolsos de eventos"
+    },
+    "eventos": {
+      "columns": [
+        "ativo",
+        "created_at",
+        "data_fim",
+        "data_fim_exibicao",
+        "data_inicio",
+        "data_inicio_exibicao",
+        "data_limite_inscricao",
+        "descricao",
+        "formato",
+        "id",
+        "limite_participantes",
+        "link_slug",
+        "meeting_id",
+        "meeting_link",
+        "meeting_link_release_minutes",
+        "meeting_password",
+        "meeting_start_url",
+        "platform_fee_type",
+        "platform_fee_value",
+        "professional_id",
+        "split_type",
+        "split_value",
+        "status",
+        "tipo_evento",
+        "titulo",
+        "updated_at",
+        "vagas_disponiveis",
+        "valor"
+      ],
+      "columns_count": 28,
+      "required": [
+        "id",
+        "titulo",
+        "data_inicio",
+        "data_fim",
+        "limite_participantes",
+        "data_limite_inscricao",
+        "link_slug"
+      ],
+      "description": ""
+    },
+    "financial_credits": {
+      "columns": [
+        "amount",
+        "created_at",
+        "currency",
+        "expires_at",
+        "id",
+        "metadata",
+        "original_booking_id",
+        "original_payment_id",
+        "reserved_at",
+        "source_reason",
+        "source_type",
+        "status",
+        "updated_at",
+        "used_at",
+        "used_booking_id",
+        "used_payment_id",
+        "user_id"
+      ],
+      "columns_count": 17,
+      "required": [
+        "id",
+        "user_id",
+        "source_type",
+        "amount",
+        "currency",
+        "status",
+        "metadata",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Controle de créditos financeiros que podem ser reaproveitados em novos agendamentos."
+    },
+    "geography_columns": {
+      "columns": [
+        "coord_dimension",
+        "f_geography_column",
+        "f_table_catalog",
+        "f_table_name",
+        "f_table_schema",
+        "srid",
+        "type"
+      ],
+      "columns_count": 7,
+      "required": [],
+      "description": ""
+    },
+    "geometry_columns": {
+      "columns": [
+        "coord_dimension",
+        "f_geometry_column",
+        "f_table_catalog",
+        "f_table_name",
+        "f_table_schema",
+        "srid",
+        "type"
+      ],
+      "columns_count": 7,
+      "required": [],
+      "description": ""
+    },
+    "inscricoes_eventos": {
+      "columns": [
+        "cancellation_reason",
+        "cancelled_at",
+        "data_inscricao",
+        "evento_id",
+        "id",
+        "patient_email",
+        "patient_name",
+        "payment_date",
+        "payment_id",
+        "payment_preference_id",
+        "payment_status",
+        "refund_amount",
+        "refund_status",
+        "reminder_1h_sent_at",
+        "reminder_24h_sent_at",
+        "status",
+        "status_pagamento",
+        "user_id",
+        "valor_pago",
+        "zoom_link_sent",
+        "zoom_link_sent_at"
+      ],
+      "columns_count": 21,
+      "required": [
+        "id",
+        "evento_id",
+        "user_id",
+        "patient_name",
+        "patient_email"
+      ],
+      "description": ""
+    },
+    "lead_analytics": {
+      "columns": [
+        "conversion_rate",
+        "converted_leads",
+        "date",
+        "lead_magnet_type",
+        "source_page",
+        "total_leads"
+      ],
+      "columns_count": 6,
+      "required": [],
+      "description": ""
+    },
+    "leads": {
+      "columns": [
+        "booking_id",
+        "converted_to_booking",
+        "created_at",
+        "email",
+        "id",
+        "lead_magnet_type",
+        "metadata",
+        "name",
+        "phone",
+        "source_page",
+        "updated_at"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "email",
+        "lead_magnet_type"
+      ],
+      "description": "Stores all leads captured through lead magnets (guides, quizzes, checklists, etc.)"
+    },
+    "nfse_emissions": {
+      "columns": [
+        "aliquota_iss",
+        "booking_id",
+        "codigo_servico_bh",
+        "corrected_by",
+        "correction_notes",
+        "created_at",
+        "discriminacao",
+        "emission_mode",
+        "error_category",
+        "error_message",
+        "id",
+        "inscricao_id",
+        "last_retry_at",
+        "nfse_number",
+        "package_id",
+        "payment_id",
+        "pdf_url",
+        "prestador_cnpj",
+        "raw_response",
+        "retry_count",
+        "status",
+        "tomador_cpf_cnpj",
+        "tomador_email",
+        "tomador_endereco",
+        "tomador_nome",
+        "updated_at",
+        "valor_servico",
+        "verification_code",
+        "xml_url"
+      ],
+      "columns_count": 29,
+      "required": [
+        "id",
+        "status",
+        "valor_servico",
+        "discriminacao",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Registro de emissões automatizadas de NFS-e (PBH BHISS Digital) para consultas de psicologia e eventos."
+    },
+    "notifications": {
+      "columns": [
+        "created_at",
+        "id",
+        "link",
+        "message",
+        "metadata",
+        "read",
+        "read_at",
+        "title",
+        "type",
+        "updated_at",
+        "user_id"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "type",
+        "title"
+      ],
+      "description": "Sistema de notificações em tempo real para usuários"
+    },
+    "packages": {
+      "columns": [
+        "cancellation_reason",
+        "created_at",
+        "gross_amount",
+        "id",
+        "marketplace_payment_id",
+        "patient_cpf",
+        "patient_email",
+        "patient_name",
+        "patient_phone",
+        "platform_fee_total",
+        "professional_id",
+        "professional_repasse_total",
+        "refund_amount",
+        "refunded_at",
+        "status",
+        "total_sessions",
+        "updated_at"
+      ],
+      "columns_count": 17,
+      "required": [
+        "id",
+        "patient_name",
+        "patient_email",
+        "professional_id",
+        "total_sessions",
+        "gross_amount",
+        "professional_repasse_total",
+        "platform_fee_total",
+        "status"
+      ],
+      "description": ""
+    },
+    "page_views": {
+      "columns": [
+        "created_at",
+        "id",
+        "path",
+        "session_id",
+        "user_id"
+      ],
+      "columns_count": 5,
+      "required": [
+        "id",
+        "path",
+        "created_at"
+      ],
+      "description": ""
+    },
+    "patient_notes": {
+      "columns": [
+        "chief_complaint",
+        "created_at",
+        "homework",
+        "homework_visible_to_patient",
+        "id",
+        "notes",
+        "patient_email",
+        "patient_name",
+        "professional_id",
+        "session_date",
+        "session_development",
+        "updated_at"
+      ],
+      "columns_count": 12,
+      "required": [
+        "id",
+        "professional_id",
+        "patient_email",
+        "notes"
+      ],
+      "description": "Stores professional notes about their patients"
+    },
+    "patient_notes_history": {
+      "columns": [
+        "chief_complaint",
+        "homework",
+        "homework_visible_to_patient",
+        "id",
+        "notes",
+        "patient_email",
+        "patient_note_id",
+        "professional_id",
+        "saved_at",
+        "session_date",
+        "session_development"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "professional_id",
+        "patient_email",
+        "session_date",
+        "saved_at"
+      ],
+      "description": ""
+    },
+    "patient_wallets": {
+      "columns": [
+        "balance",
+        "created_at",
+        "id",
+        "updated_at"
+      ],
+      "columns_count": 4,
+      "required": [
+        "id",
+        "balance",
+        "created_at",
+        "updated_at"
+      ],
+      "description": ""
+    },
+    "payment_attempts": {
+      "columns": [
+        "amount",
+        "booking_id",
+        "created_at",
+        "currency",
+        "error_code",
+        "error_message",
+        "id",
+        "idempotency_key",
+        "inscricao_id",
+        "metadata",
+        "mp_payment_id",
+        "payment_method",
+        "status",
+        "updated_at",
+        "user_id"
+      ],
+      "columns_count": 15,
+      "required": [
+        "id",
+        "payment_method",
+        "amount",
+        "status"
+      ],
+      "description": "Registra todas as tentativas de pagamento para auditoria e debugging"
+    },
+    "payment_bookings": {
+      "columns": [
+        "amount",
+        "booking_id",
+        "created_at",
+        "id",
+        "payment_id"
+      ],
+      "columns_count": 5,
+      "required": [
+        "id",
+        "payment_id",
+        "booking_id",
+        "amount"
+      ],
+      "description": "Relacionamento entre pagamentos e agendamentos incluídos"
+    },
+    "payment_ledger_entries": {
+      "columns": [
+        "account_code",
+        "amount",
+        "created_at",
+        "created_by",
+        "description",
+        "entry_type",
+        "id",
+        "metadata",
+        "transaction_id"
+      ],
+      "columns_count": 9,
+      "required": [
+        "id",
+        "transaction_id",
+        "entry_type",
+        "account_code",
+        "amount"
+      ],
+      "description": "Registros contábeis imutáveis de dupla entrada (Ledger)"
+    },
+    "payment_refund_audit_log": {
+      "columns": [
+        "action",
+        "created_at",
+        "id",
+        "payload",
+        "performed_by",
+        "refund_id"
+      ],
+      "columns_count": 6,
+      "required": [
+        "id",
+        "refund_id",
+        "performed_by",
+        "action",
+        "payload",
+        "created_at"
+      ],
+      "description": "Histórico imutável de ações relacionadas a reembolsos manuais."
+    },
+    "payment_refund_notifications": {
+      "columns": [
+        "attempts",
+        "cc_emails",
+        "created_at",
+        "id",
+        "last_error",
+        "message",
+        "metadata",
+        "recipient_email",
+        "refund_id",
+        "scheduled_at",
+        "sent_at",
+        "status",
+        "subject",
+        "updated_at"
+      ],
+      "columns_count": 14,
+      "required": [
+        "id",
+        "refund_id",
+        "status",
+        "attempts",
+        "recipient_email",
+        "cc_emails",
+        "metadata",
+        "scheduled_at",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Fila de notificações (e-mail) para reembolsos manuais."
+    },
+    "payment_refunds": {
+      "columns": [
+        "amount",
+        "created_at",
+        "currency",
+        "id",
+        "metadata",
+        "payment_id",
+        "processed_by",
+        "proof_bucket",
+        "proof_checksum",
+        "proof_path",
+        "reason",
+        "updated_at"
+      ],
+      "columns_count": 12,
+      "required": [
+        "id",
+        "payment_id",
+        "processed_by",
+        "amount",
+        "currency",
+        "proof_bucket",
+        "proof_path",
+        "metadata",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "Reembolsos manuais aprovados pelo time financeiro."
+    },
+    "payments": {
+      "columns": [
+        "amount",
+        "booking_id",
+        "created_at",
+        "created_by_admin_id",
+        "currency",
+        "date_approved",
+        "date_created",
+        "date_last_updated",
+        "description",
+        "expires_at",
+        "external_reference",
+        "fee_amount",
+        "id",
+        "idempotency_key",
+        "inscricao_id",
+        "metadata",
+        "mp_payment_id",
+        "mp_preference_id",
+        "net_amount",
+        "payer_document",
+        "payer_email",
+        "payer_name",
+        "payment_attempt_count",
+        "payment_method",
+        "payment_type",
+        "payment_url",
+        "qr_code",
+        "qr_code_base64",
+        "raw_payload",
+        "refund_amount",
+        "refund_date",
+        "refund_id",
+        "refund_status",
+        "refunded_at",
+        "status",
+        "status_detail",
+        "ticket_url",
+        "updated_at",
+        "wallet_balance_used"
+      ],
+      "columns_count": 39,
+      "required": [
+        "id",
+        "status",
+        "amount"
+      ],
+      "description": "Tabela de pagamentos integrada com Mercado Pago"
+    },
+    "platform_costs": {
+      "columns": [
+        "amount",
+        "category",
+        "cost_date",
+        "created_at",
+        "created_by",
+        "description",
+        "id",
+        "is_recurring",
+        "recurrence_period",
+        "updated_at"
+      ],
+      "columns_count": 10,
+      "required": [
+        "id",
+        "category",
+        "description",
+        "amount",
+        "cost_date"
+      ],
+      "description": "Tabela de controle de custos operacionais da plataforma"
+    },
+    "presenca_eventos": {
+      "columns": [
+        "check_in_at",
+        "check_out_at",
+        "created_at",
+        "duration_seconds",
+        "evento_id",
+        "id",
+        "inscricao_id",
+        "last_heartbeat_at",
+        "source",
+        "updated_at",
+        "user_id"
+      ],
+      "columns_count": 11,
+      "required": [
+        "id",
+        "evento_id",
+        "user_id",
+        "check_in_at",
+        "last_heartbeat_at",
+        "created_at",
+        "updated_at"
+      ],
+      "description": ""
+    },
+    "professional_applications": {
+      "columns": [
+        "cpf_cnpj",
+        "created_at",
+        "crp",
+        "email",
+        "experience",
+        "id",
+        "message",
+        "name",
+        "phone",
+        "resume_url",
+        "specialty",
+        "status",
+        "updated_at"
+      ],
+      "columns_count": 13,
+      "required": [
+        "id",
+        "name",
+        "email",
+        "phone",
+        "crp",
+        "specialty",
+        "experience"
+      ],
+      "description": ""
+    },
+    "professional_payments": {
+      "columns": [
+        "created_at",
+        "created_by",
+        "id",
+        "notes",
+        "paid_by",
+        "payment_date",
+        "payment_method",
+        "payment_proof_url",
+        "period_end",
+        "period_start",
+        "professional_id",
+        "status",
+        "total_amount",
+        "total_bookings",
+        "updated_at"
+      ],
+      "columns_count": 15,
+      "required": [
+        "id",
+        "professional_id",
+        "period_start",
+        "period_end",
+        "total_bookings",
+        "total_amount",
+        "status"
+      ],
+      "description": "Tabela de controle de pagamentos aos profissionais"
+    },
+    "professional_payments_with_details": {
+      "columns": [
+        "bookings_count",
+        "created_at",
+        "created_by",
+        "created_by_email",
+        "id",
+        "notes",
+        "paid_by",
+        "paid_by_email",
+        "payment_date",
+        "payment_method",
+        "payment_proof_url",
+        "period_end",
+        "period_start",
+        "professional_id",
+        "professional_name",
+        "status",
+        "total_amount",
+        "total_bookings",
+        "updated_at"
+      ],
+      "columns_count": 19,
+      "required": [],
+      "description": ""
+    },
+    "professionals": {
+      "columns": [
+        "cnpj",
+        "cpf",
+        "crp",
+        "description",
+        "id",
+        "image_url",
+        "mini_curriculum",
+        "name",
+        "personal_meet_link",
+        "phone",
+        "services_ids",
+        "specialty",
+        "status",
+        "user_id",
+        "whatsapp"
+      ],
+      "columns_count": 15,
+      "required": [
+        "id",
+        "name"
+      ],
+      "description": ""
+    },
+    "rate_limits": {
+      "columns": [
+        "action",
+        "expires_at",
+        "hits",
+        "key"
+      ],
+      "columns_count": 4,
+      "required": [
+        "action",
+        "key",
+        "expires_at"
+      ],
+      "description": ""
+    },
+    "records_with_month_year": {
+      "columns": [
+        "count"
+      ],
+      "columns_count": 1,
+      "required": [],
+      "description": ""
+    },
+    "records_without_month_year": {
+      "columns": [
+        "count"
+      ],
+      "columns_count": 1,
+      "required": [],
+      "description": ""
+    },
+    "reviews": {
+      "columns": [
+        "booking_id",
+        "comment",
+        "created_at",
+        "id",
+        "is_approved",
+        "patient_email",
+        "patient_id",
+        "patient_name",
+        "professional_id",
+        "rating"
+      ],
+      "columns_count": 10,
+      "required": [
+        "id",
+        "rating"
+      ],
+      "description": ""
+    },
+    "services": {
+      "columns": [
+        "duration_minutes",
+        "id",
+        "name",
+        "price",
+        "professional_payout"
+      ],
+      "columns_count": 5,
+      "required": [
+        "id",
+        "name",
+        "price"
+      ],
+      "description": ""
+    },
+    "spatial_ref_sys": {
+      "columns": [
+        "auth_name",
+        "auth_srid",
+        "proj4text",
+        "srid",
+        "srtext"
+      ],
+      "columns_count": 5,
+      "required": [
+        "srid"
+      ],
+      "description": ""
+    },
+    "system_settings": {
+      "columns": [
+        "description",
+        "key",
+        "updated_at",
+        "updated_by",
+        "value"
+      ],
+      "columns_count": 5,
+      "required": [
+        "key",
+        "value",
+        "updated_at"
+      ],
+      "description": ""
+    },
+    "total_records": {
+      "columns": [
+        "count"
+      ],
+      "columns_count": 1,
+      "required": [],
+      "description": ""
+    },
+    "user_book_downloads": {
+      "columns": [
+        "created_at",
+        "download_type",
+        "id",
+        "lead_email",
+        "lead_name",
+        "license_type",
+        "paid_amount_brl",
+        "payment_id",
+        "payment_status",
+        "resource_id",
+        "user_id",
+        "utm_campaign",
+        "utm_medium",
+        "utm_source"
+      ],
+      "columns_count": 14,
+      "required": [
+        "id",
+        "resource_id",
+        "download_type"
+      ],
+      "description": "Histórico de downloads gratuitos e licenças pagas por usuário/lead"
+    },
+    "user_credit_balances": {
+      "columns": [
+        "available_amount",
+        "expired_amount",
+        "reserved_amount",
+        "used_amount",
+        "user_id"
+      ],
+      "columns_count": 5,
+      "required": [],
+      "description": ""
+    },
+    "user_preferences": {
+      "columns": [
+        "created_at",
+        "dashboard_layout",
+        "email_notifications",
+        "email_reminders",
+        "language",
+        "notifications_enabled",
+        "push_notifications",
+        "reminder_hours_before",
+        "sms_notifications",
+        "theme",
+        "timezone",
+        "updated_at",
+        "user_id"
+      ],
+      "columns_count": 13,
+      "required": [
+        "user_id"
+      ],
+      "description": "Preferências e configurações personalizadas do usuário"
+    },
+    "users_public": {
+      "columns": [
+        "full_name",
+        "id",
+        "phone",
+        "role"
+      ],
+      "columns_count": 4,
+      "required": [
+        "id"
+      ],
+      "description": ""
+    },
+    "v_admin_id": {
+      "columns": [
+        "id"
+      ],
+      "columns_count": 1,
+      "required": [],
+      "description": ""
+    },
+    "vw_inscricoes_completas": {
+      "columns": [
+        "data_evento",
+        "data_fim",
+        "email",
+        "evento_descricao",
+        "evento_id",
+        "evento_titulo",
+        "evento_valor",
+        "id",
+        "meeting_id",
+        "meeting_link",
+        "meeting_password",
+        "nome",
+        "payment_date",
+        "payment_id",
+        "payment_status",
+        "status",
+        "status_descricao",
+        "tem_vagas",
+        "user_id",
+        "vagas_disponiveis",
+        "vagas_ocupadas",
+        "valor_pago",
+        "zoom_link_sent",
+        "zoom_link_sent_at"
+      ],
+      "columns_count": 24,
+      "required": [],
+      "description": "View com dados completos de inscrições incluindo informações do evento, status e vagas"
+    },
+    "wallet_transactions": {
+      "columns": [
+        "amount",
+        "booking_id",
+        "created_at",
+        "description",
+        "id",
+        "patient_id",
+        "transaction_type"
+      ],
+      "columns_count": 7,
+      "required": [
+        "id",
+        "patient_id",
+        "amount",
+        "transaction_type",
+        "created_at"
+      ],
+      "description": ""
+    },
+    "webhook_logs": {
+      "columns": [
+        "error_message",
+        "event_id",
+        "id",
+        "payload",
+        "processed_at",
+        "provider",
+        "signature",
+        "status"
+      ],
+      "columns_count": 8,
+      "required": [
+        "id"
+      ],
+      "description": "Logs de eventos de webhook (Mercado Pago) e de orquestração pós-pagamento (post-payment-orchestrator)."
+    },
+    "whatsapp_reminder_logs": {
+      "columns": [
+        "booking_id",
+        "created_at",
+        "id",
+        "inscricao_id",
+        "message_body",
+        "provider_response",
+        "recipient_name",
+        "recipient_phone",
+        "reminder_type",
+        "sent_at",
+        "status",
+        "wa_me_url"
+      ],
+      "columns_count": 12,
+      "required": [
+        "id",
+        "reminder_type",
+        "recipient_phone",
+        "message_body",
+        "status",
+        "created_at"
+      ],
+      "description": "Logs e histórico da régua de lembretes WhatsApp para redução de no-show (faltas)."
+    }
+  }
+}

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --host :: --port 3000",
     "check:architecture": "node scripts/check-architecture-guardrails.js",
+    "schema:sync": "node scripts/sync-schema-catalog.js",
     "squad:check": "npm run check:architecture && npm run build && npm test",
     "build": "node tools/generate-llms.js && vite build",
     "postbuild": "node scripts/generate-sitemap.js",

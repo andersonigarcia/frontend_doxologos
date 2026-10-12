@@ -37,4 +37,21 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
 
     expect(content.includes(".from('bookings')")).toBe(false);
   });
+
+  it('ALLOWED_PROFESSIONAL_FIELDS e ALLOWED_BOOKING_FIELDS devem conter apenas colunas existentes no databaseCatalog.json', () => {
+    const catalogPath = path.resolve(__dirname, '../../constants/databaseCatalog.json');
+    expect(fs.existsSync(catalogPath)).toBe(true);
+
+    const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+    const profCols = catalog.tables.professionals.columns;
+    const bookingCols = catalog.tables.bookings.columns;
+
+    for (const field of ALLOWED_PROFESSIONAL_FIELDS) {
+      expect(profCols).toContain(field);
+    }
+
+    for (const field of ALLOWED_BOOKING_FIELDS) {
+      expect(bookingCols).toContain(field);
+    }
+  });
 });

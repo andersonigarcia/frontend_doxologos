@@ -97,8 +97,20 @@ if (checkFileExists('src/services/bookingService.js', 'Serviço canônico de age
   );
 }
 
-// 2. Prevenção de Schema Drift (Campos Fantasmas)
-console.log('2️⃣  Validando ausência de Schema Drift e colunas fantasmas...');
+// 2. Prevenção de Schema Drift (Campos Fantasmas & Catálogo de Banco)
+console.log('2️⃣  Validando ausência de Schema Drift e integridade contra o catálogo de banco...');
+
+const catalogPath = path.join(rootDir, 'src', 'constants', 'databaseCatalog.json');
+let catalog = null;
+if (fs.existsSync(catalogPath)) {
+  try {
+    catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+  } catch (e) {
+    errors.push(`[CATÁLOGO CORROMPIDO] Erro ao parsear databaseCatalog.json: ${e.message}`);
+  }
+} else {
+  errors.push('[CATÁLOGO AUSENTE] src/constants/databaseCatalog.json não foi encontrado. Execute npm run schema:sync.');
+}
 
 const allowedProfFields = parseExportedArray('src/services/professionalService.js', 'ALLOWED_PROFESSIONAL_FIELDS');
 if (allowedProfFields.includes('email')) {
@@ -108,9 +120,28 @@ if (allowedProfFields.includes('password')) {
   errors.push('[SCHEMA DRIFT] ALLOWED_PROFESSIONAL_FIELDS não pode conter "password" (pertence a auth.users).');
 }
 
+// Validação contra catálogo real do Postgres
+if (catalog?.tables?.professionals?.columns) {
+  const dbProfCols = catalog.tables.professionals.columns;
+  for (const field of allowedProfFields) {
+    if (!dbProfCols.includes(field)) {
+      errors.push(`[SCHEMA DRIFT] Campo "${field}" em ALLOWED_PROFESSIONAL_FIELDS não existe no catálogo de public.professionals.`);
+    }
+  }
+}
+
 const allowedBookingFields = parseExportedArray('src/services/bookingService.js', 'ALLOWED_BOOKING_FIELDS');
 if (allowedBookingFields.includes('meeting_platform')) {
   errors.push('[SCHEMA DRIFT] ALLOWED_BOOKING_FIELDS não pode conter "meeting_platform" (coluna inexistente em public.bookings).');
+}
+
+if (catalog?.tables?.bookings?.columns) {
+  const dbBookingCols = catalog.tables.bookings.columns;
+  for (const field of allowedBookingFields) {
+    if (!dbBookingCols.includes(field)) {
+      errors.push(`[SCHEMA DRIFT] Campo "${field}" em ALLOWED_BOOKING_FIELDS não existe no catálogo de public.bookings.`);
+    }
+  }
 }
 
 // Componente ProfileTab não deve tentar mutações diretas

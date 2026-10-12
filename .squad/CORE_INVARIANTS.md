@@ -31,7 +31,9 @@
 
 ---
 
-## 📦 3. Catálogo de Serviços Canônicos
+## 📦 3. Catálogo de Serviços Canônicos & Esquema
+* **Catálogo Oficial de Banco:** [`src/constants/databaseCatalog.json`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/constants/databaseCatalog.json) (57 tabelas inspecionadas via OpenAPI)
+* **Validador de Esquema:** [`src/lib/validation/schemaValidator.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/lib/validation/schemaValidator.js)
 * **Profissionais (`professionals`):** [`src/services/professionalService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/professionalService.js)
   * RPC prioritário para e-mails: `admin_list_users` no Postgres.
 * **Agendamentos (`bookings`):** [`src/services/bookingService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/bookingService.js)
@@ -40,10 +42,11 @@
 ---
 
 ## 🧪 4. Fitness Functions & Comandos do Pipeline
+* **Sincronização de Esquema (Supabase):** `npm run schema:sync`
 * **Auditoria Arquitetural:** `npm run check:architecture`
-* **Suíte de Testes (144+ testes):** `npm test`
+* **Suíte de Testes (152+ testes):** `npm test`
 * **Compilação de Produção:** `npm run build`
 * **Gatekeeper Completo do Squad:** `npm run squad:check`
 
 ---
-*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 009), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
+*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 010), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*

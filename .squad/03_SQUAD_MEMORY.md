@@ -192,3 +192,15 @@
      - **Tier 2 (L2 Deep Memory):** `.squad/03_SQUAD_MEMORY.md`, preservando o histórico integral de ADRs e incidentes, consultada estritamente sob demanda.
   3. Instituir o comando `npm run squad:check` como fitness function arquitetural obrigatória antes da conclusão de qualquer ciclo.
 - **Consequências:** Redução de 45% a 55% no consumo de tokens, eliminação de alucinações de personas, lead time mais rápido e zero regressão no negócio.
+
+### ADR 010: Introspecção Automatizada de Esquema e Catálogo Canônico de Banco
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Erros recorrentes de colunas inexistentes ou schema drift (ex: `time` vs `booking_time`, `meeting_platform`, envio de `email` para `professionals`) causados por documentação manual em ASCII propensa a defasagem em relação ao PostgreSQL real do Supabase.
+- **Decisão:**
+  1. Criar script de introspecção automática `scripts/sync-schema-catalog.js` que se conecta via PostgREST OpenAPI (`${SUPABASE_URL}/rest/v1/`) e gera o arquivo canônico versionado `src/constants/databaseCatalog.json` (57 tabelas/views mapeadas).
+  2. Implementar helper de validação `src/lib/validation/schemaValidator.js` com funções utilitárias `getTableColumns`, `isColumnValid` e `validatePayloadAgainstSchema`.
+  3. Integrar validação estrita no guardrail `scripts/check-architecture-guardrails.js` que audita se os arrays de campos permitidos (`ALLOWED_PROFESSIONAL_FIELDS`, `ALLOWED_BOOKING_FIELDS`) contêm exclusivamente colunas existentes no banco.
+  4. Adicionar comando `npm run schema:sync` no `package.json`.
+  5. Adicionar suíte de testes `src/services/__tests__/schemaValidator.test.js`.
+- **Consequências Positivas:** Prevenção mecânica absoluta de schema drift, detecção imediata de campos fantasmas no build e nos testes (antes de chegar em produção) e sincronização contínua com as migrações do Supabase.
