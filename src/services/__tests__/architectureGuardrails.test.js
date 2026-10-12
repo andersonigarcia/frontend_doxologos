@@ -116,5 +116,31 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
       expect(content).toContain('default-src');
     });
   });
+
+  describe('Onda 2 — Resiliência Transacional Fintech & Ingestão Assíncrona de Webhooks', () => {
+    it('mp-webhook deve possuir guarda de idempotência e não bloquear aguardando emit-nfse', () => {
+      const webhookPath = path.resolve(__dirname, '../../../supabase/functions/mp-webhook/index.ts');
+      const content = fs.readFileSync(webhookPath, 'utf8');
+
+      expect(content).toContain('IDEMPOTENCY GUARD');
+      expect(content).toContain('idempotent_duplicate');
+      expect(content).not.toContain("await supabase.functions.invoke('emit-nfse'");
+    });
+
+    it('paymentService deve conter suporte a idempotency_key', () => {
+      const paymentServicePath = path.resolve(__dirname, '../paymentService.js');
+      const content = fs.readFileSync(paymentServicePath, 'utf8');
+
+      expect(content).toContain('idempotency_key');
+      expect(content).toContain('sanitized.idempotency_key');
+    });
+
+    it('package.json deve conter bind cross-platform universal no comando dev', () => {
+      const pkgPath = path.resolve(__dirname, '../../../package.json');
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+
+      expect(pkg.scripts.dev).toContain('--host 0.0.0.0');
+    });
+  });
 });
 

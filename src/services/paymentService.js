@@ -226,6 +226,20 @@ export async function updatePaymentStatus(id, status, details = {}) {
 export async function createPaymentRecord(payload) {
   const sanitized = sanitizePaymentPayload(payload);
 
+  // Verificação de idempotência (Onda 2 - Padrão Stripe/Fintech)
+  if (sanitized.idempotency_key) {
+    const { data: existing } = await supabase
+      .from('payments')
+      .select('*')
+      .eq('idempotency_key', sanitized.idempotency_key)
+      .maybeSingle();
+
+    if (existing) {
+      console.log(`[paymentService] Registro de pagamento existente reutilizado via idempotency_key: ${sanitized.idempotency_key}`);
+      return existing;
+    }
+  }
+
   const { data, error } = await supabase
     .from('payments')
     .insert([sanitized])

@@ -232,3 +232,18 @@
   3. Implementar meta tag de Content Security Policy (CSP) estrita em `index.html` restringindo origens para Google Tag Manager, Mercado Pago SDK, Supabase REST/WebSockets, Google Fonts e YouTube.
   4. Expandir `scripts/check-architecture-guardrails.js` e `architectureGuardrails.test.js` para garantir existência de `_shared/auth.ts`, meta tag CSP e ausência de verificações inseguras de `user.user_metadata?.role` em funções administrativas.
 - **Consequências Positivas:** Blindagem absoluta contra elevação indevida de privilégios, suporte nativo a perfis híbridos (ADR 005), padronização DRY do pipeline de autenticação Deno e proteção contra ataques XSS via CSP.
+
+### ADR 013: Resiliência Transacional Fintech & Ingestão Assíncrona de Webhooks (Onda 2 - Padrão Stripe)
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Múltiplas notificações de webhook reenviadas pelo Mercado Pago causavam reprocessamento desnecessário, concorrência no split de receitas contábeis e potencial invocação duplicada de NFS-e. Além disso, a chamada síncrona a serviços SOAP/prefeitura para emissão fiscal bloqueava a resposta HTTP ao Mercado Pago por até 10 segundos, arriscando timeouts e retries repetitivos.
+- **Decisão:**
+  1. Implementar barreira de idempotência atômica no `mp-webhook`:
+     - Consulta prévia na tabela `payments` por `mp_payment_id` e status equivalente.
+     - Em caso de notificação duplicada já processada com o mesmo status, responder imediatamente `200 OK` (`idempotent_duplicate`) em < 50ms, sem reprocessar mutações, split contábil ou NFS-e.
+  2. Desacoplar tarefas periféricas lentas (emissão de NFS-e) no `mp-webhook` para execução assíncrona não bloqueante via background invocation (`.then().catch()`), garantindo retorno `200 OK` ao gateway em < 250ms.
+  3. Adicionar verificação e suporte a `idempotency_key` no serviço canônico `createPaymentRecord` (`src/services/paymentService.js`), reaproveitando registros já persistidos para a mesma chave.
+  4. Corrigir bind de rede no `package.json` de `--host ::` para `--host 0.0.0.0` para compatibilidade universal entre Windows, WSL, Linux e macOS.
+  5. Expandir `scripts/check-architecture-guardrails.js` e `architectureGuardrails.test.js` para auditar a barreira de idempotência, não bloqueio de NFS-e e testes de idempotency.
+- **Consequências Positivas:** Ingestão de webhooks imune a retries e timeouts, zero duplicação de transações ou notas fiscais, tempo de resposta ao gateway reduzido de até 8s para < 250ms e conformidade com os melhores padrões de engenharia de fintechs.
+

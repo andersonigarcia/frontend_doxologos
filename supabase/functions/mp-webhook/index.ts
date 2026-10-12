@@ -225,6 +225,33 @@ serve(async (req: Request) => {
     console.log(`🔍 Processing external_reference: ${externalRef}`);
     let success = false;
 
+    // =========================================================================
+    // IDEMPOTENCY GUARD (Onda 2 - Padrão Stripe / Fintech)
+    // Evita reprocessamento redundante caso o Mercado Pago envie múltiplos webhooks
+    // para o mesmo pagamento no mesmo status final (ex: retries automáticos de rede).
+    // =========================================================================
+    const { data: existingProcessedPayment } = await supabase
+      .from('payments')
+      .select('id, status, updated_at')
+      .eq('mp_payment_id', paymentId.toString())
+      .maybeSingle();
+
+    if (existingProcessedPayment && existingProcessedPayment.status === mpPayment.status) {
+      console.log(`⚡ [Idempotency] Pagamento ${paymentId} já processado anteriormente com status '${mpPayment.status}'. Retornando 200 OK.`);
+      if (logId) {
+        await supabase.from('webhook_logs')
+          .update({
+            status: 'idempotent_duplicate',
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', logId);
+      }
+      return new Response(JSON.stringify({ ok: true, duplicate: true, status: mpPayment.status }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // 2. Process based on Reference
     let ledgerTransactionId = null;
 
@@ -451,24 +478,23 @@ serve(async (req: Request) => {
             }
           ]);
 
-          // FIX #6: Emissão inline de NFS-e para pacotes (evita duplo disparo no bloco externo)
-          try {
-            console.log(`🧾 Disparando NFS-e para pacote ${packageId} (payment_id: ${payData.id})...`);
-            const { error: nfsePkgErr } = await supabase.functions.invoke('emit-nfse', {
-              body: {
-                package_id: packageId,
-                payment_id: payData.id,
-              }
-            });
+          // FIX #6: Emissão inline de NFS-e para pacotes (assíncrona / não bloqueante - Onda 2)
+          nfseHandledInline = true;
+          console.log(`🧾 Disparando NFS-e assíncrona para pacote ${packageId} (payment_id: ${payData.id})...`);
+          supabase.functions.invoke('emit-nfse', {
+            body: {
+              package_id: packageId,
+              payment_id: payData.id,
+            }
+          }).then(({ error: nfsePkgErr }: any) => {
             if (nfsePkgErr) {
               console.error('⚠️ Falha ao disparar NFS-e para pacote (non-fatal):', nfsePkgErr);
             } else {
-              console.log('✅ NFS-e de pacote disparada com sucesso.');
-              nfseHandledInline = true; // Marca como tratada — bloco externo não re-emitirá
+              console.log('✅ NFS-e de pacote disparada com sucesso em background.');
             }
-          } catch (nfseErr) {
+          }).catch((nfseErr: any) => {
             console.error('⚠️ Exceção ao disparar NFS-e de pacote (non-fatal):', nfseErr);
-          }
+          });
         }
       }
       success = true;
@@ -798,23 +824,27 @@ serve(async (req: Request) => {
             ? externalRef.replace('EVENTO_', '')
             : null;
 
-          console.log(`🧾 Disparando NFS-e: booking=${bookingId} | inscricao=${inscricaoId} | payment=${ledgerTransactionId}`);
+          console.log(`🧾 Disparando NFS-e assíncrona: booking=${bookingId} | inscricao=${inscricaoId} | payment=${ledgerTransactionId}`);
 
-          const { error: nfseInvokeError } = await supabase.functions.invoke('emit-nfse', {
+          // Invocação assíncrona desacoplada (Onda 2 - Padrão Stripe/Fintech)
+          // Não bloqueia o tempo de resposta HTTP do webhook ao Mercado Pago
+          supabase.functions.invoke('emit-nfse', {
             body: {
               booking_id: bookingId,
               inscricao_id: inscricaoId,
               payment_id: ledgerTransactionId,
             }
+          }).then(({ error: nfseInvokeError }: any) => {
+            if (nfseInvokeError) {
+              console.error('⚠️ Falha ao disparar NFS-e (non-fatal):', nfseInvokeError);
+            } else {
+              console.log('✅ NFS-e disparada com sucesso em background.');
+            }
+          }).catch((nfseErr: any) => {
+            console.error('⚠️ Exceção ao disparar NFS-e (non-fatal):', nfseErr);
           });
-
-          if (nfseInvokeError) {
-            console.error('⚠️ Falha ao disparar NFS-e (non-fatal):', nfseInvokeError);
-          } else {
-            console.log('✅ NFS-e disparada com sucesso.');
-          }
         } catch (nfseErr) {
-          console.error('⚠️ Exceção ao disparar NFS-e (non-fatal):', nfseErr);
+          console.error('⚠️ Exceção ao preparar disparo de NFS-e (non-fatal):', nfseErr);
         }
       }
     } else if (nfseHandledInline) {

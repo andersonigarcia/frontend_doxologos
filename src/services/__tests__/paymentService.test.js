@@ -134,5 +134,23 @@ describe('paymentService — Domain Service Tests', () => {
       })]);
       expect(result).toBeDefined();
     });
+
+    it('deve retornar registro existente se idempotency_key já foi cadastrado (Onda 2)', async () => {
+      supabase.maybeSingle.mockReturnValueOnce(Promise.resolve({
+        data: { id: 'pay_existing', idempotency_key: 'key_123', amount: 250.0 },
+        error: null
+      }));
+
+      const result = await createPaymentRecord({
+        amount: 250.0,
+        booking_id: 'bkg_999',
+        idempotency_key: 'key_123',
+        status: 'pending'
+      });
+
+      expect(supabase.from).toHaveBeenCalledWith('payments');
+      expect(supabase.eq).toHaveBeenCalledWith('idempotency_key', 'key_123');
+      expect(result).toEqual({ id: 'pay_existing', idempotency_key: 'key_123', amount: 250.0 });
+    });
   });
 });

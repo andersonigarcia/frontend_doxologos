@@ -313,6 +313,33 @@ if (checkFileExists('index.html', 'Página principal')) {
   );
 }
 
+// 6. Verificação de Resiliência Fintech & Ingestão Assíncrona de Webhooks (Onda 2 / ADR 013)
+console.log('6️⃣  Validando resiliência fintech & idempotência de webhooks (Onda 2)...');
+if (checkFileExists('supabase/functions/mp-webhook/index.ts', 'Webhook do Mercado Pago')) {
+  checkFileContains(
+    'supabase/functions/mp-webhook/index.ts',
+    [
+      'IDEMPOTENCY GUARD',
+      'idempotent_duplicate',
+      'existingProcessedPayment'
+    ],
+    'mp-webhook com barreira de idempotência ativa'
+  );
+  checkFileNotContains(
+    'supabase/functions/mp-webhook/index.ts',
+    ["await supabase.functions.invoke('emit-nfse'"],
+    'mp-webhook não deve bloquear retorno HTTP aguardando emit-nfse (deve ser assíncrono)'
+  );
+}
+
+if (checkFileExists('src/services/paymentService.js', 'Serviço de pagamentos')) {
+  checkFileContains(
+    'src/services/paymentService.js',
+    ['idempotency_key'],
+    'paymentService com suporte a idempotency_key'
+  );
+}
+
 // Relatório Final
 console.log('\n--------------------------------------------------');
 if (errors.length === 0) {
