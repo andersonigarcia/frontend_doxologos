@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { getBookingById } from '@/services/bookingService';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
 import { Loader2, Video, AlertCircle, CheckCircle } from 'lucide-react';
@@ -20,30 +21,15 @@ const SalaEsperaPage = () => {
         if (!user || !id) return;
         
         const fetchBooking = async () => {
-            const { data, error } = await supabase
-                .from('bookings')
-                .select(`
-                    id, 
-                    booking_date, 
-                    booking_time, 
-                    session_status,
-                    meeting_link,
-                    meeting_password,
-                    professional:professionals(name, specialty, image_url, personal_meet_link)
-                `)
-                .eq('id', id)
-                .eq('user_id', user.id)
-                .single();
-                
-            if (error) {
-                console.error("Erro ao carregar agendamento", error);
-                setError("Não foi possível carregar as informações da sala.");
-            } else if (!data) {
-                setError("Agendamento não encontrado.");
-            } else {
+            try {
+                const data = await getBookingById(id, { userId: user.id });
                 setBooking(data);
+            } catch (err) {
+                console.error("Erro ao carregar agendamento", err);
+                setError(err.message || "Não foi possível carregar as informações da sala.");
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         
         fetchBooking();

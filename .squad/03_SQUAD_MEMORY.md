@@ -154,6 +154,22 @@
   5. Refatorados todos os consumidores do domínio: `ProfileTab.jsx`, `ProfessionalHubPage.jsx`, `ProfessionalListPage.jsx`, `AdminUsuariosPage.jsx`, `approve-professional-application` e `admin-update-user`.
   6. Retificado o diagrama ERD em `ARCH.md` para refletir 100% a realidade do banco de dados.
   7. Adicionada suíte de testes unitários `src/services/__tests__/professionalService.test.js` com 9 testes garantindo a invariante.
-- **Prevenção:** Proibição mandatória de queries diretas a `professionals` em componentes de UI; todas as operações devem consumir `professionalService.js`. 
+- **Prevenção:** Proibição mandatória de queries diretas a `professionals` em componentes de UI; todas as operações devem consumir `professionalService.js`.
+
+---
+
+## 3. Decisões Arquiteturais Recentes (ADRs) - Continuação
+
+### ADR 007: Unificação Canônica do Domínio de Agendamentos (`bookingService.js`)
+- **Status:** Aceito
+- **Data:** 2026-10-12
+- **Contexto:** Mutações e leituras diretas na tabela `public.bookings` espalhadas por múltiplos componentes (`AgendamentoPage`, `SalaEsperaPage`, `PacientePage`, `ProfessionalDashboardPage`, `AdminPage`, `ScheduleTab`). Riscos identificados: envio de campos fantasmas (ex: `meeting_platform` gerando Postgres 42703), disparos duplicados ou inconsistentes de e-mails de confirmação/cancelamento, e divergência no nome da coluna de horário (`booking_time` real vs `time` documentado em ARCH.md).
+- **Decisão:**
+  1. Estabelecer `src/services/bookingService.js` como Single Source of Truth (SSOT) para o ciclo de vida do agendamento.
+  2. Implementar `ALLOWED_BOOKING_FIELDS` com a lista estrita de colunas existentes no PostgreSQL.
+  3. Sanitizar payloads com `sanitizeBookingPayload` antes de qualquer `insert` ou `update`.
+  4. Centralizar `updateBookingStatus` garantindo transições de status válidas (`VALID_BOOKING_STATUSES`) e disparo resiliente de notificações (`bookingEmailManager`).
+  5. Manter 100% de compatibilidade retroativa com os contratos das páginas ativas para prevenir qualquer efeito colateral em faturamento e consultas.
+- **Consequências Positivas:** Prevenção definitiva de falhas no agendamento, testes automatizados cobrindo o ciclo de vida e código limpo desacoplado do cliente Supabase nas páginas.
 
 

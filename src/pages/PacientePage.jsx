@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+import { rescheduleBooking } from '@/services/bookingService';
 import MercadoPagoService from '@/lib/mercadoPagoService';
 import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -641,43 +642,13 @@ const PacientePage = () => {
                 newTime: newBookingTime
             });
 
-            const nextCount = attemptsUsed + 1;
-            const rescheduleRootId = reschedulingBooking.rescheduled_from_id || reschedulingBooking.id;
-
-            const { error } = await supabase
-                .from('bookings')
-                .update({
-                    booking_date: selectedNewSlot.date,
-                    booking_time: newBookingTime,
-                    reschedule_count: nextCount,
-                    rescheduled_from_id: rescheduleRootId,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', reschedulingBooking.id);
-
-            if (error) throw error;
-
-            const historyPayload = {
-                booking_id: reschedulingBooking.id,
-                previous_booking_date: reschedulingBooking.booking_date,
-                previous_booking_time: reschedulingBooking.booking_time,
-                new_booking_date: selectedNewSlot.date,
-                new_booking_time: newBookingTimeWithSeconds,
-                attempt_number: nextCount,
-                status: 'success',
-                metadata: {
-                    triggered_by: 'patient_portal',
-                    user_id: user?.id || null
-                }
-            };
-
-            const { error: historyError } = await supabase
-                .from('booking_reschedule_history')
-                .insert([historyPayload]);
-
-            if (historyError) {
-                logger.error('Failed to log reschedule history', historyError);
-            }
+            await rescheduleBooking(reschedulingBooking.id, {
+                newDate: selectedNewSlot.date,
+                newTime: newBookingTime,
+                attemptsUsed,
+                rescheduledFromId: reschedulingBooking.rescheduled_from_id,
+                userId: user?.id
+            });
 
             logger.success('Booking rescheduled successfully', {
                 bookingId: reschedulingBooking.id

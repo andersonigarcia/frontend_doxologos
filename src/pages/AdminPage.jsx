@@ -31,6 +31,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { bookingEmailManager } from '@/lib/bookingEmailManager';
+import { updateBookingStatus } from '@/services/bookingService';
 import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
@@ -1270,38 +1271,12 @@ const AdminPage = () => {
 
         await withItemLoading('status', bookingId, async () => {
             try {
-                const { error } = await supabase
-                    .from('bookings')
-                    .update({ status: newStatus })
-                    .eq('id', bookingId);
-
-                if (error) throw error;
-
-                // Enviar email de notificação baseado no novo status
-                try {
-                    const emailData = {
-                        patient_name: bookingData.patient_name,
-                        patient_email: bookingData.patient_email,
-                        booking_date: bookingData.booking_date,
-                        booking_time: bookingData.booking_time,
-                        service_name: bookingData.service?.name || 'Consulta',
-                        professional_name: bookingData.professional?.name || 'Profissional'
-                    };
-
-                    if (newStatus === 'confirmed' || newStatus === 'paid') {
-                        await bookingEmailManager.sendPaymentApproved(emailData);
-                    } else if (newStatus === 'completed') {
-                        await bookingEmailManager.sendThankYou(emailData);
-                    } else if (newStatus === 'no_show_unjustified') {
-                        await bookingEmailManager.sendCancellation(emailData, 'Consulta marcada como falta injustificada (sem reembolso)');
-                    } else if (newStatus.includes('cancelled')) {
-                        const cancellationReason = isAdminUser ? 'Cancelado pela administração' : 'Cancelado pelo profissional';
-                        await bookingEmailManager.sendCancellation(emailData, cancellationReason);
-                    }
-                } catch (emailError) {
-                    secureLog.error('Erro ao enviar email na atualização rápida de status:', emailError?.message || emailError);
-                    secureLog.debug('Detalhes do erro ao enviar email na atualização rápida de status', emailError);
-                }
+                const cancellationReason = isAdminUser ? 'Cancelado pela administração' : 'Cancelado pelo profissional';
+                await updateBookingStatus(bookingId, newStatus, {
+                    notify: true,
+                    bookingData,
+                    cancellationReason
+                });
 
                 toast({
                     title: 'Status atualizado!',

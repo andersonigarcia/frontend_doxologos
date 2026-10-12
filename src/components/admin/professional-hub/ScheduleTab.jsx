@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppointmentCalendar } from '@/components/admin/AppointmentCalendar';
-import { supabase } from '@/lib/customSupabaseClient';
+import { listBookings } from '@/services/bookingService';
 import { Loader2, Calendar as CalendarIcon, Clock, User, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,14 +18,7 @@ const ScheduleTab = ({ professionalId }) => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('professional_id', professionalId)
-        .order('booking_date', { ascending: false })
-        .order('booking_time', { ascending: true });
-
-      if (error) throw error;
+      const data = await listBookings({ professionalId });
       setAppointments(data || []);
     } catch (err) {
       console.error('Erro ao buscar agendamentos:', err);

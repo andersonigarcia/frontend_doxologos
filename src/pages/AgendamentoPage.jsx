@@ -24,6 +24,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { createBooking, createChildBookings } from '@/services/bookingService';
 import { useBookingTracking, useFormTracking } from '@/hooks/useAnalytics';
 import { BookingEmailManager } from '@/lib/bookingEmailManager';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
@@ -1160,7 +1161,7 @@ const AgendamentoPage = () => {
             package_id: pkgRecord.id
           }));
 
-          await supabase.from('bookings').insert(childBookings);
+          await createChildBookings(childBookings);
 
           // Registrar etapa de funil: booking criado para pacote
           try {
@@ -1203,30 +1204,10 @@ const AgendamentoPage = () => {
       let bookingError = null;
 
 
-      const attemptInsert = async (payload) => supabase.from('bookings').insert([payload]).select().single();
-
-      let insertResult = await attemptInsert(insertPayload);
-      bookingInsertData = insertResult.data;
-      bookingError = insertResult.error;
-
-      if (!bookingError && insertPayload.meeting_platform && supportsMeetingPlatform === false) {
-        setSupportsMeetingPlatform(true);
-      }
-
-      if (
-        insertPayload.meeting_platform &&
-        bookingError &&
-        bookingError.message &&
-        bookingError.message.toLowerCase().includes('meeting_platform')
-      ) {
-        console.warn('⚠️ Coluna meeting_platform indisponível no banco. Reenviando sem essa informação.');
-        const { meeting_platform, ...fallbackPayload } = insertPayload;
-        insertResult = await attemptInsert(fallbackPayload);
-        bookingInsertData = insertResult.data;
-        bookingError = insertResult.error;
-        if (!bookingError) {
-          setSupportsMeetingPlatform(false);
-        }
+      try {
+        bookingInsertData = await createBooking(insertPayload);
+      } catch (err) {
+        bookingError = err;
       }
 
       secureLog.info('Resultado do insert:', {

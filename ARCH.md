@@ -238,11 +238,11 @@ professionals ──────────────────────
                                                │ professional_id (FK)      │
                                                │ service_id (FK)           │
                                                │ user_id (FK → auth.users) │
-                                               │ booking_date, time        │
+                                               │ booking_date, booking_time│
                                                │ status *                  │
                                                │ meeting_link              │
-                                               │ marketplace_preference_id │
-                                               │ patient_name, email, phone│
+                                               │ marketplace_payment_id    │
+                                               │ patient_name, patient_email, patient_phone │
                                                └──────────────┬────────────┘
                                                               │ 1
                                                               │
