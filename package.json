@@ -28,7 +28,7 @@
     "monitor:vitals": "echo \"Web Vitals monitoramento ativo - verifique o console do navegador\"",
     "health:check": "node -e \"console.log('🎯 Sistema de monitoramento operacional'); process.exit(0)\"",
     "test:performance": "lighthouse http://localhost:4173 --view",
-    "test": "jest --runInBand",
+    "test": "jest --runInBand --forceExit",
     "test:unit": "jest --runInBand",
     "test:integration": "jest --runInBand --findRelatedTests",
     "test:watch": "jest --watch",

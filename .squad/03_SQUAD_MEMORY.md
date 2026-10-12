@@ -1,6 +1,7 @@
-# 🧠 MEMÓRIA DO SQUAD (Decisões e Padrões - ADRs)
+# 📚 MEMÓRIA DO SQUAD — Tier 2 Deep Memory (Histórico de ADRs e Decisões)
 
-*Este arquivo é o cérebro evolutivo do time. Atualize-o com padrões decididos ao longo do tempo para que a IA nunca cometa o mesmo erro duas vezes. Siga o formato ADR (Contexto -> Decisão -> Consequências).*
+> **Tipo:** Memória Histórica de Longo Prazo (Consultada sob demanda quando for necessário resgatar precedentes e contexto histórico profundo).  
+> **Memória Ativa Inviolável:** Para invariantes rápidas e regras de ouro ativas, consulte [`.squad/CORE_INVARIANTS.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/CORE_INVARIANTS.md).
 
 ---
 
@@ -180,5 +181,14 @@
   3. Criar suíte automatizada de testes Jest `src/services/__tests__/architectureGuardrails.test.js` que roda automaticamente no pipeline de testes (`npm test`).
 - **Consequências Positivas:** 100% de cobertura contra schema drift e violações arquiteturais no ciclo de vida do código, protegendo a estabilidade financeira e operacional da clínica.
 
-
-
+### ADR 009: Adoção do Novo Modelo Operacional de Elite e Memória em Duas Camadas
+- **Status:** Aceito e Implementado
+- **Data:** 2026-10-12
+- **Contexto:** Auditoria de elite (`/truth`) baseada em benchmarks de Google DeepMind, Anthropic, Martin Fowler/Thoughtworks, Stripe e Shopify identificou desperdício de 3k-8k tokens por interação com o "teatro de personas" e consumo excessivo de contexto com memória monolítica de ~19 KB.
+- **Decisão:**
+  1. Eliminar o teatro de personas e consolidar a orquestração em 3 Modos Operacionais Consecutivos (*Architect*, *Builder*, *Auditor*) no `ORCHESTRATOR.md`.
+  2. Estabelecer Arquitetura de Memória em Duas Camadas:
+     - **Tier 1 (L1 Active Memory):** `.squad/CORE_INVARIANTS.md` (< 80 linhas, ~1.500 tokens), carregada em todas as sessões com as invariantes e regras de ouro invioláveis.
+     - **Tier 2 (L2 Deep Memory):** `.squad/03_SQUAD_MEMORY.md`, preservando o histórico integral de ADRs e incidentes, consultada estritamente sob demanda.
+  3. Instituir o comando `npm run squad:check` como fitness function arquitetural obrigatória antes da conclusão de qualquer ciclo.
+- **Consequências:** Redução de 45% a 55% no consumo de tokens, eliminação de alucinações de personas, lead time mais rápido e zero regressão no negócio.

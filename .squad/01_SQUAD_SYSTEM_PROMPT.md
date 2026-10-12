@@ -35,6 +35,9 @@ Esta é a Constituição do Squad Multiagente. Ela estabelece os princípios inv
 
 ---
 
-## 4. ORQUESTRAÇÃO E DELEGAÇÃO
+## 4. ORQUESTRAÇÃO E GOVERNANÇA (MODELO DE ELITE v2.0)
 
-Para detalhes de execução, rotas de tarefas e atração de agentes especializados, consulte o [`ORCHESTRATOR.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/ORCHESTRATOR.md) e as esteiras em [`workflows/`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/workflows/).
+- **Invariantes Ativas (Tier 1):** Consulte [`.squad/CORE_INVARIANTS.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/CORE_INVARIANTS.md) (<80 linhas) em todo início de sessão para carregar as regras inegociáveis.
+- **Orquestrador Central:** Consulte o [`ORCHESTRATOR.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/ORCHESTRATOR.md) para os 3 Modos Operacionais (*Architect*, *Builder*, *Auditor*).
+- **Memória Histórica (Tier 2):** Registros detalhados de ADRs em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).
+- **Validação Automatizada:** Todo ciclo deve ser validado via `npm run squad:check`.
