@@ -178,8 +178,9 @@ const CheckoutPage = () => {
                 analytics.trackEvent('checkout_start', {
                     event_category: 'Checkout',
                     booking_id: bookingId || inscricaoId || packageId || null,
+                    service_id: booking?.service_id || (packageId ? 'package' : 'consulta'),
                     checkout_type: type || (packageId ? 'package' : 'booking'),
-                    payment_method: selectedMethod,
+                    payment_method: selectedMethod || 'unknown',
                     value: bookingTotal || undefined
                 });
                 analytics.trackEvent('begin_checkout', {
@@ -436,7 +437,8 @@ const CheckoutPage = () => {
                     bookingId || packageId,
                     booking?.professional_id || packageData?.professional_id,
                     booking?.service_id || 'wallet',
-                    bookingTotal
+                    bookingTotal,
+                    'wallet'
                 );
             } catch (trackErr) {
                 logger.warn('CheckoutPage.processCreditCheckout:analytics error', trackErr);
@@ -500,7 +502,8 @@ const CheckoutPage = () => {
                                 bookingId || packageId,
                                 booking?.professional_id || packageData?.professional_id,
                                 booking?.service_id || 'booking',
-                                bookingTotal
+                                bookingTotal,
+                                existing.payment_method_id || 'unknown'
                             );
                         } catch (trackErr) {
                             logger.warn('CheckoutPage.existingPayment:analytics error', trackErr);
@@ -648,7 +651,8 @@ const CheckoutPage = () => {
                                 bookingId || packageId,
                                 booking?.professional_id || packageData?.professional_id,
                                 booking?.service_id || 'booking',
-                                bookingTotal
+                                bookingTotal,
+                                selectedMethod || 'credit_card'
                             );
                         } catch (trackErr) {
                             logger.warn('CheckoutPage.onSuccess:analytics error', trackErr);
@@ -767,7 +771,8 @@ const CheckoutPage = () => {
                                 bookingId || packageId,
                                 booking?.professional_id || packageData?.professional_id,
                                 booking?.service_id || 'booking',
-                                bookingTotal
+                                bookingTotal,
+                                'pix'
                             );
                         } catch (trackErr) {
                             logger.warn('CheckoutPage.startPaymentPolling:analytics error', trackErr);

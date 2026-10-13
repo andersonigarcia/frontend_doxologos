@@ -146,7 +146,8 @@ const CheckoutSuccessPage = () => {
                                 resolvedItem.id,
                                 resolvedItem.professional_id || 'clinic',
                                 resolvedItem.service_id || (resolvedItem.isPackage ? 'package' : 'consultation'),
-                                finalPrice
+                                finalPrice,
+                                fetchedPayment?.payment_method_id || location.state?.paymentMethod || 'pix'
                             );
                         }
                     }

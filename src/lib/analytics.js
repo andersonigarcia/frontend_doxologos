@@ -120,7 +120,8 @@ class AnalyticsManager {
         page_title: pageTitle,
         page_location: fullUrl,
         custom_parameter_1: pageName,
-        custom_parameter_2: userType
+        custom_parameter_2: userType,
+        send_page_view: false
       });
       gtag('event', 'page_view', {
         page_title: pageTitle,
@@ -169,11 +170,12 @@ class AnalyticsManager {
       ...enrichedParams
     });
 
-    // 2. Direct gtag fallback
+    // 2. Direct gtag fallback (com transport_type beacon para resiliência a transições de tela)
     if (typeof gtag === 'function') {
       // Não enviar 'session_id' (parâmetro interno do gtag/GA4, espera valor numérico) nem 'timestamp'
       gtag('event', eventName, {
         client_session_ref: this.sessionId,
+        transport_type: 'beacon',
         ...enrichedParams
       });
     }
@@ -199,7 +201,7 @@ class AnalyticsManager {
     });
   }
 
-  trackBookingCompleted(bookingId, professionalId, serviceId, amount) {
+  trackBookingCompleted(bookingId, professionalId, serviceId, amount, paymentMethod = 'pix') {
     if (!bookingId) return;
 
     // Deduplicação para garantir que cada reserva/pacote dispare apenas uma conversão por sessão
@@ -213,38 +215,48 @@ class AnalyticsManager {
     this.completedBookings.add(dedupeKey);
 
     const safeAmount = Number(amount) || 0;
+    const safeMethod = String(paymentMethod || 'pix').toLowerCase();
+    const safeService = String(serviceId || 'consulta');
+    const safeProfessional = String(professionalId || 'clinic');
 
-    // GA4 Custom Funnel Step 6
+    // GA4 Custom Event (retrocompatibilidade com funil legado)
     this.trackEvent('booking_completed', {
       event_category: 'Conversion',
       booking_id: dedupeKey,
       transaction_id: dedupeKey,
+      payment_method: safeMethod,
+      service_id: safeService,
+      professional_id: safeProfessional,
       value: safeAmount,
-      currency: 'BRL',
-      custom_parameter_1: professionalId,
-      custom_parameter_2: serviceId
+      currency: 'BRL'
     });
 
     try {
       this.trackFunnelStep('booking', 6, {
         step_name: 'booking_completed',
         booking_id: dedupeKey,
+        payment_method: safeMethod,
         value: safeAmount
       });
     } catch (funnelErr) {
       console.warn('trackFunnelStep 6 error (non-critical):', funnelErr);
     }
 
-    // Enhanced ecommerce purchase event
+    // Enhanced ecommerce purchase event (Etapa 6 canônica do Funil GA4)
     if (typeof gtag === 'function') {
       gtag('event', 'purchase', {
         transaction_id: dedupeKey,
+        booking_id: dedupeKey,
+        payment_method: safeMethod,
+        service_id: safeService,
+        professional_id: safeProfessional,
         value: safeAmount,
         currency: 'BRL',
+        transport_type: 'beacon',
         items: [{
-          item_id: String(serviceId || 'consulta'),
+          item_id: safeService,
           item_name: 'Consulta Psicológica',
-          category: 'Healthcare',
+          item_category: 'Healthcare',
           quantity: 1,
           price: safeAmount
         }]

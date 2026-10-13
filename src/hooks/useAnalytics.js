@@ -122,8 +122,8 @@ export const useBookingTracking = () => {
   }, []);
 
   const trackBookingCompleted = useCallback((bookingData) => {
-    const { id, professionalId, serviceId, amount } = bookingData;
-    analytics.trackBookingCompleted(id, professionalId, serviceId, amount);
+    const { id, professionalId, serviceId, amount, paymentMethod } = bookingData;
+    analytics.trackBookingCompleted(id, professionalId, serviceId, amount, paymentMethod);
   }, []);
 
   const trackBookingAbandonment = useCallback((step, reason) => {

@@ -396,8 +396,9 @@ const CheckoutDirectPage = () => {
                                 analytics.trackBookingCompleted(
                                     bookingId || packageId,
                                     booking?.professional_id || packageData?.professional_id,
-                                    booking?.service_id || 'credit_card',
-                                    checkoutTotal
+                                    booking?.service_id || 'consulta',
+                                    checkoutTotal,
+                                    'credit_card'
                                 );
                             } catch (trackErr) {
                                 console.warn('CheckoutDirectPage.analytics completion error', trackErr);
