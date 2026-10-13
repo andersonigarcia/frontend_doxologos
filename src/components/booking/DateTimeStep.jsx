@@ -131,6 +131,19 @@ const DateTimeStep = ({
     console.log(`Nenhuma data disponível encontrada para "${pickName}" nos próximos ${maxDaysToCheck} dias`);
   };
 
+  // Handler de seleção de dia com auto-scroll suave para horários no mobile
+  const handleSelectDay = (dateString) => {
+    onSelectDate?.(dateString);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setTimeout(() => {
+        const timesSection = document.getElementById('available-times-section') || document.getElementById('available-times-label');
+        if (timesSection) {
+          timesSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    }
+  };
+
   // Group times by period
   const groupTimesByPeriod = (times) => {
     const periods = {
@@ -165,7 +178,7 @@ const DateTimeStep = ({
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-4 sm:p-8 pb-32 sm:pb-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold mb-3 flex items-center justify-center">
           <Clock className="w-8 h-8 mr-3 text-[#2d8659]" />Escolha Data e Horário
@@ -257,14 +270,14 @@ const DateTimeStep = ({
       </div>
 
       {/* Carrinho de Agendamento Múltiplo / Pacote de Sessões */}
-      <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 rounded-xl border-2 border-emerald-300/70 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-emerald-200/60">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-emerald-600 text-white rounded-lg shrink-0 mt-0.5">
-              <Sparkles className="w-5 h-5" aria-hidden="true" />
+      <div className={`mb-6 p-3 sm:p-4 bg-gradient-to-r from-emerald-50 via-teal-50 to-indigo-50 rounded-xl border-2 border-emerald-300/70 shadow-sm ${selectedSlots.length === 0 ? 'py-3' : ''}`}>
+        <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 ${selectedSlots.length > 0 ? 'mb-3 pb-3 border-b border-emerald-200/60' : ''}`}>
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 sm:p-2 bg-emerald-600 text-white rounded-lg shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2">
                 Agendamento Múltiplo (Pacote de Sessões)
                 {selectedSlots.length > 0 && (
                   <span className="px-2 py-0.5 text-xs font-extrabold bg-emerald-600 text-white rounded-full">
@@ -272,9 +285,15 @@ const DateTimeStep = ({
                   </span>
                 )}
               </h3>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Selecione uma ou mais datas/horários para garantir sua agenda inteira com pagamento único.
-              </p>
+              {selectedSlots.length > 0 ? (
+                <p className="text-xs text-gray-600 mt-0.5">
+                  Selecione uma ou mais datas/horários para garantir sua agenda inteira com pagamento único.
+                </p>
+              ) : (
+                <p className="text-xs text-gray-600 hidden sm:block mt-0.5">
+                  Selecione uma ou mais datas/horários para garantir sua agenda inteira com pagamento único.
+                </p>
+              )}
             </div>
           </div>
           {selectedSlots.length > 0 && (
@@ -386,8 +405,8 @@ const DateTimeStep = ({
                   <motion.button
                     key={dateString}
                     type="button"
-                    onClick={() => !disabled && onSelectDate?.(dateString)}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && onSelectDate?.(dateString)}
+                    onClick={() => !disabled && handleSelectDay(dateString)}
+                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && handleSelectDay(dateString)}
                     disabled={disabled}
                     aria-label={`Dia ${date.getDate()} de ${currentMonth.toLocaleDateString('pt-BR', { month: 'long' })}${isToday ? ', Hoje' : ''}${disabled ? ', indisponível' : ''}`}
                     aria-selected={isSelected}
@@ -429,7 +448,7 @@ const DateTimeStep = ({
           </div>
         </div>
 
-        <div className="flex flex-col">
+        <div className="flex flex-col" id="available-times-section">
           {selectedDate ? (
             <>
               <div className="mb-4">

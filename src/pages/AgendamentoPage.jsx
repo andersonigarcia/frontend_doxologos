@@ -216,6 +216,7 @@ const AgendamentoPage = () => {
     setShowConfirmPassword,
     toggleExistingPatient,
     handlePasswordResetRequest,
+    trigger,
     // Novos estados de validação de email
     isCheckingEmail,
     emailExists,
@@ -388,75 +389,122 @@ const AgendamentoPage = () => {
   };
 
   const handleProceedToSummary = async () => {
-    // Se for novo paciente deslogado, validar senha e confirmação antes de prosseguir
-    if (!authUser && !isExistingPatient) {
-      if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
-        setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+    // Se o usuário não estiver autenticado, validar campos essenciais
+    if (!authUser) {
+      if (!patientData.email || patientData.email.trim() === '') {
         toast({
           variant: 'destructive',
-          title: 'Senha muito curta',
-          description: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a área do paciente.`
+          title: 'E-mail obrigatório',
+          description: 'Por favor, informe seu e-mail para receber as instruções e confirmação da consulta.'
         });
         return;
       }
 
-      if (patientData.password !== patientData.confirmPassword) {
-        setPasswordError('As senhas precisam ser iguais.');
+      if (emailError) {
         toast({
           variant: 'destructive',
-          title: 'Senhas não conferem',
-          description: 'Digite a mesma senha nos dois campos para continuar.'
-        });
-        return;
-      }
-    }
-
-    // Se for paciente existente, validar senha antes de prosseguir
-    if (!authUser && isExistingPatient) {
-      if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
-        setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
-        toast({
-          variant: 'destructive',
-          title: 'Senha muito curta',
-          description: `Informe uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+          title: 'E-mail inválido',
+          description: typeof emailError === 'string' ? emailError : 'Por favor, insira um endereço de e-mail válido.'
         });
         return;
       }
 
-      // Tentar autenticar para validar a senha
-      try {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: patientData.email,
-          password: patientData.password
-        });
-
-        if (signInError) {
-          console.error('Erro ao validar senha do paciente existente:', signInError);
-          setPasswordError('Senha incorreta. Verifique sua senha ou utilize a opção de recuperação.');
+      if (!isExistingPatient) {
+        if (!patientData.name || patientData.name.trim() === '') {
           toast({
             variant: 'destructive',
-            title: 'Senha incorreta',
-            description: 'A senha informada não está correta. Tente novamente ou clique em "Esqueci minha senha".'
+            title: 'Nome completo obrigatório',
+            description: 'Por favor, preencha seu nome completo para identificação no atendimento.'
           });
           return;
         }
 
-        // Senha validada com sucesso
-        setPasswordError('');
-        toast({
-          title: 'Senha validada!',
-          description: 'Suas credenciais foram confirmadas. Prosseguindo para o resumo.'
-        });
-      } catch (error) {
-        console.error('Erro ao validar senha:', error);
-        setPasswordError('Erro ao validar senha. Tente novamente.');
-        toast({
-          variant: 'destructive',
-          title: 'Erro na validação',
-          description: 'Não foi possível validar sua senha. Tente novamente.'
-        });
-        return;
+        if (!patientData.phone || patientData.phone.trim() === '') {
+          toast({
+            variant: 'destructive',
+            title: 'Telefone/WhatsApp obrigatório',
+            description: 'Por favor, informe seu número para receber lembretes e o link da sessão.'
+          });
+          return;
+        }
+
+        if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+          setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+          toast({
+            variant: 'destructive',
+            title: 'Senha muito curta',
+            description: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a área do paciente.`
+          });
+          return;
+        }
+
+        if (patientData.password !== patientData.confirmPassword) {
+          setPasswordError('As senhas precisam ser iguais.');
+          toast({
+            variant: 'destructive',
+            title: 'Senhas não conferem',
+            description: 'Digite a mesma senha nos dois campos para continuar.'
+          });
+          return;
+        }
       }
+
+      // Se for paciente existente, validar senha antes de prosseguir
+      if (isExistingPatient) {
+        if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+          setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+          toast({
+            variant: 'destructive',
+            title: 'Senha muito curta',
+            description: `Informe uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+          });
+          return;
+        }
+
+        // Tentar autenticar para validar a senha
+        try {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: patientData.email,
+            password: patientData.password
+          });
+
+          if (signInError) {
+            console.error('Erro ao validar senha do paciente existente:', signInError);
+            setPasswordError('Senha incorreta. Verifique sua senha ou utilize a opção de recuperação.');
+            toast({
+              variant: 'destructive',
+              title: 'Senha incorreta',
+              description: 'A senha informada não está correta. Tente novamente ou clique em "Esqueci minha senha".'
+            });
+            return;
+          }
+
+          // Senha validada com sucesso
+          setPasswordError('');
+          toast({
+            title: 'Senha validada!',
+            description: 'Suas credenciais foram confirmadas. Prosseguindo para o resumo.'
+          });
+        } catch (error) {
+          console.error('Erro ao validar senha:', error);
+          setPasswordError('Erro ao validar senha. Tente novamente.');
+          toast({
+            variant: 'destructive',
+            title: 'Erro na validação',
+            description: 'Não foi possível validar sua senha. Tente novamente.'
+          });
+          return;
+        }
+      }
+    }
+
+    if (!hasScheduleSelection) {
+      toast({
+        variant: 'destructive',
+        title: 'Horário não selecionado',
+        description: 'Por favor, selecione um profissional, data e horário antes de avançar.'
+      });
+      return;
     }
 
     // Se chegou aqui, pode prosseguir
@@ -1423,8 +1471,7 @@ const AgendamentoPage = () => {
               </Button>
               <Button
                 onClick={handleProceedToSummary}
-                disabled={!canProceedToSummary}
-                className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-[#2d8659] hover:bg-[#236b47] text-white active:scale-95"
               >
                 Continuar
               </Button>
@@ -1711,24 +1758,20 @@ const AgendamentoPage = () => {
             <Button
               onClick={async () => {
                 if (step === 1 && selectedService) {
+                  if (!bookingStartTrackedRef.current) {
+                    bookingStartTrackedRef.current = true;
+                    try { trackBookingStart(); } catch (e) { /* ignore */ }
+                  }
+                  trackBookingStep(2, { step_name: 'professional_selected', professionalId: selectedProfessional, serviceId: selectedService });
                   setStep(2);
                 } else if (step === 2 && selectedProfessional) {
+                  trackBookingStep(3, { step_name: 'datetime_step', professionalId: selectedProfessional, serviceId: selectedService });
                   setStep(3);
                 } else if (step === 3 && (selectedSlots.length > 0 || (selectedDate && selectedTime))) {
+                  trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService });
                   setStep(4);
                 } else if (step === 4) {
-                  if (canProceedToSummary) {
-                    handleProceedToSummary();
-                  } else {
-                    const valid = await trigger();
-                    if (!valid) {
-                      toast({
-                        variant: 'destructive',
-                        title: 'Complete seus dados',
-                        description: 'Por favor, informe seu nome, e-mail e telefone para podermos confirmar seu agendamento.',
-                      });
-                    }
-                  }
+                  await handleProceedToSummary();
                 }
               }}
               disabled={(
@@ -1736,7 +1779,7 @@ const AgendamentoPage = () => {
                 (step === 2 && !selectedProfessional) ||
                 (step === 3 && selectedSlots.length === 0 && (!selectedDate || !selectedTime))
               )}
-              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold shadow-md flex items-center justify-center gap-1"
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold shadow-md flex items-center justify-center gap-1 active:scale-95"
             >
               {step === 4 ? 'Avançar para Pagamento' : 'Continuar'} <ChevronRight className="w-5 h-5 ml-1" />
             </Button>
