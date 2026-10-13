@@ -37,7 +37,7 @@
 * **Profissionais (`professionals`):** [`src/services/professionalService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/professionalService.js)
   * RPC prioritário para e-mails: `admin_list_users` no Postgres.
 * **Agendamentos (`bookings`):** [`src/services/bookingService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/bookingService.js)
-  * Coluna real de horário: `booking_time`. Status válidos: `pending`, `confirmed`, `completed`, `cancelled`.
+  * Coluna real de horário: `booking_time` (estritamente VARCHAR(5), formato 'HH:mm'). Status válidos: `pending_payment`, `pending`, `confirmed`, `completed`, `cancelled`, `paid`.
 * **Pagamentos (`payments`):** [`src/services/paymentService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/paymentService.js)
   * SSOT Mercado Pago, whitelisting de 39 colunas, busca por `mp_payment_id` e atualização atômica de status.
 * **Pacientes & Prontuários (`patient_notes`):** [`src/services/patientService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/patientService.js)

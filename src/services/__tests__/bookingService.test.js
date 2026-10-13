@@ -54,7 +54,7 @@ describe('bookingService — Domain Service Tests', () => {
       expect(sanitized.patient_email).toBe('joao@teste.com');
       expect(sanitized.patient_phone).toBe('(11) 99999-9999');
       expect(sanitized.booking_date).toBe('2026-10-15');
-      expect(sanitized.booking_time).toBe('14:30:00');
+      expect(sanitized.booking_time).toBe('14:30');
       expect(sanitized.valor_consulta).toBe(150);
       expect(sanitized.status).toBe('pending_payment');
 
@@ -63,6 +63,17 @@ describe('bookingService — Domain Service Tests', () => {
       expect(sanitized.service_name).toBeUndefined();
       expect(sanitized.professional_name).toBeUndefined();
       expect(sanitized.unknown_metadata).toBeUndefined();
+    });
+
+    it('deve formatar booking_time estritamente em HH:mm (VARCHAR 5) prevenindo estouro de schema', () => {
+      // 8 caracteres com segundos
+      expect(sanitizeBookingPayload({ booking_time: '21:00:00' }).booking_time).toBe('21:00');
+      // 5 caracteres padrão
+      expect(sanitizeBookingPayload({ booking_time: '21:00' }).booking_time).toBe('21:00');
+      // 4 caracteres sem zero à esquerda
+      expect(sanitizeBookingPayload({ booking_time: '9:00' }).booking_time).toBe('09:00');
+      // Vazio ou omitido
+      expect(sanitizeBookingPayload({}).booking_time).toBeUndefined();
     });
 
     it('deve preservar status válido quando fornecido', () => {
@@ -250,7 +261,7 @@ describe('bookingService — Domain Service Tests', () => {
       expect(updateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           booking_date: '2026-11-01',
-          booking_time: '10:00:00',
+          booking_time: '10:00',
           reschedule_count: 1
         })
       );

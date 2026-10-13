@@ -1036,6 +1036,17 @@ const AgendamentoPage = () => {
         }
       }
 
+      if (!userId) {
+        console.error('❌ [handleBooking] user_id não disponível para associar ao agendamento.');
+        toast({
+          variant: 'destructive',
+          title: 'Sessão não identificada',
+          description: 'Não foi possível autenticar sua conta. Por favor, confirme seus dados ou faça login para prosseguir.'
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       secureLog.info('[handleBooking] Buscando detalhes do serviço...');
 
       // 3. Get service details to capture current price
@@ -1105,10 +1116,8 @@ const AgendamentoPage = () => {
         secureLog.info('Link Google Meet do profissional utilizado:', personalLink || 'Nenhum link cadastrado');
       }
 
-      // Adicionar user_id se disponível
-      if (userId) {
-        bookingData.user_id = userId;
-      }
+      // Adicionar user_id (obrigatório na tabela bookings)
+      bookingData.user_id = userId;
 
       secureLog.info('[handleBooking] bookingData preparado:', {
         ...bookingData,

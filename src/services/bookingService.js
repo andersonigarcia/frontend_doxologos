@@ -69,9 +69,13 @@ export function sanitizeBookingPayload(rawData = {}) {
       if (['patient_name', 'patient_email', 'patient_phone'].includes(field)) {
         sanitized[field] = value !== null ? String(value).trim() : null;
       } else if (field === 'booking_time') {
-        const timeStr = String(value || '').trim();
-        // Preserva HH:mm ou HH:mm:ss
-        sanitized[field] = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+        let timeStr = String(value || '').trim();
+        if (/^\d:\d\d/.test(timeStr)) {
+          timeStr = `0${timeStr}`;
+        }
+        // A coluna booking_time no PostgreSQL é VARCHAR(5), aceitando estritamente 'HH:mm'.
+        // Trunca segundos se fornecidos (ex: '21:00:00' -> '21:00') para evitar erro Postgres 22001 (value too long)
+        sanitized[field] = timeStr.length > 5 ? timeStr.slice(0, 5) : timeStr;
       } else if (field === 'status') {
         sanitized[field] = value || 'pending_payment';
       } else if (['reschedule_count', 'valor_consulta', 'valor_repasse_profissional'].includes(field)) {
@@ -258,7 +262,11 @@ export async function rescheduleBooking(id, { newDate, newTime, attemptsUsed = 0
 
   const nextCount = attemptsUsed + 1;
   const rootId = rescheduledFromId || id;
-  const timeFormatted = newTime.length === 5 ? `${newTime}:00` : newTime;
+  let timeFormatted = String(newTime || '').trim();
+  if (/^\d:\d\d/.test(timeFormatted)) {
+    timeFormatted = `0${timeFormatted}`;
+  }
+  timeFormatted = timeFormatted.length > 5 ? timeFormatted.slice(0, 5) : timeFormatted;
 
   const { data, error } = await supabase
     .from('bookings')
