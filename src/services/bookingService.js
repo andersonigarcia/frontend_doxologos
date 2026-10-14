@@ -222,10 +222,15 @@ export async function updateBookingStatus(id, newStatus, { notify = false, booki
         id,
         patient_name: info.patient_name,
         patient_email: info.patient_email,
+        patient_phone: info.patient_phone,
         booking_date: info.booking_date,
         booking_time: info.booking_time,
         service_name: info.service?.name || 'Consulta',
-        professional_name: info.professional?.name || 'Profissional'
+        professional_name: info.professional?.name || 'Profissional',
+        professional_id: info.professional_id || info.professional?.id,
+        user_id: info.professional?.user_id,
+        professional_email: info.professional?.email,
+        meeting_link: info.meeting_link
       };
 
       if (newStatus === 'confirmed' || newStatus === 'paid') {

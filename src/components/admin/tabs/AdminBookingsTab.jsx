@@ -467,13 +467,20 @@ export function AdminBookingsTab({
                 }
 
                 try {
+                    const targetProfId = isAdminView ? bookingEditData.professional_id : editingBooking.professional_id;
+                    const profObj = professionals.find(p => p.id === targetProfId);
                     const emailData = {
                         patient_name: bookingEditData.patient_name,
                         patient_email: bookingEditData.patient_email,
+                        patient_phone: bookingEditData.patient_phone || editingBooking?.patient_phone,
                         booking_date: bookingEditData.booking_date,
                         booking_time: bookingEditData.booking_time,
                         service_name: selectedService?.name || 'Consulta',
-                        professional_name: professionals.find(p => p.id === (isAdminView ? bookingEditData.professional_id : editingBooking.professional_id))?.name || 'Profissional'
+                        professional_name: profObj?.name || 'Profissional',
+                        professional_id: targetProfId,
+                        user_id: profObj?.user_id,
+                        professional_email: profObj?.email,
+                        meeting_link: bookingEditData.meeting_link || editingBooking?.meeting_link
                     };
 
                     if (statusChanged && (bookingEditData.status === 'confirmed' || bookingEditData.status === 'paid')) {

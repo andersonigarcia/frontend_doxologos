@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
         // Quando MP aprova imediatamente (sem aguardar webhook), dispara
         // emails de confirmação agora. Fire-and-forget.
         if (isApprovedNow) {
-          const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'false').toLowerCase() === 'true';
+          const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'true').toLowerCase() !== 'false';
           if (orchestratorEnabled) {
             const orchUrl = `${SUPABASE_URL}/functions/v1/post-payment-orchestrator`;
             fetch(orchUrl, {

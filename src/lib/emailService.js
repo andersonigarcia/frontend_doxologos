@@ -39,7 +39,7 @@ class EmailService {
   }
 
 
-  async sendEmail({ to, subject, html, replyTo = null, cc = null, attachments = null, type = 'notification' }) {
+  async sendEmail({ to, subject, html, replyTo = null, cc = null, attachments = null, type = 'notification', professional_id = null, user_id = null }) {
     if (!this.enabled) {
       console.log('⚠️ Emails desabilitados');
       return { success: true, messageId: 'disabled', disabled: true };
@@ -49,7 +49,7 @@ class EmailService {
 
     try {
       console.log('📧 Enviando email via Supabase Edge Function:', {
-        to, cc, subject: cleanSubject, type,
+        to, professional_id, user_id, cc, subject: cleanSubject, type,
         hasAttachments: !!attachments && attachments.length > 0
       });
 
@@ -60,6 +60,14 @@ class EmailService {
         html,
         replyTo: replyTo || this.fromEmail
       };
+
+      if (professional_id) {
+        emailPayload.professional_id = professional_id;
+      }
+
+      if (user_id) {
+        emailPayload.user_id = user_id;
+      }
 
       // Adiciona CC se fornecido
       if (cc) {

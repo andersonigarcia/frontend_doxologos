@@ -1443,6 +1443,8 @@ const AgendamentoPage = () => {
         secureLog.info('Enviando email de confirmação para o profissional...');
         await emailManager.sendProfessionalConfirmation({
           ...bookingDetails,
+          professional_id: selectedProfessional,
+          user_id: professionalDetails?.user_id,
           professional_email: professionalDetails?.email
         });
 
@@ -1452,6 +1454,8 @@ const AgendamentoPage = () => {
           secureLog.info('Enviando notificação URGENTE para profissional e backoffice...');
           await emailManager.sendUrgentProfessionalNotification({
             ...bookingDetails,
+            professional_id: selectedProfessional,
+            user_id: professionalDetails?.user_id,
             professional_email: professionalDetails?.email
           });
         }

@@ -655,7 +655,7 @@ serve(async (req: Request) => {
           // Falha aqui NÃO impede o webhook de retornar 200.
           // Controlado por variável de ambiente POST_PAYMENT_ORCHESTRATOR.
           if (newStatus === 'confirmed') {
-            const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'false').toLowerCase() === 'true';
+            const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'true').toLowerCase() !== 'false';
             if (orchestratorEnabled) {
               supabase.functions.invoke('post-payment-orchestrator', {
                 body: { booking_id: bookingId }

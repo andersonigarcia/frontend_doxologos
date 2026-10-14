@@ -160,7 +160,7 @@ Deno.serve(async (req: Request) => {
             result.action = 'confirm_failed';
           } else {
             // Invocar Orchestrator para notificação
-            const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'false').toLowerCase() === 'true';
+            const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'true').toLowerCase() !== 'false';
             if (orchestratorEnabled) {
               const { error: orchErr } = await supabase.functions.invoke('post-payment-orchestrator', {
                 body: { booking_id: booking.id }

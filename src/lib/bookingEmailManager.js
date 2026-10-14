@@ -64,10 +64,12 @@ class BookingEmailManager {
    */
   async sendProfessionalConfirmation(bookingData) {
     try {
-      const professionalEmail = bookingData.professional_email || bookingData.professional?.email;
+      const professionalEmail = (bookingData.professional_email || bookingData.professional?.email || '').trim();
+      const professionalId = bookingData.professional_id || bookingData.professional?.id;
+      const userId = bookingData.user_id || bookingData.professional?.user_id;
 
-      if (!professionalEmail) {
-        logger.error('❌ Email do profissional ausente para confirmação de agendamento', { bookingId: bookingData.id });
+      if (!professionalEmail && !professionalId && !userId) {
+        logger.error('❌ Identificação do profissional ausente para confirmação de agendamento', { bookingId: bookingData.id });
         return { success: false, error: 'missing_professional_email' };
       }
 
@@ -84,7 +86,9 @@ class BookingEmailManager {
       });
 
       const emailConfig = {
-        to: professionalEmail,
+        to: professionalEmail || null,
+        professional_id: professionalId,
+        user_id: userId,
         subject: `📅 Nova Consulta Agendada: ${bookingData.patient_name} - Doxologos`,
         html,
         type: 'professional_booking_confirmation'
@@ -93,7 +97,7 @@ class BookingEmailManager {
       const result = await this.emailService.sendEmail(emailConfig);
 
       if (result.success) {
-        logger.success('📧 Email de confirmação enviado ao profissional', { to: professionalEmail });
+        logger.success('📧 Email de confirmação enviado ao profissional', { to: professionalEmail || `prof_id:${professionalId}` });
       }
       return result;
     } catch (error) {
@@ -164,6 +168,16 @@ class BookingEmailManager {
       if (result.success) {
         logger.success('📧 Email de pagamento aprovado enviado', { to: bookingData.patient_email });
       }
+
+      // Notificar o profissional caso ainda não tenha sido
+      if (bookingData.professional_email || bookingData.professional_id || bookingData.professional?.id || bookingData.user_id) {
+        try {
+          await this.sendProfessionalConfirmation(bookingData);
+        } catch (profNotifErr) {
+          logger.warn('⚠️ Falha não-crítica ao notificar profissional sobre pagamento aprovado:', profNotifErr);
+        }
+      }
+
       return result;
     } catch (error) {
       logger.error('❌ Erro ao enviar pagamento aprovado', error);
@@ -332,10 +346,12 @@ class BookingEmailManager {
    */
   async sendProfessionalReminder2Hours(bookingData, sendCopy = false) {
     try {
-      const professionalEmail = bookingData.professional_email || bookingData.professional?.email;
+      const professionalEmail = (bookingData.professional_email || bookingData.professional?.email || '').trim();
+      const professionalId = bookingData.professional_id || bookingData.professional?.id;
+      const userId = bookingData.user_id || bookingData.professional?.user_id;
 
-      if (!professionalEmail) {
-        logger.error('❌ Email do profissional ausente para lembrete 2h', { bookingId: bookingData.id });
+      if (!professionalEmail && !professionalId && !userId) {
+        logger.error('❌ Identificação do profissional ausente para lembrete 2h', { bookingId: bookingData.id });
         return { success: false, error: 'missing_professional_email' };
       }
 
@@ -351,7 +367,9 @@ class BookingEmailManager {
       });
 
       const emailConfig = {
-        to: professionalEmail,
+        to: professionalEmail || null,
+        professional_id: professionalId,
+        user_id: userId,
         subject: `⏰ LEMBRETE: Consulta em 2 horas - ${bookingData.patient_name} - Doxologos`,
         html,
         type: 'professional_reminder_2h'
@@ -364,7 +382,7 @@ class BookingEmailManager {
       const result = await this.emailService.sendEmail(emailConfig);
 
       if (result.success) {
-        logger.success('📧 Email de lembrete 2h enviado para profissional', { to: professionalEmail });
+        logger.success('📧 Email de lembrete 2h enviado para profissional', { to: professionalEmail || `prof_id:${professionalId}` });
       }
       return result;
     } catch (error) {
@@ -446,10 +464,12 @@ class BookingEmailManager {
    */
   async sendUrgentProfessionalNotification(bookingData) {
     try {
-      const professionalEmail = bookingData.professional_email || bookingData.professional?.email;
+      const professionalEmail = (bookingData.professional_email || bookingData.professional?.email || '').trim();
+      const professionalId = bookingData.professional_id || bookingData.professional?.id;
+      const userId = bookingData.user_id || bookingData.professional?.user_id;
 
-      if (!professionalEmail) {
-        logger.error('❌ Email do profissional ausente para aviso urgente', { bookingId: bookingData.id });
+      if (!professionalEmail && !professionalId && !userId) {
+        logger.error('❌ Identificação do profissional ausente para aviso urgente', { bookingId: bookingData.id });
         return { success: false, error: 'missing_professional_email' };
       }
 
@@ -463,7 +483,9 @@ class BookingEmailManager {
       });
 
       const emailConfig = {
-        to: professionalEmail,
+        to: professionalEmail || null,
+        professional_id: professionalId,
+        user_id: userId,
         cc: this.emailService.backofficeEmail, // Sempre com cópia ao Backoffice
         subject: `🚨 [URGENTE] Consulta Agendada para HOJE às ${bookingData.appointment_time || bookingData.booking_time}`,
         html,
@@ -472,7 +494,7 @@ class BookingEmailManager {
 
       const result = await this.emailService.sendEmail(emailConfig);
       if (result.success) {
-        logger.success('📧 Email urgente enviado para profissional e backoffice', { to: professionalEmail });
+        logger.success('📧 Email urgente enviado para profissional e backoffice', { to: professionalEmail || `prof_id:${professionalId}` });
       }
       return result;
     } catch (error) {

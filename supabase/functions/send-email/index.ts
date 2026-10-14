@@ -1,6 +1,7 @@
 // Supabase Edge Function para envio de e-mails via SMTP Hostinger
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,7 +15,38 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html, from, replyTo, cc } = await req.json();
+    let { to, subject, html, from, replyTo, cc, professional_id, user_id } = await req.json();
+
+    // Fallback: Se "to" estiver ausente ou vazio, resolver via professional_id ou user_id
+    if (!to && (professional_id || user_id)) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (supabaseUrl && supabaseServiceKey) {
+          const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+          let targetUserId = user_id;
+
+          if (!targetUserId && professional_id) {
+            const { data: prof } = await supabaseAdmin
+              .from('professionals')
+              .select('user_id')
+              .eq('id', professional_id)
+              .maybeSingle();
+            targetUserId = prof?.user_id;
+          }
+
+          if (targetUserId) {
+            const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(targetUserId);
+            if (authUser?.user?.email) {
+              to = authUser.user.email;
+              console.log(`[send-email] Destinatário resolvido via Auth para: ${to}`);
+            }
+          }
+        }
+      } catch (lookupErr) {
+        console.warn('[send-email] Falha ao resolver destinatário por ID:', lookupErr);
+      }
+    }
 
     // Validar dados obrigatórios
     if (!to || !subject || !html) {
@@ -85,7 +117,7 @@ serve(async (req) => {
     console.log(" Email enviado com sucesso");
 
     return new Response(
-      JSON.stringify({ success: true, messageId: ${Date.now()} }),
+      JSON.stringify({ success: true, messageId: String(Date.now()) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

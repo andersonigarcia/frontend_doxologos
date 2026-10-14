@@ -231,7 +231,7 @@ Deno.serve(async (req: Request) => {
         booking_date, booking_time, meeting_link,
         notification_sent_at, notification_status,
         professional_id,
-        professional:professionals (id, name, email, phone, whatsapp, personal_meet_link)
+        professional:professionals (id, name, user_id, phone, whatsapp, personal_meet_link)
       `)
       .eq('id', booking_id)
       .single();
@@ -344,7 +344,20 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── 5. Email para o PROFISSIONAL ──────────────────────────────────────
-    const profEmail = professional?.email;
+    let profEmail = professional?.email || null;
+    if (!profEmail && professional?.user_id) {
+      try {
+        const { data: authUser, error: authErr } = await supabase.auth.admin.getUserById(professional.user_id);
+        if (!authErr && authUser?.user?.email) {
+          profEmail = authUser.user.email;
+        } else if (authErr) {
+          console.warn(`[Orchestrator] Falha ao buscar email do profissional (${professional.user_id}) no Auth:`, authErr);
+        }
+      } catch (authEx) {
+        console.warn(`[Orchestrator] Exceção ao buscar auth user do profissional:`, authEx);
+      }
+    }
+
     if (profEmail) {
       try {
         const profHtml = buildProfessionalConfirmationEmail(booking, professional);
@@ -381,7 +394,7 @@ Deno.serve(async (req: Request) => {
         results.professional_email = 'error';
       }
     } else {
-      console.warn('[Orchestrator] Profissional sem email cadastrado.');
+      console.warn(`[Orchestrator] Profissional sem email cadastrado (user_id: ${professional?.user_id}).`);
       results.professional_email = 'skipped_no_email';
     }
 

@@ -431,7 +431,7 @@ serve(async (req: Request) => {
         // Pacote de Sessões — Tomador = Profissional do pacote
         const { data: pkg } = await supabase
           .from('packages')
-          .select('*, professional:professionals(name, cpf, cnpj, email)')
+          .select('*, professional:professionals(name, cpf, cnpj, user_id)')
           .eq('id', targetPackageId)
           .maybeSingle();
 
@@ -443,7 +443,10 @@ serve(async (req: Request) => {
             if (amount <= 0) amount = 30 * (pkg.total_sessions || 1);
           }
           if (!tomadorNome) tomadorNome = pkg.professional?.name || '';
-          if (!tomadorEmail) tomadorEmail = pkg.professional?.email || '';
+          if (!tomadorEmail && pkg.professional?.user_id) {
+            const { data: authUser } = await supabase.auth.admin.getUserById(pkg.professional.user_id);
+            tomadorEmail = authUser?.user?.email || '';
+          }
           if (!tomadorDocument) {
             tomadorDocument = cleanDocument(pkg.professional?.cnpj)
                            || cleanDocument(pkg.professional?.cpf);
@@ -459,7 +462,7 @@ serve(async (req: Request) => {
           .select(`
             id, valor_consulta, valor_repasse_profissional,
             patient_name, booking_date,
-            professional:professionals(name, cpf, cnpj, email)
+            professional:professionals(name, cpf, cnpj, user_id)
           `)
           .eq('id', targetBookingId)
           .maybeSingle();
@@ -472,7 +475,10 @@ serve(async (req: Request) => {
             if (amount <= 0) amount = 30;
           }
           if (!tomadorNome) tomadorNome = booking.professional?.name || '';
-          if (!tomadorEmail) tomadorEmail = booking.professional?.email || '';
+          if (!tomadorEmail && booking.professional?.user_id) {
+            const { data: authUser } = await supabase.auth.admin.getUserById(booking.professional.user_id);
+            tomadorEmail = authUser?.user?.email || '';
+          }
           if (!tomadorDocument) {
             tomadorDocument = cleanDocument(booking.professional?.cnpj)
                            || cleanDocument(booking.professional?.cpf);
@@ -488,7 +494,7 @@ serve(async (req: Request) => {
           .select(`
             id, patient_name,
             eventos(titulo, valor, platform_fee_type, platform_fee_value,
-                    professional:professionals(name, cpf, cnpj, email))
+                    professional:professionals(name, cpf, cnpj, user_id))
           `)
           .eq('id', targetInscricaoId)
           .maybeSingle();
@@ -507,7 +513,10 @@ serve(async (req: Request) => {
           }
           const prof = evento?.professional;
           if (!tomadorNome) tomadorNome = prof?.name || '';
-          if (!tomadorEmail) tomadorEmail = prof?.email || '';
+          if (!tomadorEmail && prof?.user_id) {
+            const { data: authUser } = await supabase.auth.admin.getUserById(prof.user_id);
+            tomadorEmail = authUser?.user?.email || '';
+          }
           if (!tomadorDocument) {
             tomadorDocument = cleanDocument(prof?.cnpj) || cleanDocument(prof?.cpf);
           }
