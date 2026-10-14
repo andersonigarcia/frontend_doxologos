@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
@@ -167,19 +167,40 @@ const AgendamentoPage = () => {
     setSelectedSlots((prev) => {
       const exists = prev.some((s) => s.date === slot.date && s.time === slot.time);
       if (exists) {
-        return prev.filter((s) => !(s.date === slot.date && s.time === slot.time));
+        const next = prev.filter((s) => !(s.date === slot.date && s.time === slot.time));
+        if (next.length === 0) {
+          setSelectedTime('');
+        } else {
+          const last = next[next.length - 1];
+          setSelectedDate(last.date);
+          setSelectedTime(last.time);
+        }
+        return next;
       } else {
+        setSelectedDate(slot.date);
+        setSelectedTime(slot.time);
         return [...prev, slot];
       }
     });
   };
 
   const handleRemoveSlot = (index) => {
-    setSelectedSlots((prev) => prev.filter((_, i) => i !== index));
+    setSelectedSlots((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length === 0) {
+        setSelectedTime('');
+      } else {
+        const last = next[next.length - 1];
+        setSelectedDate(last.date);
+        setSelectedTime(last.time);
+      }
+      return next;
+    });
   };
 
   const handleClearSlots = () => {
     setSelectedSlots([]);
+    setSelectedTime('');
   };
 
 
@@ -187,9 +208,10 @@ const AgendamentoPage = () => {
   const [isFirstBooking, setIsFirstBooking] = useState(true);
   const [userName, setUserName] = useState('');
 
-  const { bookedSlots, isLoadingSlots } = useBookedSlots({
+  const { bookedSlots, bookedSlotsByDate, isLoadingSlots } = useBookedSlots({
     professionalId: selectedProfessional,
     date: selectedDate,
+    currentMonth,
     toast,
   });
 
@@ -241,7 +263,11 @@ const AgendamentoPage = () => {
     return services.find((service) => service.id === selectedService) || null;
   }, [selectedService, services]);
 
-  const hasScheduleSelection = Boolean(selectedService && selectedProfessional && selectedDate && selectedTime);
+  const hasScheduleSelection = Boolean(
+    selectedService &&
+    selectedProfessional &&
+    (selectedSlots.length > 0 || (selectedDate && selectedTime))
+  );
 
   const whatsappSupportMessage = 'Olá! Estou no agendamento e tenho uma dúvida.';
   const whatsappSupportLink = `https://wa.me/${whatsappSupportNumber}?text=${encodeURIComponent(whatsappSupportMessage)}`;
@@ -658,10 +684,10 @@ const AgendamentoPage = () => {
     return null;
   };
 
-  const getAvailableTimesForDate = () => {
-    if (!selectedDate || !selectedProfessional || !availability[selectedProfessional]) return [];
+  const getAvailableTimesForDate = useCallback((targetDate = selectedDate, targetBookedSlots = bookedSlots) => {
+    if (!targetDate || !selectedProfessional || !availability[selectedProfessional]) return [];
 
-    const date = new Date(selectedDate + 'T00:00:00');
+    const date = new Date(targetDate + 'T00:00:00');
     const dayOfWeek = date.getUTCDay();
     const selectedMonth = date.getUTCMonth() + 1; // 1-12
     const selectedYear = date.getUTCFullYear();
@@ -692,15 +718,15 @@ const AgendamentoPage = () => {
       );
       if (matchingEntry && Array.isArray(matchingEntry.times)) {
         times = matchingEntry.times;
+      } else if (dayAvailability.length > 0 && typeof dayAvailability[0] === 'string') {
+        times = dayAvailability;
       }
     }
-    // Fallback for old structure (direct array) - for backward compatibility during migration
-    else if (Array.isArray(dayAvailability)) {
-      times = dayAvailability;
-    }
+
+    if (times.length === 0) return [];
 
     // Aplicar bloqueios de data
-    const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === selectedDate);
+    const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === targetDate);
     if (professionalBlockedDates.length > 0) {
       professionalBlockedDates.forEach(block => {
         if (!block.start_time || !block.end_time) { // Dia todo
@@ -710,6 +736,8 @@ const AgendamentoPage = () => {
         }
       });
     }
+
+    if (times.length === 0) return [];
 
     // Filtrar horários baseado na duração do serviço
     if (selectedService) {
@@ -723,13 +751,7 @@ const AgendamentoPage = () => {
           return hours * 60 + minutes;
         };
 
-        // Função para adicionar minutos a um horário
-        const addMinutesToTime = (timeStr, minutes) => {
-          const totalMinutes = timeToMinutes(timeStr) + minutes;
-          const hours = Math.floor(totalMinutes / 60);
-          const mins = totalMinutes % 60;
-          return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-        };
+        const currentBooked = targetBookedSlots || [];
 
         // Filtrar horários que têm espaço suficiente para o serviço
         times = times.filter(time => {
@@ -737,31 +759,21 @@ const AgendamentoPage = () => {
           const endMinutes = startMinutes + serviceDurationMinutes;
 
           // Verificar se há conflito com agendamentos existentes
-          // Um conflito ocorre se qualquer horário reservado está no intervalo [start, end)
-          const hasConflict = bookedSlots.some(bookedTime => {
+          const hasConflict = currentBooked.some(bookedTime => {
             const bookedMinutes = timeToMinutes(bookedTime);
-            // O horário reservado conflita se está dentro do período do novo serviço
             return bookedMinutes >= startMinutes && bookedMinutes < endMinutes;
           });
 
           if (hasConflict) return false;
 
-          // Verificar se o término do serviço não ultrapassa horários disponíveis
-          // que já estão ocupados
           const sortedTimes = [...times].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
           const currentIndex = sortedTimes.indexOf(time);
 
-          // Para cada slot de tempo entre o início e o fim do serviço,
-          // verificar se está ocupado
           for (let i = currentIndex + 1; i < sortedTimes.length; i++) {
             const nextTime = sortedTimes[i];
             const nextMinutes = timeToMinutes(nextTime);
-
-            // Se o próximo slot está depois do fim do serviço, não há problema
             if (nextMinutes >= endMinutes) break;
-
-            // Se o próximo slot está ocupado e dentro do período do serviço, há conflito
-            if (bookedSlots.includes(nextTime)) {
+            if (currentBooked.includes(nextTime)) {
               return false;
             }
           }
@@ -776,17 +788,55 @@ const AgendamentoPage = () => {
     minAdvanceTime.setHours(minAdvanceTime.getHours() + MIN_BOOKING_ADVANCE_HOURS);
 
     times = times.filter((timeStr) => {
-      const slotDateTime = new Date(`${selectedDate}T${timeStr}:00`);
+      const slotDateTime = new Date(`${targetDate}T${timeStr}:00`);
       return slotDateTime >= minAdvanceTime;
     });
 
     return times;
-  };
+  }, [selectedDate, selectedProfessional, availability, blockedDates, selectedService, services, bookedSlots]);
 
   const availableTimes = useMemo(
-    () => getAvailableTimesForDate(),
-    [selectedDate, selectedProfessional, availability, selectedService, services, bookedSlots, blockedDates]
+    () => getAvailableTimesForDate(selectedDate, bookedSlots),
+    [selectedDate, bookedSlots, getAvailableTimesForDate]
   );
+
+  // Mapear vagas disponíveis para todos os dias do mês visível
+  const availableSlotsCountByDate = useMemo(() => {
+    if (!selectedProfessional || !currentMonth || !availability[selectedProfessional]) return {};
+
+    const map = {};
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysCount = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let d = 1; d <= daysCount; d++) {
+      const dateObj = new Date(year, month, d);
+      if (dateObj < today) continue;
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayBookedSlots = bookedSlotsByDate?.[dateStr] || [];
+      const times = getAvailableTimesForDate(dateStr, dayBookedSlots);
+      if (times.length > 0) {
+        map[dateStr] = times.length;
+      }
+    }
+    return map;
+  }, [selectedProfessional, currentMonth, availability, bookedSlotsByDate, getAvailableTimesForDate]);
+
+  // Auto-selecionar a primeira data com horários livres no mês ao chegar no Step 3
+  useEffect(() => {
+    if (step === 3 && selectedProfessional) {
+      const availableDates = Object.keys(availableSlotsCountByDate).sort();
+      if (availableDates.length > 0) {
+        // Se ainda não escolheu ou se a data atual não tem mais vagas livres
+        if (!selectedDate || !availableSlotsCountByDate[selectedDate]) {
+          setSelectedDate(availableDates[0]);
+          setSelectedTime('');
+        }
+      }
+    }
+  }, [step, selectedProfessional, selectedDate, availableSlotsCountByDate]);
 
   // Funções do calendário
   const getDaysInMonth = (date) => {
@@ -818,15 +868,11 @@ const AgendamentoPage = () => {
     today.setHours(0, 0, 0, 0);
     if (date < today) return true;
 
-    // Verificar se o dia inteiro está bloqueado para o profissional selecionado.
-    // Bloqueios de intervalo (com start_time/end_time) são filtrados nos horários
-    // disponíveis em getAvailableTimesForDate — aqui só desabilitamos dias inteiros.
-    if (selectedProfessional && blockedDates.length > 0) {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const dateStr = `${year}-${month}-${day}`;
+    if (!selectedProfessional) return false;
 
+    // Verificar se o dia inteiro está bloqueado para o profissional
+    if (blockedDates.length > 0) {
+      const dateStr = formatDateToString(date);
       const isFullDayBlocked = blockedDates.some(
         (b) =>
           b.professional_id === selectedProfessional &&
@@ -837,7 +883,9 @@ const AgendamentoPage = () => {
       if (isFullDayBlocked) return true;
     }
 
-    return false;
+    const dateStr = formatDateToString(date);
+    // Desabilita dias que não possuem horários livres
+    return !availableSlotsCountByDate[dateStr];
   };
 
   const formatDateToString = (date) => {
@@ -1431,11 +1479,23 @@ const AgendamentoPage = () => {
             getDaysInMonth={getDaysInMonth}
             formatDateToString={formatDateToString}
             availableTimes={availableTimes}
+            availableSlotsCountByDate={availableSlotsCountByDate}
             bookedSlots={bookedSlots}
             isLoadingTimes={isLoadingSlots}
             topTestimonials={topTestimonials}
             onBack={() => setStep(2)}
-            onNext={() => { trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService }); setStep(4); }}
+            onNext={() => {
+              if (!hasScheduleSelection) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Horário não selecionado',
+                  description: 'Por favor, selecione uma data e horário antes de avançar.'
+                });
+                return;
+              }
+              trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService });
+              setStep(4);
+            }}
           />
         );
 

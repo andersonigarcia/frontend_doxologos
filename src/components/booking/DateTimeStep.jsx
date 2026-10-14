@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +45,7 @@ const DateTimeStep = ({
   getDaysInMonth,
   formatDateToString,
   availableTimes = [],
+  availableSlotsCountByDate = {},
   bookedSlots = [],
   isLoadingTimes,
   topTestimonials = [],
@@ -53,6 +54,13 @@ const DateTimeStep = ({
 }) => {
 
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
+
+  // Datas disponíveis no mês exibido
+  const availableDatesInMonth = useMemo(() => {
+    return Object.keys(availableSlotsCountByDate).sort();
+  }, [availableSlotsCountByDate]);
+
+  const firstAvailableDateInMonth = availableDatesInMonth[0] || null;
 
   // Swipe gesture state
   const [touchStart, setTouchStart] = useState(null);
@@ -167,6 +175,19 @@ const DateTimeStep = ({
   };
 
   const timePeriods = groupTimesByPeriod(availableTimes);
+
+  // Handler com suporte a marcar e desmarcar horário
+  const handleSlotToggle = (time) => {
+    const isSlotSelected = selectedSlots.some((s) => s.date === selectedDate && s.time === time);
+    if (isSlotSelected) {
+      // Ao desmarcar horário, remove do pacote e não reaplica como selectedTime
+      onToggleSlot?.({ date: selectedDate, time });
+    } else {
+      // Ao marcar novo horário
+      onSelectTime?.(time);
+      onToggleSlot?.({ date: selectedDate, time });
+    }
+  };
 
   // Support contact handler
   const handleContactSupport = () => {
@@ -354,6 +375,31 @@ const DateTimeStep = ({
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
 
         <div>
+          {firstAvailableDateInMonth && (
+            <div className="mb-3 px-3 py-2 bg-emerald-50/90 border border-emerald-200/80 rounded-xl flex items-center justify-between text-xs text-emerald-900 shadow-xs">
+              <span className="flex items-center gap-2 font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse" />
+                Próxima data com vagas: <strong className="capitalize">{new Date(`${firstAvailableDateInMonth}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}</strong>
+              </span>
+              <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                {availableSlotsCountByDate[firstAvailableDateInMonth]} {availableSlotsCountByDate[firstAvailableDateInMonth] === 1 ? 'vaga' : 'vagas'}
+              </span>
+            </div>
+          )}
+
+          {availableDatesInMonth.length === 0 && (
+            <div className="mb-3 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
+              <span>Nenhum horário livre em {currentMonth.toLocaleDateString('pt-BR', { month: 'long' })}.</span>
+              <button
+                type="button"
+                onClick={onNextMonth}
+                className="font-bold text-[#2d8659] underline hover:text-[#236b47]"
+              >
+                Ver próximo mês →
+              </button>
+            </div>
+          )}
+
           <div
             ref={calendarRef}
             onTouchStart={onTouchStart}
@@ -400,6 +446,8 @@ const DateTimeStep = ({
                 const isSelected = selectedDate === dateString;
                 const disabled = isDateDisabled(date);
                 const isToday = date.toDateString() === new Date().toDateString();
+                const availableCount = availableSlotsCountByDate[dateString] || 0;
+                const hasSlots = availableCount > 0;
 
                 return (
                   <motion.button
@@ -408,23 +456,28 @@ const DateTimeStep = ({
                     onClick={() => !disabled && handleSelectDay(dateString)}
                     onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && handleSelectDay(dateString)}
                     disabled={disabled}
-                    aria-label={`Dia ${date.getDate()} de ${currentMonth.toLocaleDateString('pt-BR', { month: 'long' })}${isToday ? ', Hoje' : ''}${disabled ? ', indisponível' : ''}`}
+                    aria-label={`Dia ${date.getDate()} de ${currentMonth.toLocaleDateString('pt-BR', { month: 'long' })}${isToday ? ', Hoje' : ''}${hasSlots ? `, ${availableCount} horários disponíveis` : ', sem horários'}`}
                     aria-selected={isSelected}
                     aria-disabled={disabled}
                     role="gridcell"
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all ${disabled
-                      ? 'text-gray-300 cursor-not-allowed bg-gray-50'
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all relative ${disabled
+                      ? 'text-gray-300 cursor-not-allowed bg-gray-50/60 border border-transparent'
                       : isSelected
-                        ? 'bg-[#2d8659] text-white shadow-lg scale-105'
+                        ? 'bg-[#2d8659] text-white shadow-lg scale-105 font-bold ring-2 ring-[#2d8659] ring-offset-1'
                         : isToday
-                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200'
-                          : 'text-gray-700 hover:bg-[#2d8659]/10 hover:scale-105 border border-gray-200'
+                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200 font-bold'
+                          : 'text-gray-800 hover:bg-[#2d8659]/10 hover:border-[#2d8659] border border-gray-200 bg-white shadow-xs'
                       }`}
                     whileHover={!disabled ? { scale: 1.05 } : {}}
                     whileTap={!disabled ? { scale: 0.95 } : {}}
                   >
-                    <span className="text-base">{date.getDate()}</span>
-                    {isToday && !isSelected && <span className="text-[9px] text-blue-600 font-bold">Hoje</span>}
+                    <span className="text-base leading-none">{date.getDate()}</span>
+                    {isToday && !isSelected && (
+                      <span className="text-[9px] text-blue-600 font-bold leading-none mt-0.5">Hoje</span>
+                    )}
+                    {hasSlots && !isSelected && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1" />
+                    )}
                   </motion.button>
                 );
 
@@ -433,16 +486,16 @@ const DateTimeStep = ({
 
             <div className="flex items-center justify-center gap-4 px-3 py-2 bg-gray-50 border-t text-xs">
               <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 bg-blue-100 border-2 border-blue-400 rounded" />
-                <span className="text-gray-600">Hoje</span>
+                <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                <span className="text-gray-700 font-medium">Com vagas</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 bg-[#2d8659] rounded" />
-                <span className="text-gray-600">Selecionado</span>
+                <div className="w-4 h-4 bg-[#2d8659] rounded flex items-center justify-center text-white text-[10px] font-bold">✓</div>
+                <span className="text-gray-700 font-medium">Selecionado</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-5 h-5 bg-gray-50 rounded border" />
-                <span className="text-gray-600">Disponível</span>
+                <div className="w-4 h-4 bg-gray-100 border border-gray-200 rounded" />
+                <span className="text-gray-400">Sem horários</span>
               </div>
             </div>
           </div>
@@ -522,18 +575,8 @@ const DateTimeStep = ({
                                 <motion.button
                                   key={time}
                                   type="button"
-                                  onClick={() => {
-                                    if (!disabled) {
-                                      onSelectTime?.(time);
-                                      onToggleSlot?.({ date: selectedDate, time });
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
-                                      onSelectTime?.(time);
-                                      onToggleSlot?.({ date: selectedDate, time });
-                                    }
-                                  }}
+                                  onClick={() => !disabled && handleSlotToggle(time)}
+                                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && handleSlotToggle(time)}
                                   disabled={disabled}
                                   role="checkbox"
                                   aria-checked={isSlotSelected}
@@ -577,18 +620,8 @@ const DateTimeStep = ({
                                 <motion.button
                                   key={time}
                                   type="button"
-                                  onClick={() => {
-                                    if (!disabled) {
-                                      onSelectTime?.(time);
-                                      onToggleSlot?.({ date: selectedDate, time });
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
-                                      onSelectTime?.(time);
-                                      onToggleSlot?.({ date: selectedDate, time });
-                                    }
-                                  }}
+                                  onClick={() => !disabled && handleSlotToggle(time)}
+                                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && handleSlotToggle(time)}
                                   disabled={disabled}
                                   role="checkbox"
                                   aria-checked={isSlotSelected}
@@ -632,18 +665,8 @@ const DateTimeStep = ({
                                 <motion.button
                                   key={time}
                                   type="button"
-                                  onClick={() => {
-                                    if (!disabled) {
-                                      onSelectTime?.(time);
-                                      onToggleSlot?.({ date: selectedDate, time });
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if ((e.key === 'Enter' || e.key === ' ') && !disabled) {
-                                      onSelectTime?.(time);
-                                      onToggleSlot?.({ date: selectedDate, time });
-                                    }
-                                  }}
+                                  onClick={() => !disabled && handleSlotToggle(time)}
+                                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && !disabled && handleSlotToggle(time)}
                                   disabled={disabled}
                                   role="checkbox"
                                   aria-checked={isSlotSelected}
@@ -744,9 +767,14 @@ const DateTimeStep = ({
 
       <div className="mt-8 pt-6 border-t flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="text-sm text-gray-600">
-          {selectedSlots.length > 0 ? (
+          {selectedSlots.length > 1 ? (
             <span>
-              Você selecionou <strong className="text-emerald-700">{selectedSlots.length} {selectedSlots.length === 1 ? 'consulta' : 'consultas'}</strong> para o seu pacote.
+              Você selecionou <strong className="text-emerald-700">{selectedSlots.length} consultas</strong> para o seu pacote.
+            </span>
+          ) : selectedSlots.length === 1 ? (
+            <span>
+              Você selecionou <strong>{new Date(`${selectedSlots[0].date}T00:00:00`).toLocaleDateString('pt-BR')}</strong> às{' '}
+              <strong>{selectedSlots[0].time}</strong>
             </span>
           ) : selectedDate && selectedTime ? (
             <span>
