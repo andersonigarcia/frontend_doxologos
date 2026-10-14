@@ -19,7 +19,7 @@ import {
 import { Button } from '@/components/ui/button';
 import AssessmentGauge from './AssessmentGauge';
 import LeadCaptureSection from './LeadCaptureSection';
-import { getSeverityTheme } from '@/lib/assessmentEngine';
+import { getSeverityTheme, getAssessmentBookingLink } from '@/lib/assessmentEngine';
 import analytics from '@/lib/analytics';
 
 const AssessmentResultView = ({
@@ -39,6 +39,7 @@ const AssessmentResultView = ({
     psychoeducation,
   } = result;
   const theme = getSeverityTheme(range?.badgeColor);
+  const bookingLink = getAssessmentBookingLink(assessment, severity);
 
   const clinicPhone = '5511917287583';
   const whatsappText = encodeURIComponent(
@@ -149,7 +150,7 @@ const AssessmentResultView = ({
           {/* CTAs de Ação */}
           <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 print:hidden">
             <Link
-              to={range?.ctaLink || '/agendamento'}
+              to={range?.ctaLink && range.ctaLink !== '/agendamento' ? range.ctaLink : bookingLink}
               className="w-full sm:flex-1"
               onClick={() => {
                 try {

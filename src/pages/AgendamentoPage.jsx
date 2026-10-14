@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Heart,
   ArrowLeft,
@@ -150,6 +150,14 @@ const AgendamentoPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user: authUser, resetPassword } = useAuth();
+  const [searchParams] = useSearchParams();
+  const serviceParam = searchParams.get('service');
+  const professionalParam = searchParams.get('professional');
+  const assessmentParam = searchParams.get('assessment');
+  const severityParam = searchParams.get('severity');
+  const nameParam = searchParams.get('name');
+  const emailParam = searchParams.get('email');
+  const phoneParam = searchParams.get('phone');
   const [step, setStep] = useState(1);
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [selectedService, setSelectedService] = useState('');
@@ -239,6 +247,8 @@ const AgendamentoPage = () => {
     toggleExistingPatient,
     handlePasswordResetRequest,
     trigger,
+    setValue,
+    getValues,
     // Novos estados de validação de email
     isCheckingEmail,
     emailExists,
@@ -358,6 +368,78 @@ const AgendamentoPage = () => {
 
     return () => clearTimeout(timer);
   }, [trackBookingStart]);
+
+  // Auto-seleção e avanço via Deep-Link Inteligente (Alavanca 1 CRO)
+  const deepLinkProcessedRef = useRef({ service: false, professional: false });
+
+  useEffect(() => {
+    if (!services || services.length === 0) return;
+
+    if (serviceParam && !deepLinkProcessedRef.current.service) {
+      const matchedService = services.find(
+        (s) => s.id === serviceParam || s.name.toLowerCase().includes(serviceParam.toLowerCase())
+      );
+
+      if (matchedService) {
+        setSelectedService(matchedService.id);
+        deepLinkProcessedRef.current.service = true;
+        setStep((prev) => (prev === 1 ? 2 : prev));
+      }
+    }
+  }, [services, serviceParam]);
+
+  useEffect(() => {
+    if (!professionals || professionals.length === 0) return;
+
+    if (professionalParam && !deepLinkProcessedRef.current.professional) {
+      const matchedProf = professionals.find(
+        (p) => p.id === professionalParam || p.name.toLowerCase().includes(professionalParam.toLowerCase())
+      );
+
+      if (matchedProf) {
+        setSelectedProfessional(matchedProf.id);
+        deepLinkProcessedRef.current.professional = true;
+        setStep((prev) => (prev <= 2 ? 3 : prev));
+      }
+    }
+  }, [professionals, professionalParam]);
+
+  // Preenchimento de dados do lead no formulário caso tenham vindo da autoavaliação
+  const patientDataPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (patientDataPrefilledRef.current) return;
+
+    let prefilled = false;
+    if (nameParam && !getValues('name')) {
+      setValue('name', decodeURIComponent(nameParam), { shouldDirty: true });
+      prefilled = true;
+    }
+    if (emailParam && !getValues('email')) {
+      setValue('email', decodeURIComponent(emailParam), { shouldDirty: true, shouldValidate: true });
+      prefilled = true;
+    }
+    if (phoneParam && !getValues('phone')) {
+      const formatted = formatPhoneNumber(decodeURIComponent(phoneParam));
+      setValue('phone', formatted, { shouldDirty: true });
+      prefilled = true;
+    }
+
+    if (prefilled) {
+      patientDataPrefilledRef.current = true;
+    }
+  }, [nameParam, emailParam, phoneParam, setValue, getValues]);
+
+  // Rastreamento de chegada via teste psicológico
+  useEffect(() => {
+    if (assessmentParam) {
+      analytics.trackEvent('booking_assessment_referral', {
+        event_category: 'booking',
+        assessment: assessmentParam,
+        severity: severityParam || 'unknown',
+        service_id: serviceParam || '',
+      });
+    }
+  }, [assessmentParam, severityParam, serviceParam]);
 
   // Prefetch availability data for next step to improve performance
   useEffect(() => {
@@ -1750,6 +1832,36 @@ const AgendamentoPage = () => {
               canAccessStep={canAccessStep}
               selections={selectionLabels}
             />
+          )}
+
+          {/* Banner Contextual Inteligente para Origem em Testes Psicométricos */}
+          {assessmentParam && step < 5 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-xl p-4 md:p-5 shadow-sm text-gray-800"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-[#2d8659]">
+                  <Sparkles className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="font-semibold text-emerald-950 text-sm md:text-base">
+                      Cuidado recomendado com base na sua autoavaliação
+                    </span>
+                    {severityParam && severityParam !== 'unknown' && severityParam !== 'undefined' && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-200/80 text-emerald-900 capitalize">
+                        {severityParam.replace('-', ' ')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs md:text-sm text-emerald-800 leading-relaxed">
+                    Pré-selecionamos a modalidade clínica mais indicada para o seu resultado. Escolha abaixo o psicólogo especialista para seu acolhimento.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
           )}
 
 

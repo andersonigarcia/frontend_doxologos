@@ -93,8 +93,9 @@ export function calculateAssessmentResult(assessmentConfig, answers = {}) {
   const percentage = maxScore > 0 ? Math.min(100, Math.round((score / maxScore) * 100)) : 0;
   const isComplete = answeredCount === totalQuestions;
 
-  // Localiza a faixa de gravidade correspondente no schema
-  const matchingRange = (assessmentConfig.ranges || []).find((r) => score >= r.min && score <= r.max) || {
+  // Localiza a faixa de gravidade correspondente no schema (com proteção de clamping de limite superior)
+  const clampedScore = maxScore > 0 ? Math.min(score, maxScore) : score;
+  const matchingRange = (assessmentConfig.ranges || []).find((r) => clampedScore >= r.min && clampedScore <= r.max) || {
     severity: 'unknown',
     label: 'Não classificado',
     badgeColor: 'gray',
@@ -201,3 +202,72 @@ export function getSeverityTheme(colorName = 'emerald') {
       };
   }
 }
+
+/**
+ * Mapeia o instrumento psicométrico para o serviço clínico ideal na plataforma Doxologos
+ * @param {string} assessmentId - ID ou slug do teste (ex: 'casamento-rdas', 'gad-7', 'dependencia')
+ * @returns {object} - Metadados do serviço recomendado
+ */
+export function getRecommendedServiceForAssessment(assessmentId) {
+  const cleanId = String(assessmentId || '').toLowerCase().trim();
+
+  // Testes de Relacionamento e Casal
+  if (cleanId.includes('casamento') || cleanId.includes('relacionamento') || cleanId.includes('rdas') || cleanId.includes('casal')) {
+    return {
+      serviceId: '7d2d9a24-71fe-4afc-b677-7c87df4b6e22',
+      serviceName: 'Psicoterapia em casal',
+      searchKey: 'casal',
+    };
+  }
+
+  // Testes de Dependência Química e Vício em Apostas / Jogos
+  if (cleanId.includes('dependencia') || cleanId.includes('jogos') || cleanId.includes('vicio') || cleanId.includes('aposta')) {
+    return {
+      serviceId: '557af651-cc7f-4049-987e-0c587e3efa0a',
+      serviceName: 'Dependência Química',
+      searchKey: 'dependência química',
+    };
+  }
+
+  // Padrão ouro geral: Psicoterapia Individual (Ansiedade, Depressão, Burnout, TDAH, Sono, Espiritualidade)
+  return {
+    serviceId: '53fdb342-f782-404c-bc9f-c3def8105fd6',
+    serviceName: 'Psicoterapia Individual',
+    searchKey: 'psicoterapia individual',
+  };
+}
+
+/**
+ * Constrói o deep-link com parâmetros de consulta para agendamento direto com contexto
+ * @param {object} assessment - Objeto da autoavaliação
+ * @param {string} severity - Nível de gravidade apurado
+ * @param {object} leadData - Dados do paciente já preenchidos (nome, email, telefone)
+ * @returns {string} - URL com query params
+ */
+export function getAssessmentBookingLink(assessment, severity, leadData = {}) {
+  const assessmentId = assessment?.id || assessment?.slug || '';
+  const recommended = getRecommendedServiceForAssessment(assessmentId);
+
+  const params = new URLSearchParams();
+  if (recommended.serviceId) {
+    params.set('service', recommended.serviceId);
+  }
+  if (assessmentId) {
+    params.set('assessment', assessmentId);
+  }
+  if (severity) {
+    params.set('severity', severity);
+  }
+  if (leadData.name && String(leadData.name).trim()) {
+    params.set('name', String(leadData.name).trim());
+  }
+  if (leadData.email && String(leadData.email).trim()) {
+    params.set('email', String(leadData.email).trim());
+  }
+  if (leadData.phone && String(leadData.phone).trim()) {
+    params.set('phone', String(leadData.phone).trim());
+  }
+
+  return `/agendamento?${params.toString()}`;
+}
+

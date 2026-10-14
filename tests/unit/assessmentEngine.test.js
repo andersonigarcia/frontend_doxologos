@@ -1,4 +1,4 @@
-import { calculateAssessmentResult, getSeverityTheme } from '@/lib/assessmentEngine';
+import { calculateAssessmentResult, getSeverityTheme, getRecommendedServiceForAssessment, getAssessmentBookingLink } from '@/lib/assessmentEngine';
 import gad7Schema from '@/data/assessments/gad7.json';
 import { getAssessmentByIdentifier, getAllAssessments } from '@/data/assessments';
 
@@ -661,6 +661,65 @@ describe('Assessment Engine - Decomposição em Dimensões e Dossiê Clínico', 
     expect(result.therapyQuestions[0]).toContain('Como os sintomas relacionados a');
     expect(typeof result.psychoeducation).toBe('string');
     expect(result.psychoeducation.length).toBeGreaterThan(10);
+  });
+
+  describe('Deep-Linking e Mapeamento de Serviços Clínicos (Alavanca 1 CRO)', () => {
+    test('Deve mapear instrumentos de casal/relacionamento para Psicoterapia em Casal', () => {
+      const match1 = getRecommendedServiceForAssessment('casamento-rdas');
+      expect(match1.serviceId).toBe('7d2d9a24-71fe-4afc-b677-7c87df4b6e22');
+      expect(match1.serviceName).toBe('Psicoterapia em casal');
+
+      const match2 = getRecommendedServiceForAssessment('teste-de-relacionamento');
+      expect(match2.serviceId).toBe('7d2d9a24-71fe-4afc-b677-7c87df4b6e22');
+    });
+
+    test('Deve mapear instrumentos de dependência e jogos para Dependência Química', () => {
+      const match1 = getRecommendedServiceForAssessment('dependencia-quimica');
+      expect(match1.serviceId).toBe('557af651-cc7f-4049-987e-0c587e3efa0a');
+      expect(match1.serviceName).toBe('Dependência Química');
+
+      const match2 = getRecommendedServiceForAssessment('vicio-jogos-aposta');
+      expect(match2.serviceId).toBe('557af651-cc7f-4049-987e-0c587e3efa0a');
+    });
+
+    test('Deve mapear outros testes emocionais (GAD-7, PHQ-9, Burnout) para Psicoterapia Individual como padrão', () => {
+      const matchGad = getRecommendedServiceForAssessment('gad-7');
+      expect(matchGad.serviceId).toBe('53fdb342-f782-404c-bc9f-c3def8105fd6');
+      expect(matchGad.serviceName).toBe('Psicoterapia Individual');
+
+      const matchPhq = getRecommendedServiceForAssessment('phq-9');
+      expect(matchPhq.serviceId).toBe('53fdb342-f782-404c-bc9f-c3def8105fd6');
+    });
+
+    test('Deve gerar URL de agendamento completa com parâmetros de serviço, severidade e lead', () => {
+      const assessment = { id: 'casamento-rdas' };
+      const severity = 'crise-severa';
+      const leadData = {
+        name: 'Maria Silva',
+        email: 'maria@exemplo.com',
+        phone: '11999998888',
+      };
+
+      const link = getAssessmentBookingLink(assessment, severity, leadData);
+      expect(link).toContain('/agendamento?');
+      expect(link).toContain('service=7d2d9a24-71fe-4afc-b677-7c87df4b6e22');
+      expect(link).toContain('assessment=casamento-rdas');
+      expect(link).toContain('severity=crise-severa');
+      expect(link).toContain('name=Maria+Silva');
+      expect(link).toContain('email=maria%40exemplo.com');
+      expect(link).toContain('phone=11999998888');
+    });
+
+    test('Deve gerar URL válida mesmo quando leadData não for fornecido', () => {
+      const assessment = { id: 'gad-7' };
+      const link = getAssessmentBookingLink(assessment, 'moderada');
+      expect(link).toContain('/agendamento?');
+      expect(link).toContain('service=53fdb342-f782-404c-bc9f-c3def8105fd6');
+      expect(link).toContain('assessment=gad-7');
+      expect(link).toContain('severity=moderada');
+      expect(link).not.toContain('name=');
+      expect(link).not.toContain('email=');
+    });
   });
 });
 
