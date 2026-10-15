@@ -21,6 +21,7 @@ console.log('🌐 Gerando sitemap dinâmico para:', appUrl);
 async function generateSitemap() {
   const staticRoutes = [
     { loc: '/', changefreq: 'weekly', priority: '1.0' },
+    { loc: '/guia-enem', changefreq: 'daily', priority: '0.9' },
     { loc: '/terapia/ansiedade', changefreq: 'weekly', priority: '0.9' },
     { loc: '/terapia/depressao', changefreq: 'weekly', priority: '0.9' },
     { loc: '/terapia/tdah', changefreq: 'weekly', priority: '0.9' },

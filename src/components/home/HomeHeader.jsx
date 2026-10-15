@@ -1,14 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X, Calendar } from 'lucide-react';
+import { Menu, X, Calendar, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserBadge from '@/components/UserBadge';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { getAllAssessments } from '@/data/assessments';
 import analytics from '@/lib/analytics';
+import { ENEM_CAMPAIGN } from '@/config/enemCampaign';
 
 const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMenuOpen, onToggleMenu }) => {
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('doxologos_enem_banner_dismissed') === 'true';
+  });
+
+  const handleDismissBanner = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBannerDismissed(true);
+    try {
+      localStorage.setItem('doxologos_enem_banner_dismissed', 'true');
+    } catch (err) {}
+  };
   const assessmentsCount = getAllAssessments().length;
   const navigationItems = [
     { href: '/#inicio', label: 'Início' },
@@ -24,6 +38,43 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
 
   return (
     <header className="fixed top-0 w-full bg-[#f8f6f0]/95 backdrop-blur-md border-b border-[#e4ded5] shadow-xs z-50">
+      {/* Top Announcement Bar - Especial ENEM */}
+      {ENEM_CAMPAIGN.active && !bannerDismissed && (
+        <div className="bg-[#1b3c37] text-white text-xs sm:text-sm py-2 px-3 border-b border-[#2d8659]/30">
+          <div className="container mx-auto flex items-center justify-between gap-2">
+            <Link
+              to={ENEM_CAMPAIGN.route}
+              className="flex-1 flex items-center justify-center gap-2 hover:opacity-95 transition-opacity text-center overflow-hidden"
+              onClick={() => {
+                try {
+                  analytics.trackEvent('cta_click', {
+                    event_category: 'Campaign',
+                    event_label: 'enem_top_banner',
+                    page_section: 'header_banner'
+                  });
+                } catch (e) {}
+              }}
+            >
+              <span className="bg-[#2d8659] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider hidden sm:inline-block">
+                Especial ENEM
+              </span>
+              <span className="font-medium text-[#f0ebe1] text-xs sm:text-sm truncate">
+                📘 Guia para Famílias: Como apoiar seu filho sem aumentar a pressão
+              </span>
+              <span className="text-[#a9d6c3] font-bold text-xs shrink-0 flex items-center gap-1">
+                Acessar Guia →
+              </span>
+            </Link>
+            <button
+              onClick={handleDismissBanner}
+              aria-label="Fechar aviso do ENEM"
+              className="text-[#a9d6c3] hover:text-white p-1 rounded-sm transition-colors shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
       <nav className="container mx-auto px-4 py-3.5" role="navigation" aria-label="Navegação principal">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
@@ -52,6 +103,17 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
             >
               {blogNavItem.label}
             </Link>
+
+            {ENEM_CAMPAIGN.active && (
+              <Link
+                to={ENEM_CAMPAIGN.route}
+                className="text-[#1b3c37] hover:text-[#2d8659] transition-colors font-semibold text-sm inline-flex items-center gap-1.5"
+              >
+                <span>Guia ENEM</span>
+                <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-1.5 py-0.5 rounded-full font-bold">Novo</span>
+              </Link>
+            )}
+
             {!user && (
               <Link to="/area-do-paciente" className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm">
                 Área do Paciente
@@ -114,9 +176,20 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
             </Link>
 
             <Link to={blogNavItem.to} className="block text-[#262624] hover:text-[#1b3c37] font-medium" role="menuitem">
-
               {blogNavItem.label}
             </Link>
+
+            {ENEM_CAMPAIGN.active && (
+              <Link
+                to={ENEM_CAMPAIGN.route}
+                className="block text-[#1b3c37] hover:text-[#2d8659] font-semibold flex items-center justify-between"
+                role="menuitem"
+              >
+                <span>Guia ENEM (Famílias)</span>
+                <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-2 py-0.5 rounded-full font-bold">Novo</span>
+              </Link>
+            )}
+
             {!user && (
               <Link to="/area-do-paciente" className="block text-[#262624] hover:text-[#1b3c37] font-medium" role="menuitem">
                 Área do Paciente

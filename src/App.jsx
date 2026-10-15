@@ -63,6 +63,7 @@ const TerapiaDependenciaPage = lazy(() => import('@/pages/TerapiaDependenciaPage
 const TerapiaVicioApostasPage = lazy(() => import('@/pages/TerapiaVicioApostasPage'));
 const TerapiaAbusoEspiritualPage = lazy(() => import('@/pages/TerapiaAbusoEspiritualPage'));
 const FaturamentoMensalPage = lazy(() => import('@/pages/FaturamentoMensalPage'));
+const GuiaEnemPage = lazy(() => import('@/pages/GuiaEnemPage'));
 
 
 
@@ -352,6 +353,17 @@ function AppContent() {
           <Route path="/livro/:slug" element={
             <PageErrorBoundary pageName="Material do Livro">
               <BookResourcePage />
+            </PageErrorBoundary>
+          } />
+          {/* Campanha Especial ENEM - Guia para Famílias */}
+          <Route path="/guia-enem" element={
+            <PageErrorBoundary pageName="Guia ENEM para Famílias">
+              <GuiaEnemPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/enem" element={
+            <PageErrorBoundary pageName="Guia ENEM para Famílias">
+              <GuiaEnemPage />
             </PageErrorBoundary>
           } />
           {/* Ferramentas de Autoavaliação Psicométrica (Lead Magnets / GAD-7) */}
