@@ -78,15 +78,47 @@ class AnalyticsManager {
     });
   }
 
-  isInternalRoute(path = window.location.pathname) {
+  isInternalRoute(path = window.location?.pathname || '') {
     return /^\/(admin|profissional|faturamento-mensal|gestao|criar-usuarios)/i.test(path);
+  }
+
+  isTestMode() {
+    try {
+      if (typeof window === 'undefined') return false;
+      const search = window.location?.search || '';
+      if (search.includes('analytics_test=true') || search.includes('traffic_type=test') || search.includes('test_mode=true')) {
+        return true;
+      }
+      if (localStorage.getItem('analytics_test_mode') === 'true') {
+        return true;
+      }
+    } catch {
+      // ignore errors
+    }
+    return false;
+  }
+
+  isDebugMode() {
+    try {
+      if (typeof window === 'undefined') return false;
+      const search = window.location?.search || '';
+      if (search.includes('analytics_debug=true') || search.includes('debug_mode=true')) {
+        return true;
+      }
+      if (localStorage.getItem('analytics_debug') === 'true') {
+        return true;
+      }
+    } catch {
+      // ignore errors
+    }
+    return false;
   }
 
   // Core tracking methods
   trackPageView(pageName, pageTitle = document.title) {
     if (!this.isProduction) return;
 
-    const currentPath = pageName || window.location.pathname;
+    const currentPath = pageName || window.location?.pathname || '/';
 
     // 1. Filtrar rotas administrativas internas (evita poluir relatórios de marketing/funil)
     if (this.isInternalRoute(currentPath)) {
@@ -102,6 +134,8 @@ class AnalyticsManager {
     this.lastTrackedAt = now;
 
     const userType = this.getUserType();
+    const testMode = this.isTestMode();
+    const debugMode = this.isDebugMode();
 
     // 3. DataLayer Push for GTM (Best Practice)
     window.dataLayer = window.dataLayer || [];
@@ -110,12 +144,15 @@ class AnalyticsManager {
       page_path: currentPath,
       page_title: pageTitle,
       page_name: pageName,
-      user_type: userType
+      user_type: userType,
+      ...(testMode ? { test_mode: 'true', traffic_type: 'test' } : {}),
+      ...(debugMode ? { debug_mode: true } : {})
     });
 
     // 4. Direct gtag (explicit page_view event required in SPA since send_page_view: false is configured)
     if (typeof gtag === 'function') {
-      const fullUrl = window.location.origin + currentPath;
+      const origin = window.location?.origin || 'https://doxologos.com.br';
+      const fullUrl = origin + currentPath;
       gtag('config', this.gaId, {
         page_title: pageTitle,
         page_location: fullUrl,
@@ -127,7 +164,10 @@ class AnalyticsManager {
         page_title: pageTitle,
         page_location: fullUrl,
         page_path: currentPath,
-        user_type: userType
+        user_type: userType,
+        ...(userType === 'staff_internal' && !testMode ? { traffic_type: 'internal' } : {}),
+        ...(testMode ? { traffic_type: 'test', test_mode: 'true' } : {}),
+        ...(debugMode ? { debug_mode: true } : {})
       });
     }
   }
@@ -149,6 +189,7 @@ class AnalyticsManager {
       'route_change_time',
       'component_render',
       'console_error',
+      'console_warning',
       'javascript_error',
       'promise_rejection'
     ].some((prefix) => eventName.startsWith(prefix) || eventName === prefix);
@@ -158,9 +199,14 @@ class AnalyticsManager {
     }
 
     const userType = this.getUserType();
+    const testMode = this.isTestMode();
+    const debugMode = this.isDebugMode();
+
     const enrichedParams = {
       ...parameters,
-      ...(userType === 'staff_internal' ? { traffic_type: 'internal' } : {})
+      ...(userType === 'staff_internal' && !testMode ? { traffic_type: 'internal' } : {}),
+      ...(testMode ? { traffic_type: 'test', test_mode: 'true' } : {}),
+      ...(debugMode ? { debug_mode: true } : {})
     };
 
     // 1. DataLayer Push for GTM (Best Practice)
@@ -192,13 +238,69 @@ class AnalyticsManager {
   }
 
   // Business-specific tracking
-  trackBookingStep(step, professionalId, serviceId) {
+  trackBookingStep(step, professionalId, serviceId, extraParams = {}) {
+    const stepNumber = Number(step) || 1;
+
+    // Deduplicação de step consecutivo para evitar disparos duplicados no mesmo intervalo
+    const now = Date.now();
+    if (this.lastTrackedStep === stepNumber && (now - (this.lastTrackedStepAt || 0)) < 1500) {
+      return;
+    }
+    this.lastTrackedStep = stepNumber;
+    this.lastTrackedStepAt = now;
+
+    const stepNames = {
+      1: 'booking_step_1_service',
+      2: 'booking_step_2_professional',
+      3: 'booking_step_3_datetime',
+      4: 'booking_step_4_patient_data',
+      5: 'booking_step_5_summary'
+    };
+
+    const stepPaths = {
+      1: '/agendamento/1-servico',
+      2: '/agendamento/2-profissional',
+      3: '/agendamento/3-data-hora',
+      4: '/agendamento/4-dados-paciente',
+      5: '/agendamento/5-resumo-pagamento'
+    };
+
+    const stepTitles = {
+      1: 'Agendamento - Seleção de Serviço | Doxologos',
+      2: 'Agendamento - Escolha do Profissional | Doxologos',
+      3: 'Agendamento - Data e Horário | Doxologos',
+      4: 'Agendamento - Dados do Paciente | Doxologos',
+      5: 'Agendamento - Resumo do Agendamento | Doxologos'
+    };
+
+    const specificEventName = stepNames[stepNumber] || `booking_step_${stepNumber}`;
+    const virtualPath = stepPaths[stepNumber];
+    const pageTitle = stepTitles[stepNumber] || `Agendamento - Etapa ${stepNumber} | Doxologos`;
+
+    // 1. Disparar evento canônico específico da etapa (ideal para funil direto no GA4 sem dimensões customizadas)
+    this.trackEvent(specificEventName, {
+      event_category: 'Booking Flow',
+      step_number: stepNumber,
+      step_name: specificEventName,
+      professional_id: professionalId,
+      service_id: serviceId,
+      ...extraParams
+    });
+
+    // 2. Disparar evento genérico para manter retrocompatibilidade com triggers legados
     this.trackEvent('booking_step', {
       event_category: 'Booking Flow',
-      event_label: `Step ${step}`,
+      event_label: `Step ${stepNumber}`,
+      step_number: stepNumber,
       custom_parameter_1: professionalId,
-      custom_parameter_2: serviceId
+      custom_parameter_2: serviceId,
+      ...extraParams
     });
+
+    // 3. Disparar Virtual Pageview (registra nas páginas em tempo real do GA4)
+    if (virtualPath) {
+      this.trackPageView(virtualPath, pageTitle);
+    }
   }
 
   trackBookingCompleted(bookingId, professionalId, serviceId, amount, paymentMethod = 'pix') {

@@ -369,6 +369,26 @@ const AgendamentoPage = () => {
     return () => clearTimeout(timer);
   }, [trackBookingStart]);
 
+  // Rastreamento reativo de cada etapa do agendamento (Virtual Pageviews + Eventos Canônicos de Etapa)
+  const lastTrackedStepRef = useRef(null);
+  useEffect(() => {
+    if (lastTrackedStepRef.current === step) return;
+    lastTrackedStepRef.current = step;
+
+    try {
+      trackBookingStep(step, {
+        step_name: step === 1 ? 'service_step' :
+                   step === 2 ? 'professional_step' :
+                   step === 3 ? 'datetime_step' :
+                   step === 4 ? 'patient_data_step' : 'payment_summary',
+        professionalId: selectedProfessional,
+        serviceId: selectedService,
+      });
+    } catch (trackErr) {
+      console.warn('Erro no rastreamento da etapa de agendamento:', trackErr);
+    }
+  }, [step, selectedProfessional, selectedService, trackBookingStep]);
+
   // Auto-seleção e avanço via Deep-Link Inteligente (Alavanca 1 CRO)
   const deepLinkProcessedRef = useRef({ service: false, professional: false });
 

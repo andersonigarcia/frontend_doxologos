@@ -117,7 +117,7 @@ export const useBookingTracking = () => {
   }, [trackEvent]);
 
   const trackBookingStep = useCallback((step, data = {}) => {
-    analytics.trackBookingStep(step, data.professionalId, data.serviceId);
+    analytics.trackBookingStep(step, data.professionalId, data.serviceId, data);
     analytics.trackFunnelStep('booking', step, data);
   }, []);
 
