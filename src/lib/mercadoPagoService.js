@@ -584,12 +584,13 @@ export class MercadoPagoService {
             'cc_rejected_call_for_authorize': 'O banco emissor não autorizou a compra. Entre em contato com o banco e tente novamente.',
             'cc_rejected_card_disabled': 'O cartão está desabilitado para compras. Fale com o banco emissor ou utilize outro cartão.',
             'cc_rejected_duplicated_payment': 'Identificamos uma tentativa duplicada. Confira se a cobrança anterior foi aprovada.',
-            'cc_rejected_high_risk': 'Pagamento recusado por segurança. Utilize outro cartão ou método de pagamento.',
+            'cc_rejected_high_risk': 'O banco emissor do seu cartão não autorizou esta transação online por segurança. Pague via PIX com aprovação imediata para garantir seu horário.',
+            'cc_rejected_2_step_high_risk': 'O banco solicitou validação adicional não concluída. Pague via PIX com aprovação imediata para garantir seu horário.',
             'cc_rejected_invalid_installments': 'Número de parcelas inválido para este cartão. Ajuste as parcelas ou escolha outro cartão.',
-            'cc_rejected_max_attempts': 'Você atingiu o número máximo de tentativas. Aguarde alguns minutos ou tente outro cartão.',
+            'cc_rejected_max_attempts': 'Você atingiu o número máximo de tentativas no cartão. Pague via PIX para garantir seu horário imediatamente.',
             'cc_rejected_other_reason': 'O banco não autorizou a compra. Verifique com o banco ou escolha outro método.',
             'rejected_other_reason': 'O pagamento foi rejeitado pelo emissor. Tente novamente com outro método.',
-            'cc_rejected_blacklist': 'Não foi possível aprovar o pagamento. Utilize outro cartão ou entre em contato com o banco.'
+            'cc_rejected_blacklist': 'Não foi possível aprovar o pagamento. Utilize outro cartão ou pague via PIX.'
         };
 
         if (statusDetail && detailMap[statusDetail]) {
@@ -638,12 +639,17 @@ export class MercadoPagoService {
         try {
             logger.info('MercadoPagoService.processCardPayment:start', logContext);
 
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            };
+            if (paymentData?.device_id) {
+                headers['X-Meli-Session-Id'] = paymentData.device_id;
+            }
+
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-process-card-payment`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                },
+                headers,
                 body: JSON.stringify(paymentData)
             });
 

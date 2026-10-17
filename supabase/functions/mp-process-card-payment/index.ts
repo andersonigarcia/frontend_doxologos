@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
 
-    const { token, amount, wallet_used, user_id, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id } = body;
+    const { token, amount, wallet_used, user_id, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id, device_id } = body;
 
     if (!token || !amount) {
       return new Response(
@@ -83,8 +83,39 @@ Deno.serve(async (req) => {
           ? `EVENTO_${inscricao_id}`
           : '';
 
+    // Estruturar dados do pagador para validação anti-fraude do Mercado Pago
+    const payerNameParts = (payer?.name || '').trim().split(/\s+/);
+    const firstName = payer?.first_name || payerNameParts[0] || 'Cliente';
+    const lastName = payer?.last_name || (payerNameParts.length > 1 ? payerNameParts.slice(1).join(' ') : 'Doxologos');
+
+    let phoneObj = undefined;
+    if (payer?.phone) {
+      if (typeof payer.phone === 'object') {
+        phoneObj = payer.phone;
+      } else if (typeof payer.phone === 'string') {
+        const cleanedPhone = payer.phone.replace(/\D/g, '');
+        if (cleanedPhone.length >= 10) {
+          phoneObj = {
+            area_code: cleanedPhone.substring(0, 2),
+            number: cleanedPhone.substring(2)
+          };
+        }
+      }
+    }
+
+    const payerPayload: any = {
+      email: payer?.email || 'contato@doxologos.com.br',
+      first_name: firstName,
+      last_name: lastName,
+      identification: payer?.identification || {}
+    };
+
+    if (phoneObj) {
+      payerPayload.phone = phoneObj;
+    }
+
     // Criar pagamento no Mercado Pago
-    const paymentPayload = {
+    const paymentPayload: any = {
       token: token,
       transaction_amount: transactionAmount,
       installments: Number(installments) || 1,
@@ -93,10 +124,7 @@ Deno.serve(async (req) => {
       // (visa, master, elo, hipercard, etc.). Não pode ser hardcoded — o MP rejeita se não
       // corresponder ao cartão tokenizado.
       payment_method_id: payment_method_id || 'master',
-      payer: {
-        email: payer?.email || 'contato@doxologos.com.br',
-        identification: payer?.identification || {}
-      },
+      payer: payerPayload,
       external_reference: externalRef,
       statement_descriptor: 'DOXOLOGOS',
       notification_url: `${SUPABASE_URL}/functions/v1/mp-webhook`
@@ -104,18 +132,29 @@ Deno.serve(async (req) => {
 
     console.log('[MP Card] Criando pagamento no MP:', JSON.stringify(paymentPayload, null, 2));
 
-    // Idempotency key determinística: evita cobranças duplicadas em retentativas
-    // Formato: {id}-card-v1 (estável por tentativa, sem Date.now())
+    // Idempotency key determinística por tentativa: permite novas tentativas se o cartão for recusado
     const idempotencyRef = package_id || booking_id || inscricao_id;
-    const idempotencyKey = `${idempotencyRef}-card-v1`;
+    const attemptStamp = body.attempt_id || Date.now();
+    const idempotencyKey = `${idempotencyRef}-card-${attemptStamp}`;
+
+    const mpHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': idempotencyKey
+    };
+
+    // Telemetria oficial anti-fraude: repassar identificador de sessão do dispositivo
+    const deviceSessionId = device_id || req.headers.get('x-meli-session-id') || req.headers.get('device-id');
+    if (deviceSessionId) {
+      mpHeaders['X-Meli-Session-Id'] = deviceSessionId;
+      console.log('[MP Card] Telemetria de dispositivo X-Meli-Session-Id vinculada:', deviceSessionId);
+    } else {
+      console.warn('[MP Card] ⚠️ Device ID não fornecido na requisição');
+    }
 
     const mpRes = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': idempotencyKey
-      },
+      headers: mpHeaders,
       body: JSON.stringify(paymentPayload)
     });
 
@@ -162,16 +201,16 @@ Deno.serve(async (req) => {
         }
     }
 
-    // Salvar pagamento no banco
+    // Salvar pagamento no banco com colunas reais de public.payments
     const paymentRecord: any = {
       mp_payment_id: String(mpJson.id),
       status: mpJson.status,
       status_detail: mpJson.status_detail,
-      transaction_amount: mpJson.transaction_amount,
+      amount: mpJson.transaction_amount || transactionAmount,
       wallet_balance_used: walletUsedAmount,
-      currency_id: mpJson.currency_id,
-      payment_method_id: mpJson.payment_method_id,
-      payment_type_id: mpJson.payment_type_id,
+      currency: mpJson.currency_id || 'BRL',
+      payment_method: mpJson.payment_method_id,
+      payment_type: mpJson.payment_type_id,
       date_created: mpJson.date_created,
       date_approved: mpJson.date_approved,
       payer_email: mpJson.payer?.email,
@@ -187,7 +226,7 @@ Deno.serve(async (req) => {
       paymentRecord.inscricao_id = inscricao_id;
     }
 
-    await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+    const savePaymentRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
       method: 'POST',
       headers: {
         'apikey': SERVICE_ROLE,
@@ -197,6 +236,13 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify(paymentRecord)
     });
+
+    if (!savePaymentRes.ok) {
+      const saveErr = await savePaymentRes.text();
+      console.error('[MP Card] ⚠️ Erro ao persistir pagamento em public.payments:', saveErr);
+    } else {
+      console.log('[MP Card] ✅ Pagamento salvo com sucesso em public.payments');
+    }
 
     // ====================================================================
     // Atualizar booking ou inscrição

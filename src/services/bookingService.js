@@ -113,7 +113,7 @@ export async function getBookingById(id, { includeRelations = true, userId = nul
     query = query.select(`
       *,
       professional:professionals(id, name, specialty, image_url, personal_meet_link),
-      service:services(id, name, price, duration),
+      service:services(id, name, price, duration_minutes),
       payment:payments(id, mp_payment_id, status, amount)
     `);
   } else {
@@ -335,7 +335,7 @@ export async function listBookings({
   const selectClause = includeRelations
     ? `*,
        professional:professionals(id, name, specialty, image_url, personal_meet_link),
-       service:services(id, name, price, duration),
+       service:services(id, name, price, duration_minutes),
        payment:payments(id, mp_payment_id, status, qr_code, qr_code_base64, ticket_url, amount)`
     : '*';
 

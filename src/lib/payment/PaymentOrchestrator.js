@@ -185,7 +185,9 @@ export class PaymentOrchestrator {
      * @returns {string} - Mensagem amigável para o usuário
      */
     getErrorMessage(statusUpdate) {
-        const { status, statusDetail } = statusUpdate;
+        if (!statusUpdate) return 'Não foi possível processar o pagamento. Tente novamente.';
+        const status = statusUpdate.status;
+        const statusDetail = statusUpdate.statusDetail || statusUpdate.status_detail;
 
         if (status === 'timeout') {
             return 'O tempo de confirmação expirou. Por favor, verifique seu e-mail ou entre em contato conosco.';
@@ -200,9 +202,11 @@ export class PaymentOrchestrator {
             // Ref: https://www.mercadopago.com.br/developers/pt/docs/checkout-api/response-handling/collection-results
             const rejectionMessages = {
                 cc_rejected_high_risk:
-                    'Pagamento recusado por motivos de segurança. Por favor, tente outro cartão ou entre em contato com seu banco.',
+                    'O banco emissor do seu cartão não autorizou esta transação online por segurança. Pague via PIX com aprovação imediata para garantir seu horário.',
+                cc_rejected_2_step_high_risk:
+                    'O banco solicitou validação adicional não concluída. Pague via PIX com aprovação imediata para garantir seu horário.',
                 cc_rejected_insufficient_amount:
-                    'Saldo insuficiente no cartão. Verifique o limite disponível ou use outro cartão.',
+                    'Saldo insuficiente no cartão. Verifique o limite disponível ou use outro cartão/PIX.',
                 cc_rejected_bad_filled_card_number:
                     'Número do cartão inválido. Verifique e tente novamente.',
                 cc_rejected_bad_filled_date:
@@ -212,28 +216,32 @@ export class PaymentOrchestrator {
                 cc_rejected_bad_filled_other:
                     'Dados do cartão inválidos. Verifique as informações e tente novamente.',
                 cc_rejected_blacklist:
-                    'Cartão não autorizado pelo banco. Entre em contato com seu banco ou use outro cartão.',
+                    'Cartão não autorizado pelo banco. Entre em contato com seu banco ou use outro cartão/PIX.',
                 cc_rejected_call_for_authorize:
                     'Pagamento não autorizado. Ligue para o número no verso do seu cartão para autorizar a transação.',
                 cc_rejected_card_disabled:
-                    'Cartão desativado. Entre em contato com seu banco para reativá-lo.',
+                    'Cartão desativado. Entre em contato com seu banco para reativá-lo ou utilize PIX.',
                 cc_rejected_card_error:
-                    'Erro ao processar o cartão. Tente novamente ou use outro cartão.',
+                    'Erro ao processar o cartão. Tente novamente ou utilize outro cartão/PIX.',
                 cc_rejected_duplicated_payment:
                     'Pagamento duplicado detectado. Verifique se a cobrança já foi realizada antes de tentar novamente.',
                 cc_rejected_invalid_installments:
                     'Número de parcelas não permitido para este cartão. Altere as parcelas e tente novamente.',
                 cc_rejected_max_attempts:
-                    'Número máximo de tentativas atingido. Aguarde alguns minutos ou use outro cartão.',
+                    'Número máximo de tentativas atingido. Recomendamos pagar via PIX para não perder sua vaga.',
                 cc_rejected_other_reason:
-                    'Pagamento não autorizado pelo banco. Use outro cartão ou entre em contato com seu banco.'
+                    'Pagamento não autorizado pelo banco. Use outro cartão, pague via PIX ou entre em contato com seu banco.',
+                rejected_by_bank:
+                    'Pagamento recusado pelo seu banco emissor. Entre em contato com o banco ou use outro cartão/PIX.',
+                rejected_insufficient_data:
+                    'Dados incompletos para autorizar a transação. Verifique as informações preenchidas.'
             };
 
             return rejectionMessages[statusDetail]
-                || 'Pagamento não autorizado. Tente outro método de pagamento ou entre em contato com seu banco.';
+                || 'Pagamento não autorizado pela operadora. Tente outro cartão ou realize o pagamento via PIX para garantir sua vaga.';
         }
 
-        return 'Não foi possível processar o pagamento. Tente novamente.';
+        return 'Não foi possível processar o pagamento. Tente novamente ou use o PIX.';
     }
 
     /**

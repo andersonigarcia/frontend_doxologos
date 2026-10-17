@@ -91,7 +91,7 @@ Deno.serve(async (req: Request) => {
             .eq('booking_id', booking.id)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
           if (payment?.mp_payment_id) {
             mpPaymentId = payment.mp_payment_id;
@@ -182,13 +182,20 @@ Deno.serve(async (req: Request) => {
             }]).catch((e: any) => console.error('[Reconcile] Falha ao criar alerta de reconciliação:', e));
           }
         } else if (['rejected', 'cancelled'].includes(mpPayment.status)) {
-          // Pagamento recusado — cancelar booking
-          await supabase.from('bookings').update({
-            status: 'cancelled',
-            payment_status: mpPayment.status,
-            updated_at: new Date().toISOString()
-          }).eq('id', booking.id);
-          result.action = 'cancelled_rejected_payment';
+          // Só cancela se o agendamento já tiver mais de 15 minutos da criação (tempo do cronômetro de reserva),
+          // liberando o horário para outros pacientes sem travar a agenda do psicólogo caso haja abandono.
+          const minutesPending = Math.round((Date.now() - new Date(booking.created_at).getTime()) / 60000);
+          if (minutesPending >= 15) {
+            await supabase.from('bookings').update({
+              status: 'cancelled',
+              payment_status: mpPayment.status,
+              updated_at: new Date().toISOString()
+            }).eq('id', booking.id);
+            result.action = 'cancelled_rejected_payment_after_grace_period';
+          } else {
+            result.action = 'rejected_in_grace_period';
+            console.log(`[Reconcile] Booking ${booking.id} pagamento recusado no MP, mas em período de carência (${minutesPending}min < 15min). Mantendo ativo para retentativa do paciente.`);
+          }
         } else {
           // in_process ou pending — ainda aguardando, não fazer nada
           result.action = 'still_pending_at_mp';

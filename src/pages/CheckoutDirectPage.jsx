@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { CreditCard, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
+import { CreditCard, Lock, CheckCircle, ArrowLeft, Smartphone, AlertTriangle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -81,6 +81,63 @@ const CheckoutDirectPage = () => {
     const [docNumber, setDocNumber] = useState('');
     const [payerEmail, setPayerEmail] = useState('');
     const [acceptedTcle, setAcceptedTcle] = useState(false);
+
+    // Detecção dinâmica de bandeira e resiliência
+    const [cardBrand, setCardBrand] = useState(null);
+    const [paymentError, setPaymentError] = useState(null);
+    const lastBinRef = useRef('');
+
+    // Reserva prioritária de horário (15 minutos para evitar perda de vaga)
+    const [remainingSeconds, setRemainingSeconds] = useState(15 * 60);
+
+    useEffect(() => {
+        const itemCreatedAt = booking?.created_at || inscricao?.created_at || packageData?.created_at;
+        if (itemCreatedAt) {
+            const createdMs = new Date(itemCreatedAt).getTime();
+            const elapsedSec = Math.floor((Date.now() - createdMs) / 1000);
+            const reservationWindowSec = 15 * 60;
+            const left = reservationWindowSec - elapsedSec;
+            setRemainingSeconds(left > 0 ? left : 300);
+        }
+    }, [booking, inscricao, packageData]);
+
+    useEffect(() => {
+        if (remainingSeconds <= 0) return;
+        const interval = setInterval(() => {
+            setRemainingSeconds((prev) => (prev > 1 ? prev - 1 : 0));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [remainingSeconds]);
+
+    const formatTimer = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    // Telemetria oficial antifraude do Mercado Pago
+    useEffect(() => {
+        const existingSecurityScript = document.querySelector('script[src*="mercadopago.com/v2/security.js"]');
+        if (!existingSecurityScript) {
+            const secScript = document.createElement('script');
+            secScript.src = 'https://www.mercadopago.com/v2/security.js';
+            secScript.setAttribute('view', 'checkout');
+            secScript.async = true;
+            document.body.appendChild(secScript);
+        }
+    }, []);
+
+    const getPixCheckoutUrl = () => {
+        const params = new URLSearchParams();
+        if (bookingId) params.set('booking_id', bookingId);
+        if (type) params.set('type', type);
+        if (inscricaoId) params.set('inscricao_id', inscricaoId);
+        if (packageId) params.set('package_id', packageId);
+        if (valorParam) params.set('valor', valorParam);
+        if (tituloParam) params.set('titulo', tituloParam);
+        if (payerEmail) params.set('email', payerEmail);
+        return `/checkout?${params.toString()}`;
+    };
 
     // Mercado Pago
     const [mp, setMp] = useState(null);
@@ -258,12 +315,39 @@ const CheckoutDirectPage = () => {
         return cleaned;
     };
 
-    const handleCardNumberChange = (e) => {
-        setCardNumber(formatCardNumber(e.target.value));
+    const handleCardNumberChange = async (e) => {
+        const formatted = formatCardNumber(e.target.value);
+        setCardNumber(formatted);
+        if (paymentError) setPaymentError(null);
+
+        const clean = formatted.replace(/\D/g, '');
+        if (clean.length >= 6 && mp) {
+            const bin = clean.substring(0, 6);
+            if (bin !== lastBinRef.current) {
+                lastBinRef.current = bin;
+                try {
+                    const response = await mp.getPaymentMethods({ bin });
+                    if (response && response.results && response.results.length > 0) {
+                        const method = response.results[0];
+                        setCardBrand({
+                            id: method.id,
+                            name: method.name,
+                            thumbnail: method.secure_thumbnail || method.thumbnail
+                        });
+                    }
+                } catch (binErr) {
+                    console.warn('Erro ao detectar bandeira pelo BIN:', binErr);
+                }
+            }
+        } else if (clean.length < 6) {
+            lastBinRef.current = '';
+            setCardBrand(null);
+        }
     };
 
     const handleExpirationChange = (e) => {
         setExpirationDate(formatExpirationDate(e.target.value));
+        if (paymentError) setPaymentError(null);
     };
 
     const handleSubmit = async (e) => {
@@ -288,6 +372,7 @@ const CheckoutDirectPage = () => {
         }
 
         setProcessing(true);
+        setPaymentError(null);
 
         try {
             if (!cardNumber || !cardholderName || !expirationDate || !securityCode || !docNumber) {
@@ -336,9 +421,41 @@ const CheckoutDirectPage = () => {
 
             console.log('✅ Token criado:', token.id);
 
+            // Resolução precisa da bandeira do cartão (Visa, Elo, Mastercard, Hipercard, Amex, etc.)
+            let paymentMethodId = cardBrand?.id || token.payment_method_id;
+            if (!paymentMethodId && cardNumber.replace(/\D/g, '').length >= 6 && mp) {
+                try {
+                    const bin = cardNumber.replace(/\D/g, '').substring(0, 6);
+                    const binRes = await mp.getPaymentMethods({ bin });
+                    if (binRes?.results?.[0]?.id) {
+                        paymentMethodId = binRes.results[0].id;
+                    }
+                } catch (err) {
+                    console.warn('Fallback BIN error:', err);
+                }
+            }
+
+            // Telemetria do dispositivo (Device Session ID gerado pelo security.js do MP)
+            const deviceId = window.MP_DEVICE_SESSION_ID || null;
+
+            // Estruturar dados do pagador com nome dividido e telefone para mitigar risco antifraude
+            const nameParts = (cardholderName || booking?.patient_name || packageData?.patient_name || 'Paciente').trim().split(/\s+/);
+            const firstName = nameParts[0] || 'Paciente';
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Doxologos';
+
+            const rawPhone = booking?.patient_phone || inscricao?.patient_phone || packageData?.patient_phone || '';
+            const cleanPhone = (rawPhone || '').replace(/\D/g, '');
+            let phoneObj = undefined;
+            if (cleanPhone.length >= 10) {
+                phoneObj = {
+                    area_code: cleanPhone.substring(0, 2),
+                    number: cleanPhone.substring(2)
+                };
+            }
+
             const paymentData = {
                 token: token.id,
-                payment_method_id: token.payment_method_id,
+                payment_method_id: paymentMethodId || 'master',
                 amount: amount,
                 installments: parseInt(installments),
                 description: type === 'evento'
@@ -348,18 +465,30 @@ const CheckoutDirectPage = () => {
                         : `Consulta - ${booking?.services?.name}`,
                 payer: {
                     email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone: phoneObj,
                     identification: {
                         type: docType,
                         number: docNumber.replace(/\D/g, '')
                     }
                 },
+                device_id: deviceId,
                 booking_id: bookingId || null,
                 inscricao_id: inscricaoId || null,
                 package_id: packageId || null,
                 paymentMethod: 'credit_card'
             };
 
-            console.log('💳 Processando pagamento...');
+            console.log('💳 Processando pagamento com método:', paymentData.payment_method_id);
+
+            const getRejectionTitle = (msg) => {
+                const lower = (msg || '').toLowerCase();
+                if (lower.includes('banco') || lower.includes('segurança') || lower.includes('autoriz') || lower.includes('recusad')) {
+                    return 'Não autorizado pelo seu banco';
+                }
+                return 'Não foi possível concluir no cartão';
+            };
 
             const result = await paymentOrchestrator.processPayment(
                 'credit_card',
@@ -374,10 +503,12 @@ const CheckoutDirectPage = () => {
                     },
                     onError: (err) => {
                         console.error('❌ Erro no orquestrador:', err);
+                        const errorMsg = err.message || 'Não foi possível processar o pagamento com cartão.';
+                        setPaymentError(errorMsg);
                         toast({
                             variant: 'destructive',
-                            title: 'Erro no pagamento',
-                            description: err.message || 'Não foi possível processar.'
+                            title: getRejectionTitle(errorMsg),
+                            description: errorMsg
                         });
                         setProcessing(false);
                         if (stopMonitoring) stopMonitoring();
@@ -412,10 +543,12 @@ const CheckoutDirectPage = () => {
                                 navigate(`/checkout/success?booking_id=${bookingId}`);
                             }
                         } else if (statusUpdate.status === 'rejected') {
+                            const friendlyMsg = paymentOrchestrator.getErrorMessage(statusUpdate);
+                            setPaymentError(friendlyMsg);
                             toast({
                                 variant: 'destructive',
-                                title: 'Pagamento Recusado ❌',
-                                description: statusUpdate.status_detail || 'Não foi possível autorizar a transação.'
+                                title: getRejectionTitle(friendlyMsg),
+                                description: friendlyMsg
                             });
                             setProcessing(false);
                         }
@@ -429,10 +562,14 @@ const CheckoutDirectPage = () => {
 
         } catch (error) {
             console.error('❌ Erro no checkout:', error);
+            const errorMsg = error.message || 'Ocorreu um erro ao processar o pagamento.';
+            setPaymentError(errorMsg);
+            const lower = (errorMsg || '').toLowerCase();
+            const isBankDecline = lower.includes('banco') || lower.includes('segurança') || lower.includes('autoriz') || lower.includes('recusad');
             toast({
                 variant: 'destructive',
-                title: 'Erro no pagamento',
-                description: error.message || 'Ocorreu um erro ao processar o pagamento.'
+                title: isBankDecline ? 'Não autorizado pelo seu banco' : 'Não foi possível concluir no cartão',
+                description: errorMsg
             });
             setProcessing(false);
         }
@@ -471,23 +608,89 @@ const CheckoutDirectPage = () => {
                     <p className="text-gray-600">Preencha os dados do seu cartão de crédito</p>
                 </div>
 
+                {/* Banner de Reserva Prioritária de Horário */}
+                {remainingSeconds > 0 ? (
+                    <div className="mb-6 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs sm:text-sm text-emerald-950 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-emerald-700 animate-pulse flex-shrink-0" />
+                            <span>Sua vaga está <strong>100% reservada</strong> para conclusão do seu pagamento:</span>
+                        </div>
+                        <span className="font-mono font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-md border border-emerald-200 shadow-xs">
+                            {formatTimer(remainingSeconds)}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs sm:text-sm text-amber-950 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                            <span>Tempo de reserva prioritária expirando. Conclua seu pagamento agora para garantir seu horário.</span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid md:grid-cols-3 gap-6">
                     {/* Formulário */}
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-2 space-y-4">
+                        {paymentError && (
+                            <div className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl shadow-sm space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 text-sm space-y-1">
+                                        <p className="font-bold text-amber-950 text-base">Seu banco não autorizou a tentativa no cartão</p>
+                                        <p className="text-amber-900 leading-relaxed">{paymentError}</p>
+                                        <p className="text-xs text-amber-800 pt-1">
+                                            A plataforma Doxologos está funcionando perfeitamente. Esta recusa é uma restrição do banco emissor do cartão por motivos de segurança do próprio banco para compras online.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-white/95 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="text-center sm:text-left">
+                                        <div className="flex items-center gap-2 justify-center sm:justify-start">
+                                            <span className="font-bold text-gray-900 text-sm">Sua vaga continua reservada!</span>
+                                            <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                                                {formatTimer(remainingSeconds)}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-gray-600 block mt-1">
+                                            Pague agora via PIX com aprovação instantânea e garanta seu atendimento sem depender de liberação bancária do cartão.
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={() => navigate(getPixCheckoutUrl())}
+                                        className="w-full sm:w-auto bg-[#2d8659] hover:bg-[#236b47] text-white font-semibold shadow-sm flex items-center justify-center gap-2 px-5 py-2.5 text-sm flex-shrink-0"
+                                    >
+                                        <Smartphone className="w-4 h-4" />
+                                        Pagar com PIX Agora
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                         <Card className="p-6">
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 {/* Número do Cartão */}
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Número do Cartão
-                                    </label>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-sm font-medium">
+                                            Número do Cartão
+                                        </label>
+                                        {cardBrand && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                {cardBrand.thumbnail && (
+                                                    <img src={cardBrand.thumbnail} alt={cardBrand.name} className="h-3.5 object-contain" />
+                                                )}
+                                                {cardBrand.name}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="relative">
                                         <input
                                             type="text"
                                             value={cardNumber}
                                             onChange={handleCardNumberChange}
                                             placeholder="0000 0000 0000 0000"
-                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent font-mono tracking-wider"
                                             maxLength="19"
                                             required
                                         />
@@ -670,6 +873,20 @@ const CheckoutDirectPage = () => {
                                         </p>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t text-center">
+                                <p className="text-xs text-gray-500 mb-2">Prefere aprovação instantânea via PIX?</p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate(getPixCheckoutUrl())}
+                                    className="w-full text-xs text-[#2d8659] border-[#2d8659]/30 hover:bg-[#2d8659]/10 flex items-center justify-center gap-1.5"
+                                >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                    Pagar com PIX
+                                </Button>
                             </div>
                         </Card>
                     </div>

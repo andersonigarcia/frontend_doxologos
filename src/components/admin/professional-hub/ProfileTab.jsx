@@ -352,7 +352,7 @@ const ProfileTab = ({ professional, onUpdate }) => {
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-gray-900">{service.name}</span>
                     <span className="text-xs text-gray-500 font-medium">
-                      {service.duration} min • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+                      {(service.duration_minutes || service.duration || 50)} min • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
                     </span>
                   </div>
                 </label>
