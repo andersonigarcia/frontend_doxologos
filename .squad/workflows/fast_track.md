@@ -1,29 +1,60 @@
-# ⚡ ESTEIRA 1: FAST-TRACK (Hotfixes, UI & Bugs Pontuais)
-
-## 🎯 Aplicabilidade
-Esta esteira é ativada para tarefas de **baixo risco**, tais como:
-- Ajustes de layout, TailwindCSS, cores, alinhamentos e responsividade.
-- Alterações em textos, microcopies de formulários e banners.
-- Correções de bugs simples em componentes React que não alterem schemas de banco Supabase, rotas financeiras ou Edge Functions.
+# ⚡ ESTEIRA 1: FAST-TRACK (Hotfixes de UI, Textos e Bugs Simples)
+> **Grafo Dirigido de Estados (DAG) | Execução Determinística | Zero Loops Infinitos**
 
 ---
 
-## 🚀 Fluxo de Execução Enxuto (3 Passos)
+## 🎯 1. Aplicabilidade & Critérios de Entrada
+Esta esteira é ativada estritamente para tarefas de **baixo risco**, tais como:
+- Ajustes de CSS, TailwindCSS, tipografia, cores, padding e responsividade visual.
+- Correção de microcopy, ortografia ou banners informativos.
+- Bugs simples em componentes React que **NÃO alterem** schemas de banco, rotas de pagamento, RLS ou Edge Functions.
+
+**Agentes Ativos:** `Tech Lead` (Triage) + `Fullstack Dev` (Implementação) + `QA Automation` (Build/Testes).
+
+---
+
+## 🧭 2. Grafo Dirigido de Estados (DAG)
 
 ```mermaid
-flowchart LR
-    A["1. Tech Lead (Diagnóstico Rápido)"] --> B["2. Fullstack Dev (Implementação)"]
-    B --> C["3. Gatekeeper 3 (npm run build & npm test)"]
+flowchart TD
+    S0["[S0] Entrada: Demanda Identificada"] --> S1["[S1] Tech Lead: Blast Radius Check (Confirmar Baixo Risco)"]
+    S1 --> S2{"Risco permanece baixo?"}
+    S2 -- Não (Toca em banco/pagamento) --> S_ESC["[ESCALAR] Transicionar para Standard ou Full-Track"]
+    S2 -- Sim --> S3["[S2] Fullstack Dev: Edição Cirúrgica & Clean Code"]
+    S3 --> S4["[S3] QA Automation: Execução Terminal (npm run build && npm test)"]
+    S4 --> S5{"Status dos Comandos?"}
+    S5 -- Verde (100% Pass) --> S_DONE["[S4] TÉRMINO: Tarefa Concluída com Sucesso"]
+    S5 -- Vermelho (Falha) --> S_RETRY["[S_FIX] 1 Correção Atômica pelo Dev"]
+    S_RETRY --> S4
 ```
 
-### **Passo 1: Diagnóstico e Escopo (Tech Lead)**
-- Verificar se a alteração realmente não afeta pagamentos, dados de saúde ou RLS.
-- Definir os arquivos exatos a serem modificados.
+---
 
-### **Passo 2: Implementação Defensiva (Fullstack Dev)**
-- Modificar o código garantindo tipagem TypeScript e alinhamento com TailwindCSS.
+## ⚙️ 3. Transições de Estado & Critérios Determinísticos
 
-### **Passo 3: Verificação de Build, Testes e Memória (Gatekeeper 3)**
-- Executar `npm run build` e `npm test` no terminal.
-- Se a alteração introduzir novo padrão ou resolver bug/inconsistência, atualizar imediatamente [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md) e arquivar a ADR em [`.squad/history/`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/).
-- Se os testes passarem sem erros, declarar a tarefa **CONCLUÍDA**.
+### Estado S0: Entrada
+- Recebe a instrução do usuário.
+
+### Estado S1: Verificação de Impacto (Tech Lead)
+- Confirma que nenhum arquivo sob `supabase/functions/`, `src/services/` ou schema de banco é afetado.
+- *Condição de Guarda:* Se houver risco transversal oculto, aborta o Fast-Track e migra para **Standard-Track** ou **Full-Track**.
+
+### Estado S2: Execução Cirúrgica (Fullstack Dev)
+- Modifica os componentes visuais respeitando TailwindCSS e WCAG 2.1 AA.
+- Proibido inlinar lógica de persistência ou queries de banco.
+
+### Estado S3: Validação Empírica (QA Automation)
+- Executa no terminal:
+  ```bash
+  npm run build && npm test
+  ```
+- *Condição de Término:*
+  - Se status verde: Transiciona imediatamente para **S_DONE** (Concluído).
+  - Se falha: Executa no máximo 1 ciclo de reparo atômico (**S_FIX**). Persistindo falha, pausa para intervenção do Tech Lead (impede loops infinitos).
+
+---
+
+## 🏁 4. Estado Terminal (Definição de Pronto - DoD)
+- [ ] Código editado com precisão cirúrgica.
+- [ ] Build e testes unitários concluídos com status verde.
+- [ ] Zero impacto em pagamentos, dados de saúde ou rotas sensíveis.

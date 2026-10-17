@@ -24,6 +24,8 @@
 13. [📊 Relatório Executivo e Diagnóstico 360°](#13--relatório-executivo-e-diagnóstico-360)
 14. [🔁 Refatoração e Dívida Técnica](#14--refatoração-e-dívida-técnica)
 15. [🤝 Onboarding de Profissional / Paciente](#15--onboarding-de-profissional--paciente)
+16. [🤖 AI & LLM Runtime Ops (AIOps)](#16--ai--llm-runtime-ops-aiops)
+17. [🛡️ Sigilo de Saúde Mental & Conformidade Clínica CFP/LGPD](#17--sigilo-de-saúde-mental--conformidade-clínica-cfplgpd)
 
 ---
 
@@ -80,6 +82,22 @@ Dados para investigar:
 
 Investigue o fluxo do webhook mp-webhook → atualização do booking.
 Verifique idempotência, logs da Edge Function e políticas RLS.
+```
+
+### 1.4 Investigação Forense em 3 Passos & Dual-Loop com QA
+```
+Orquestrador Doxologos, ative o Bug Hunter no protocolo forense em 3 passos.
+
+ANOMALIA / FALHA: [ex: Horários de agendamento não salvam / Reconciliação PIX travada]
+URL / ROTA: [ex: /agendamento ou supabase/functions/mp-webhook]
+EVIDÊNCIA COLETADA:
+[Cole os logs exatos, resposta HTTP, status code ou stack trace]
+
+DIRETRIZ DE INVESTIGAÇÃO:
+1. Passo 1 (Diagnóstico Forense): Isole o sintoma e confirme a causa raiz empírica (RCA).
+2. Passo 2 (Solução Imediata): Formule a correção estritamente atômica e necessária.
+3. Passo 3 (Handoff para QA): Entregue os requisitos para o QA Automation codificar o teste automatizado de regressão antes do merge.
+Proibido palpitar código antes de isolar a Root Cause.
 ```
 
 ---
@@ -629,6 +647,22 @@ Smoke tests obrigatórios:
 Resultado: OK / FALHA com evidência para cada item.
 ```
 
+### 11.4 Validação Dinâmica de Regressão Zero & Fitness Functions (Terminal Real)
+```
+Orquestrador Doxologos, acione o QA Automation e o Tech Lead para validação empírica completa.
+
+ESCOPO MODIFICADO: [descreva arquivos ou rotas alteradas]
+
+EXECUÇÃO OBRIGATÓRIA NO TERMINAL:
+1. npm run check:architecture (auditoria estática de guardrails)
+2. npm test (suíte unitária Jest completa)
+3. npm run build (compilação de produção Vite)
+4. npm run squad:check (validador mestre de aprovação)
+
+Aprovação condicionada a 100% de status verde nos comandos acima.
+Apresente os outputs reais do terminal na resposta executiva.
+```
+
 ---
 
 ## 12. 🏗️ Evolução de Arquitetura e Banco
@@ -727,7 +761,20 @@ Formato: executivo, máximo 1 página, sem jargão técnico desnecessário.
 
 ## 14. 🔁 Refatoração e Dívida Técnica
 
-### 14.1 Dividir Componente Grande
+### 14.1 Refatoração Estrutural ou Remoção com Trava de Impacto (Gated Execution)
+```
+Orquestrador Doxologos, acione a Trava Gated Execution antes de qualquer código.
+
+INTERVENÇÃO PROPOSTA: [ex: remover tabela antiga / refatorar camada de pagamento / unificar auth]
+ARQUIVOS ALVO: [caminhos dos arquivos]
+
+OBRIGATÓRIO ANTES DE MODIFICAR CÓDIGO:
+1. Mapear o Blast Radius: 100% dos consumidores (telas, hooks, funções).
+2. Emitir o Parecer Crítico da Squad: riscos à estabilidade, impacto no checkout PIX/cartão e sigilo clínico.
+3. Propor a alternativa mais segura e aguardar confirmação explícita no terminal.
+```
+
+### 14.2 Dividir Componente Grande
 ```
 Orquestrador Doxologos, ative Standard-Track.
 Convoque Tech Lead + Fullstack Dev para refatorar [NomeDoComponente].
@@ -779,6 +826,66 @@ Proponha e implemente:
 
 UX Design: valide acessibilidade e microcopy empático.
 QA: confirme fluxo completo via Playwright.
+```
+
+---
+
+## 16. 🤖 AI & LLM Runtime Ops (AIOps)
+
+### 16.1 Otimização de Token Budget & Latência Ultrabaixa
+```
+Orquestrador Doxologos, acione o AI & Performance Engineer (llm_and_aiops_engineer).
+
+MÓDULO DE IA: [nome do assistente / rotina de triagem / geração de resumo]
+ARQUIVO DE PROMPT: [caminho do arquivo]
+
+DIRETRIZES DE AIOPS:
+1. Auditar Token Budget: limitar tokens de entrada (< 1.500) e saída (< 600).
+2. Avaliar Cache Semântico: indicar padrão de hash/embedding para reutilizar respostas comuns.
+3. Latência: impor streaming SSE para TTFT < 800ms.
+4. Circuit Breaker: fallback para UI caso a inferência demore mais que 5s.
+```
+
+### 16.2 Guardrails Anti-Alucinação & Moderação Clínica
+```
+Orquestrador Doxologos, acione o AI & Performance Engineer + Product Lead.
+
+AUDITORIA DE IA CLÍNICA: [assistente / rotina automatizada de texto]
+
+GUARDRAILS MANDATÓRIOS:
+1. Anti-Alucinação Médica: proibir terminantemente diagnósticos automáticos (CFP).
+2. Detecção de Crise: interceptar gatilhos de vulnerabilidade aguda e exibir acolhimento humano imediato (CVV 188).
+3. Saída Estruturada: validar payload de resposta com Zod/JSON Schema antes de qualquer renderização na UI.
+```
+
+---
+
+## 17. 🛡️ Sigilo de Saúde Mental & Conformidade Clínica CFP/LGPD
+
+### 17.1 Auditoria de RLS e Sigilo de Prontuários (Art. 9º CFP)
+```
+Orquestrador Doxologos, ative Full-Track.
+Convoque Platform Security + Tech Lead para auditoria estrita de sigilo clínico.
+
+TABELAS ALVO: patient_notes, patient_notes_history, bookings
+CAMADA: Supabase PostgreSQL + Edge Functions
+
+VERIFICAÇÕES OBRIGATÓRIAS:
+1. RLS Ativo: confirmar que somente o auth.uid() do paciente ou do profissional vinculado acessa as notas.
+2. Zero PII em Logs: validar que anotações de sessões e queixas nunca chegam aos logs da Hostinger, Netlify ou Supabase.
+3. LGPD Art. 11: conformidade integral de dados sensíveis de saúde mental.
+```
+
+### 17.2 Validação Ética de Comunicação & SEO Clínico (CFP)
+```
+Orquestrador Doxologos, convoque Product Lead + Data & Growth Analyst.
+
+PÁGINAS / BANNERS AVALIADOS: [ex: /artigos / /agendamento / landing pages]
+
+REGRAS ÉTICAS MANDATÓRIAS DO CFP:
+1. Zero Promessas de Cura: proibir termos que garantam resultados milagrosos ou tempo fixo de tratamento.
+2. Sem Sensacionalismo: revisar títulos e meta tags para manter tom acolhedor e profissional.
+3. Transparência: exibir número de registro CRP do psicólogo e informações claras de atendimento.
 ```
 
 ---

@@ -1,67 +1,52 @@
 # ⚡ DOXOLOGOS CORE INVARIANTS (Tier 1 Active Memory)
-> **Versão:** 1.0 (Elite Model) | **Custo Contextual:** < 1.500 tokens | **Uso:** Carregamento obrigatório em qualquer sessão.
+> **Versão:** 3.0 (Elite Antigravity Runtime) | **Custo Contextual:** < 1.500 tokens | **Uso:** Carregamento obrigatório.
 
 ---
 
-## 🏛️ 1. Missão & Tolerância Zero
-* Plataforma de telepsicologia com agendamentos 24/7 e checkout transparente (Mercado Pago).
-* **Tolerância Zero para Regressões:** Qualquer falha impacta diretamente na receita da clínica, na agenda dos psicólogos e no atendimento a pacientes.
-* **Tolerância Zero para "Band-Aids":** Proibido corrigir sintomas locais isolados sem tratar a causa raiz e o raio de alcance (blast radius) sistêmico.
+## 🏛️ 1. Governança Crítica & Tolerância Zero
+* **Postura Ativa Mandatória:** A squad nunca executa ordens destrutivas ou refatorações de forma passiva. Avalia o *Blast Radius* transversalmente antes de qualquer código.
+* **Gated Execution:** Refatorações pesadas, deleções e mudanças de schema exigem mapeamento de risco e trava de aprovação.
+* **Tolerância Zero para Regressões & Band-Aids:** Proibido mascarar sintomas locais. Resolução em 3 passos: Diagnóstico Forense -> Solução Imediata -> Evolução Estrutural.
 
 ---
 
-## 🛡️ 2. As 7 Invariantes Invioláveis de Engenharia
-
+## 🛡️ 2. As 8 Invariantes Invioláveis de Engenharia e Saúde Mental
 1. **SSOT em Serviços Canônicos (`src/services/`):**
-   * Componentes de UI NUNCA fazem `.from('tabela').update()` ou `.insert()` diretamente.
-   * Toda mutação ou consulta de domínio consome a camada canônica de serviços.
+   * Componentes de UI NUNCA chamam o Supabase diretamente para mutações de domínio. Consomem `professionalService.js`, `bookingService.js`, `paymentService.js` ou `patientService.js`.
 2. **Banco Soberano vs Efeitos Colaterais Assíncronos:**
-   * Mutações no PostgreSQL são prioritárias e atômicas.
-   * Efeitos colaterais (e-mails SMTP, webhooks, Zoom/Meet) rodam desacoplados em blocos `try/catch` resilientes, sem abortar a transação do banco se a rede oscilar.
+   * Mutações no PostgreSQL são prioritárias e atômicas. Efeitos colaterais (SMTP, webhooks, Meet) rodam isolados com tratamento defensivo de falha.
 3. **Proteção Contra Schema Drift (Whitelists):**
-   * Todo serviço canônico deve conter `ALLOWED_FIELDS` ou sanitização estrita para impedir o envio de propriedades fantasmas (ex: erro Postgres `42703`).
-4. **Privacidade Rigorosa & Zero PII (LGPD / HIPAA / CFP):**
-   * Proibido logar senhas, CPF, prontuários ou dados de cartão no console, Edge Functions ou prompts.
-5. **Segurança Supabase RLS & Zero-Downtime:**
-   * 100% das tabelas possuem RLS ativo. Migrações de banco seguem *Expand & Contract* (sem `DROP COLUMN` destrutivo direto).
-6. **Sincronia Estrita de Documentação ([`ARCH.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/ARCH.md)):**
-   * Qualquer coluna ou regra modificada no PostgreSQL deve ser imediatamente sincronizada no `ARCH.md`.
-7. **Validação Empírica Automatizada:**
-   * Nenhuma tarefa é declarada concluída sem validação via terminal. O comando mestre é `npm run squad:check`.
+   * Todo serviço canônico impõe `ALLOWED_FIELDS` validados contra o catálogo oficial para impedir erro Postgres `42703`.
+4. **Sigilo Clínico & Zero PII (CFP / LGPD Art. 11):**
+   * Proibido logar ou submeter a LLMs senhas, CPF, cartões ou anotações de prontuários psicológicos (Art. 9º Código de Ética CFP).
+5. **Segurança Supabase RLS & RBAC:**
+   * 100% das tabelas possuem RLS ativo. Edge Functions administrativas validam papéis via `app_metadata` (ADR 012).
+6. **Fintech Idempotence:**
+   * Ingestão de webhooks e mutações de pagamento checam idempotência atômica (`mp_payment_id` / chave) com resposta em < 50ms (ADR 013).
+7. **AI Runtime Ops & Cache Semântico:**
+   * Chamadas de LLM utilizam sanitização de prompt, cache semântico para perguntas frequentes e controle rígido de tokens/latência.
+8. **Validação Dinâmica por Execução Real:**
+   * Nenhuma tarefa é concluída sem status verde nos comandos do terminal. Comando mestre: `npm run squad:check`.
 
 ---
 
-## 📦 3. Catálogo de Serviços Canônicos & Esquema
-* **Catálogo Oficial de Banco:** [`src/constants/databaseCatalog.json`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/constants/databaseCatalog.json) (57 tabelas inspecionadas via OpenAPI)
-* **Validador de Esquema:** [`src/lib/validation/schemaValidator.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/lib/validation/schemaValidator.js)
-* **Profissionais (`professionals`):** [`src/services/professionalService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/professionalService.js)
-  * RPC prioritário para e-mails: `admin_list_users` no Postgres.
-* **Agendamentos (`bookings`):** [`src/services/bookingService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/bookingService.js)
-  * Coluna real de horário: `booking_time` (estritamente VARCHAR(5), formato 'HH:mm'). Status válidos: `pending_payment`, `pending`, `confirmed`, `completed`, `cancelled`, `paid`.
-* **Pagamentos (`payments`):** [`src/services/paymentService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/paymentService.js)
-  * SSOT Mercado Pago, whitelisting de 39 colunas, busca por `mp_payment_id` e atualização atômica de status.
-* **Pacientes & Prontuários (`patient_notes`):** [`src/services/patientService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/patientService.js)
-  * SSOT para tarefas de casa (homework), prontuários clínicos e histórico de sessões.
-* **Segurança & RBAC de Edge Functions (SSOT):** [`supabase/functions/_shared/auth.ts`](file:///c:/Users/ander/source/repos/frontend_doxologos/supabase/functions/_shared/auth.ts)
-  * Validação de papéis via `app_metadata.role` e `app_metadata.roles` (ADR 005 / ADR 012), `requireAdmin`, `hasAnyRole` e proteção CSP.
-* **Resiliência Fintech & Webhook Idempotente (SSOT):** [`supabase/functions/mp-webhook/index.ts`](file:///c:/Users/ander/source/repos/frontend_doxologos/supabase/functions/mp-webhook/index.ts)
-  * Barreira atômica de idempotência por `mp_payment_id` e execução assíncrona não bloqueante de NFS-e (ADR 013).
-* **Reatividade de Dados & Camada de Cache (TanStack Query SSOT):** [`src/hooks/queries/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/hooks/queries/)
-  * Hooks canônicos de leitura e mutações com invalidação atômica e cache explícito (`staleTime`/`gcTime`) anti-flicker (ADR 014).
-* **Desmembramento de God Components & Modularidade de Abas (SSOT):** [`src/components/admin/tabs/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/components/admin/tabs/)
-  * Abas administrativas desacopladas e reutilizáveis (`AdminBookingsTab`, `AdminEventsTab`, `AdminServicesTab`, `AdminProfessionalsTab`, `AdminPaymentsTab`, `AdminTestimonialsTab`) reduzindo tamanho de tela em ~50% (ADR 015).
-* **Observabilidade Real-User & Resiliência (RUM SSOT):** [`src/lib/observability/rumMonitoring.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/lib/observability/rumMonitoring.js)
-  * Telemetria no cliente para Core Web Vitals, latência de APIs e monitoramento proativo de integridade com alertas (ADR 015).
+## 📦 3. Catálogo Canônico de Serviços & Componentes Chave
+* **Catálogo Oficial de Banco:** [`src/constants/databaseCatalog.json`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/constants/databaseCatalog.json) (57 tabelas inspecionadas via OpenAPI).
+* **Profissionais (`professionals`):** [`src/services/professionalService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/professionalService.js) (RPC `admin_list_users` prioritário para e-mails).
+* **Agendamentos (`bookings`):** [`src/services/bookingService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/bookingService.js) (`booking_time` estritamente VARCHAR(5) 'HH:mm', status válidos e disparo resiliente).
+* **Pagamentos (`payments`):** [`src/services/paymentService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/paymentService.js) (SSOT Mercado Pago, whitelist de 39 colunas, idempotência).
+* **Pacientes & Prontuários (`patient_notes`):** [`src/services/patientService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/patientService.js) (SSOT tarefas e notas clínicas).
+* **Segurança Backend:** [`supabase/functions/_shared/auth.ts`](file:///c:/Users/ander/source/repos/frontend_doxologos/supabase/functions/_shared/auth.ts) (`getUserRoles`, `requireAdmin`, `hasAnyRole`).
+* **Cache Reativo TanStack Query:** [`src/hooks/queries/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/hooks/queries/) (invalidação atômica e cache anti-flicker).
+* **Observabilidade Real-User:** [`src/lib/observability/rumMonitoring.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/lib/observability/rumMonitoring.js) (Web Vitals e telemetria de APIs).
 
 ---
 
-## 🧪 4. Fitness Functions & Comandos do Pipeline
-* **Sincronização de Esquema (Supabase):** `npm run schema:sync`
-* **Auditoria Arquitetural:** `npm run check:architecture`
-* **Suíte de Testes:** `npm test`
-* **Compilação de Produção:** `npm run build`
-* **Gatekeeper Completo do Squad:** `npm run squad:check`
+## 🧪 4. Fitness Functions & Comandos Obrigatórios de Pipeline
+* **Auditoria de Guardrails Arquiteturais:** `npm run check:architecture`
+* **Suíte Completa de Testes Automatizados:** `npm test`
+* **Compilação de Produção sem Falhas:** `npm run build`
+* **Gatekeeper Automatizado Mestre:** `npm run squad:check`
 
 ---
-*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 015), consulte a Memória Tier 2 em [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*
-
+*Para histórico completo de decisões e ADRs detalhadas (ADR 001 a ADR 016), consulte [`.squad/03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md).*

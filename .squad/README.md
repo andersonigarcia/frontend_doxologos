@@ -1,118 +1,115 @@
-# 🧠 Squad Multiagente v2.0 — Doxologos Psicologia
-### Antigravity & IDE Mode · Alta Eficiência de Tokens · Zero Burocracia
+# 🧠 Squad Multiagente v3.0 — Doxologos Psicologia
+### Google Antigravity Agent Runtime · Trava de Decisão (Gated Execution) · Dual-Loop de Resiliência · Zero Regressão
 
-Esta pasta (`.squad/`) é a **memória externa e ecossistema de inteligência** do Squad End-to-End do Doxologos Psicologia. Arquitetura modular dinâmica com 8 agentes especializados, 5 esteiras de risco e qualificação automática antes de cada decisão.
+Esta pasta (`.squad/`) é o **ecossistema de governança, memória externa e arquitetura multiagente** da Doxologos Psicologia. Projetada com padrões de Staff/Principal Engineer, a squad combina **pensamento crítico mandatório**, **execução determinística baseada em grafos (DAGs)**, **conformidade ética com o Conselho Federal de Psicologia (CFP)** e **blindagem total de dados de saúde (LGPD)**.
 
 ---
 
-## 🏛️ Arquitetura Modular v2.0
+## 🏛️ Estrutura do Ecossistema v3.0
 
 ```
 .squad/
-├── ORCHESTRATOR.md           → Roteador Central: qualifica e ativa a esteira correta
-├── 01_SQUAD_SYSTEM_PROMPT.md → Constituição e Guardrails globais invioláveis
-├── 02_PROJECT_CONTEXT.md     → Contexto do negócio, SLAs e roadmap atual
-├── 03_SQUAD_MEMORY.md        → ADRs + Seção 6: Bugs Conhecidos / RCA Log
-├── PROMPT_TEMPLATES.md       → 7 templates prontos para uso imediato
-├── PLAYBOOK_PROMPTS.md       → 🆕 Guia completo de prompts por cenário
+├── ORCHESTRATOR.md           → Roteador Central: Trava Gated Execution & Modos Operacionais
+├── 01_SQUAD_SYSTEM_PROMPT.md → Constituição Global: Pensamento Crítico & Resolução em 3 Passos
+├── 02_PROJECT_CONTEXT.md     → Contexto de Negócio, Jornada Clínica e SLAs de Produção
+├── CORE_INVARIANTS.md        → Memória Ativa (Tier 1): Invariantes Invioláveis (< 1.500 tokens)
+├── 03_SQUAD_MEMORY.md        → Memória Histórica (Tier 2): Lightweight ADR Index & RCA Patterns
+├── GUIA_RAPIDO_USUARIO.md    → Manual Prático de Interação para Usuário e PO
+├── relatorio_executivo_squad_v3.md → Relatório Executivo de Modificações e Ganhos
+├── PROMPT_TEMPLATES.md       → Prompts Mestre para Gated Execution, RCA Forense e Testes
+├── PLAYBOOK_PROMPTS.md       → Playbook Completo Otimizado por Cenário
 │
-├── agents/                   → 8 personas especializadas (ativadas sob demanda)
-│   ├── product_lead.md       → ROI, Unit Economics, Regras de Negócio
-│   ├── tech_lead.md          → Arquitetura, ARCH.md, Zod, Contracts
-│   ├── fullstack_dev.md      → React, Vite, Tailwind, Edge Functions Deno
-│   ├── platform_security.md  → SRE, RLS, OWASP, LGPD/HIPAA
-│   ├── qa_automation.md      → Jest, Playwright, Edge Functions, Smoke Tests
-│   ├── data_growth_analyst.md→ GA4, CRO, SEO Clínico, Churn, LTV
-│   ├── bug_hunter.md         → 🆕 Diagnóstico RCA por camada (Silent First)
-│   └── ux_design.md          → 🆕 WCAG 2.1, CRO Visual, Mobile-First, Microcopy
+├── agents/                   → 9 Agentes Especializados (Ativados estritamente sob demanda)
+│   ├── product_lead.md       → ROI, Unit Economics, Jornada Clínica & Conformidade CFP
+│   ├── tech_lead.md          → Arquitetura Boring Tech, ARCH.md SSOT, Zod & Blast Radius
+│   ├── fullstack_dev.md      → React 18, Deno Edge Functions & Serviços Canônicos
+│   ├── platform_security.md  → SRE, RLS 100%, RBAC app_metadata, LGPD Art. 11 & Sigilo CFP
+│   ├── qa_automation.md      → Dual-Loop Loop 2: Testes Estritos & Validação Terminal
+│   ├── bug_hunter.md         → Dual-Loop Loop 1: Diagnóstico Forense & RCA Baseado em Evidências
+│   ├── ux_design.md          → Acessibilidade WCAG 2.1 AA, CRO Mobile-First (>80%) & Microcopy
+│   ├── data_growth_analyst.md→ Decisões Data-Driven, GA4 sem PII, SEO Clínico Ético
+│   └── llm_and_aiops_engineer.md → 🆕 Cache Semântico, Guardrails Anti-Alucinação & Token Budgeting
 │
-└── workflows/                → 5 esteiras ajustadas ao nível de risco
-    ├── fast_track.md         → Hotfixes, UI, bugs simples (2 agentes)
-    ├── standard_track.md     → Features médias, componentes (4 agentes)
-    ├── full_track.md         → Pagamentos, RLS, LGPD (6 agentes + 6 gatekeepers)
-    ├── growth_experiment.md  → CRO, SEO, A/B Tests, Retenção (4 agentes)
-    └── incident_response.md  → Emergências em produção (5 agentes, Bug Hunter lidera)
+├── workflows/                → 5 Esteiras Determinísticas por Grafos (DAGs)
+│   ├── fast_track.md         → Hotfixes Visuais e Textos (3 nós, término determinístico)
+│   ├── standard_track.md     → Features Médias e Telas (Gated check + build/testes)
+│   ├── full_track.md         → Checkout, RLS, LGPD & Pagamentos (Trava Gated + Squad Check)
+│   ├── incident_response.md  → Emergências em Produção (3 passos RCA + Dual-Loop QA)
+│   └── growth_experiment.md  → Experimentos CRO, SEO e Telemetria (Hipóteses baseadas em dados)
+│
+└── history/                  → Histórico Integral de Decisões Arquiteturais (ADRs 001 a 016)
+    ├── 2026-09-24_ADR_001... → Google Meet Exclusivo
+    ├── ...
+    └── 2026-10-13_ADR_016... → Truncagem de booking_time VARCHAR(5)
 ```
 
 ---
 
-## 🔍 Qualificação Automática (Antes de Qualquer Tarefa)
+## 🛑 Trava Obrigatória de Decisão (*Gated Execution Flow*)
 
-O Orquestrador responde 3 perguntas antes de selecionar a esteira:
-
-| Pergunta | Sim → |
-|---|---|
-| Altera tabela Supabase, RLS ou Edge Function? | Standard-Track no mínimo |
-| Toca em pagamento MP ou dados de saúde LGPD? | Full-Track obrigatório |
-| Risco de regressão em produção > 0%? | Escalar uma esteira acima |
+A squad **NÃO É UM EXECUTOR PASSIVO**. Diante de remoções, refatorações pesadas ou alterações estruturais:
+1. **Mapeamento de Efeitos Colaterais:** Análise de Blast Radius em 100% dos consumidores.
+2. **Parecer Crítico da Squad:** Exposição cética de prós, contras, riscos à saúde/receita e proposição de alternativas seguras.
+3. **Aprovação Explícita no Terminal:** Aguardar confirmação do usuário antes de tocar em código.
 
 ---
 
-## 🚀 Como Usar no Dia a Dia
+## 👥 Os 9 Agentes da Squad de Elite
 
-### Escolha a esteira pelo risco da tarefa:
-
-| Situação | Esteira | Agentes Ativos |
+| Agente | Domínio Principal | Postura Crítica / Foco |
 |---|---|---|
-| Layout, CSS, textos, microcopy | ⚡ Fast-Track | Tech Lead + Dev |
-| Nova tela, componente, hook Supabase | 📦 Standard-Track | Product + Tech Lead + Dev + QA |
-| Checkout MP, webhook, RLS, LGPD | 🛡️ Full-Track | Todos (6 gatekeepers) |
-| Analytics, CRO, SEO, A/B test | 📈 Growth-Track | Data Analyst + Product + UX + Dev |
-| Bug em produção, incidente, queda | 🚨 Incident-Track | Bug Hunter + SRE + Tech Lead + Dev + QA |
-
-### Para cada cenário, use o [`PLAYBOOK_PROMPTS.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/PLAYBOOK_PROMPTS.md) — guia completo com prompts otimizados prontos para copiar.
-
----
-
-## 👥 Os 8 Agentes do Squad
-
-| # | Agente | Papel | Ativado em |
-|---|---|---|---|
-| 1 | 🎯 Product Lead | ROI, critérios de aceite, anti-burocracia | Standard / Full / Growth |
-| 2 | ⚙️ Tech Lead | Arquitetura, ARCH.md, Zod, ADRs | Fast / Standard / Full / Incident |
-| 3 | 💻 Fullstack Dev | Código React + Edge Functions Deno | Todas |
-| 4 | 🛡️ Platform & Security | RLS, OWASP, LGPD, SRE | Full / Incident |
-| 5 | 🧪 QA Automation | Jest, Playwright, Smoke Tests Deno | Standard / Full / Incident |
-| 6 | 📈 Data & Growth | GA4, CRO, SEO Clínico, Churn | Growth |
-| 7 | 🐛 Bug Hunter | Diagnóstico RCA por camada — Silent First | Incident |
-| 8 | 🎨 UX Design | WCAG 2.1, CRO Visual, Mobile > 80% | Full / Growth |
+| 🎯 **Product Lead** | ROI, Unit Economics, Regras de Negócio | Protege a jornada clínica e questiona complexidades sem valor real |
+| ⚙️ **Tech Lead** | Arquitetura, ARCH.md SSOT, Zod | Mapeia Blast Radius e proíbe "band-aids" ou queries diretas na UI |
+| 💻 **Fullstack Dev** | React 18, Deno Edge Functions | Implementa código limpo consumindo exclusivamente `src/services/` |
+| 🛡️ **Platform & Security** | AppSec, RLS 100%, SRE, LGPD/CFP | Garante sigilo absoluto de prontuários (Art. 9º CFP) e RLS inviolável |
+| 🐛 **Bug Hunter** | Diagnóstico Forense RCA (Loop 1) | Identifica a causa raiz comprovada sem suposições ou "achismo" |
+| 🧪 **QA Automation** | Regressão Zero & Automação (Loop 2) | Converte causas raízes em testes estritos e valida status verde no terminal |
+| 🎨 **UX Design** | WCAG 2.1 AA, Mobile-First (>80%) | Garante usabilidade acolhedora, botões ≥ 44px e zero atrito no agendamento |
+| 📈 **Data & Growth** | Métricas GA4, SEO Clínico Ético | Embase decisões em métricas e rejeita promessas milagrosas de cura |
+| 🤖 **AI & AIOps** | Runtime Ops, Tokens, Cache Semântico | Controla latência, prompt budgeting e previne alucinações de diagnósticos |
 
 ---
 
-## 🔒 Guardrails Globais Invioláveis (Todas as Esteiras)
+## 🔄 Dual-Loop de Resiliência
 
-1. **Zero PII em Logs:** Proibido CPF, senhas, cartão ou prontuários em logs/prompts.
-2. **RLS Mandatório:** Toda tabela nova exige políticas Row Level Security ativas.
-3. **Pre-flight Real:** `npm test` + `npm run build` confirmados antes de declarar "Concluído".
-4. **Silent Diagnosis First:** Em incidentes, Root Cause confirmada ANTES de propor código.
-5. **ARCH.md como Verdade:** Qualquer decisão de banco/API/Edge Function valida contra `ARCH.md`.
+```mermaid
+flowchart LR
+    A["Anomalia / Falha"] --> B["[Loop 1] Bug Hunter: Diagnóstico Forense RCA"]
+    B --> C["Handoff Estruturado"]
+    C --> D["[Loop 2] QA Automation: Criação de Teste de Regressão Estrito"]
+    D --> E["Fullstack Dev: Correção Atômica Canônica"]
+    E --> F["Validação Terminal: npm run squad:check (Status Verde)"]
+```
 
 ---
 
-## ⚡ Comandos de Automação via CLI
+## ⚡ Comandos de Automação & Fitness Functions
 
 ```bash
-# Gatekeeper automático: compilação + testes
+# Validação mestre de arquitetura, compilação e suíte de testes
 npm run squad:check
 
-# Testar Edge Function localmente (substitua pelo nome da função)
-supabase functions serve mp-webhook --env-file .env
+# Auditoria estática de guardrails (serviços canônicos, RLS e whitelists)
+npm run check:architecture
 
-# Rodar testes E2E Playwright
-npx playwright test
-
-# Rodar apenas testes unitários Jest
+# Suíte de testes unitários e de integração Jest
 npm test
+
+# Compilação de produção Vite (com verificação de tipos e bundle)
+npm run build
+
+# Sincronização automática do catálogo OpenAPI do Supabase
+npm run schema:sync
 ```
 
 ---
 
-## 📚 Documentos de Referência Rápida
+## 📊 Ganhos de Maturidade da Squad v3.0
 
-| Documento | Propósito |
-|---|---|
-| [`ARCH.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/ARCH.md) | Arquitetura, ERD, RLS, Edge Functions — fonte de verdade |
-| [`ORCHESTRATOR.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/ORCHESTRATOR.md) | Roteamento de esteiras e qualificação |
-| [`PLAYBOOK_PROMPTS.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/PLAYBOOK_PROMPTS.md) | Prompts prontos para todos os cenários |
-| [`PROMPT_TEMPLATES.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/PROMPT_TEMPLATES.md) | Templates rápidos (7 formatos) |
-| [`03_SQUAD_MEMORY.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/03_SQUAD_MEMORY.md) | ADRs + RCA Log de bugs conhecidos |
+| Dimensão | Versão Legada | Squad v3.0 (Antigravity Runtime) | Ganho Obtido |
+|---|---|---|---|
+| **Consumo de Contexto (Tokens)** | ~40.000 tokens por leitura | ~8.500 tokens (Core + Index enxuto) | **~78% de redução de custo de tokens** |
+| **Postura Operacional** | Execução cega/passiva de comandos | Pensamento crítico, análise de Blast Radius e Gated Execution | **Eliminação de regressões e refatorações destrutivas** |
+| **Resolução de Incidências** | Correções pontuais (band-aids) | 3 Passos Forenses (RCA -> Correção Atômica -> Evolução Estrutural) | **Zero reincidência de bugs catalogados** |
+| **Validação de Qualidade** | Suposição por leitura de texto | Comprovação empírica por comandos reais no terminal do Antigravity | **Regressão Zero comprovada mecanicamente** |
+| **Conformidade em Saúde** | Políticas genéricas | Guardrails formais CFP (Art. 9º) e LGPD (Art. 11 de dados de saúde) | **Blindagem total contra vazamento de prontuários** |

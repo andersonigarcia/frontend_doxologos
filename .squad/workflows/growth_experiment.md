@@ -1,38 +1,65 @@
-# 📈 ESTEIRA 5: GROWTH & EXPERIMENT (SEO, Mkt & A/B Tests)
-
-## 🎯 Aplicabilidade
-Esta esteira é ativada para tarefas estritamente comerciais e focadas em crescimento de funil (Aquisição, Retenção, SEO e CRO), tais como:
-- Criação e análise de testes A/B em landing pages.
-- Otimização de Meta Tags, H1, e marcações Schema.org para SEO Clínico.
-- Ajustes de réguas de comunicação via E-mail/WhatsApp para redução de *no-show*.
-- Setup de rastreamento de novos eventos personalizados no Google Analytics 4 (GA4).
-- Desenvolvimento de fluxos B2B ou Quiz de Triagem para captação de leads (Inbound).
-
-**Personas Ativas:** [`data_growth_analyst.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/data_growth_analyst.md) (líder) + [`product_lead.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/product_lead.md) + [`ux_design.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/ux_design.md) + [`fullstack_dev.md`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/agents/fullstack_dev.md)
-
-> **Regra de Entrada:** Nenhum experimento é implementado sem uma hipótese estruturada com dados reais (GA4, Supabase, ou relatórios do usuário). O Data & Growth Analyst deve validar a hipótese antes do Passo 2.
+# 📈 ESTEIRA 5: GROWTH & EXPERIMENT (CRO, SEO Clínico & A/B Tests)
+> **Grafo Dirigido de Estados (DAG) | Decisões Orientadas a Dados | Governança Ética CFP**
 
 ---
 
-## 🚀 Fluxo Orientado a Dados (4 Passos)
+## 🎯 1. Aplicabilidade & Critérios de Entrada
+Esta esteira é ativada para iniciativas de crescimento, aquisição, retenção e inteligência de mercado:
+- Testes A/B em landing pages e fluxos de agendamento.
+- Otimização de SEO Clínico (Title, Meta Description, OpenGraph, Schema.org) respeitando normas do CFP (ADR 004).
+- Ajustes em réguas de comunicação para redução de faltas (*no-show*) e aumento de retenção (LTV).
+- Setup de novos eventos de rastreamento no GA4 sem tráfego de PII.
+
+**Agentes Ativos:** `Data & Growth Analyst` (Líder) + `Product Lead` + `UX Design` + `Fullstack Dev` + `QA Automation`.
+
+---
+
+## 🧭 2. Grafo Dirigido de Estados (DAG)
 
 ```mermaid
-flowchart LR
-    A["1. Data & Growth Analyst (Hipótese)"] --> B["2. UX & Product Lead (Design)"]
-    B --> C["3. Fullstack Dev (Integração)"]
-    C --> D["4. Data Analyst (Medição GA4)"]
+flowchart TD
+    S0["[S0] Entrada: Oportunidade de Otimização Identificada"] --> S1["[S1] Data Analyst: Hipótese Falseável & Métricas Chave"]
+    S1 --> S2["[S2] Product & UX: Design Empático & Validação Ética CFP"]
+    S2 --> S3{"Conformidade CFP (Zero Promessas Ilusórias)?"}
+    S3 -- Não (Risco Ético) --> S2
+    S3 -- Sim (Aprovado) --> S4["[S3] Fullstack Dev: Implementação do Experimento & Eventos GA4"]
+    S4 --> S5["[S4] QA Automation: Validação de Build & Testes (npm run build && npm test)"]
+    S5 --> S6{"Build e Testes Verdes?"}
+    S6 -- Não --> S4
+    S6 -- Sim --> S7["[S5] Data Analyst: Auditoria de Eventos GA4 (Zero PII)"]
+    S7 --> S_DONE["[S6] TÉRMINO: Experimento Ativo em Produção"]
 ```
 
-### **Passo 1: Hipótese Baseada em Dados (Data & Growth Analyst)**
-- Avaliar os dados/relatórios fornecidos pelo usuário.
-- Formular a hipótese estruturada (Ex: "Reduzir o formulário de 5 para 3 campos aumentará a conversão de checkout em 10%").
+---
 
-### **Passo 2: Design e Copys (Product Lead & UX)**
-- Elaborar *microcopy* empática e alinhada ao tom da Doxologos.
-- Projetar o experimento com o menor atrito possível (Tailwind/Radix UI).
+## ⚙️ 3. Transições de Estado & Critérios Determinísticos
 
-### **Passo 3: Implementação Tecnológica (Fullstack Dev)**
-- Codificar as landing pages, banners ou eventos. Garantir que os disparos de `gtag` (GA4) ou chamadas à API estejam corretos e sem bloqueios (ex: bloqueadores de anúncios).
+### Estado S0: Entrada
+- Recebe a oportunidade de crescimento ou análise de funil.
 
-### **Passo 4: Preparação para Medição (Data Analyst)**
-- Validar se o experimento tem uma métrica chave definida. Acompanhar a coleta dos dados para garantir significância estatística após o deploy.
+### Estado S1: Hipótese Baseada em Dados (Data & Growth Analyst)
+- Formular hipótese estruturada: *"Com base na métrica X, se alterarmos Y, esperamos que a métrica Z varie em W% em N dias."*
+- Proibido iniciar experimentos sem métrica primária mensurável.
+
+### Estado S2: Design Empático & Compliance Ético (Product Lead & UX Design)
+- Assegurar microcopy empática e acolhedora voltada para a saúde mental.
+- **Filtro CFP:** Proibição absoluta de títulos ou copys apelativas ("Cure sua ansiedade em 3 sessões", etc.).
+
+### Estado S3: Implementação Tecnológica (Fullstack Dev)
+- Codificar os componentes React com menor atrito possível.
+- Disparar eventos no GA4 garantindo que nenhum e-mail, nome ou dado médico do paciente seja trafegado na carga útil.
+
+### Estado S4 & S5: Validação de Qualidade & Telemetria (QA & Data Analyst)
+- Executar no terminal:
+  ```bash
+  npm run build && npm test
+  ```
+- O Data Analyst audita a coleta no staging/produção para assegurar conformidade com a LGPD.
+
+---
+
+## 🏁 4. Estado Terminal (Definição de Pronto - DoD)
+- [ ] Hipótese estruturada documentada com métrica clara de sucesso.
+- [ ] Conteúdo e copys em 100% de conformidade com as regras éticas do CFP.
+- [ ] Zero dados de saúde ou PII enviados ao Google Analytics.
+- [ ] Compilação de produção e testes unitários 100% verdes no terminal.
