@@ -66,12 +66,15 @@ const PatientAccountStep = ({
       {!authUser && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Email*</label>
+            <label htmlFor="patient-email" className="block text-sm font-medium mb-2 text-gray-800">Email*</label>
             <div className="relative">
               <input
+                id="patient-email"
                 type="email"
                 inputMode="email"
                 autoComplete="email"
+                aria-required="true"
+                aria-invalid={Boolean(emailError)}
                 {...register('email', {
                   setValueAs: (value) => (value ?? '').trim(),
                 })}
@@ -80,7 +83,7 @@ const PatientAccountStep = ({
                 placeholder="seu@email.com"
               />
               {isCheckingEmail && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
                   <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                 </div>
               )}
@@ -91,9 +94,10 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-gray-600 mt-2"
+                className="flex items-center gap-2 text-sm text-gray-700 mt-2"
+                role="status"
               >
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-gray-600" aria-hidden="true" />
                 <span>Verificando email...</span>
               </motion.div>
             )}
@@ -102,9 +106,10 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-green-600 mt-2 bg-green-50 px-3 py-2 rounded-2xl border border-green-200"
+                className="flex items-center gap-2 text-sm text-[#1b5e20] mt-2 bg-green-50 px-3 py-2 rounded-2xl border border-green-200"
+                role="status"
               >
-                <CheckCircle className="w-4 h-4" />
+                <CheckCircle className="w-4 h-4 text-[#1b5e20]" aria-hidden="true" />
                 <span className="font-medium">✓ Que bom ter você de volta! Reconhecemos seu e-mail.</span>
               </motion.div>
             )}
@@ -113,20 +118,21 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-blue-600 mt-2 bg-blue-50 px-3 py-2 rounded-2xl border border-blue-200"
+                className="flex items-center gap-2 text-sm text-blue-800 mt-2 bg-blue-50 px-3 py-2 rounded-2xl border border-blue-200"
+                role="status"
               >
-                <Sparkles className="w-4 h-4" />
+                <Sparkles className="w-4 h-4 text-blue-700" aria-hidden="true" />
                 <span className="font-medium">✓ Seja muito bem-vindo(a)! Criaremos seu espaço seguro.</span>
               </motion.div>
             )}
 
             {emailCheckError && (
-              <p className="text-amber-600 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-2xl border border-amber-200">
+              <p className="text-amber-800 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-2xl border border-amber-200" role="alert">
                 {emailCheckError}
               </p>
             )}
 
-            {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+            {emailError && <p className="text-red-600 text-sm mt-1" role="alert">{emailError}</p>}
           </div>
 
           <AnimatePresence>
@@ -138,11 +144,14 @@ const PatientAccountStep = ({
                 className="space-y-4 overflow-hidden"
               >
                 <div className="relative">
-                  <label className="block text-sm font-medium mb-2">Nome completo*</label>
+                  <label htmlFor="patient-name" className="block text-sm font-medium mb-2 text-gray-800">Nome completo*</label>
                   <div className="relative">
                     <input
+                      id="patient-name"
                       type="text"
                       autoComplete="name"
+                      aria-required="true"
+                      aria-invalid={Boolean(errors.name)}
                       {...register('name', {
                         setValueAs: (value) => (value ?? '').trim(),
                       })}
@@ -155,21 +164,25 @@ const PatientAccountStep = ({
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         className="absolute right-3 top-1/2 -translate-y-1/2"
+                        aria-hidden="true"
                       >
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
                       </motion.div>
                     )}
                   </div>
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+                  {errors.name && <p className="text-red-600 text-sm mt-1" role="alert">{errors.name.message}</p>}
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium mb-2">Telefone*</label>
+                  <label htmlFor="patient-phone" className="block text-sm font-medium mb-2 text-gray-800">Telefone*</label>
                   <div className="relative">
                     <input
+                      id="patient-phone"
                       type="tel"
-                      inputMode="numeric"
+                      inputMode="tel"
                       autoComplete="tel"
+                      aria-required="true"
+                      aria-invalid={Boolean(errors.phone)}
                       {...register('phone', {
                         onChange: (event) => {
                           const formatted = formatPhoneNumber(event.target.value);
@@ -186,12 +199,13 @@ const PatientAccountStep = ({
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         className="absolute right-3 top-1/2 -translate-y-1/2"
+                        aria-hidden="true"
                       >
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
                       </motion.div>
                     )}
                   </div>
-                  {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
+                  {errors.phone && <p className="text-red-600 text-sm mt-1" role="alert">{errors.phone.message}</p>}
                 </div>
               </motion.div>
             )}
@@ -217,16 +231,16 @@ const PatientAccountStep = ({
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isExistingPatient
-                      ? 'bg-green-100 text-green-600'
-                      : 'bg-blue-100 text-blue-600'
+                      ? 'bg-green-100 text-[#1b5e20]'
+                      : 'bg-blue-100 text-blue-800'
                       }`}>
                       {isExistingPatient ? <UserCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
                     </div>
                     <div>
-                      <h3 className={`font-semibold ${isExistingPatient ? 'text-green-900' : 'text-blue-900'}`}>
+                      <h3 className={`font-semibold ${isExistingPatient ? 'text-green-950' : 'text-blue-950'}`}>
                         {isExistingPatient ? 'Bem-vindo de volta!' : 'Nova conta'}
                       </h3>
-                      <p className={`text-xs ${isExistingPatient ? 'text-green-700' : 'text-blue-700'}`}>
+                      <p className={`text-xs ${isExistingPatient ? 'text-[#1b5e20]' : 'text-blue-800'}`}>
                         {isExistingPatient ? 'Vincule seu agendamento' : 'Crie sua senha'}
                       </p>
                     </div>
@@ -235,9 +249,9 @@ const PatientAccountStep = ({
                   <button
                     type="button"
                     onClick={onToggleExistingPatient}
-                    className={`text-xs font-medium px-2 py-1 rounded-md transition-colors ${isExistingPatient
-                      ? 'text-green-700 hover:bg-green-200/50'
-                      : 'text-blue-700 hover:bg-blue-200/50'
+                    className={`text-xs font-semibold px-3 py-2 min-h-[44px] inline-flex items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${isExistingPatient
+                      ? 'text-[#1b5e20] hover:bg-green-200/50'
+                      : 'text-blue-800 hover:bg-blue-200/50'
                       }`}
                   >
                     {isExistingPatient ? 'Trocar' : 'Já tenho conta'}
@@ -245,7 +259,7 @@ const PatientAccountStep = ({
                 </div>
 
                 {/* Descrição */}
-                <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+                <p className="text-sm text-gray-700 mb-6 leading-relaxed">
                   {isExistingPatient
                     ? 'Digite sua senha para manter suas consultas organizadas no mesmo lugar.'
                     : `Defina uma senha segura com pelo menos ${minPasswordLength} caracteres para acompanhar suas consultas e acessar sua sala virtual.`}
@@ -255,11 +269,14 @@ const PatientAccountStep = ({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {/* Campo de Senha */}
                   <div className="relative">
-                    <label className="block text-sm font-medium mb-2 text-gray-700">
+                    <label htmlFor="patient-password" className="block text-sm font-medium mb-2 text-gray-800">
                       {isExistingPatient ? 'Sua senha de acesso*' : 'Crie uma senha de acesso*'}
                     </label>
                     <input
+                      id="patient-password"
                       type={showPassword ? 'text' : 'password'}
+                      aria-required="true"
+                      aria-invalid={Boolean(passwordError || errors.password)}
                       {...register('password')}
                       className={`w-full px-4 py-3 border rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
                         ? 'border-green-200 focus:ring-green-500'
@@ -271,7 +288,7 @@ const PatientAccountStep = ({
                     <button
                       type="button"
                       onClick={onToggleShowPassword}
-                      className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
+                      className="absolute right-2 top-8 min-w-[44px] min-h-[44px] p-2 flex items-center justify-center text-gray-600 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] rounded-lg transition-colors"
                       aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                     >
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -297,11 +314,14 @@ const PatientAccountStep = ({
                       transition={{ duration: 0.2 }}
                       className="relative"
                     >
-                      <label className="block text-sm font-medium mb-2 text-gray-700">
+                      <label htmlFor="patient-confirm-password" className="block text-sm font-medium mb-2 text-gray-800">
                         Confirme a senha*
                       </label>
                       <input
+                        id="patient-confirm-password"
                         type={showConfirmPassword ? 'text' : 'password'}
+                        aria-required="true"
+                        aria-invalid={Boolean(errors.confirmPassword)}
                         {...register('confirmPassword')}
                         className="w-full px-4 py-3 border border-blue-200 rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
                         placeholder="Repita a senha"
@@ -310,7 +330,7 @@ const PatientAccountStep = ({
                       <button
                         type="button"
                         onClick={onToggleShowConfirmPassword}
-                        className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
+                        className="absolute right-2 top-8 min-w-[44px] min-h-[44px] p-2 flex items-center justify-center text-gray-600 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] rounded-lg transition-colors"
                         aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
                       >
                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -322,7 +342,7 @@ const PatientAccountStep = ({
                 {/* Footer com Links e Dicas */}
                 <div className="mt-6 pt-6 border-t border-gray-200">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-700">
                       {isExistingPatient
                         ? 'Caso não lembre sua senha, solicite um link de redefinição.'
                         : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
@@ -331,9 +351,9 @@ const PatientAccountStep = ({
                       <button
                         type="button"
                         onClick={onPasswordResetRequest}
-                        className={`text-sm font-medium transition-colors ${isExistingPatient
-                          ? 'text-green-600 hover:text-green-700'
-                          : 'text-blue-600 hover:text-blue-700'
+                        className={`text-sm font-semibold min-h-[44px] inline-flex items-center px-2 py-1 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${isExistingPatient
+                          ? 'text-[#1b5e20] hover:text-[#132d29]'
+                          : 'text-blue-800 hover:text-blue-900'
                           } disabled:text-gray-400 disabled:hover:text-gray-400`}
                         disabled={!patientData.email || !!emailError}
                       >
@@ -341,9 +361,9 @@ const PatientAccountStep = ({
                       </button>
                       <Link
                         to="/recuperar-senha"
-                        className={`text-sm font-medium transition-colors ${isExistingPatient
-                          ? 'text-green-600 hover:text-green-700'
-                          : 'text-blue-600 hover:text-blue-700'
+                        className={`text-sm font-semibold min-h-[44px] inline-flex items-center px-2 py-1 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${isExistingPatient
+                          ? 'text-[#1b5e20] hover:text-[#132d29]'
+                          : 'text-blue-800 hover:text-blue-900'
                           }`}
                       >
                         Recuperar agora

@@ -84,21 +84,21 @@ const PaymentSummaryStep = ({
         <div className="p-6 grid sm:grid-cols-2 gap-6">
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <User className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+              <User className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Profissional</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Profissional</p>
                 <p className="font-semibold text-gray-900">{professional?.name || 'Selecione um profissional'}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
-              <CreditCard className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+              <CreditCard className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Serviço</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Serviço</p>
                 <p className="font-semibold text-gray-900">
                   {serviceDetails?.name || 'Selecione o serviço'}
                   {isPackage && <span className="text-emerald-700 font-bold block text-sm mt-0.5">({selectedSlots.length} Consultas)</span>}
                 </p>
-                {serviceDuration && <p className="text-sm text-gray-600 mt-1">Duração por sessão: {serviceDuration}</p>}
+                {serviceDuration && <p className="text-sm text-gray-700 mt-1">Duração por sessão: {serviceDuration}</p>}
               </div>
             </div>
           </div>
@@ -107,12 +107,12 @@ const PaymentSummaryStep = ({
               <div className="flex items-start gap-3">
                 <Calendar className="w-5 h-5 text-[#2d8659] shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Sessões Agendadas ({selectedSlots.length})</p>
+                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-1">Sessões Agendadas ({selectedSlots.length})</p>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                     {selectedSlots.map((slot, index) => (
-                      <div key={`${slot.date}-${slot.time}`} className="text-xs font-bold text-gray-800 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200 flex items-center justify-between gap-2">
+                      <div key={`${slot.date}-${slot.time}`} className="text-xs font-bold text-gray-800 bg-emerald-50 px-2.5 py-1.5 rounded border border-emerald-200 flex items-center justify-between gap-2">
                         <span>Sessão {index + 1}:</span>
-                        <span className="text-emerald-900">
+                        <span className="text-emerald-950 font-bold">
                           {new Date(`${slot.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })} às {slot.time}
                         </span>
                       </div>
@@ -123,16 +123,16 @@ const PaymentSummaryStep = ({
             ) : (
               <>
                 <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <Calendar className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Data</p>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Data</p>
                     <p className="font-semibold text-gray-900">{formattedDate}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
+                  <Clock className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-0.5">Horário</p>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Horário</p>
                     <p className="font-semibold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
                   </div>
                 </div>
@@ -151,16 +151,16 @@ const PaymentSummaryStep = ({
         {/* Valor Total */}
         <div className="p-6 bg-gray-50 flex items-center justify-between">
            <div>
-             <span className="text-gray-600 font-medium block">Valor total a pagar:</span>
-             {isPackage && <span className="text-xs text-gray-500">({selectedSlots.length}x de R$ {formatPrice(unitPrice)})</span>}
+             <span className="text-gray-700 font-medium block">Valor total a pagar:</span>
+             {isPackage && <span className="text-xs text-gray-600">({selectedSlots.length}x de R$ {formatPrice(unitPrice)})</span>}
            </div>
-           <span className="text-3xl font-bold text-[#2d8659]">R$ {formatPrice(totalPrice)}</span>
+           <span className="text-3xl font-bold text-[#1b5e20]">R$ {formatPrice(totalPrice)}</span>
         </div>
       </div>
 
-      <div className="mb-6 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-start gap-3">
-        <Zap className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
-        <p className="text-sm text-blue-800 leading-relaxed">
+      <div className="mb-6 p-4 bg-blue-50/70 rounded-2xl border border-blue-200 flex items-start gap-3" role="note">
+        <Zap className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
+        <p className="text-sm text-blue-900 leading-relaxed font-medium">
           {isPackage
             ? 'Após a confirmação, suas salas no Google Meet estarão prontas. O atendimento é 100% individual, confidencial e seguro.'
             : 'Após a confirmação, sua sala no Google Meet estará pronta. O atendimento é 100% individual, confidencial e seguro.'}
@@ -168,15 +168,15 @@ const PaymentSummaryStep = ({
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-6">
-        <div className="flex items-center gap-2 text-gray-500">
-          <Shield className="w-4 h-4 text-green-600" />
+        <div className="flex items-center gap-2 text-gray-700">
+          <Shield className="w-4 h-4 text-green-700" />
           <span className="text-xs font-semibold uppercase tracking-wider">Pagamento Seguro</span>
         </div>
         {paymentSecurityHighlights.slice(0, 2).map((highlight) => {
           const Icon = highlight.icon || Shield;
           return (
-            <div key={highlight.title} className="flex items-center gap-2 text-gray-500">
-              <Icon className="w-4 h-4 text-gray-400" />
+            <div key={highlight.title} className="flex items-center gap-2 text-gray-700">
+              <Icon className="w-4 h-4 text-gray-600" />
               <span className="text-xs font-medium">{highlight.title}</span>
             </div>
           );
@@ -184,24 +184,46 @@ const PaymentSummaryStep = ({
       </div>
 
       {!isImplicitTerms && (
-        <div className="flex flex-col gap-1 mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-          <div className="flex items-center gap-3">
-            <input type="checkbox" id="acceptTerms" className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-[#2d8659]" {...acceptTermsField} />
-            <label htmlFor="acceptTerms" className="text-sm text-gray-700 font-medium cursor-pointer">
+        <div className="flex flex-col gap-1 mb-6 bg-gray-50/70 p-4 rounded-2xl border border-gray-200">
+          <div className="flex items-center gap-3 min-h-[44px]">
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              aria-describedby={acceptTermsError ? "acceptTermsError" : undefined}
+              aria-invalid={!!acceptTermsError}
+              className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-2 focus:ring-[#2d8659] focus:ring-offset-2 cursor-pointer"
+              {...acceptTermsField}
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-800 font-medium cursor-pointer select-none">
               Estou ciente sobre o sigilo profissional e concordo com os{' '}
-              <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+              <a
+                href="/termos-e-condicoes"
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-700 hover:text-blue-900 underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+                aria-label="Termos de Atendimento (abre em uma nova aba)"
+              >
                 Termos de Atendimento
               </a>
             </label>
           </div>
-          {acceptTermsError && <p className="text-red-500 text-sm ml-8 mt-1">{acceptTermsError}</p>}
+          {acceptTermsError && (
+            <p id="acceptTermsError" role="alert" className="text-red-700 text-sm ml-8 mt-1 font-medium">
+              {acceptTermsError}
+            </p>
+          )}
         </div>
       )}
 
       {/* Botões de Ação - Sticky no Mobile para garantir CTA sempre visível acima da dobra */}
       <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:static sm:bg-transparent sm:p-0 sm:border-0 sm:shadow-none sm:z-auto">
         <div className="container max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-3">
-          <Button onClick={onBack} variant="outline" className="hidden sm:inline-flex rounded-full">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            aria-label="Voltar para a etapa anterior"
+            className="hidden sm:inline-flex rounded-full min-h-[44px] px-6 text-gray-700 hover:text-gray-900"
+          >
             Voltar
           </Button>
           <motion.div
@@ -212,7 +234,12 @@ const PaymentSummaryStep = ({
             <Button
               onClick={onSubmit}
               disabled={isSubmitting || !effectiveCanSubmit}
-              className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-3.5 sm:py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed h-auto"
+              aria-label={
+                isSubmitting
+                  ? 'Processando seu agendamento'
+                  : submitButtonTitle || (isPackage ? `Confirmar e Reservar Horário por R$ ${formatPrice(totalPrice)}` : 'Confirmar e Reservar Horário')
+              }
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-3.5 sm:py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
             >
               {isSubmitting
                 ? 'Processando...'
@@ -220,7 +247,12 @@ const PaymentSummaryStep = ({
             </Button>
           </motion.div>
           {onSupport && (
-            <Button onClick={onSupport} variant="outline" className="hidden sm:inline-flex rounded-full border-green-600 text-[#2d8659] hover:bg-green-50">
+            <Button
+              onClick={onSupport}
+              variant="outline"
+              aria-label="Fale conosco no WhatsApp para tirar dúvidas"
+              className="hidden sm:inline-flex rounded-full border-green-700 text-[#1b5e20] hover:bg-green-50 min-h-[44px]"
+            >
               <MessageCircle className="w-4 h-4 mr-2" />
               Precisa de ajuda? Fale conosco no WhatsApp
             </Button>

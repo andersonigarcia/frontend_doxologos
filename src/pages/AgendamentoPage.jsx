@@ -115,6 +115,8 @@ const LiveActivity = ({ currentStep }) => {
       initial={{ opacity: 0, x: -100 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -100 }}
+      role="status"
+      aria-live="polite"
       className="fixed bottom-32 left-4 md:bottom-6 md:left-6 bg-white shadow-2xl rounded-lg p-3 max-w-xs z-30 border border-gray-200"
     >
       <div className="flex items-center gap-3">
@@ -1632,12 +1634,18 @@ const AgendamentoPage = () => {
               emailCheckError={emailCheckError}
             />
             <div className="flex flex-col sm:flex-row gap-4 mt-6">
-              <Button onClick={() => setStep(3)} variant="outline">
+              <Button
+                onClick={() => setStep(3)}
+                variant="outline"
+                aria-label="Voltar para a escolha de data e horário"
+                className="min-h-[44px] px-6 text-gray-700 hover:text-gray-900"
+              >
                 Voltar
               </Button>
               <Button
                 onClick={handleProceedToSummary}
-                className="bg-[#2d8659] hover:bg-[#236b47] text-white active:scale-95"
+                aria-label="Continuar para a revisão do agendamento e pagamento"
+                className="bg-[#2d8659] hover:bg-[#236b47] text-white active:scale-95 min-h-[44px] px-8 font-semibold shadow-md"
               >
                 Continuar
               </Button>
@@ -1837,7 +1845,11 @@ const AgendamentoPage = () => {
               <DoxologosLogo className="h-9 md:h-10 w-auto" />
             </Link>
             <div className="flex items-center space-x-4">
-              <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
+              <Link
+                to="/"
+                aria-label="Voltar para a página inicial do site"
+                className="text-gray-700 hover:text-[#2d8659] transition-colors min-h-[44px] inline-flex items-center px-3 py-2 rounded-lg font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d8659]"
+              >
                 ← Voltar ao Site
               </Link>
             </div>
@@ -1975,7 +1987,8 @@ const AgendamentoPage = () => {
                 (step === 2 && !selectedProfessional) ||
                 (step === 3 && selectedSlots.length === 0 && (!selectedDate || !selectedTime))
               )}
-              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold shadow-md flex items-center justify-center gap-1 active:scale-95"
+              aria-label={step === 4 ? 'Avançar para o resumo de pagamento' : 'Continuar para a próxima etapa'}
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 min-h-[48px] text-base font-semibold shadow-md flex items-center justify-center gap-1 active:scale-95"
             >
               {step === 4 ? 'Avançar para Pagamento' : 'Continuar'} <ChevronRight className="w-5 h-5 ml-1" />
             </Button>

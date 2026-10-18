@@ -228,9 +228,9 @@ const DateTimeStep = ({
                 <CreditCard className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-700">Serviço:</p>
-                <p className="font-bold text-blue-600">{selectedServiceDetails.name}</p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm font-medium text-gray-800">Serviço:</p>
+                <p className="font-bold text-blue-800">{selectedServiceDetails.name}</p>
+                <p className="text-sm text-gray-700">
                   {selectedServiceDetails.duration_minutes >= 60
                     ? `${Math.floor(selectedServiceDetails.duration_minutes / 60)}h${selectedServiceDetails.duration_minutes % 60 > 0
                       ? ` ${selectedServiceDetails.duration_minutes % 60}min`
@@ -253,39 +253,42 @@ const DateTimeStep = ({
       {/* Quick Pick Buttons */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Zap className="w-5 h-5 text-[#2d8659]" />
-          <p className="text-sm font-semibold text-gray-700">Atalhos Rápidos</p>
+          <Zap className="w-5 h-5 text-[#236b47]" aria-hidden="true" />
+          <p className="text-sm font-semibold text-gray-800">Atalhos Rápidos</p>
         </div>
         <div className="grid grid-cols-3 gap-2 md:gap-3">
           <motion.button
             type="button"
             onClick={() => handleQuickPick(0)}
-            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-[#2d8659]/30 bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 hover:border-[#2d8659] hover:shadow-md transition-all group"
+            aria-label="Buscar horários disponíveis hoje"
+            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-[#2d8659]/30 bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 hover:border-[#236b47] hover:shadow-md transition-all group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Sun className="w-5 h-5 md:w-6 md:h-6 text-[#2d8659] mb-1 group-hover:scale-110 transition-transform" />
-            <span className="text-xs md:text-sm font-semibold text-gray-700">Hoje</span>
+            <Sun className="w-5 h-5 md:w-6 md:h-6 text-[#236b47] mb-1 group-hover:scale-110 transition-transform" aria-hidden="true" />
+            <span className="text-xs md:text-sm font-semibold text-gray-800">Hoje</span>
           </motion.button>
           <motion.button
             type="button"
             onClick={() => handleQuickPick(1)}
-            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-blue-100 hover:border-blue-500 hover:shadow-md transition-all group"
+            aria-label="Buscar horários disponíveis a partir de amanhã"
+            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-blue-100 hover:border-blue-700 hover:shadow-md transition-all group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700"
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Sunset className="w-5 h-5 md:w-6 md:h-6 text-blue-600 mb-1 group-hover:scale-110 transition-transform" />
-            <span className="text-xs md:text-sm font-semibold text-gray-700">Amanhã</span>
+            <Sunset className="w-5 h-5 md:w-6 md:h-6 text-blue-700 mb-1 group-hover:scale-110 transition-transform" aria-hidden="true" />
+            <span className="text-xs md:text-sm font-semibold text-gray-800">Amanhã</span>
           </motion.button>
           <motion.button
             type="button"
             onClick={() => handleQuickPick(7)}
-            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-purple-500/30 bg-gradient-to-br from-purple-50 to-purple-100 hover:border-purple-500 hover:shadow-md transition-all group"
+            aria-label="Buscar horários disponíveis nesta semana"
+            className="flex flex-col items-center justify-center p-3 md:p-4 rounded-lg border-2 border-purple-500/30 bg-gradient-to-br from-purple-50 to-purple-100 hover:border-purple-700 hover:shadow-md transition-all group min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-700"
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Calendar className="w-5 h-5 md:w-6 md:h-6 text-purple-600 mb-1 group-hover:scale-110 transition-transform" />
-            <span className="text-xs md:text-sm font-semibold text-gray-700">Esta Semana</span>
+            <Calendar className="w-5 h-5 md:w-6 md:h-6 text-purple-700 mb-1 group-hover:scale-110 transition-transform" aria-hidden="true" />
+            <span className="text-xs md:text-sm font-semibold text-gray-800">Esta Semana</span>
           </motion.button>
         </div>
       </div>
@@ -301,17 +304,17 @@ const DateTimeStep = ({
               <h3 className="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2">
                 Agendamento Múltiplo (Pacote de Sessões)
                 {selectedSlots.length > 0 && (
-                  <span className="px-2 py-0.5 text-xs font-extrabold bg-emerald-600 text-white rounded-full">
+                  <span className="px-2 py-0.5 text-xs font-extrabold bg-[#1b5e20] text-white rounded-full">
                     {selectedSlots.length} {selectedSlots.length === 1 ? 'Sessão' : 'Sessões'}
                   </span>
                 )}
               </h3>
               {selectedSlots.length > 0 ? (
-                <p className="text-xs text-gray-600 mt-0.5">
+                <p className="text-xs text-gray-700 mt-0.5">
                   Selecione uma ou mais datas/horários para garantir sua agenda inteira com pagamento único.
                 </p>
               ) : (
-                <p className="text-xs text-gray-600 hidden sm:block mt-0.5">
+                <p className="text-xs text-gray-700 hidden sm:block mt-0.5">
                   Selecione uma ou mais datas/horários para garantir sua agenda inteira com pagamento único.
                 </p>
               )}
@@ -322,7 +325,8 @@ const DateTimeStep = ({
               variant="ghost"
               size="sm"
               onClick={onClearSlots}
-              className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+              className="text-xs text-red-700 hover:text-red-800 hover:bg-red-50 shrink-0 min-h-[44px]"
+              aria-label={`Limpar todas as ${selectedSlots.length} sessões selecionadas`}
             >
               Limpar ({selectedSlots.length})
             </Button>
@@ -338,18 +342,18 @@ const DateTimeStep = ({
                   key={`${slot.date}-${slot.time}`}
                   className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-emerald-300 shadow-xs text-xs font-semibold text-gray-800 animate-in fade-in"
                 >
-                  <span className="text-emerald-700 font-bold">Sessão {index + 1}:</span>
+                  <span className="text-[#1b5e20] font-bold">Sessão {index + 1}:</span>
                   <span>
                     {new Date(`${slot.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às {slot.time}
                   </span>
                   <button
                     type="button"
                     onClick={() => onRemoveSlot?.(index)}
-                    className="text-gray-400 hover:text-red-600 transition-colors ml-1 p-0.5 rounded"
+                    className="text-gray-500 hover:text-red-700 transition-colors ml-1 p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
                     title="Remover sessão do pacote"
-                    aria-label={`Remover sessão do dia ${slot.date}`}
+                    aria-label={`Remover sessão ${index + 1} marcada para ${new Date(`${slot.date}T00:00:00`).toLocaleDateString('pt-BR')} às ${slot.time}`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" aria-hidden="true" />
                   </button>
                 </div>
               ))}
@@ -358,15 +362,15 @@ const DateTimeStep = ({
             {/* Resumo Financeiro do Pacote */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-2 border-t border-emerald-200/50 text-xs font-medium text-gray-700 gap-1">
               <span>
-                Total de Consultas: <strong className="text-emerald-800">{selectedSlots.length}x</strong> ({selectedServiceDetails?.name || 'Psicoterapia'})
+                Total de Consultas: <strong className="text-emerald-900">{selectedSlots.length}x</strong> ({selectedServiceDetails?.name || 'Psicoterapia'})
               </span>
-              <span className="text-sm font-bold text-emerald-900">
+              <span className="text-sm font-bold text-emerald-950">
                 Total do Pacote: R$ {(selectedSlots.length * parseFloat(selectedServiceDetails?.price || 150)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </span>
             </div>
           </div>
         ) : (
-          <p className="text-xs text-emerald-800/80 italic flex items-center gap-1.5">
+          <p className="text-xs text-emerald-950 italic flex items-center gap-1.5 font-medium">
             💡 Clique em uma ou mais datas no calendário e selecione os horários abaixo para formar seu pacote.
           </p>
         )}
@@ -388,12 +392,12 @@ const DateTimeStep = ({
           )}
 
           {availableDatesInMonth.length === 0 && (
-            <div className="mb-3 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-900 shadow-xs">
+            <div className="mb-3 px-3.5 py-2.5 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs text-amber-950 shadow-xs">
               <span>Nenhum horário livre em {currentMonth.toLocaleDateString('pt-BR', { month: 'long' })}.</span>
               <button
                 type="button"
                 onClick={onNextMonth}
-                className="font-bold text-[#2d8659] underline hover:text-[#236b47]"
+                className="font-bold text-[#1e5c3c] underline hover:text-[#132d29] min-h-[44px] inline-flex items-center"
               >
                 Ver próximo mês →
               </button>
@@ -413,34 +417,39 @@ const DateTimeStep = ({
                   type="button"
                   onClick={onPrevMonth}
                   disabled={isPrevMonthDisabled()}
-                  className={`p-1.5 rounded-lg transition-all ${isPrevMonthDisabled() ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/20 active:scale-95'
+                  className={`p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white ${isPrevMonthDisabled() ? 'opacity-30 cursor-not-allowed' : 'hover:bg-white/20 active:scale-95'
                     }`}
                   aria-label="Mês anterior"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                 </button>
                 <h3 className="text-lg font-bold capitalize">
                   {currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button type="button" onClick={onNextMonth} className="p-1.5 rounded-lg hover:bg-white/20 active:scale-95 transition-all" aria-label="Próximo mês">
-                  <ChevronRight className="w-5 h-5" />
+                <button
+                  type="button"
+                  onClick={onNextMonth}
+                  className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/20 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  aria-label="Próximo mês"
+                >
+                  <ChevronRight className="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
-              <p className="text-center text-xs text-white/70 mt-1">Deslize para mudar de mês</p>
+              <p className="text-center text-xs text-white/90 mt-1">Deslize para mudar de mês</p>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 px-3 py-2 bg-gray-50">
+            <div className="grid grid-cols-7 gap-1 px-3 py-2 bg-gray-50" role="row" aria-label="Dias da semana">
               {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
-                <div key={day} className="text-center text-xs font-semibold text-gray-600 py-1">
+                <div key={day} className="text-center text-xs font-semibold text-gray-700 py-1" role="columnheader">
                   {day}
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1.5 p-3">
+            <div className="grid grid-cols-7 gap-1.5 p-3" role="grid" aria-label="Calendário de dias do mês">
               {getDaysInMonth(currentMonth).map((date, index) => {
                 if (!date) {
-                  return <div key={`empty-${index}`} className="aspect-square" />;
+                  return <div key={`empty-${index}`} className="aspect-square" role="presentation" />;
                 }
                 const dateString = formatDateToString(date);
                 const isSelected = selectedDate === dateString;
@@ -460,23 +469,23 @@ const DateTimeStep = ({
                     aria-selected={isSelected}
                     aria-disabled={disabled}
                     role="gridcell"
-                    className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all relative ${disabled
-                      ? 'text-gray-300 cursor-not-allowed bg-gray-50/60 border border-transparent'
+                    className={`aspect-square rounded-lg flex flex-col items-center justify-center text-sm font-medium transition-all relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${disabled
+                      ? 'text-gray-400 cursor-not-allowed bg-gray-50/60 border border-transparent'
                       : isSelected
-                        ? 'bg-[#2d8659] text-white shadow-lg scale-105 font-bold ring-2 ring-[#2d8659] ring-offset-1'
+                        ? 'bg-[#236b47] text-white shadow-lg scale-105 font-bold ring-2 ring-[#236b47] ring-offset-1'
                         : isToday
-                          ? 'bg-blue-100 text-blue-700 border-2 border-blue-400 hover:bg-blue-200 font-bold'
-                          : 'text-gray-800 hover:bg-[#2d8659]/10 hover:border-[#2d8659] border border-gray-200 bg-white shadow-xs'
+                          ? 'bg-blue-100 text-blue-900 border-2 border-blue-500 hover:bg-blue-200 font-bold'
+                          : 'text-gray-800 hover:bg-[#236b47]/10 hover:border-[#236b47] border border-gray-200 bg-white shadow-xs'
                       }`}
                     whileHover={!disabled ? { scale: 1.05 } : {}}
                     whileTap={!disabled ? { scale: 0.95 } : {}}
                   >
                     <span className="text-base leading-none">{date.getDate()}</span>
                     {isToday && !isSelected && (
-                      <span className="text-[9px] text-blue-600 font-bold leading-none mt-0.5">Hoje</span>
+                      <span className="text-[9px] text-blue-900 font-bold leading-none mt-0.5">Hoje</span>
                     )}
                     {hasSlots && !isSelected && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 mt-1" aria-hidden="true" />
                     )}
                   </motion.button>
                 );
@@ -486,16 +495,16 @@ const DateTimeStep = ({
 
             <div className="flex items-center justify-center gap-4 px-3 py-2 bg-gray-50 border-t text-xs">
               <div className="flex items-center gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-emerald-600" />
+                <div className="w-2 h-2 rounded-full bg-emerald-600" aria-hidden="true" />
                 <span className="text-gray-700 font-medium">Com vagas</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 bg-[#2d8659] rounded flex items-center justify-center text-white text-[10px] font-bold">✓</div>
+                <div className="w-4 h-4 bg-[#236b47] rounded flex items-center justify-center text-white text-[10px] font-bold" aria-hidden="true">✓</div>
                 <span className="text-gray-700 font-medium">Selecionado</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 bg-gray-100 border border-gray-200 rounded" />
-                <span className="text-gray-400">Sem horários</span>
+                <div className="w-4 h-4 bg-gray-100 border border-gray-200 rounded" aria-hidden="true" />
+                <span className="text-gray-600">Sem horários</span>
               </div>
             </div>
           </div>
@@ -558,14 +567,14 @@ const DateTimeStep = ({
 
 
 
-                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2" role="radiogroup" aria-labelledby="available-times-label">
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2" role="group" aria-labelledby="available-times-label">
                       {/* Manhã */}
                       {timePeriods.manha.length > 0 && (
                         <div>
                           <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
-                            <Sun className="w-4 h-4 text-amber-500" />
-                            <h4 className="text-sm font-semibold text-gray-700">Manhã</h4>
-                            <span className="text-xs text-gray-500">({timePeriods.manha.length} {timePeriods.manha.length === 1 ? 'horário' : 'horários'})</span>
+                            <Sun className="w-4 h-4 text-amber-600" aria-hidden="true" />
+                            <h4 className="text-sm font-semibold text-gray-800">Manhã</h4>
+                            <span className="text-xs text-gray-600">({timePeriods.manha.length} {timePeriods.manha.length === 1 ? 'horário' : 'horários'})</span>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5">
                             {timePeriods.manha.map((time) => {
@@ -582,18 +591,18 @@ const DateTimeStep = ({
                                   aria-checked={isSlotSelected}
                                   aria-disabled={disabled}
                                   aria-label={`Horário ${time} da manhã${disabled ? ', ocupado' : isSlotSelected ? ', selecionado no pacote' : ''}`}
-                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
                                     : isSlotSelected
-                                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
-                                      : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                      ? 'border-[#1b5e20] bg-[#1b5e20] text-white shadow-lg'
+                                      : 'border-gray-200 hover:border-[#236b47] hover:bg-green-50 hover:shadow-md'
                                     }`}
                                   whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
                                   title={disabled ? 'Horário não disponível' : `Adicionar/remover ${time} no pacote`}
                                 >
                                   <div className="text-base flex items-center justify-center gap-1.5">
-                                    {isSlotSelected && <Check className="w-4 h-4" />}
+                                    {isSlotSelected && <Check className="w-4 h-4" aria-hidden="true" />}
                                     {time}
                                   </div>
                                   {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
@@ -608,9 +617,9 @@ const DateTimeStep = ({
                       {timePeriods.tarde.length > 0 && (
                         <div>
                           <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
-                            <Sunset className="w-4 h-4 text-orange-500" />
-                            <h4 className="text-sm font-semibold text-gray-700">Tarde</h4>
-                            <span className="text-xs text-gray-500">({timePeriods.tarde.length} {timePeriods.tarde.length === 1 ? 'horário' : 'horários'})</span>
+                            <Sunset className="w-4 h-4 text-orange-600" aria-hidden="true" />
+                            <h4 className="text-sm font-semibold text-gray-800">Tarde</h4>
+                            <span className="text-xs text-gray-600">({timePeriods.tarde.length} {timePeriods.tarde.length === 1 ? 'horário' : 'horários'})</span>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5">
                             {timePeriods.tarde.map((time) => {
@@ -627,18 +636,18 @@ const DateTimeStep = ({
                                   aria-checked={isSlotSelected}
                                   aria-disabled={disabled}
                                   aria-label={`Horário ${time} da tarde${disabled ? ', ocupado' : isSlotSelected ? ', selecionado no pacote' : ''}`}
-                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
                                     : isSlotSelected
-                                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
-                                      : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                      ? 'border-[#1b5e20] bg-[#1b5e20] text-white shadow-lg'
+                                      : 'border-gray-200 hover:border-[#236b47] hover:bg-green-50 hover:shadow-md'
                                     }`}
                                   whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
                                   title={disabled ? 'Horário não disponível' : `Adicionar/remover ${time} no pacote`}
                                 >
                                   <div className="text-base flex items-center justify-center gap-1.5">
-                                    {isSlotSelected && <Check className="w-4 h-4" />}
+                                    {isSlotSelected && <Check className="w-4 h-4" aria-hidden="true" />}
                                     {time}
                                   </div>
                                   {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
@@ -653,9 +662,9 @@ const DateTimeStep = ({
                       {timePeriods.noite.length > 0 && (
                         <div>
                           <div className="flex items-center gap-2 mb-2 sticky top-0 bg-white py-1 z-10">
-                            <Moon className="w-4 h-4 text-indigo-500" />
-                            <h4 className="text-sm font-semibold text-gray-700">Noite</h4>
-                            <span className="text-xs text-gray-500">({timePeriods.noite.length} {timePeriods.noite.length === 1 ? 'horário' : 'horários'})</span>
+                            <Moon className="w-4 h-4 text-indigo-600" aria-hidden="true" />
+                            <h4 className="text-sm font-semibold text-gray-800">Noite</h4>
+                            <span className="text-xs text-gray-600">({timePeriods.noite.length} {timePeriods.noite.length === 1 ? 'horário' : 'horários'})</span>
                           </div>
                           <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5">
                             {timePeriods.noite.map((time) => {
@@ -672,18 +681,18 @@ const DateTimeStep = ({
                                   aria-checked={isSlotSelected}
                                   aria-disabled={disabled}
                                   aria-label={`Horário ${time} da noite${disabled ? ', ocupado' : isSlotSelected ? ', selecionado no pacote' : ''}`}
-                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group ${disabled
+                                  className={`h-14 md:h-12 p-3 rounded-lg border-2 transition-all duration-300 font-medium relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${disabled
                                     ? 'bg-gray-100 text-gray-400 cursor-not-allowed border-gray-200 line-through'
                                     : isSlotSelected
-                                      ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
-                                      : 'border-gray-200 hover:border-[#2d8659] hover:bg-green-50 hover:shadow-md'
+                                      ? 'border-[#1b5e20] bg-[#1b5e20] text-white shadow-lg'
+                                      : 'border-gray-200 hover:border-[#236b47] hover:bg-green-50 hover:shadow-md'
                                     }`}
                                   whileHover={!disabled ? { scale: 1.02, y: -2 } : {}}
                                   whileTap={!disabled ? { scale: 0.98 } : {}}
                                   title={disabled ? 'Horário não disponível' : `Adicionar/remover ${time} no pacote`}
                                 >
                                   <div className="text-base flex items-center justify-center gap-1.5">
-                                    {isSlotSelected && <Check className="w-4 h-4" />}
+                                    {isSlotSelected && <Check className="w-4 h-4" aria-hidden="true" />}
                                     {time}
                                   </div>
                                   {disabled && <div className="text-xs text-gray-400 mt-1">Ocupado</div>}
@@ -736,16 +745,16 @@ const DateTimeStep = ({
                       <Button
                         variant="outline"
                         onClick={() => onSelectDate?.('')}
-                        className="border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/10"
+                        className="border-[#236b47] text-[#236b47] hover:bg-[#236b47]/10 min-h-[44px]"
                       >
-                        <Calendar className="w-4 h-4 mr-2" />
+                        <Calendar className="w-4 h-4 mr-2" aria-hidden="true" />
                         Escolher outra data
                       </Button>
                       <Button
                         onClick={handleContactSupport}
-                        className="bg-[#2d8659] hover:bg-[#236b47]"
+                        className="bg-[#236b47] hover:bg-[#1b5e20] text-white min-h-[44px]"
                       >
-                        <MessageCircle className="w-4 h-4 mr-2" />
+                        <MessageCircle className="w-4 h-4 mr-2" aria-hidden="true" />
                         Falar com suporte
                       </Button>
                     </div>
@@ -756,9 +765,9 @@ const DateTimeStep = ({
           ) : (
             <div className="flex-1 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center p-8">
               <div className="text-center">
-                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-500 font-medium mb-1">Selecione uma data para continuar</p>
-                <p className="text-sm text-gray-400">Os horários disponíveis serão exibidos aqui.</p>
+                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" aria-hidden="true" />
+                <p className="text-gray-700 font-medium mb-1">Selecione uma data para continuar</p>
+                <p className="text-sm text-gray-600">Os horários disponíveis serão exibidos aqui.</p>
               </div>
             </div>
           )}
@@ -766,10 +775,10 @@ const DateTimeStep = ({
       </div>
 
       <div className="mt-8 pt-6 border-t flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-700">
           {selectedSlots.length > 1 ? (
             <span>
-              Você selecionou <strong className="text-emerald-700">{selectedSlots.length} consultas</strong> para o seu pacote.
+              Você selecionou <strong className="text-emerald-900">{selectedSlots.length} consultas</strong> para o seu pacote.
             </span>
           ) : selectedSlots.length === 1 ? (
             <span>
@@ -786,13 +795,13 @@ const DateTimeStep = ({
           )}
         </div>
         <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-          <Button variant="outline" onClick={onBack} className="w-full md:w-auto">
+          <Button variant="outline" onClick={onBack} className="w-full md:w-auto min-h-[44px]">
             Voltar
           </Button>
           <Button
             onClick={onNext}
             disabled={selectedSlots.length === 0 && (!selectedDate || !selectedTime)}
-            className="w-full md:w-auto bg-[#2d8659] hover:bg-[#236b47]"
+            className="w-full md:w-auto bg-[#236b47] hover:bg-[#1b5e20] text-white min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Continuar {selectedSlots.length > 1 ? `(${selectedSlots.length} Sessões)` : ''}
           </Button>

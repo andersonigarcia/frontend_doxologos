@@ -583,7 +583,7 @@ const ProfessionalStep = ({
             </div> */}
 
             {/* Category Chips Bar */}
-            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2 md:m-0 md:px-0 md:flex-wrap md:justify-center">
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2 md:m-0 md:px-0 md:flex-wrap md:justify-center" role="toolbar" aria-label="Categorias de serviços">
               {serviceCategories.map((cat) => {
                 const isActive = selectedServiceCategory === cat.id;
                 return (
@@ -591,10 +591,11 @@ const ProfessionalStep = ({
                     key={cat.id}
                     type="button"
                     onClick={() => setSelectedServiceCategory(cat.id)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                    aria-pressed={isActive}
+                    className={`px-4 py-2 min-h-[44px] inline-flex items-center rounded-full text-xs font-semibold whitespace-nowrap border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${
                       isActive
-                        ? 'bg-[#2d8659] text-white border-[#2d8659] shadow-sm'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-[#2d8659] hover:bg-gray-50'
+                        ? 'bg-[#236b47] text-white border-[#236b47] shadow-sm'
+                        : 'bg-white text-gray-800 border-gray-200 hover:border-[#236b47] hover:bg-gray-50'
                     }`}
                   >
                     {cat.label}
@@ -617,12 +618,13 @@ const ProfessionalStep = ({
                     key={service.id}
                     type="button"
                     disabled={isDisabled}
+                    aria-pressed={isSelected}
                     onClick={() => !isDisabled && handleSelectService(service.id)}
-                    className={`relative w-full p-3.5 md:p-4 rounded-xl border transition-all text-left group
-                    ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' : 'active:scale-95 touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'}
+                    className={`relative w-full p-3.5 md:p-4 rounded-xl border transition-all text-left group min-h-[44px]
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' : 'active:scale-95 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]'}
                     ${!isDisabled && isSelected
-                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-sm ring-1 ring-[#2d8659]'
-                        : !isDisabled ? 'border-gray-200 hover:border-[#2d8659] bg-white hover:shadow-sm' : ''
+                        ? 'border-[#236b47] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-sm ring-1 ring-[#236b47]'
+                        : !isDisabled ? 'border-gray-200 hover:border-[#236b47] bg-white hover:shadow-sm' : ''
                       }`}
                   >
                     {/* Badge Social Proof */}
@@ -743,7 +745,7 @@ const ProfessionalStep = ({
                 <button
                   type="button"
                   onClick={() => setMobileStage('service')}
-                  className="mt-3 text-sm font-medium text-[#2d8659] underline"
+                  className="mt-3 text-sm font-semibold text-[#1e5c3c] underline min-h-[44px] inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
                 >
                   Trocar serviço
                 </button>
@@ -751,15 +753,15 @@ const ProfessionalStep = ({
             </div>
 
             <div className="mb-6 flex flex-col gap-3">
-              <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#2d8659]/10 text-[#2d8659] text-sm font-semibold w-full justify-center">
-                <Quote className="w-4 h-4" />
+              <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#2d8659]/10 text-[#1e5c3c] text-sm font-semibold w-full justify-center">
+                <Quote className="w-4 h-4" aria-hidden="true" />
                 97% dos pacientes recomendam a experiência de agendamento da Doxologos.
               </div>
               <div className="flex flex-wrap gap-2 justify-center text-sm">
                 <div className="px-4 py-2 bg-white border border-[#2d8659]/30 rounded-full shadow-sm flex items-center gap-2">
-                  <span className="font-semibold text-[#2d8659]">{selectedServiceData?.name}</span>
+                  <span className="font-semibold text-[#1e5c3c]">{selectedServiceData?.name}</span>
                   {selectedServiceData?.price && (
-                    <span className="text-gray-600">
+                    <span className="text-gray-700">
                       · R$
                       {parseFloat(selectedServiceData.price).toLocaleString('pt-BR', {
                         minimumFractionDigits: 2,
@@ -768,7 +770,7 @@ const ProfessionalStep = ({
                     </span>
                   )}
                   {selectedServiceData?.duration_minutes && (
-                    <span className="text-gray-500">
+                    <span className="text-gray-700">
                       · {selectedServiceData.duration_minutes}min
                     </span>
                   )}
@@ -778,17 +780,18 @@ const ProfessionalStep = ({
 
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
-                  <Filter className="w-3.5 h-3.5 text-[#1b3c37]" />
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-[#1b3c37]" aria-hidden="true" />
                   Filtros rápidos
                 </p>
                 {activeFilters.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setActiveFilters([])}
-                    className="text-xs text-[#2d8659] hover:text-[#132d29] font-medium flex items-center gap-1 underline transition-colors"
+                    className="text-xs text-[#1e5c3c] hover:text-[#132d29] font-semibold flex items-center gap-1 underline transition-colors min-h-[44px] px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
+                    aria-label={`Limpar ${activeFilters.length} filtros selecionados`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3 h-3" aria-hidden="true" />
                     Limpar ({activeFilters.length})
                   </button>
                 )}
@@ -810,13 +813,14 @@ const ProfessionalStep = ({
                               : [...prev, filter.id]
                           )
                         }
-                        className={`whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all duration-200 shadow-xs touch-manipulation active:scale-95 ${isActive
+                        aria-pressed={isActive}
+                        className={`whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold border transition-all duration-200 shadow-xs touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1b3c37] ${isActive
                             ? 'bg-[#1b3c37] text-white border-[#1b3c37] ring-2 ring-[#1b3c37]/20 shadow-md'
-                            : 'bg-white text-gray-700 border-gray-200 hover:border-[#1b3c37]/40 hover:bg-gray-50'
+                            : 'bg-white text-gray-800 border-gray-200 hover:border-[#1b3c37]/40 hover:bg-gray-50'
                           }`}
                       >
                         {IconComponent && (
-                          <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : filter.iconColor}`} />
+                          <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : filter.iconColor}`} aria-hidden="true" />
                         )}
                         <span>{filter.label}</span>
                       </button>
@@ -829,33 +833,33 @@ const ProfessionalStep = ({
             {availableProfessionals.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="w-8 h-8 text-gray-400" />
+                  <User className="w-8 h-8 text-gray-400" aria-hidden="true" />
                 </div>
-                <p className="text-gray-500 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
+                <p className="text-gray-700 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
                 {onBack && (
-                  <Button onClick={onBack} variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                    <ArrowLeft className="w-4 h-4 mr-2" />Escolher outro serviço
+                  <Button onClick={onBack} variant="outline" className="border-[#236b47] text-[#236b47] min-h-[44px]">
+                    <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />Escolher outro serviço
                   </Button>
                 )}
               </div>
             ) : (
               <div className="relative">
-                <div className="flex justify-end gap-2 mb-2" aria-hidden="true">
+                <div className="flex justify-end gap-2 mb-2">
                   <button
                     type="button"
-                    className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    className="hidden md:inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-gray-300 text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]"
                     onClick={() => scrollProfessionalCarousel('prev')}
                     aria-label="Ver profissionais anteriores"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
-                    className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    className="hidden md:inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-gray-300 text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]"
                     onClick={() => scrollProfessionalCarousel('next')}
                     aria-label="Ver mais profissionais"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-5 h-5" aria-hidden="true" />
                   </button>
                 </div>
                 <div
@@ -879,11 +883,11 @@ const ProfessionalStep = ({
                         role="option"
                         aria-selected={selectedProfessional === professional.id}
                         aria-disabled={!isSelectable}
-                        className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${selectedProfessional === professional.id && isSelectable
-                          ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
+                        className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center min-h-[44px] ${selectedProfessional === professional.id && isSelectable
+                          ? 'border-[#236b47] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md ring-2 ring-[#236b47]/20'
                           : 'border-gray-200 bg-white'
                           } ${isSelectable
-                            ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
+                            ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]'
                             : 'opacity-60 cursor-not-allowed'
                           }`}
                       >
@@ -898,8 +902,8 @@ const ProfessionalStep = ({
 
                           if (dayInfo.index === todayIndex) {
                             return (
-                              <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
+                              <div className="absolute top-4 right-4 bg-[#1b5e20] text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <Clock className="w-3 h-3" aria-hidden="true" />
                                 Disponível Hoje
                               </div>
                             );
@@ -907,8 +911,8 @@ const ProfessionalStep = ({
 
                           if (dayInfo.index === tomorrowIndex) {
                             return (
-                              <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
+                              <div className="absolute top-4 right-4 bg-blue-700 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <Clock className="w-3 h-3" aria-hidden="true" />
                                 Disponível Amanhã
                               </div>
                             );
@@ -924,7 +928,7 @@ const ProfessionalStep = ({
                                 alt={professional.name}
                                 loading="lazy"
                                 decoding="async"
-                                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
+                                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#236b47] transition-colors"
                                 onError={(e) => {
                                   // Fallback to initials if image fails to load
                                   e.target.style.display = 'none';
@@ -935,43 +939,44 @@ const ProfessionalStep = ({
                             <div
                               className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl"
                               style={{ display: professional.image_url ? 'none' : 'flex' }}
+                              aria-hidden="true"
                             >
                               {professional.name.charAt(0)}
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h4 className="font-bold text-xl text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                              <h4 className="font-bold text-xl text-gray-900 group-hover:text-[#236b47] transition-colors">
                                 {professional.name}
                               </h4>
                               {approachTag && (
-                                <span className="inline-block bg-[#2d8659]/10 text-[#2d8659] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#2d8659]/20">
+                                <span className="inline-block bg-[#2d8659]/10 text-[#1e5c3c] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#2d8659]/20">
                                   {approachTag}
                                 </span>
                               )}
                             </div>
                             {professional.mini_curriculum && (
-                              <p className="text-sm text-gray-600 mb-3">
+                              <p className="text-sm text-gray-700 mb-3">
                                 {professional.mini_curriculum.length > 120
                                   ? `${professional.mini_curriculum.substring(0, 120)}...`
                                   : professional.mini_curriculum}
                               </p>
                             )}
                             {professional.email && (
-                              <p className="text-xs text-gray-500 mb-2">📧 {professional.email}</p>
+                              <p className="text-xs text-gray-600 mb-2">📧 {professional.email}</p>
                             )}
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500">✓ Especialista em {selectedServiceData?.name}</span>
-                              <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-xs text-gray-700">✓ Especialista em {selectedServiceData?.name}</span>
+                              <div className="bg-[#236b47] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                                 Selecionar
                               </div>
                             </div>
                             {nextSlot && (
                               <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                                <Clock className="w-4 h-4 text-green-600" />
+                                <Clock className="w-4 h-4 text-green-700" aria-hidden="true" />
                                 <div className="flex-1">
-                                  <p className="text-xs text-gray-600">Próximo horário</p>
-                                  <p className="text-sm font-bold text-green-700">
+                                  <p className="text-xs text-gray-700">Próximo horário</p>
+                                  <p className="text-sm font-bold text-[#1b5e20]">
                                     {formatNextSlotLabel(nextSlot.day, nextSlot.time)}
                                   </p>
                                 </div>
@@ -982,12 +987,12 @@ const ProfessionalStep = ({
                         {!isSelectable && (
                           <div className="absolute inset-0 rounded-lg bg-gray-50/95 backdrop-blur-sm border-2 border-gray-300 flex flex-col items-center justify-center gap-2">
                             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                              <Clock className="w-6 h-6 text-gray-400" />
+                              <Clock className="w-6 h-6 text-gray-500" aria-hidden="true" />
                             </div>
-                            <span className="text-sm font-semibold text-gray-700">
+                            <span className="text-sm font-semibold text-gray-800">
                               Sem horários disponíveis
                             </span>
-                            <span className="text-xs text-gray-500 px-4 text-center">
+                            <span className="text-xs text-gray-600 px-4 text-center">
                               Este profissional não tem agenda aberta no momento
                             </span>
                           </div>
@@ -1004,7 +1009,7 @@ const ProfessionalStep = ({
                         <div className="col-span-full my-4">
                           <div className="flex items-center gap-4">
                             <div className="flex-1 h-px bg-gray-300"></div>
-                            <span className="text-sm text-gray-500 font-medium">
+                            <span className="text-sm text-gray-700 font-medium">
                               Profissionais sem agenda disponível
                             </span>
                             <div className="flex-1 h-px bg-gray-300"></div>
@@ -1018,10 +1023,10 @@ const ProfessionalStep = ({
                           <button
                             type="button"
                             onClick={() => setShowUnavailable(true)}
-                            className="w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 px-4 min-h-[44px] border-2 border-dashed border-gray-300 rounded-lg text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
                           >
                             <span>Exibir {unavailableProfessionals.length} {unavailableProfessionals.length === 1 ? 'profissional' : 'profissionais'} sem agenda</span>
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       )}
