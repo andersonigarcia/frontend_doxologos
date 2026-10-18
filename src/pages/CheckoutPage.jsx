@@ -1257,7 +1257,7 @@ const CheckoutPage = () => {
                                         className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
                                     />
                                     <span className="text-xs text-amber-900 leading-relaxed">
-                                        Li e concordo com o <strong>Termo de Consentimento Livre e Esclarecido (TCLE) de Atendimento Psicológico Online</strong> (Resolução CFP nº 11/2018) e com a <strong>Política de Cancelamento e Reagendamento</strong> (com até 24h de antecedência). Entendo que meus dados clínicos e de atendimento estão protegidos por sigilo profissional e pela LGPD.{' '}
+                                        Estou ciente de que meu atendimento é 100% confidencial sob <strong>sigilo ético profissional</strong> e concordo com os <strong>Termos de Cuidado e Política de Reagendamento</strong> (reagende gratuitamente até 24h antes).{' '}
                                         <Link to="/termos-e-condicoes" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
                                             Ver termos completos
                                         </Link>
@@ -1277,10 +1277,10 @@ const CheckoutPage = () => {
                                 {processing ? (
                                     <>
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                        Confirmando crédito...
+                                        Confirmando seu crédito...
                                     </>
                                 ) : (
-                                    'Confirmar uso do crédito'
+                                    'Confirmar uso do meu crédito'
                                 )}
                             </Button>
                         ) : (!pixPayment && (
@@ -1306,7 +1306,7 @@ const CheckoutPage = () => {
                                             className="w-full bg-[#2d8659] hover:bg-[#236b47]"
                                         >
                                             <CreditCard className="w-5 h-5 mr-2" />
-                                            Pagar com Cartão (Formulário Direto)
+                                            Pagar com Cartão de Crédito
                                         </Button>
 
                                         <div className="text-center">
@@ -1323,11 +1323,11 @@ const CheckoutPage = () => {
                                             {processing ? (
                                                 <>
                                                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#2d8659] mr-2"></div>
-                                                    Redirecionando...
+                                                    Conectando com segurança...
                                                 </>
                                             ) : (
                                                 <>
-                                                    Pagar via Mercado Pago (Redirect)
+                                                    Pagar em ambiente seguro do Mercado Pago
                                                 </>
                                             )}
                                         </Button>

@@ -59,8 +59,8 @@ const PatientAccountStep = ({
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8">
       <div className="text-center mb-6 sm:mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">Quem estará conosco nessa jornada?</h2>
-        <p className="text-gray-600 text-sm sm:text-base">Seus dados são protegidos pelo sigilo ético profissional e pela LGPD.</p>
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">Quem nós teremos a alegria de acolher?</h2>
+        <p className="text-gray-600 text-sm sm:text-base">Fique tranquilo(a): seus dados e conversas são protegidos por sigilo ético absoluto.</p>
       </div>
 
       {!authUser && (
@@ -144,7 +144,7 @@ const PatientAccountStep = ({
                 className="space-y-4 overflow-hidden"
               >
                 <div className="relative">
-                  <label htmlFor="patient-name" className="block text-sm font-medium mb-2 text-gray-800">Nome completo*</label>
+                  <label htmlFor="patient-name" className="block text-sm font-medium mb-2 text-gray-800">Seu nome completo*</label>
                   <div className="relative">
                     <input
                       id="patient-name"
@@ -156,7 +156,7 @@ const PatientAccountStep = ({
                         setValueAs: (value) => (value ?? '').trim(),
                       })}
                       className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
-                      placeholder="Seu nome completo"
+                      placeholder="Como você prefere ser chamado(a)?"
                     />
                     {/* Checkmark de validação */}
                     {patientData.name && !errors.name && (
@@ -174,7 +174,7 @@ const PatientAccountStep = ({
                 </div>
 
                 <div className="relative">
-                  <label htmlFor="patient-phone" className="block text-sm font-medium mb-2 text-gray-800">Telefone*</label>
+                  <label htmlFor="patient-phone" className="block text-sm font-medium mb-2 text-gray-800">WhatsApp para contato*</label>
                   <div className="relative">
                     <input
                       id="patient-phone"
@@ -190,7 +190,7 @@ const PatientAccountStep = ({
                         },
                       })}
                       className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
-                      placeholder="(00) 00000-0000"
+                      placeholder="(00) 00000-0000 (para lembretes da consulta)"
                       maxLength={15}
                     />
                     {/* Checkmark de validação */}
@@ -238,10 +238,10 @@ const PatientAccountStep = ({
                     </div>
                     <div>
                       <h3 className={`font-semibold ${isExistingPatient ? 'text-green-950' : 'text-blue-950'}`}>
-                        {isExistingPatient ? 'Bem-vindo de volta!' : 'Nova conta'}
+                        {isExistingPatient ? 'Que bom ter você de volta!' : 'Criando seu cantinho de cuidado'}
                       </h3>
                       <p className={`text-xs ${isExistingPatient ? 'text-[#1b5e20]' : 'text-blue-800'}`}>
-                        {isExistingPatient ? 'Vincule seu agendamento' : 'Crie sua senha'}
+                        {isExistingPatient ? 'Acessar seu histórico' : 'Crie sua senha de acesso'}
                       </p>
                     </div>
                   </div>
@@ -254,7 +254,7 @@ const PatientAccountStep = ({
                       : 'text-blue-800 hover:bg-blue-200/50'
                       }`}
                   >
-                    {isExistingPatient ? 'Trocar' : 'Já tenho conta'}
+                    {isExistingPatient ? 'Trocar e-mail' : 'Já é nosso(a) paciente? Entrar'}
                   </button>
                 </div>
 

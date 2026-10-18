@@ -352,18 +352,18 @@ const PacientePage = () => {
         if (!booking) return null;
 
         if (booking.status === 'cancelled_by_patient' || booking.status === 'cancelled_by_professional') {
-            return 'Agendamentos cancelados não podem ser reagendados automaticamente.';
+            return 'Sessões já canceladas não podem ser reagendadas diretamente. Quando desejar, sinta-se à vontade para agendar um novo horário.';
         }
 
         const attemptsUsed = booking.reschedule_count || 0;
         if (attemptsUsed >= MAX_RESCHEDULE_ATTEMPTS) {
-            return 'Limite de reagendamentos atingido. Entre em contato com nossa equipe para mais suporte.';
+            return 'Você atingiu o limite de reagendamentos para esta sessão. Se precisar de acolhimento especial, conte com o nosso suporte.';
         }
 
         const paymentRecord = resolvePaymentRecord(booking);
         const paymentStatus = paymentRecord?.status?.toLowerCase();
         if (!paymentStatus || !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus)) {
-            return 'O reagendamento ficará disponível após a confirmação do pagamento.';
+            return 'O reagendamento estará disponível assim que o pagamento for confirmado.';
         }
 
         const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
@@ -371,7 +371,7 @@ const PacientePage = () => {
         const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
 
         if (hoursDifference <= 24) {
-            return 'O reagendamento só é permitido com pelo menos 24 horas de antecedência.';
+            return 'Reagendamentos gratuitos podem ser feitos com até 24h de antecedência, permitindo reorganizar o tempo com carinho.';
         }
 
         return null;
@@ -858,8 +858,8 @@ const PacientePage = () => {
                             </Link>
                         </div>
                     )}
-                    <h1 className="text-4xl font-bold mb-2">Seu Espaço de Cuidado</h1>
-                    <p className="text-gray-500 mb-8">Acompanhe suas consultas, acesse sua sala virtual e cuide do seu bem-estar.</p>
+                    <h1 className="text-4xl font-bold mb-2">Seu Espaço de Cuidado e Acolhimento</h1>
+                    <p className="text-gray-500 mb-8">Aqui você acompanha seus encontros, acessa sua sala e cuida do seu bem mais precioso: você.</p>
 
                     {/* Dashboard com Métricas */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -1308,8 +1308,8 @@ const PacientePage = () => {
                                                         const bDate = new Date(`${booking.booking_date}T${booking.booking_time}`);
                                                         const hDiff = (bDate - new Date()) / (1000 * 60 * 60);
                                                         const cancelMessage = hDiff >= 24
-                                                            ? `Como você está cancelando com mais de 24h de antecedência, R$ ${(booking.payment?.[0]?.amount || 150).toFixed(2)} serão adicionados à sua carteira Doxologos para reagendamentos. Tem certeza que deseja cancelar?`
-                                                            : `Atenção: Cancelamentos com menos de 24h de antecedência não são elegíveis a reembolso ou créditos, conforme nossos Termos de Uso. O valor desta sessão não será retornado. Deseja realmente cancelar?`;
+                                                            ? `Como você está cancelando com mais de 24h de antecedência, o valor integral de R$ ${(booking.payment?.[0]?.amount || 150).toFixed(2)} será creditado na sua carteira Doxologos para você reagendar quando quiser. Deseja confirmar?`
+                                                            : `Como faltam menos de 24 horas para o seu encontro, o profissional já reservou este horário exclusivo para cuidar de você e não é possível gerar créditos ou reembolso. Se preferir manter sua sessão, estamos aqui. Deseja mesmo cancelar?`;
                                                             
                                                         return (
                                                             <ProtectedAction

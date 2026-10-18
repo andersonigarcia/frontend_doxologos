@@ -195,15 +195,15 @@ const PaymentSummaryStep = ({
               {...acceptTermsField}
             />
             <label htmlFor="acceptTerms" className="text-sm text-gray-800 font-medium cursor-pointer select-none">
-              Estou ciente sobre o sigilo profissional e concordo com os{' '}
+              Estou ciente do sigilo profissional absoluto e concordo com os{' '}
               <a
                 href="/termos-e-condicoes"
                 target="_blank"
                 rel="noreferrer"
                 className="text-blue-700 hover:text-blue-900 underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
-                aria-label="Termos de Atendimento (abre em uma nova aba)"
+                aria-label="Termos de Cuidado e Atendimento (abre em uma nova aba)"
               >
-                Termos de Atendimento
+                Termos de Cuidado e Atendimento
               </a>
             </label>
           </div>
@@ -236,14 +236,14 @@ const PaymentSummaryStep = ({
               disabled={isSubmitting || !effectiveCanSubmit}
               aria-label={
                 isSubmitting
-                  ? 'Processando seu agendamento'
-                  : submitButtonTitle || (isPackage ? `Confirmar e Reservar Horário por R$ ${formatPrice(totalPrice)}` : 'Confirmar e Reservar Horário')
+                  ? 'Preparando seu horário com carinho...'
+                  : submitButtonTitle || (isPackage ? `Garantir Meu Horário de Cuidado por R$ ${formatPrice(totalPrice)}` : 'Garantir Meu Horário de Cuidado')
               }
               className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-3.5 sm:py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
             >
               {isSubmitting
-                ? 'Processando...'
-                : submitButtonTitle || (isPackage ? `Confirmar e Reservar Horário (R$ ${formatPrice(totalPrice)})` : 'Confirmar e Reservar Horário')}
+                ? 'Preparando seu horário...'
+                : submitButtonTitle || (isPackage ? `Garantir Meu Horário de Cuidado (R$ ${formatPrice(totalPrice)})` : 'Garantir Meu Horário de Cuidado')}
             </Button>
           </motion.div>
           {onSupport && (
