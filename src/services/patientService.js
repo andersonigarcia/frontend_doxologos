@@ -139,7 +139,7 @@ export async function savePatientSessionNote(patientEmail, notes, sessionDetails
   if (token) {
     const { data, error } = await supabase.functions.invoke('patient-notes-manager', {
       body: {
-        action: 'save_session_note',
+        action: 'save',
         patient_email: patientEmail,
         notes,
         ...sessionDetails

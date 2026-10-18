@@ -39,19 +39,33 @@ class EmailService {
   }
 
 
+  maskEmail(email) {
+    if (!email || typeof email !== 'string') return '***';
+    const parts = email.split('@');
+    if (parts.length < 2) return '***';
+    return `${parts[0].substring(0, 2)}***@${parts[1]}`;
+  }
+
   async sendEmail({ to, subject, html, replyTo = null, cc = null, attachments = null, type = 'notification', professional_id = null, user_id = null }) {
     if (!this.enabled) {
-      console.log('⚠️ Emails desabilitados');
+      if (this.isDev) console.log('⚠️ Emails desabilitados');
       return { success: true, messageId: 'disabled', disabled: true };
     }
 
     const cleanSubject = this.sanitizeSubject(subject);
 
     try {
-      console.log('📧 Enviando email via Supabase Edge Function:', {
-        to, professional_id, user_id, cc, subject: cleanSubject, type,
-        hasAttachments: !!attachments && attachments.length > 0
-      });
+      if (this.isDev) {
+        console.log('📧 Enviando email via Supabase Edge Function:', {
+          to: this.maskEmail(to),
+          professional_id,
+          user_id,
+          cc: cc ? this.maskEmail(cc) : undefined,
+          subject: cleanSubject,
+          type,
+          hasAttachments: !!attachments && attachments.length > 0
+        });
+      }
 
       const emailPayload = {
         from: { email: this.fromEmail, name: this.fromName },
@@ -95,7 +109,9 @@ class EmailService {
       }
 
       const result = await response.json();
-      console.log('✅ Email enviado com sucesso:', result);
+      if (this.isDev) {
+        console.log('✅ Email enviado com sucesso:', result);
+      }
 
       // Enviar evento para Google Analytics (se disponível)
       try {

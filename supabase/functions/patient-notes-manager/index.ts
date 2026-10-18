@@ -90,17 +90,42 @@ serve(async (req) => {
                 )
             }
 
+            let notesData = {
+                notes: data?.notes || '',
+                chief_complaint: data?.chief_complaint || '',
+                session_development: data?.session_development || '',
+                homework: data?.homework || '',
+                session_date: data?.session_date || null,
+                patient_name: data?.patient_name || null,
+                created_at: data?.created_at || null,
+                updated_at: data?.updated_at || null
+            }
+
+            // Fallback: se os campos da tabela principal estiverem vazios, buscar o snapshot mais recente no histórico
+            if (!notesData.notes && !notesData.chief_complaint && !notesData.session_development && !notesData.homework) {
+                const { data: latestSnapshot } = await supabaseAdmin
+                    .from('patient_notes_history')
+                    .select('*')
+                    .eq('professional_id', professional.id)
+                    .eq('patient_email', patient_email)
+                    .order('session_date', { ascending: false })
+                    .limit(1)
+                    .maybeSingle()
+
+                if (latestSnapshot) {
+                    notesData.notes = latestSnapshot.notes || ''
+                    notesData.chief_complaint = latestSnapshot.chief_complaint || ''
+                    notesData.session_development = latestSnapshot.session_development || ''
+                    notesData.homework = latestSnapshot.homework || ''
+                    notesData.session_date = latestSnapshot.session_date || null
+                    if (latestSnapshot.saved_at) notesData.updated_at = latestSnapshot.saved_at
+                }
+            }
+
             return new Response(
                 JSON.stringify({
                     success: true,
-                    notes: data?.notes || '',
-                    chief_complaint: data?.chief_complaint || '',
-                    session_development: data?.session_development || '',
-                    homework: data?.homework || '',
-                    session_date: data?.session_date || null,
-                    patient_name: data?.patient_name || null,
-                    created_at: data?.created_at || null,
-                    updated_at: data?.updated_at || null
+                    ...notesData
                 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
@@ -131,7 +156,7 @@ serve(async (req) => {
         }
 
         // ─── SAVE: upsert nota + gravar snapshot no histórico ─────────────────
-        if (action === 'save') {
+        if (action === 'save' || action === 'save_session_note') {
             const hasContent = (
                 (notes && notes.trim()) ||
                 (chief_complaint && chief_complaint.trim()) ||

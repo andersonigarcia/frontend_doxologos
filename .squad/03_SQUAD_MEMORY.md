@@ -25,6 +25,7 @@
 | **ADR 014** | 2026-10-12 | Cache Reativo / State | Camada `src/hooks/queries/` (TanStack Query) com `staleTime`/`gcTime` anti-flicker. | [`ADR_014`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-12_ADR_014_REATIVIDADE_DADOS_CAMADA_CACHE_CANONICA_TANSTACK_QUERY.md) |
 | **ADR 015** | 2026-10-12 | God Components & RUM | 6 abas modulares em `admin/tabs/`; telemetria RUM (`rumMonitoring.js`). | [`ADR_015`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-12_ADR_015_DESMEMBRAMENTO_GOD_COMPONENTS_OBSERVABILIDADE_RUM.md) |
 | **ADR 016** | 2026-10-13 | Booking Time / Schema | Truncagem de `booking_time` para 5 caracteres (`HH:mm`, VARCHAR(5)); anti-erro 22001. | [`ADR_016`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-13_ADR_016_CORRECAO_SCHEMA_BOOKING_TIME_BLINDAGEM_AGENDAMENTOS.md) |
+| **ADR 017** | 2026-10-17 | Segurança & Prontuários | Blindagem anti-Open Relay em `send-email`, eliminação de PII em logs, correção do contrato de prontuários (`action: 'save'`) e isolamento seguro de credencial GCP. | [`ADR_017`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-17_ADR_017_BLINDAGEM_SEGURANCA_OPEN_RELAY_PII_E_PRONTUARIOS.md) |
 
 ---
 
@@ -47,6 +48,8 @@
 | **Inconsistência de Papéis / Header** | Roles hardcoded em telas de paciente mascaravam a role real de profissionais logados. | Contexto híbrido unificado (`useAuth`), `UserBadge` com switch dinâmico e auto-redirecionamento. | Testes unitários de RBAC e proibição de roles hardcoded na UI. |
 | **Divergência de WhatsApp da Clínica** | Múltiplos números e placeholders espalhados por componentes e landing pages. | Centralização estrita em `src/constants/contact.js` (`CLINIC_CONTACT.WHATSAPP_NUMBER`). | Padrão SSOT para constantes de contato. |
 | **Webhooks Duplicados Mercado Pago** | Retries do gateway provocavam processamento concorrente e tentativa duplicada de NFS-e. | Barreira atômica de idempotência no `mp-webhook` (<50ms) e emissão assíncrona desacoplada de notas. | Auditoria de idempotência no CI (`architectureGuardrails.test.js`). |
+| **400 Bad Request ao Salvar Prontuário (`BUG-01`)** | `patientService.js` enviava `action: 'save_session_note'`, mas Edge Function aceitava apenas `action: 'save'`. | Unificação do payload para `action: 'save'` e suporte ao alias retrocompatível em `patient-notes-manager`. | Testes unitários em `patientService.test.js` e validação de contratos Zod/Edge. |
+| **Vulnerabilidade Open Mail Relay (`SEC-02`)** | `send-email` não validava token de autorização, permitindo disparo anônimo via SMTP Hostinger. | Imposição de `Authorization: Bearer <token>` obrigatório e trava anti-spoofing de `fromEmail`. | Validação de autorização em Edge Functions e testes de segurança. |
 
 ---
 

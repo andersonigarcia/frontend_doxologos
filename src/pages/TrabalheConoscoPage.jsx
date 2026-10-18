@@ -200,8 +200,8 @@ const TrabalheConoscoPage = () => {
       setUploading(true);
       
       logger.info('Job application form submitted', { 
-        name: formData.name,
-        email: formData.email 
+        name: formData.name ? `${formData.name.substring(0, 2)}***` : 'N/A',
+        email: formData.email ? `${formData.email.substring(0, 2)}***@***` : 'N/A'
       });
       
       // 1. Upload resume to Supabase Storage if provided

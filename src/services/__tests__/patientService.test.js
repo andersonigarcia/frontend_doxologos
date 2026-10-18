@@ -87,7 +87,7 @@ describe('patientService — Domain Service Tests', () => {
       await expect(savePatientSessionNote('', 'notas')).rejects.toThrow('E-mail do paciente é obrigatório.');
     });
 
-    it('deve invocar patient-notes-manager com a ação save_session_note', async () => {
+    it('deve invocar patient-notes-manager com a ação save', async () => {
       await savePatientSessionNote('paciente@teste.com', 'Anotações da sessão', {
         chief_complaint: 'Insônia',
         homework: 'Higiene do sono'
@@ -95,7 +95,7 @@ describe('patientService — Domain Service Tests', () => {
 
       expect(supabase.functions.invoke).toHaveBeenCalledWith('patient-notes-manager', expect.objectContaining({
         body: expect.objectContaining({
-          action: 'save_session_note',
+          action: 'save',
           patient_email: 'paciente@teste.com',
           notes: 'Anotações da sessão',
           chief_complaint: 'Insônia',

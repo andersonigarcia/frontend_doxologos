@@ -412,14 +412,14 @@ const CheckoutDirectPage = () => {
                 identificationNumber: docNumber.replace(/\D/g, '')
             };
 
-            console.log('🔵 Criando token do cartão...');
+            if (import.meta.env.DEV) console.log('🔵 Criando token do cartão...');
             const token = await mp.createCardToken(cardData);
 
             if (!token || !token.id) {
                 throw new Error('Erro ao processar dados do cartão');
             }
 
-            console.log('✅ Token criado:', token.id);
+            if (import.meta.env.DEV) console.log('✅ Token criado com sucesso');
 
             // Resolução precisa da bandeira do cartão (Visa, Elo, Mastercard, Hipercard, Amex, etc.)
             let paymentMethodId = cardBrand?.id || token.payment_method_id;

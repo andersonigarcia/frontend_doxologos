@@ -9,7 +9,8 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: process.env.E2E_BASE_URL || 'http://localhost:4173',
+    baseURL: process.env.E2E_BASE_URL || 'https://localhost:3000',
+    ignoreHTTPSErrors: true,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'
@@ -30,7 +31,8 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run preview',
-    url: 'http://localhost:4173',
+    url: 'https://localhost:3000',
+    ignoreHTTPSErrors: true,
     reuseExistingServer: !process.env.CI
   }
 });
