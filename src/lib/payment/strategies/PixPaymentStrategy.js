@@ -200,7 +200,12 @@ export class PixPaymentStrategy extends PaymentStrategy {
             if (payment.booking_id) {
                 const { error: bookingError } = await supabase
                     .from('bookings')
-                    .update({ status: 'confirmed' })
+                    .update({
+                        status: 'confirmed',
+                        payment_status: 'approved',
+                        marketplace_payment_id: paymentId.toString(),
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', payment.booking_id);
 
                 if (bookingError) {
@@ -215,10 +220,21 @@ export class PixPaymentStrategy extends PaymentStrategy {
                     paymentId,
                     bookingId: payment.booking_id
                 });
+
+                // Disparo resiliente do orquestrador pós-pagamento
+                supabase.functions.invoke('post-payment-orchestrator', {
+                    body: { booking_id: payment.booking_id }
+                }).catch((orchErr) => {
+                    logger.warn('PixPaymentStrategy.confirm:orchestrator-invoke-warning', orchErr);
+                });
             } else if (payment.inscricao_id) {
                 const { error: inscricaoError } = await supabase
                     .from('inscricoes_eventos')
-                    .update({ status_pagamento: 'confirmado' })
+                    .update({
+                        status_pagamento: 'confirmado',
+                        payment_status: 'approved',
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', payment.inscricao_id);
 
                 if (inscricaoError) {

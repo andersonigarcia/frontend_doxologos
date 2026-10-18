@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
 
-    const { token, amount, wallet_used, user_id, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id, device_id } = body;
+    const { token, amount, wallet_used, user_id, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id, issuer_id, device_id } = body;
 
     if (!token || !amount) {
       return new Response(
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       installments: Number(installments) || 1,
       description: description || 'Consulta Doxologos',
       // payment_method_id: bandeira real do cartão detectada pelo SDK do MP no frontend
-      // (visa, master, elo, hipercard, etc.). Não pode ser hardcoded — o MP rejeita se não
+      // (visa, master, elo, hipercard, amex, etc.). Não pode ser hardcoded — o MP rejeita se não
       // corresponder ao cartão tokenizado.
       payment_method_id: payment_method_id || 'master',
       payer: payerPayload,
@@ -129,6 +129,29 @@ Deno.serve(async (req) => {
       statement_descriptor: 'DOXOLOGOS',
       notification_url: `${SUPABASE_URL}/functions/v1/mp-webhook`
     };
+
+    if (issuer_id) {
+      paymentPayload.issuer_id = Number(issuer_id);
+      console.log('[MP Card] ✅ Issuer ID repassado pelo cliente:', paymentPayload.issuer_id);
+    } else if (payment_method_id && payment_method_id.toLowerCase() === 'elo') {
+      // Fallback de segurança para Elo: se o issuer_id não veio no payload do cliente,
+      // consulta a API do MP para evitar a rejeição imediata com erro "124: the issuer_id is required"
+      try {
+        const issuerUrl = `https://api.mercadopago.com/v1/payment_methods/card_issuers?payment_method_id=${payment_method_id}`;
+        const issuerRes = await fetch(issuerUrl, {
+          headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+        });
+        if (issuerRes.ok) {
+          const issuers = await issuerRes.json();
+          if (Array.isArray(issuers) && issuers.length > 0 && issuers[0]?.id) {
+            paymentPayload.issuer_id = Number(issuers[0].id);
+            console.log(`[MP Card] ✅ Issuer ID obtido via API de segurança para ${payment_method_id}:`, paymentPayload.issuer_id);
+          }
+        }
+      } catch (e) {
+        console.warn('[MP Card] ⚠️ Falha ao buscar fallback de issuer_id:', e);
+      }
+    }
 
     console.log('[MP Card] Criando pagamento no MP:', JSON.stringify(paymentPayload, null, 2));
 

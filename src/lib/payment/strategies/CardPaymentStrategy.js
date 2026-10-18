@@ -243,6 +243,13 @@ export class CardPaymentStrategy extends PaymentStrategy {
                     bookingId: payment.booking_id
                 });
 
+                // Disparo resiliente do orquestrador pós-pagamento
+                supabase.functions.invoke('post-payment-orchestrator', {
+                    body: { booking_id: payment.booking_id }
+                }).catch((orchErr) => {
+                    logger.warn('CardPaymentStrategy.confirm:orchestrator-invoke-warning', orchErr);
+                });
+
             } else if (payment.inscricao_id) {
                 const { error: inscricaoError } = await supabase
                     .from('inscricoes_eventos')

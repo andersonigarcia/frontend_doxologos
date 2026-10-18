@@ -82,8 +82,9 @@ const CheckoutDirectPage = () => {
     const [payerEmail, setPayerEmail] = useState('');
     const [acceptedTcle, setAcceptedTcle] = useState(false);
 
-    // Detecção dinâmica de bandeira e resiliência
+    // Detecção dinâmica de bandeira, emissor e resiliência
     const [cardBrand, setCardBrand] = useState(null);
+    const [cardIssuerId, setCardIssuerId] = useState(null);
     const [paymentError, setPaymentError] = useState(null);
     const lastBinRef = useRef('');
 
@@ -301,10 +302,36 @@ const CheckoutDirectPage = () => {
         }
     };
 
+    // Detecção local de bandeiras brasileiras para feedback imediato e fallback offline
+    const detectCardBrandLocal = (cleanNumber) => {
+        if (!cleanNumber || cleanNumber.length < 2) return null;
+        // Elo (ampla cobertura de faixas de BINs nacionais)
+        if (/^(4011(78|79)|43(1274|8935)|45(1416|7393|763(1|2))|50(4175|6699|67[0-7]\d|90\d{2})|627780|63(6297|6368)|650(4[0-3]\d|4[8-9]\d|5[0-1]\d|5[4-8]\d)|6516[5-7]\d|6550[0-5]\d)/.test(cleanNumber)) {
+            return { id: 'elo', name: 'Elo' };
+        }
+        // Hipercard
+        if (/^(606282|3841(00|40|60)|637095|637612|637568|637599)/.test(cleanNumber)) {
+            return { id: 'hipercard', name: 'Hipercard' };
+        }
+        // Amex (15 dígitos, inicia com 34 ou 37)
+        if (/^3[47]/.test(cleanNumber)) {
+            return { id: 'amex', name: 'American Express' };
+        }
+        // Visa (inicia com 4)
+        if (/^4/.test(cleanNumber)) {
+            return { id: 'visa', name: 'Visa' };
+        }
+        // Mastercard
+        if (/^(5[1-5]|2(22[1-9]|2[3-9]\d|[3-6]\d{2}|7[0-1]\d|720))/.test(cleanNumber)) {
+            return { id: 'master', name: 'Mastercard' };
+        }
+        return null;
+    };
+
     const formatCardNumber = (value) => {
         const cleaned = value.replace(/\D/g, '');
         const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-        return formatted.substring(0, 19);
+        return formatted.substring(0, 23); // Até 19 dígitos + espaços (Elo/Hipercard)
     };
 
     const formatExpirationDate = (value) => {
@@ -321,6 +348,13 @@ const CheckoutDirectPage = () => {
         if (paymentError) setPaymentError(null);
 
         const clean = formatted.replace(/\D/g, '');
+
+        // Detecção instantânea por regex local (zero latência visual)
+        const localBrand = detectCardBrandLocal(clean);
+        if (localBrand && (!cardBrand || cardBrand.id !== localBrand.id)) {
+            setCardBrand(localBrand);
+        }
+
         if (clean.length >= 6 && mp) {
             const bin = clean.substring(0, 6);
             if (bin !== lastBinRef.current) {
@@ -334,14 +368,26 @@ const CheckoutDirectPage = () => {
                             name: method.name,
                             thumbnail: method.secure_thumbnail || method.thumbnail
                         });
+
+                        // Resolução de emissor (issuer_id) obrigatório para Elo e altamente recomendado para todos
+                        try {
+                            const issuers = await mp.getIssuers({ paymentMethodId: method.id, bin });
+                            if (issuers && issuers.length > 0 && issuers[0].id) {
+                                setCardIssuerId(issuers[0].id);
+                                if (import.meta.env.DEV) console.log('🏦 Emissor detectado:', issuers[0].name, '(ID:', issuers[0].id, ')');
+                            }
+                        } catch (issErr) {
+                            console.warn('Erro ao obter emissor:', issErr);
+                        }
                     }
                 } catch (binErr) {
                     console.warn('Erro ao detectar bandeira pelo BIN:', binErr);
                 }
             }
-        } else if (clean.length < 6) {
+        } else if (clean.length < 2) {
             lastBinRef.current = '';
             setCardBrand(null);
+            setCardIssuerId(null);
         }
     };
 
@@ -422,17 +468,48 @@ const CheckoutDirectPage = () => {
             if (import.meta.env.DEV) console.log('✅ Token criado com sucesso');
 
             // Resolução precisa da bandeira do cartão (Visa, Elo, Mastercard, Hipercard, Amex, etc.)
-            let paymentMethodId = cardBrand?.id || token.payment_method_id;
-            if (!paymentMethodId && cardNumber.replace(/\D/g, '').length >= 6 && mp) {
-                try {
-                    const bin = cardNumber.replace(/\D/g, '').substring(0, 6);
-                    const binRes = await mp.getPaymentMethods({ bin });
-                    if (binRes?.results?.[0]?.id) {
-                        paymentMethodId = binRes.results[0].id;
+            const cleanCardNumber = cardNumber.replace(/\D/g, '');
+            let paymentMethodId = cardBrand?.id;
+            let finalIssuerId = cardIssuerId;
+
+            // Se ainda não detectou ou está sem emissor, tenta resolver dinamicamente via MP SDK
+            if (cleanCardNumber.length >= 6 && mp) {
+                const bin = cleanCardNumber.substring(0, 6);
+                if (!paymentMethodId) {
+                    try {
+                        const binRes = await mp.getPaymentMethods({ bin });
+                        if (binRes?.results?.[0]?.id) {
+                            paymentMethodId = binRes.results[0].id;
+                        }
+                    } catch (err) {
+                        console.warn('Fallback BIN error:', err);
                     }
-                } catch (err) {
-                    console.warn('Fallback BIN error:', err);
                 }
+
+                if (paymentMethodId && !finalIssuerId) {
+                    try {
+                        const issuers = await mp.getIssuers({ paymentMethodId, bin });
+                        if (issuers?.[0]?.id) {
+                            finalIssuerId = issuers[0].id;
+                            setCardIssuerId(issuers[0].id);
+                        }
+                    } catch (issErr) {
+                        console.warn('Fallback Issuers error:', issErr);
+                    }
+                }
+            }
+
+            // Fallback determinístico por regex se a API do MP falhar
+            if (!paymentMethodId) {
+                const localFallback = detectCardBrandLocal(cleanCardNumber);
+                if (localFallback) {
+                    paymentMethodId = localFallback.id;
+                }
+            }
+
+            // Se ainda assim for indefinido, inferir pelo primeiro dígito para não causar rejeição por 'master' incorreto
+            if (!paymentMethodId) {
+                paymentMethodId = cleanCardNumber.startsWith('4') ? 'visa' : 'master';
             }
 
             // Telemetria do dispositivo (Device Session ID gerado pelo security.js do MP)
@@ -455,7 +532,8 @@ const CheckoutDirectPage = () => {
 
             const paymentData = {
                 token: token.id,
-                payment_method_id: paymentMethodId || 'master',
+                payment_method_id: paymentMethodId,
+                issuer_id: finalIssuerId || null,
                 amount: amount,
                 installments: parseInt(installments),
                 description: type === 'evento'
@@ -716,7 +794,7 @@ const CheckoutDirectPage = () => {
                                             onChange={handleCardNumberChange}
                                             placeholder="0000 0000 0000 0000"
                                             className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent font-mono tracking-wider"
-                                            maxLength="19"
+                                            maxLength="23"
                                             required
                                         />
                                         <CreditCard className="absolute right-3 top-3 text-gray-400" />

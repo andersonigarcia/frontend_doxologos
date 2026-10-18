@@ -85,6 +85,9 @@ async function fetchMpPayment(paymentId: string, mpAccessToken: string) {
   const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
     headers: { Authorization: `Bearer ${mpAccessToken}` }
   });
+  if (res.status === 404) {
+    return { notFound: true, status: 404 };
+  }
   if (!res.ok) throw new Error(`MP fetch failed ${res.status}`);
   return res.json();
 }
@@ -153,30 +156,7 @@ serve(async (req: Request) => {
     return new Response('Invalid JSON', { status: 400 });
   }
 
-  // Verificação de assinatura HMAC do Mercado Pago.
-  // Quando MP_WEBHOOK_SECRET está configurado (produção), rejeita requisições com assinatura inválida.
-  // Quando não está configurado, apenas loga aviso e continua (modo permissivo para ambientes de teste).
-  if (MP_WEBHOOK_SECRET) {
-    const xSignature = req.headers.get('x-signature');
-    if (xSignature) {
-      // Formato v2.0 (MercadoPago Feed): possui x-signature — verificar HMAC
-      const signatureValid = await verifySignature(req, bodyText, MP_WEBHOOK_SECRET);
-      if (!signatureValid) {
-        console.warn('⚠️ [M-06] Assinatura v2.0 inválida. Requisição rejeitada.');
-        return new Response('Unauthorized', { status: 401 });
-      }
-      console.log('✅ Assinatura v2.0 verificada com sucesso.');
-    } else {
-      // Formato v1.0 legacy (IPN): não envia x-signature — aceitar e logar.
-      // O payload é validado internamente via fetchMpPayment (double-check na API do MP)
-      // antes de qualquer atualização de dados, portanto a segurança é mantida.
-      console.info('ℹ️ Notificação v1.0 recebida (sem x-signature). Aceita sem HMAC (formato legacy MP).');
-    }
-  } else {
-    console.warn('⚠️ MP_WEBHOOK_SECRET não configurado — assinatura não verificada. Configure em produção.');
-  }
-
-  // Log to database (com saneamento PII)
+  // Log to database (com saneamento PII) logo no início da requisição para rastreabilidade total
   const logEntry = {
     provider: 'mercadopago',
     payload: sanitizeForLog(bodyJson),
@@ -184,22 +164,43 @@ serve(async (req: Request) => {
     signature: req.headers.get('x-signature')
   };
 
-  const { data: logData, error: logError } = await supabase
+  const { data: logData } = await supabase
     .from('webhook_logs')
     .insert(logEntry)
     .select()
     .single();
 
-
   const logId = logData?.id;
 
-  try {
-    const paymentId = bodyJson.data?.id || bodyJson.id; // MP sends data.id usually
-    const type = bodyJson.type;
+  // Verificação de assinatura HMAC do Mercado Pago.
+  // Prioriza validação HMAC estrita. Se falhar por descompasso de chaves durante migrações de conta,
+  // recorre ao Double-Check autenticado direto na API oficial do Mercado Pago (Self-Validation).
+  let isSignatureValid = false;
+  const xSignature = req.headers.get('x-signature');
 
-    if (type !== 'payment') {
-      // Just log and ignore non-payment events (like test notifications)
-      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: 'Not a payment event' }).eq('id', logId);
+  if (MP_WEBHOOK_SECRET && xSignature) {
+    isSignatureValid = await verifySignature(req, bodyText, MP_WEBHOOK_SECRET);
+    if (isSignatureValid) {
+      console.log('✅ Assinatura v2.0 verificada com sucesso via HMAC.');
+    } else {
+      console.warn('⚠️ [M-06] Assinatura v2.0 não coincidiu com MP_WEBHOOK_SECRET. Procedendo com validação direta na API oficial do Mercado Pago...');
+    }
+  } else if (!xSignature) {
+    console.info('ℹ️ Notificação v1.0/IPN recebida (sem x-signature). Aceita para validação direta na API oficial do MP.');
+  }
+
+  try {
+    const paymentId = bodyJson.data?.id || bodyJson.id || getUrlParam(req, 'data.id') || getUrlParam(req, 'id');
+    const type = bodyJson.type || bodyJson.topic || getUrlParam(req, 'type') || getUrlParam(req, 'topic') || bodyJson.action?.split('.')[0];
+
+    if (!paymentId) {
+      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: 'No payment id in payload or query params' }).eq('id', logId);
+      return new Response('No payment id', { status: 200 });
+    }
+
+    if (type && type !== 'payment') {
+      // Ignorar eventos que não sejam de pagamento
+      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: `Not a payment event: ${type}` }).eq('id', logId);
       return new Response('Ignored non-payment event', { status: 200 });
     }
 
@@ -215,8 +216,24 @@ serve(async (req: Request) => {
     let didCancelBooking = false;
 
     // 1. Double Check with MP API (Self-Validation)
-    // This confirms the payment status is real and not a spoofed payload
+    // Confirma status do pagamento diretamente na API oficial autenticada
     const mpPayment = await fetchMpPayment(paymentId, MP_ACCESS_TOKEN);
+
+    // Se o pagamento retornar 404 (ex: eventos de retries de contas antigas), encerra com 200 para cessar retries
+    if (mpPayment?.notFound) {
+      console.warn(`⚠️ Pagamento ${paymentId} não encontrado na conta ativa do Mercado Pago (evento de conta legada). Respondendo 200 para encerrar retries.`);
+      if (logId) {
+        await supabase.from('webhook_logs').update({
+          status: 'ignored',
+          error_message: `Payment ${paymentId} not found in active MP account (404)`
+        }).eq('id', logId);
+      }
+      return new Response(JSON.stringify({ ok: true, ignored: true, reason: 'payment_not_found_in_account' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     console.log(`✅ Verified payment ${paymentId} status: ${mpPayment.status}`);
     console.log(`💳 Payment method: ${mpPayment.payment_method_id}`);
     console.log(`📊 Payment type: ${mpPayment.payment_type_id}`);
@@ -226,9 +243,9 @@ serve(async (req: Request) => {
     let success = false;
 
     // =========================================================================
-    // IDEMPOTENCY GUARD (Onda 2 - Padrão Stripe / Fintech)
-    // Evita reprocessamento redundante caso o Mercado Pago envie múltiplos webhooks
-    // para o mesmo pagamento no mesmo status final (ex: retries automáticos de rede).
+    // IDEMPOTENCY GUARD INTELIGENTE
+    // Só encerra early se a entidade de negócio (booking, package ou inscrição)
+    // de fato já estiver confirmada/paga com as notificações disparadas.
     // =========================================================================
     const { data: existingProcessedPayment } = await supabase
       .from('payments')
@@ -236,8 +253,39 @@ serve(async (req: Request) => {
       .eq('mp_payment_id', paymentId.toString())
       .maybeSingle();
 
-    if (existingProcessedPayment && existingProcessedPayment.status === mpPayment.status) {
-      console.log(`⚡ [Idempotency] Pagamento ${paymentId} já processado anteriormente com status '${mpPayment.status}'. Retornando 200 OK.`);
+    let isBusinessEntityFullyUpdated = false;
+    const isApprovedStatus = ['approved', 'authorized', 'paid'].includes(mpPayment.status);
+
+    if (externalRef) {
+      if (externalRef.startsWith('PACOTE_')) {
+        const pkgId = externalRef.replace('PACOTE_', '');
+        const { data: pkg } = await supabase.from('packages').select('status').eq('id', pkgId).maybeSingle();
+        isBusinessEntityFullyUpdated = isApprovedStatus ? (pkg?.status === 'paid') : (pkg?.status === mpPayment.status);
+      } else if (externalRef.startsWith('EVENTO_')) {
+        const evId = externalRef.replace('EVENTO_', '');
+        const { data: ev } = await supabase.from('inscricoes_eventos').select('payment_status').eq('id', evId).maybeSingle();
+        isBusinessEntityFullyUpdated = ev?.payment_status === mpPayment.status;
+      } else if (externalRef.startsWith('LIVRO_')) {
+        const { data: dl } = await supabase.from('user_book_downloads').select('payment_status').eq('payment_id', paymentId.toString()).maybeSingle();
+        isBusinessEntityFullyUpdated = isApprovedStatus ? (dl?.payment_status === 'completed') : (dl?.payment_status === 'failed');
+      } else {
+        // Booking UUID
+        const { data: targetBooking } = await supabase
+          .from('bookings')
+          .select('id, status, payment_status, notification_sent_at')
+          .eq('id', externalRef)
+          .maybeSingle();
+
+        if (targetBooking) {
+          isBusinessEntityFullyUpdated = isApprovedStatus
+            ? (targetBooking.status === 'confirmed' && targetBooking.payment_status === mpPayment.status && Boolean(targetBooking.notification_sent_at))
+            : (targetBooking.payment_status === mpPayment.status);
+        }
+      }
+    }
+
+    if (existingProcessedPayment && existingProcessedPayment.status === mpPayment.status && isBusinessEntityFullyUpdated) {
+      console.log(`⚡ [Idempotency] Pagamento ${paymentId} e referência ${externalRef} já 100% processados. Retornando 200 OK.`);
       if (logId) {
         await supabase.from('webhook_logs')
           .update({
@@ -570,7 +618,7 @@ serve(async (req: Request) => {
           'pending_payment': ['awaiting_payment', 'confirmed', 'cancelled'],
           'awaiting_payment': ['confirmed', 'cancelled'], // cartão in_process → aprovado/recusado
           'pending': ['confirmed', 'cancelled'],
-          'confirmed': ['cancelled', 'completed'],
+          'confirmed': ['confirmed', 'cancelled', 'completed'], // Permite idempotência/reconciliação para disparo de notificações pendentes
           'completed': [], // estado terminal — nenhuma transição permitida
           'cancelled': [], // estado terminal — nenhuma transição permitida
           'cancelled_by_patient': [],
@@ -651,12 +699,13 @@ serve(async (req: Request) => {
           }
 
           // ── Post-Payment Orchestrator (fire-and-forget) ─────────────────
-          // Dispara email de confirmação ao paciente e ao profissional.
+          // Dispara email de confirmação ao paciente e ao profissional se ainda não notificado.
           // Falha aqui NÃO impede o webhook de retornar 200.
           // Controlado por variável de ambiente POST_PAYMENT_ORCHESTRATOR.
           if (newStatus === 'confirmed') {
             const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'true').toLowerCase() !== 'false';
-            if (orchestratorEnabled) {
+            if (orchestratorEnabled && !existingBooking.notification_sent_at) {
+              console.log(`📨 Disparando post-payment-orchestrator para booking ${bookingId}...`);
               supabase.functions.invoke('post-payment-orchestrator', {
                 body: { booking_id: bookingId }
               }).then(({ error: orchErr }: any) => {
@@ -668,6 +717,8 @@ serve(async (req: Request) => {
               }).catch((e: any) => {
                 console.error(`⚠️ [Orchestrator] Exceção na invocação (non-fatal):`, e);
               });
+            } else if (existingBooking.notification_sent_at) {
+              console.log(`ℹ️ [Orchestrator] Booking ${bookingId} já possuía notificações enviadas em ${existingBooking.notification_sent_at}.`);
             } else {
               console.log(`ℹ️ [Orchestrator] Desativado (POST_PAYMENT_ORCHESTRATOR=false). Email não disparado.`);
             }
