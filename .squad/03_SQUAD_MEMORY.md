@@ -27,6 +27,7 @@
 | **ADR 016** | 2026-10-13 | Booking Time / Schema | Truncagem de `booking_time` para 5 caracteres (`HH:mm`, VARCHAR(5)); anti-erro 22001. | [`ADR_016`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-13_ADR_016_CORRECAO_SCHEMA_BOOKING_TIME_BLINDAGEM_AGENDAMENTOS.md) |
 | **ADR 017** | 2026-10-17 | Segurança & Prontuários | Blindagem anti-Open Relay em `send-email`, eliminação de PII em logs, correção do contrato de prontuários (`action: 'save'`) e isolamento seguro de credencial GCP. | [`ADR_017`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-17_ADR_017_BLINDAGEM_SEGURANCA_OPEN_RELAY_PII_E_PRONTUARIOS.md) |
 | **ADR 018** | 2026-10-18 | Governança & Mobile CRO | Sincronização de 48 rotas no `ARCH.md`, teleconsulta Google Meet, limpeza de código órfão, `inputMode="numeric"` e barra sticky mobile (ADR 002). | [`ADR_018`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-18_ADR_018_GOVERNANCA_ROTAS_MOBILE_CRO_E_LIMPEZA.md) |
+| **ADR 019** | 2026-10-18 | Automação QA & Resiliência | Chromium Headless Shell no Playwright, 8 testes E2E verdes (`checkout.spec.ts` e `navigation.spec.ts`) e fallback defensivo com `valorParam` no checkout. | [`ADR_019`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-18_ADR_019_AUTOMACAO_QA_E2E_E_RESILIENCIA_CHECKOUT.md) |
 
 ---
 

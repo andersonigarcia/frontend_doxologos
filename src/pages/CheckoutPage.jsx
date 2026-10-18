@@ -289,12 +289,23 @@ const CheckoutPage = () => {
             logger.success('CheckoutPage.fetchBooking:success', buildLogContext({ bookingId, status: data.status }));
         } catch (error) {
             logger.error('CheckoutPage.fetchBooking:error', error, buildLogContext({ bookingId }));
-            toast({
-                variant: 'destructive',
-                title: 'Consulta não localizada',
-                description: 'Houve uma instabilidade ao recuperar os detalhes do agendamento. Vamos retornar para você escolher seu horário com calma.'
-            });
-            navigate('/');
+            if (!valorParam) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Consulta não localizada',
+                    description: 'Houve uma instabilidade ao recuperar os detalhes do agendamento. Vamos retornar para você escolher seu horário com calma.'
+                });
+                navigate('/');
+            } else {
+                logger.warn('CheckoutPage.fetchBooking:fallback-valor', buildLogContext({ valorParam }));
+                setBooking({
+                    id: bookingId,
+                    valor_consulta: parseFloat(valorParam),
+                    service: { name: 'Consulta Psicológica', price: parseFloat(valorParam) },
+                    booking_date: new Date().toISOString().split('T')[0],
+                    booking_time: '14:00'
+                });
+            }
         } finally {
             setLoading(false);
         }
