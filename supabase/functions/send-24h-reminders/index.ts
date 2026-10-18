@@ -63,10 +63,10 @@ function patientReminderTemplate(booking: any, baseUrl: string) {
       <p><strong>🩺 Serviço:</strong> ${booking.services?.name}</p>
     </div>
 
-    <div style="background: #dbeafe; padding: 25px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
-      <h3>🔗 Aonde eu entro?</h3>
-      <p>O link para a sala de consulta (Google Meet) já está disponível na sua Área do Paciente!</p>
-      <a href="${baseUrl}/area-do-paciente" class="btn">Acessar Minha Área</a>
+    <div style="background: #dbeafe; padding: 25px; margin: 20px 0; border-radius: 8px; border-left: 4px solid #2d6a4f; text-align: center;">
+      <h3 style="color: #1e3a5f; margin: 0 0 10px 0;">🌱 Aonde eu entro?</h3>
+      <p style="color: #4b5563; font-size: 14px; margin-bottom: 18px;">Sua Sala Virtual segura já está preparada. Você poderá acessá-la diretamente pela sua Área do Paciente no dia e horário agendados.</p>
+      <a href="${baseUrl}/area-do-paciente" class="btn" style="background: #2d6a4f;">Acessar Minha Área do Paciente</a>
     </div>
   `;
   return baseTemplate(content, "Lembrete de Consulta - Doxologos", "#2d8659", baseUrl);
@@ -79,9 +79,9 @@ function professionalDailySummaryTemplate(professionalName: string, bookings: an
     <div style="background: white; border-left: 4px solid #2d8659; padding: 15px; margin-bottom: 15px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
       <p style="margin: 0 0 5px 0;"><strong>⏰ ${booking.booking_time}</strong> - ${booking.services?.name || 'Consulta'}</p>
       <p style="margin: 0 0 5px 0; color: #4b5563;">👤 <strong>Paciente:</strong> ${booking.patient_name}</p>
-      ${booking.patient_phone ? `<p style="margin: 0 0 5px 0; color: #4b5563;">📱 <strong>Telefone:</strong> ${booking.patient_phone}</p>` : ''}
-      ${booking.patient_email ? `<p style="margin: 0; color: #4b5563;">📧 <strong>Email:</strong> ${booking.patient_email}</p>` : ''}
-      ${booking.meeting_link ? `<p style="margin: 5px 0 0 0; font-size: 13px;"><a href="${booking.meeting_link}" style="color: #2563eb;">🔗 Link da Reunião</a></p>` : ''}
+      ${booking.patient_phone ? `<p style="margin: 0 0 5px 0; color: #4b5563;">📱 <strong>Telefone:</strong> ${booking.patient_phone.slice(0, 4)}**** <span style="font-size: 11px; color: #9ca3af;">(Protegido)</span></p>` : ''}
+      ${booking.patient_email ? `<p style="margin: 0; color: #4b5563;">📧 <strong>Email:</strong> ${booking.patient_email.split('@')[0].slice(0, 2)}***@${booking.patient_email.split('@')[1] || ''} <span style="font-size: 11px; color: #9ca3af;">(Protegido)</span></p>` : ''}
+      <p style="margin: 8px 0 0 0; font-size: 13px;"><a href="${baseUrl}/area-do-profissional" style="color: #2d6a4f; font-weight: 600;">🌱 Acessar Atendimento no Painel</a></p>
     </div>
   `).join('');
 

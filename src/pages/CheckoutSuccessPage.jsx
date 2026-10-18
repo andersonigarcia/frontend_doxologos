@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link, useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { CheckCircle, Calendar, Download, Home, User, ExternalLink, Mail, Clock } from 'lucide-react';
+import { CheckCircle, Calendar, Download, Home, User, ExternalLink, Mail, Clock, Video, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPaymentByMpId } from '@/services/paymentService';
@@ -274,36 +274,32 @@ const CheckoutSuccessPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Zoom / Meet Link - Destaque especial */}
-                                    {(booking.zoom_link || booking.professional?.personal_meet_link) && (
-                                        <motion.div
-                                            initial={{ scale: 0.95, opacity: 0 }}
-                                            animate={{ scale: 1, opacity: 1 }}
-                                            transition={{ delay: 0.3 }}
-                                            className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg p-4 shadow-lg"
-                                        >
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <p className="font-semibold mb-1 flex items-center">
-                                                        <ExternalLink className="w-4 h-4 mr-2" />
-                                                        Link da Videochamada
-                                                    </p>
-                                                    <p className="text-sm text-green-50 mb-3">
-                                                        Acesse este link no dia e horário da consulta
-                                                    </p>
-                                                    <a
-                                                        href={booking.zoom_link || booking.professional?.personal_meet_link}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center bg-white text-green-600 px-4 py-2 rounded-lg font-medium hover:bg-green-50 transition-colors"
-                                                    >
-                                                        Acessar Sala
-                                                        <ExternalLink className="w-4 h-4 ml-2" />
-                                                    </a>
-                                                </div>
+                                    {/* Sala Virtual Segura Doxologos */}
+                                    <motion.div
+                                        initial={{ scale: 0.95, opacity: 0 }}
+                                        animate={{ scale: 1, opacity: 1 }}
+                                        transition={{ delay: 0.3 }}
+                                        className="bg-gradient-to-r from-emerald-600 to-[#2d8659] text-white rounded-lg p-4 shadow-lg"
+                                    >
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <p className="font-semibold mb-1 flex items-center">
+                                                    <Video className="w-4 h-4 mr-2" />
+                                                    Sala Virtual Doxologos
+                                                </p>
+                                                <p className="text-sm text-emerald-50 mb-3">
+                                                    Sua consulta acontecerá em ambiente seguro da plataforma. Acesse no dia e horário marcados.
+                                                </p>
+                                                <Link
+                                                    to={`/sala-espera/${booking.id}`}
+                                                    className="inline-flex items-center bg-white text-[#2d8659] px-4 py-2 rounded-lg font-medium hover:bg-emerald-50 transition-colors shadow-sm"
+                                                >
+                                                    Acessar Sala Virtual
+                                                    <ArrowRight className="w-4 h-4 ml-2" />
+                                                </Link>
                                             </div>
-                                        </motion.div>
-                                    )}
+                                        </div>
+                                    </motion.div>
                                 </div>
                             </div>
                         )}

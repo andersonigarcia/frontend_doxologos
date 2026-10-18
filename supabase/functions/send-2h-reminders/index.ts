@@ -50,6 +50,22 @@ function formatDate(dateString: string) {
   }
 }
 
+function maskEmail(email?: string): string {
+  if (!email || !email.includes('@')) return 'Não informado';
+  const [user, domain] = email.split('@');
+  if (user.length <= 2) return `${user[0]}*@${domain}`;
+  return `${user.slice(0, 2)}***@${domain}`;
+}
+
+function maskPhone(phone?: string): string {
+  if (!phone) return 'Não informado';
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length < 8) return 'Protegido';
+  const last4 = cleaned.slice(-4);
+  const ddd = cleaned.length >= 10 ? cleaned.slice(0, 2) : '';
+  return ddd ? `(${ddd}) *****-${last4}` : `*****-${last4}`;
+}
+
 function patientReminder2HoursTemplate(booking: any, baseUrl: string) {
   const content = `
     <h2 style="color: #f59e0b; font-size: 24px; margin: 0 0 10px 0;">⏰ Sua Consulta Começa em 2 Horas!</h2>
@@ -62,35 +78,37 @@ function patientReminder2HoursTemplate(booking: any, baseUrl: string) {
       <p><strong>👨‍⚕️ Profissional:</strong> ${booking.professionals?.name}</p>
     </div>
 
-    ${booking.meeting_link ? `
-      <div style="background: #dbeafe; padding: 30px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
-        <h3 style="margin: 0 0 15px 0; color: #1e40af; font-size: 20px;">🎥 Acesse a Sala da Consulta</h3>
-        <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 18px;">🔗 Entrar na Consulta</a>
-      </div>
-    ` : ''}
+    <div style="background: #dbeafe; padding: 30px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #2d6a4f; text-align: center;">
+      <h3 style="margin: 0 0 15px 0; color: #1e3a5f; font-size: 20px;">🌱 Acesse a Sala Virtual Doxologos</h3>
+      <p style="color: #4b5563; font-size: 14px; margin-bottom: 18px;">Sua sala de espera segura já está preparada. Acesse no horário para aguardar o início.</p>
+      <a href="${baseUrl}/sala-espera/${booking.id}" class="btn" style="background: #2d6a4f; font-size: 18px;">🔗 Entrar na Sala Virtual</a>
+    </div>
   `;
   return baseTemplate(content, "⏰ Sua Consulta é Daqui a 2 Horas - Doxologos", "#2d8659", baseUrl);
 }
 
 function professionalReminder2HoursTemplate(booking: any, baseUrl: string) {
+  const maskedPhone = maskPhone(booking.patient_phone);
+  const maskedEmail = maskEmail(booking.patient_email);
+
   const content = `
-    <h2 style="color: #2d8659; font-size: 22px; margin: 0 0 10px 0;">⏰ Consulta em 2 Horas</h2>
+    <h2 style="color: #2d6a4f; font-size: 22px; margin: 0 0 10px 0;">⏰ Consulta em 2 Horas</h2>
     <p>Olá <strong>${booking.professionals?.name}</strong>,</p>
-    <p>Lembrete da sua próxima consulta:</p>
+    <p>Lembrete da sua próxima consulta agendada na plataforma:</p>
     
     <div style="background: #f8f9fa; padding: 20px; margin: 20px 0; border-radius: 16px; border: 1px solid #e5e7eb;">
       <p><strong>⏰ Horário:</strong> ${booking.booking_time}</p>
       <p><strong>👤 Paciente:</strong> ${booking.patient_name}</p>
       <p><strong>🩺 Serviço:</strong> ${booking.services?.name || 'Consulta'}</p>
-      ${booking.patient_phone ? `<p><strong>📱 Telefone:</strong> ${booking.patient_phone}</p>` : ''}
-      ${booking.patient_email ? `<p><strong>📧 Email:</strong> ${booking.patient_email}</p>` : ''}
+      <p><strong>📱 Telefone:</strong> ${maskedPhone} <span style="color: #6b7280; font-size: 12px;">(Protegido)</span></p>
+      <p><strong>📧 Email:</strong> ${maskedEmail} <span style="color: #6b7280; font-size: 12px;">(Protegido)</span></p>
     </div>
 
-    ${booking.meeting_link ? `
-      <div style="background: #dbeafe; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #3b82f6; text-align: center;">
-        <a href="${booking.meeting_link}" class="btn" style="background: #3b82f6; font-size: 16px;">🔗 Acessar Sala Google Meet</a>
-      </div>
-    ` : ''}
+    <div style="background: #eff6ff; padding: 25px; margin: 25px 0; border-radius: 8px; border-left: 4px solid #2563eb; text-align: center;">
+      <h3 style="margin: 0 0 10px 0; color: #1e3a5f; font-size: 18px;">👨‍⚕️ Atendimento da Sessão</h3>
+      <p style="margin: 0 0 15px 0; color: #4b5563; font-size: 14px;">O paciente aguardará na Sala Virtual no horário agendado. Acesse seu painel para gerenciar o atendimento.</p>
+      <a href="${baseUrl}/area-do-profissional" class="btn" style="background: #1e3a5f; font-size: 16px;">Acessar Painel do Profissional</a>
+    </div>
   `;
   return baseTemplate(content, `⏰ Consulta em 2h - ${booking.patient_name} - Doxologos`, "#2d8659", baseUrl);
 }

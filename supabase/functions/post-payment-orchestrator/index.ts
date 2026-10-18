@@ -21,8 +21,24 @@ const corsHeaders = {
 
 // ─── Templates de Email ──────────────────────────────────────────────────────
 
+function maskEmail(email?: string): string {
+  if (!email || !email.includes('@')) return 'Não informado';
+  const [user, domain] = email.split('@');
+  if (user.length <= 2) return `${user[0]}*@${domain}`;
+  return `${user.slice(0, 2)}***@${domain}`;
+}
+
+function maskPhone(phone?: string): string {
+  if (!phone) return 'Não informado';
+  const cleaned = phone.replace(/\D/g, '');
+  if (cleaned.length < 8) return 'Protegido';
+  const last4 = cleaned.slice(-4);
+  const ddd = cleaned.length >= 10 ? cleaned.slice(0, 2) : '';
+  return ddd ? `(${ddd}) *****-${last4}` : `*****-${last4}`;
+}
+
 function buildPatientConfirmationEmail(booking: any, professional: any): string {
-  const meetLink = booking.meeting_link;
+  const safeSessionUrl = `https://novo.doxologos.com.br/sala-espera/${booking.id}`;
   const bookingDate = new Date(booking.booking_date).toLocaleDateString('pt-BR', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
   });
@@ -68,37 +84,28 @@ function buildPatientConfirmationEmail(booking: any, professional: any): string 
           </tr>
           <tr>
             <td style="color:#6b7280;font-size:13px;padding:6px 0;">📱 Modalidade</td>
-            <td style="color:#111827;font-size:14px;font-weight:600;padding:6px 0;">Teleconsulta (Google Meet)</td>
+            <td style="color:#111827;font-size:14px;font-weight:600;padding:6px 0;">Teleconsulta Segura (Sala Virtual Doxologos)</td>
           </tr>
         </table>
       </div>
 
-      ${meetLink ? `
-      <!-- Link Meet -->
+      <!-- Link Sala Virtual -->
       <div style="text-align:center;margin:0 0 28px;">
-        <p style="color:#374151;font-size:14px;margin:0 0 12px;">Acesse sua consulta pelo link abaixo:</p>
-        <a href="${meetLink}" style="display:inline-block;background:#2d6a4f;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">
-          🔗 Entrar na Consulta Google Meet
+        <p style="color:#374151;font-size:14px;margin:0 0 12px;">Sua sala virtual já está reservada. Acesse no dia e horário agendados:</p>
+        <a href="${safeSessionUrl}" style="display:inline-block;background:#2d6a4f;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+          🌱 Acessar Sala Virtual Doxologos
         </a>
-        <p style="color:#9ca3af;font-size:12px;margin:10px 0 0;">Salve este link! Ele também estará disponível na sua Área do Paciente.</p>
+        <p style="color:#9ca3af;font-size:12px;margin:10px 0 0;">Por segurança e privacidade, a sala é liberada alguns minutos antes da consulta.</p>
       </div>
-      ` : `
-      <!-- Fallback sem link Meet -->
-      <div style="background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;padding:16px 20px;margin:0 0 28px;">
-        <p style="color:#92400e;font-size:14px;margin:0;">
-          📱 O link para a sala de consulta será compartilhado diretamente pelo profissional em breve.
-        </p>
-      </div>
-      `}
 
       <!-- Dicas -->
       <div style="background:#f8fafc;border-radius:8px;padding:20px 24px;margin:0 0 24px;">
         <p style="color:#374151;font-size:14px;font-weight:600;margin:0 0 12px;">💡 Dicas para sua consulta:</p>
         <ul style="color:#6b7280;font-size:13px;margin:0;padding-left:18px;line-height:1.8;">
-          <li>Esteja em um ambiente tranquilo e bem iluminado</li>
+          <li>Esteja em um ambiente tranquilo, seguro e bem iluminado</li>
           <li>Teste sua câmera e microfone antes do horário</li>
-          <li>Acesse pelo link acima alguns minutos antes</li>
-          <li>Em caso de dúvidas, acesse sua Área do Paciente</li>
+          <li>Acesse a Sala Virtual 5 a 10 minutos antes</li>
+          <li>Em caso de dúvidas, consulte sua Área do Paciente</li>
         </ul>
       </div>
 
@@ -125,8 +132,8 @@ function buildProfessionalConfirmationEmail(booking: any, professional: any): st
   });
   const bookingTime = booking.booking_time?.slice(0, 5) || '';
   const patientName = booking.patient_name || 'Paciente';
-  const patientEmail = booking.patient_email || '';
-  const patientPhone = booking.patient_phone || 'Não informado';
+  const maskedEmail = maskEmail(booking.patient_email);
+  const maskedPhone = maskPhone(booking.patient_phone);
   const profFirstName = professional?.name?.split(' ')[0] || 'Profissional';
 
   return `
@@ -173,21 +180,30 @@ function buildProfessionalConfirmationEmail(booking: any, professional: any): st
             <td style="color:#6b7280;font-size:13px;padding:5px 0;width:40%;">👤 Nome</td>
             <td style="color:#111827;font-size:14px;font-weight:600;padding:5px 0;">${patientName}</td>
           </tr>
-          ${patientEmail ? `<tr>
+          <tr>
             <td style="color:#6b7280;font-size:13px;padding:5px 0;">✉️ Email</td>
-            <td style="color:#111827;font-size:14px;padding:5px 0;">${patientEmail}</td>
-          </tr>` : ''}
+            <td style="color:#111827;font-size:14px;padding:5px 0;">${maskedEmail} <span style="color:#6b7280;font-size:11px;">(Protegido)</span></td>
+          </tr>
           <tr>
             <td style="color:#6b7280;font-size:13px;padding:5px 0;">📱 Telefone</td>
-            <td style="color:#111827;font-size:14px;padding:5px 0;">${patientPhone}</td>
+            <td style="color:#111827;font-size:14px;padding:5px 0;">${maskedPhone} <span style="color:#6b7280;font-size:11px;">(Protegido)</span></td>
           </tr>
         </table>
       </div>
 
-      <p style="color:#6b7280;font-size:13px;text-align:center;margin:0;">
-        O link da sala Google Meet cadastrado no seu perfil foi compartilhado com o paciente.<br>
-        Acesse o <a href="https://novo.doxologos.com.br" style="color:#2563eb;text-decoration:none;">painel Doxologos</a> para mais detalhes.
-      </p>
+      <!-- Diretriz de Atendimento -->
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px 20px;margin:0 0 24px;text-align:left;">
+        <p style="color:#1e40af;font-size:13px;font-weight:600;margin:0 0 6px;">🛡️ Diretriz de Atendimento e Ética:</p>
+        <p style="color:#3b82f6;font-size:12px;margin:0;line-height:1.6;">
+          Para conformidade com o CFP e segurança jurídica da sua prática, os atendimentos e registros devem ser mantidos via plataforma Doxologos. O paciente aguardará na Sala Virtual no horário agendado.
+        </p>
+      </div>
+
+      <div style="text-align:center;margin:0 0 20px;">
+        <a href="https://novo.doxologos.com.br/area-do-profissional" style="display:inline-block;background:#1e3a5f;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">
+          Acessar Meu Painel Profissional
+        </a>
+      </div>
     </div>
 
     <!-- Footer -->
@@ -410,7 +426,7 @@ Deno.serve(async (req: Request) => {
               recipient_phone: waPhone,
               recipient_name: booking.patient_name,
               reminder_type: 'confirmation',
-              meeting_link: meetLink,   // Google Meet link do profissional
+              meeting_link: `https://novo.doxologos.com.br/sala-espera/${booking_id}`,
             }
           });
           results.patient_whatsapp = waErr ? 'failed' : 'sent';

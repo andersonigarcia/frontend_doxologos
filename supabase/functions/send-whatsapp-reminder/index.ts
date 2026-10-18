@@ -92,8 +92,9 @@ serve(async (req: Request) => {
       bookingDate = formatDateBr(booking.booking_date);
       bookingTime = booking.booking_time || '';
       psychologistName = booking.professional?.name || 'Psicólogo(a)';
-      zoomLink = overrideMeetLink || booking.meeting_link || zoom_meeting_url || 'https://novo.doxologos.com.br/area-do-paciente';
-      // Nota: 'zoomLink' é nome legado — contém o Google Meet link do profissional
+      // FASE 1 Anti-Desintermediação: Nunca expor link bruto de Google Meet/Zoom via WhatsApp.
+      // Sempre direcionar para a Sala Virtual protegida da Doxologos.
+      zoomLink = `https://novo.doxologos.com.br/sala-espera/${booking_id}`;
 
     } else if (inscricao_id) {
       const { data: inscricao, error: iError } = await supabase
@@ -128,13 +129,13 @@ serve(async (req: Request) => {
       if (reminder_type === '24h') {
         messageText = `Olá, ${recipientName}! 💜 Lembramos que sua consulta de psicologia com ${psychologistName} está agendada para amanhã (${bookingDate}) às ${bookingTime}.\n\nPara confirmar sua presença ou em caso de dúvidas, acesse a Área do Paciente: https://novo.doxologos.com.br/area-do-paciente`;
       } else if (reminder_type === '1h') {
-        messageText = `Olá, ${recipientName}! ⏳ Sua teleconsulta com ${psychologistName} começará em 1 hora (${bookingTime}).\n\nPrepare um local reservado e tranquilo. Link de acesso à consulta: ${zoomLink}`;
+        messageText = `Olá, ${recipientName}! ⏳ Sua teleconsulta com ${psychologistName} começará em 1 hora (${bookingTime}).\n\nPrepare um local reservado e tranquilo. Acesse sua Sala Virtual Doxologos: ${zoomLink}`;
       } else if (reminder_type === '10min') {
-        messageText = `🔔 Seu atendimento com ${psychologistName} vai começar em 10 minutos!\n\nClique no link para acessar a consulta online: ${zoomLink}`;
+        messageText = `🔔 Seu atendimento com ${psychologistName} vai começar em 10 minutos!\n\nAcesse sua Sala Virtual segura: ${zoomLink}`;
       } else if (reminder_type === 'confirmation') {
-        messageText = `✅ Seu agendamento foi confirmado com sucesso!\n\nPsicólogo(a): ${psychologistName}\nData: ${bookingDate} às ${bookingTime}\nLink de acesso (Google Meet): ${zoomLink}`;
+        messageText = `✅ Seu agendamento foi confirmado com sucesso!\n\nPsicólogo(a): ${psychologistName}\nData: ${bookingDate} às ${bookingTime}\nAcesso à Sala Virtual: ${zoomLink}`;
       } else {
-        messageText = `Olá, ${recipientName}! Lembrete de consulta de psicologia com ${psychologistName} em ${bookingDate} às ${bookingTime}. Link: ${zoomLink}`;
+        messageText = `Olá, ${recipientName}! Lembrete de consulta de psicologia com ${psychologistName} em ${bookingDate} às ${bookingTime}. Sala Virtual: ${zoomLink}`;
       }
     }
 

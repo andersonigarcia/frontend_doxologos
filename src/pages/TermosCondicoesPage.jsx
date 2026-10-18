@@ -46,9 +46,9 @@ const TermosCondicoesPage = () => {
                 <p><strong>b)</strong> Em caso de atrasos, o tempo será ajustado para não ultrapassar o horário final previsto para a sessão, a fim de não prejudicar o próximo paciente.</p>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">4. Atendimentos Online</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">4. Atendimentos Online e Sala Virtual</h2>
               <p className="mb-6">
-                A plataforma de comunicação utilizada é o Google Meet. Ela oferece segurança, estabilidade e é acessível via navegador em celular ou computador, sem necessidade de instalação. Certifique-se de que sua conexão de internet, câmera e microfone estejam configurados antes do início do atendimento.
+                Os atendimentos ocorrem por meio da Sala Virtual segura da plataforma Doxologos. O acesso é liberado pontualmente no dia e horário da consulta mediante validação temporal e autenticação segura, preservando a privacidade do paciente e os registros de presença clínica. Certifique-se de que sua conexão de internet, câmera e microfone estejam configurados antes do início do atendimento.
               </p>
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">5. Requisitos Técnicos</h2>
@@ -65,9 +65,10 @@ const TermosCondicoesPage = () => {
                 <p><strong>c)</strong> A frequência ideal é semanal, mas você pode optar por quinzenal, mensal ou sazonal, desde que haja espaço na agenda do profissional.</p>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">7. Valores e Pagamento</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">7. Valores, Pagamento e Exclusividade de Intermediação</h2>
               <div className="space-y-2 mb-6">
                 <p><strong>a)</strong> O valor das sessões será pago exclusivamente por meio da plataforma e poderá ser realizado via PIX, cartão de crédito/débito, conforme sua preferência.</p>
+                <p><strong>b)</strong> Para segurança jurídica, sigilo e garantia de conformidade com o Código de Ética Profissional do Psicólogo, todos os agendamentos subsequentes, pagamentos e atendimentos originados na Doxologos devem ser intermediados estritamente dentro da plataforma. É vedado o desvio para transações diretas ou canais externos não auditados, sob pena de perda de garantias e descredenciamento.</p>
               </div>
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">8. Duração do Processo Terapêutico</h2>
