@@ -1,20 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
-import { CreditCard, Smartphone, Barcode, Calendar, Lock, CheckCircle, XCircle, Clock, ArrowLeft, Heart } from 'lucide-react';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { CreditCard, Smartphone, Barcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import MercadoPagoService from '@/lib/mercadoPagoService';
 import { logger } from '@/lib/logger.js';
-import { QRCodeSVG } from 'qrcode.react';
-import { safeRedirect } from '@/lib/securityUtils';
 import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import ExistingPaymentModal from '@/components/payment/ExistingPaymentModal';
 import { paymentOrchestrator } from '@/lib/payment';
-import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import analytics from '@/lib/analytics';
+import {
+    CheckoutHeader,
+    CheckoutMobileMiniSummary,
+    CheckoutOrderSummary,
+    CheckoutWalletCard,
+    CheckoutPayerEmailCard,
+    CheckoutPaymentMethodSelector,
+    CheckoutPixDisplay,
+    CheckoutTcleCard,
+    CheckoutStickyCtaMobile
+} from '@/components/checkout';
 
 const CheckoutPage = () => {
     const [searchParams] = useSearchParams();
@@ -41,7 +47,6 @@ const CheckoutPage = () => {
     const [creditState, setCreditState] = useState({ credits: [], balance: null });
     const [creditLoading, setCreditLoading] = useState(false);
     const [usingCredit, setUsingCredit] = useState(false);
-    const [selectedCreditId, setSelectedCreditId] = useState(null);
     const [creditError, setCreditError] = useState(null);
     const [existingPayment, setExistingPayment] = useState(null);
     const [showExistingPaymentModal, setShowExistingPaymentModal] = useState(false);
@@ -286,6 +291,9 @@ const CheckoutPage = () => {
             }
 
             setBooking(data);
+            if (data.patient_email) {
+                setPayerEmail((current) => current || data.patient_email);
+            }
             logger.success('CheckoutPage.fetchBooking:success', buildLogContext({ bookingId, status: data.status }));
         } catch (error) {
             logger.error('CheckoutPage.fetchBooking:error', error, buildLogContext({ bookingId }));
@@ -380,6 +388,9 @@ const CheckoutPage = () => {
             }
 
             setInscricao(data);
+            if (data.email) {
+                setPayerEmail((current) => current || data.email);
+            }
             logger.success('CheckoutPage.fetchInscricao:success', buildLogContext({ inscricaoId, status_pagamento: data.status_pagamento }));
         } catch (error) {
             logger.error('CheckoutPage.fetchInscricao:error', error, buildLogContext({ inscricaoId }));
@@ -397,80 +408,15 @@ const CheckoutPage = () => {
     // Helper para formatar data ignorando timezone (exibe exatamente o que está no banco)
     const formatDateSafe = (dateString) => {
         if (!dateString) return '';
-        // Se já vier com T, assumimos que pode ser tratado, mas se for YYYY-MM-DD simples:
         if (dateString.includes('T')) {
             return new Date(dateString).toLocaleDateString('pt-BR');
         }
-        // Para YYYY-MM-DD, quebramos para evitar problemas de timezone UTC vs Local
         const [year, month, day] = dateString.split('-').map(num => parseInt(num, 10));
         const date = new Date(year, month - 1, day);
         return date.toLocaleDateString('pt-BR');
     };
 
-    const generateReservationToken = () => {
-        if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-            return crypto.randomUUID();
-        }
-        return `credit-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    };
-
-    const processCreditCheckout = async () => {
-        if (!bookingId || !usingCredit || !creditCoversTotal) {
-            throw new Error('Configuração de saldo inválida para pagamento integral.');
-        }
-
-        try {
-            logger.info('CheckoutPage.processCreditCheckout:start', buildLogContext({ bookingId }));
-            
-            const session = await getFreshSession();
-            const { data, error } = await supabase.functions.invoke('patient-wallet-pay', {
-                body: { booking_id: bookingId },
-                headers: { Authorization: `Bearer ${session.access_token}` }
-            });
-
-            if (error) {
-                throw new Error(error.message || 'Erro ao processar pagamento com carteira');
-            }
-
-            if (data?.error) {
-                throw new Error(data.error);
-            }
-
-            toast({
-                title: 'Pagamento concluído!',
-                description: 'Seu agendamento foi pago integralmente com saldo da carteira.',
-            });
-
-            logger.success('CheckoutPage.processCreditCheckout:success', buildLogContext({ bookingId }));
-
-            try {
-                analytics.trackBookingCompleted(
-                    bookingId || packageId,
-                    booking?.professional_id || packageData?.professional_id,
-                    booking?.service_id || 'wallet',
-                    bookingTotal,
-                    'wallet'
-                );
-            } catch (trackErr) {
-                logger.warn('CheckoutPage.processCreditCheckout:analytics error', trackErr);
-            }
-
-            navigate('/checkout/success', {
-                state: {
-                    bookingId,
-                    packageId,
-                    paymentStatus: 'approved',
-                    paymentMethod: 'wallet',
-                },
-            });
-        } catch (error) {
-            throw error instanceof Error ? error : new Error('Falha ao processar pagamento com carteira');
-        }
-    };
-
     const handlePayment = async (forceParam) => {
-        // Permitir forçar novo pagamento passando true
-        // Nota: eventos de click passam objeto event, então verificamos estritamente se é true
         const force = forceParam === true;
 
         if (!acceptedTcle) {
@@ -486,7 +432,6 @@ const CheckoutPage = () => {
         setProcessing(true);
         setPaymentStatus(null);
 
-
         try {
             logger.info('CheckoutPage.handlePayment:start', buildLogContext({
                 creditCoversTotal,
@@ -496,13 +441,11 @@ const CheckoutPage = () => {
                 force
             }));
 
-            // NOVA LÓGICA: Verificar pagamentos duplicados (apenas se feature flag ativada)
-            // Se shouldForceNewPayment for true OU force for true, pulamos essa verificação
+            // Verificar pagamentos duplicados (apenas se feature flag ativada)
             if (!force && !shouldForceNewPayment && isFeatureEnabled('PAYMENT_IDEMPOTENCY_CHECK') && bookingId && type !== 'evento') {
                 const existing = await MercadoPagoService.checkExistingPayment(bookingId);
 
                 if (existing) {
-                    // Pagamento já aprovado - redirecionar para sucesso
                     if (existing.status === 'approved') {
                         toast({
                             title: 'Pagamento já aprovado',
@@ -526,7 +469,6 @@ const CheckoutPage = () => {
                         return;
                     }
 
-                    // Pagamento pendente - mostrar modal (se feature flag ativada)
                     if ((existing.status === 'pending' || existing.status === 'in_process') &&
                         isFeatureEnabled('PAYMENT_DUPLICATE_MODAL')) {
                         setExistingPayment(existing);
@@ -537,22 +479,18 @@ const CheckoutPage = () => {
                 }
             }
 
-            // Obter informações do pagador
             const session = await getFreshSession();
             const referenceId = bookingId || inscricaoId || packageId;
 
-            // FIX: Calcular amount corretamente baseado no tipo
             let amount = 0;
             if (type === 'evento') {
                 amount = inscricao?.valor || parseFloat(valorParam) || 0;
             } else if (packageId) {
                 amount = packageData?.gross_amount || parseFloat(valorParam) || 0;
             } else {
-                // Para bookings, usar valor_consulta ou service.price
                 amount = booking?.valor_consulta || booking?.service?.price || parseFloat(valorParam) || 0;
             }
 
-            // Tracking de funil: payment_initiated disparado ao submeter pagamento
             try {
                 analytics.trackEvent('payment_initiated', {
                     event_category: 'Checkout',
@@ -571,8 +509,6 @@ const CheckoutPage = () => {
                     ? `Consulta Online - Agendamento ${referenceId}`
                     : (inscricao?.evento?.titulo || tituloParam || `Pagamento de Evento - Inscrição ${referenceId}`);
 
-            // O e-mail prioriza o que o usuário digitou no campo editável do checkout;
-            // em seguida, cai nos fallbacks da sessão/banco.
             const resolvedEmail = payerEmail.trim()
                 || session?.user?.email
                 || packageData?.patient_email
@@ -586,9 +522,6 @@ const CheckoutPage = () => {
                 last_name: session?.user?.user_metadata?.full_name?.split(' ').slice(1).join(' ') || packageData?.patient_name?.split(' ').slice(1).join(' ') || booking?.patient_name?.split(' ').slice(1).join(' ') || inscricao?.nome?.split(' ').slice(1).join(' ') || ''
             };
 
-            // ─── Validação de e-mail ───────────────────────────────────────────
-            // Bloqueia o pagamento antes de bater na API do Mercado Pago,
-            // evitando o erro 400 "payer.email must be valid email" (código 4050).
             if (!isValidEmail(payerInfo.email)) {
                 const emailDisplay = payerInfo.email ? `"${payerInfo.email}"` : '(vazio)';
                 setPayerEmailError(
@@ -603,7 +536,6 @@ const CheckoutPage = () => {
                 return;
             }
 
-            // Limpar erro de e-mail se estava marcado
             setPayerEmailError('');
 
             let wallet_used = 0;
@@ -611,7 +543,6 @@ const CheckoutPage = () => {
                 wallet_used = Math.min(amount, availableCreditAmount);
             }
 
-            // Preparar dados do pagamento
             const sessionData = await getFreshSession();
             const paymentData = {
                 ...(type === 'evento' ? { inscricao_id: referenceId } : packageId ? { package_id: packageId } : { booking_id: referenceId }),
@@ -628,12 +559,11 @@ const CheckoutPage = () => {
                 selectedMethod
             }));
 
-            // ✅ NOVO: Usar PaymentOrchestrator (SOLID)
+            // Usar PaymentOrchestrator
             const result = await paymentOrchestrator.processPayment(
                 selectedMethod,
                 paymentData,
                 {
-                    // Callback de mudança de status
                     onStatusChange: (statusUpdate) => {
                         logger.info('CheckoutPage.handlePayment:status-change', buildLogContext({
                             status: statusUpdate.status,
@@ -645,8 +575,6 @@ const CheckoutPage = () => {
                             detail: statusUpdate.statusDetail
                         });
                     },
-
-                    // Callback de sucesso (pagamento aprovado)
                     onSuccess: (paymentResult) => {
                         logger.success('CheckoutPage.handlePayment:success', buildLogContext({
                             paymentId: paymentResult.paymentId
@@ -669,7 +597,6 @@ const CheckoutPage = () => {
                             logger.warn('CheckoutPage.onSuccess:analytics error', trackErr);
                         }
 
-                        // Redirecionar para página de sucesso
                         navigate('/checkout/success', {
                             state: {
                                 bookingId: bookingId,
@@ -680,8 +607,6 @@ const CheckoutPage = () => {
                             }
                         });
                     },
-
-                    // Callback de erro
                     onError: (error) => {
                         logger.error('CheckoutPage.handlePayment:payment-error', null, buildLogContext({
                             error: error.message || error.error
@@ -701,9 +626,8 @@ const CheckoutPage = () => {
             );
 
             if (result.success) {
-                // Armazenar resultado e função de parar monitoramento
                 if (result.qrCode) {
-                    setPixPayment(result); // Para PIX, armazenar QR Code
+                    setPixPayment(result);
                 }
 
                 if (result.stopMonitoring) {
@@ -715,7 +639,6 @@ const CheckoutPage = () => {
                     method: selectedMethod
                 }));
 
-                // Para PIX, mostrar mensagem de QR Code gerado
                 if (selectedMethod === 'pix') {
                     toast({
                         title: 'QR Code gerado!',
@@ -729,7 +652,6 @@ const CheckoutPage = () => {
         } catch (error) {
             logger.error('CheckoutPage.handlePayment:error', error, buildLogContext());
 
-            // Extrair mensagem amigável e empática: evitar JSON bruto ou mensagens frias
             let friendlyMsg = error.message || '';
             if (friendlyMsg.includes('payer.email must be valid email') || friendlyMsg.includes('4050')) {
                 friendlyMsg = 'Identificamos um detalhe no e-mail informado. Por favor, confira o formato (ex: seu@email.com) para podermos enviar a confirmação da consulta.';
@@ -750,16 +672,13 @@ const CheckoutPage = () => {
         }
     };
 
-    // Inicia polling para verificar status do pagamento
     const startPaymentPolling = (paymentId) => {
         logger.info('CheckoutPage.startPaymentPolling:start', buildLogContext({ paymentId }));
 
-        // Limpar interval anterior se existir
         if (pollingInterval) {
             clearInterval(pollingInterval);
         }
 
-        // Verificar status a cada 3 segundos
         const intervalId = setInterval(async () => {
             try {
                 const statusResult = await MercadoPagoService.checkPaymentStatus(paymentId);
@@ -776,7 +695,6 @@ const CheckoutPage = () => {
                         clearInterval(intervalId);
                         setPollingInterval(null);
 
-                        // Atualizar status no Supabase (passa o paymentId)
                         await updateBookingPaymentStatus(paymentId);
 
                         try {
@@ -791,7 +709,6 @@ const CheckoutPage = () => {
                             logger.warn('CheckoutPage.startPaymentPolling:analytics error', trackErr);
                         }
 
-                        // Redirecionar para página de sucesso
                         navigate('/checkout/success', {
                             state: {
                                 bookingId: booking?.id || bookingId,
@@ -831,17 +748,15 @@ const CheckoutPage = () => {
             } catch (error) {
                 logger.error('CheckoutPage.startPaymentPolling:error', error, buildLogContext({ paymentId }));
             }
-        }, 3000); // 3 segundos
+        }, 3000);
 
         setPollingInterval(intervalId);
     };
 
-    // Atualiza status do pagamento no booking ou inscrição
     const updateBookingPaymentStatus = async (paymentId) => {
         try {
             logger.info('CheckoutPage.updateBookingPaymentStatus:start', buildLogContext({ paymentId }));
 
-            // 1. Atualizar status do pagamento na tabela payments
             const { error: paymentError } = await supabase
                 .from('payments')
                 .update({
@@ -857,12 +772,9 @@ const CheckoutPage = () => {
             }
 
             if (type === 'evento') {
-                // 2. Atualizar status da inscrição no evento
                 const { error: inscricaoError } = await supabase
                     .from('inscricoes_eventos')
-                    .update({
-                        status_pagamento: 'confirmado'
-                    })
+                    .update({ status_pagamento: 'confirmado' })
                     .eq('id', inscricaoId);
 
                 if (inscricaoError) {
@@ -871,7 +783,6 @@ const CheckoutPage = () => {
                     logger.success('CheckoutPage.updateBookingPaymentStatus:inscricao-updated', buildLogContext({ paymentId, inscricaoId }));
                 }
             } else if (packageId) {
-                // Atualizar status do pacote e dos agendamentos vinculados
                 const { error: pkgError } = await supabase
                     .from('packages')
                     .update({ status: 'paid' })
@@ -888,12 +799,9 @@ const CheckoutPage = () => {
                     logger.success('CheckoutPage.updateBookingPaymentStatus:package-updated', buildLogContext({ paymentId, packageId }));
                 }
             } else {
-                // 2. Atualizar status do booking para 'confirmed'
                 const { error: bookingError } = await supabase
                     .from('bookings')
-                    .update({
-                        status: 'confirmed'
-                    })
+                    .update({ status: 'confirmed' })
                     .eq('id', bookingId);
 
                 if (bookingError) {
@@ -907,14 +815,20 @@ const CheckoutPage = () => {
         }
     };
 
-    // Limpar interval ao desmontar componente
-    useEffect(() => {
-        return () => {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-            }
-        };
-    }, [pollingInterval]);
+    const navigateToDirectCard = () => {
+        if (!acceptedTcle) {
+            setAcceptedTcle(true);
+        }
+        const params = new URLSearchParams({
+            ...(bookingId && { booking_id: bookingId }),
+            ...(inscricaoId && { inscricao_id: inscricaoId }),
+            ...(packageId && { package_id: packageId }),
+            ...(type && { type }),
+            ...(valorParam && { valor: valorParam }),
+            ...(tituloParam && { titulo: tituloParam }),
+        });
+        navigate(`/checkout-direct?${params.toString()}`);
+    };
 
     if (loading) {
         return (
@@ -935,58 +849,30 @@ const CheckoutPage = () => {
         ? MercadoPagoService.getFriendlyStatusMessage(paymentStatus.detail, paymentStatus.status)
         : null;
 
+    const fallbackEmail = booking?.patient_email || packageData?.patient_email || inscricao?.email || '';
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-            {/* Header com navegação */}
-            <header className="bg-white shadow-sm sticky top-0 z-50">
-                <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                    <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
-                        <DoxologosLogo className="h-9 md:h-10 w-auto" />
-                    </Link>
-                    <Button
-                        variant="outline"
-                        className="border-[#2d8659] text-[#2d8659]"
-                        onClick={() => navigate(-1)}
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Voltar
-                    </Button>
-                </nav>
-            </header>
+            {/* Header com navegação e marca */}
+            <CheckoutHeader onBack={() => navigate(-1)} />
 
             <div className="max-w-4xl mx-auto pt-4 sm:pt-8 pb-36 md:pb-12 px-4">
-                {/* Header */}
+                {/* Header da Página */}
                 <div className="text-center mb-6 sm:mb-8">
                     <h1 className="text-2xl sm:text-4xl font-bold mb-2">Finalizar Pagamento</h1>
                     <p className="text-gray-600 text-sm sm:text-base">Complete sua reserva com segurança e rapidez</p>
                 </div>
 
                 {/* Mini-resumo do Pedido no Mobile (Visível acima do fold) */}
-                <div className="md:hidden mb-5 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center justify-between">
-                    <div className="min-w-0 pr-3">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block">
-                            {type === 'evento' ? 'Evento' : packageData ? 'Pacote' : 'Consulta Online'}
-                        </span>
-                        <p className="font-bold text-gray-900 text-sm truncate">
-                            {type === 'evento'
-                                ? (inscricao?.evento?.titulo || tituloParam)
-                                : packageData
-                                    ? `${packageData.total_sessions} Sessões com ${packageData.professional_name || 'Profissional'}`
-                                    : (booking?.service?.name || 'Psicoterapia')}
-                        </p>
-                        {booking?.professional?.name && (
-                            <p className="text-xs text-gray-500 truncate mt-0.5">
-                                com {booking.professional.name}
-                            </p>
-                        )}
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                        <span className="text-[11px] text-gray-500 block">Total</span>
-                        <span className="text-xl font-bold text-[#2d8659]">
-                            {MercadoPagoService.formatCurrency(bookingTotal)}
-                        </span>
-                    </div>
-                </div>
+                <CheckoutMobileMiniSummary
+                    type={type}
+                    packageData={packageData}
+                    booking={booking}
+                    inscricao={inscricao}
+                    tituloParam={tituloParam}
+                    bookingTotal={bookingTotal}
+                    formatCurrency={MercadoPagoService.formatCurrency}
+                />
 
                 {friendlyCheckoutMessage && (
                     <div className="mb-6">
@@ -998,274 +884,80 @@ const CheckoutPage = () => {
                 )}
 
                 <div className="grid md:grid-cols-3 gap-6">
-                    {/* Métodos de Pagamento */}
+                    {/* Coluna Principal: Opções e Ações */}
                     <div className="md:col-span-2">
+                        {/* Créditos da Carteira */}
                         {type !== 'evento' && availableCreditAmount > 0 && (
-                            <Card className="p-6 mb-6">
-                                <h2 className="text-xl font-bold mb-4 flex items-center">
-                                    <CreditCard className="w-5 h-5 mr-2 text-green-600" />
-                                    Créditos financeiros disponíveis
-                                </h2>
-
-                                {creditLoading ? (
-                                    <div className="flex items-center text-sm text-gray-600">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#2d8659] mr-2"></div>
-                                        Carregando saldo...
-                                    </div>
-                                ) : creditError ? (
-                                    <p className="text-sm text-red-600">{creditError}</p>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <label className="flex items-center gap-3">
-                                            <input
-                                                type="checkbox"
-                                                className="form-checkbox h-5 w-5 text-[#2d8659]"
-                                                checked={usingCredit}
-                                                onChange={(event) => {
-                                                    const enabled = event.target.checked;
-                                                    setUsingCredit(enabled);
-                                                }}
-                                                disabled={processing}
-                                            />
-                                            <div>
-                                                <p className="font-semibold">Desejo utilizar saldo da carteira nesta consulta</p>
-                                                <p className="text-xs text-gray-600">
-                                                    Saldo disponível: {MercadoPagoService.formatCurrency(availableCreditAmount)}
-                                                </p>
-                                            </div>
-                                        </label>
-
-                                        {usingCredit && !creditCoversTotal && (
-                                            <div className="text-xs text-yellow-700 mt-2">
-                                                O saldo da carteira cobre parcialmente o valor da consulta. O restante ({MercadoPagoService.formatCurrency(bookingTotal - availableCreditAmount)}) será cobrado via Mercado Pago.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </Card>
+                            <CheckoutWalletCard
+                                creditLoading={creditLoading}
+                                creditError={creditError}
+                                usingCredit={usingCredit}
+                                setUsingCredit={setUsingCredit}
+                                processing={processing}
+                                availableCreditAmount={availableCreditAmount}
+                                creditCoversTotal={creditCoversTotal}
+                                bookingTotal={bookingTotal}
+                                formatCurrency={MercadoPagoService.formatCurrency}
+                            />
                         )}
 
-                        {/* Campo de e-mail do pagador — editável para corrigir e-mails inválidos */}
+                        {/* E-mail para Confirmação Bancária */}
                         {!creditCoversTotal && (
-                            <Card className="p-6 mb-6">
-                                <h2 className="text-xl font-bold mb-3 flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                                    E-mail para confirmação
-                                </h2>
-                                <p className="text-xs text-gray-500 mb-3">
-                                    Usado pelo Mercado Pago para confirmar o pagamento. Se o e-mail estiver errado, corrija-o aqui.
-                                </p>
-                                <div className="relative">
-                                    <input
-                                        id="payer-email-input"
-                                        type="email"
-                                        autoComplete="email"
-                                        placeholder="seu@email.com"
-                                        value={payerEmail}
-                                        onChange={(e) => {
-                                            setPayerEmail(e.target.value);
-                                            if (payerEmailError) setPayerEmailError('');
-                                        }}
-                                        disabled={processing}
-                                        className={`w-full px-4 py-2 border rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 ${
-                                            payerEmailError
-                                                ? 'border-red-400 bg-red-50 focus:ring-red-300'
-                                                : 'border-gray-300 focus:ring-[#2d8659]/40'
-                                        }`}
-                                    />
-                                    {payerEmailError && (
-                                        <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-                                            {payerEmailError}
-                                        </p>
-                                    )}
-                                </div>
-                                {/* Prévia do e-mail que será usado caso o campo esteja vazio */}
-                                {!payerEmail && (() => {
-                                    const fallback = booking?.patient_email || inscricao?.email || '';
-                                    if (!fallback) return null;
-                                    return (
-                                        <p className="mt-2 text-xs text-gray-400">
-                                            E-mail do cadastro: <span className="font-mono">{fallback}</span>
-                                            {!isValidEmail(fallback) && (
-                                                <span className="ml-2 text-red-500 font-semibold">⚠ inválido — preencha o campo acima</span>
-                                            )}
-                                        </p>
-                                    );
-                                })()}
-                            </Card>
+                            <CheckoutPayerEmailCard
+                                payerEmail={payerEmail}
+                                setPayerEmail={setPayerEmail}
+                                payerEmailError={payerEmailError}
+                                setPayerEmailError={setPayerEmailError}
+                                processing={processing}
+                                fallbackEmail={fallbackEmail}
+                                isValidEmail={isValidEmail}
+                            />
                         )}
 
-                        <Card className="p-6 mb-6">
-                            <h2 className="text-xl font-bold mb-4 flex items-center">
-                                <Lock className="w-5 h-5 mr-2 text-green-600" />
-                                Escolha o método de pagamento
-                            </h2>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {paymentMethods.map((method) => (
-                                    <button
-                                        key={method.id}
-                                        onClick={() => {
-                                            setSelectedMethod(method.id);
-                                            try {
-                                                analytics.trackEvent('payment_method_selected', {
-                                                    event_category: 'Checkout',
-                                                    payment_method: method.id,
-                                                    booking_id: bookingId || inscricaoId || packageId || null
-                                                });
-                                            } catch (err) {
-                                                // Silencioso
-                                            }
-                                        }}
-                                        disabled={!method.available || processing || creditCoversTotal}
-                                        className={`p-4 rounded-lg border-2 transition-all ${selectedMethod === method.id
-                                            ? 'border-[#2d8659] bg-[#2d8659]/5'
-                                            : 'border-gray-200 hover:border-[#2d8659]/50'
-                                            } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <div className="text-[#2d8659]">{method.icon}</div>
-                                            <div className="text-left">
-                                                <p className="font-semibold">{method.name}</p>
-                                                <p className="text-xs text-gray-600">{method.description}</p>
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-
-                            {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') && (
-                                <div className="mt-6 bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <h4 className="font-semibold text-green-900 mb-2 flex items-center">
-                                        <CheckCircle className="w-4 h-4 mr-2" />
-                                        Nova Opção: Formulário de Cartão Direto
-                                    </h4>
-                                    <ul className="text-sm text-green-800 space-y-1 mb-3">
-                                        <li>✅ Pague sem sair do site</li>
-                                        <li>✅ Formulário integrado e seguro</li>
-                                        <li>✅ Tokenização via Mercado Pago SDK</li>
-                                        <li>✅ Melhor experiência do usuário</li>
-                                    </ul>
-                                    <p className="text-xs text-green-700 italic">
-                                        Ou escolha a opção tradicional via redirect do Mercado Pago
-                                    </p>
-                                </div>
-                            )}
-
-                            {selectedMethod === 'pix' && (
-                                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <p className="text-sm text-blue-900">
-                                        ✨ <strong>PIX é instantâneo!</strong> Após o pagamento, seu agendamento será confirmado automaticamente.
-                                    </p>
-                                </div>
-                            )}
-
-                            {selectedMethod === 'bank_transfer' && (
-                                <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                    <p className="text-sm text-yellow-900">
-                                        ⏱️ <strong>Atenção:</strong> O boleto pode levar até 2 dias úteis para compensar.
-                                    </p>
-                                </div>
-                            )}
-                        </Card>
+                        {/* Seletor de Meio de Pagamento */}
+                        <CheckoutPaymentMethodSelector
+                            paymentMethods={paymentMethods}
+                            selectedMethod={selectedMethod}
+                            onSelectMethod={(methodId) => {
+                                setSelectedMethod(methodId);
+                                try {
+                                    analytics.trackEvent('payment_method_selected', {
+                                        event_category: 'Checkout',
+                                        payment_method: methodId,
+                                        booking_id: bookingId || inscricaoId || packageId || null
+                                    });
+                                } catch (err) {
+                                    // Silencioso
+                                }
+                            }}
+                            processing={processing}
+                            creditCoversTotal={creditCoversTotal}
+                        />
 
                         {/* QR Code e Código Copia e Cola do PIX */}
                         {pixPayment && selectedMethod === 'pix' && (
-                            <Card className="p-5 sm:p-6 border-2 border-emerald-500/30 shadow-lg">
-                                <h3 className="text-xl font-bold mb-4 text-center text-emerald-900 flex items-center justify-center gap-2">
-                                    <Smartphone className="w-5 h-5 text-emerald-600" />
-                                    Pague com PIX
-                                </h3>
-
-                                <div className="flex flex-col items-center">
-                                    {/* Destaque Mobile: Copia e Cola no mesmo aparelho */}
-                                    <div className="w-full bg-emerald-50/80 border border-emerald-200 p-4 rounded-xl mb-5 text-center">
-                                        <p className="text-xs font-semibold text-emerald-800 mb-2">
-                                            📲 Pagamento no celular: Copie o código abaixo e cole no app do seu banco
-                                        </p>
-
-                                        <Button
-                                            size="lg"
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(pixPayment.qrCode);
-                                                toast({
-                                                    title: '✅ Código PIX Copiado!',
-                                                    description: 'Abra o app do seu banco e escolha a opção PIX Copia e Cola.',
-                                                });
-                                            }}
-                                            className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all touch-manipulation"
-                                        >
-                                            <Smartphone className="w-5 h-5" />
-                                            Copiar Código PIX Copia e Cola
-                                        </Button>
-
-                                        <div className="mt-3 flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={pixPayment.qrCode}
-                                                readOnly
-                                                className="flex-1 px-3 py-1.5 bg-white border border-emerald-200 rounded-lg text-xs font-mono text-gray-700 truncate"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* QR Code visível com mínimo de 200px (220px) para escaneamento */}
-                                    <div className="w-full text-center mb-5 flex flex-col items-center">
-                                        <p className="text-xs font-semibold text-gray-700 mb-2">
-                                            📷 Ou escaneie o QR Code abaixo com a câmera do app do banco:
-                                        </p>
-                                        <div className="bg-white p-3 rounded-2xl border-2 border-emerald-100 shadow-sm inline-flex items-center justify-center min-w-[220px] min-h-[220px]">
-                                            <QRCodeSVG
-                                                value={pixPayment.qrCode}
-                                                size={220}
-                                                level="M"
-                                            />
-                                        </div>
-                                        <p className="text-xs text-gray-600 mt-2 font-medium">
-                                            Aprovação instantânea em até 3 segundos após o pagamento
-                                        </p>
-                                    </div>
-
-                                    <div className="w-full text-center border-t border-gray-100 pt-4">
-                                        <div className="flex items-center justify-center gap-2 text-amber-700 mb-1">
-                                            <Clock className="w-4 h-4 animate-pulse" />
-                                            <p className="font-semibold text-sm">
-                                                {paymentStatus?.status === 'approved'
-                                                    ? '🎉 Pagamento Aprovado!'
-                                                    : 'Aguardando pagamento no banco...'}
-                                            </p>
-                                        </div>
-                                        <p className="text-xs text-gray-500">
-                                            Status: <span className="font-mono font-bold text-gray-700">{paymentStatus?.status || 'pendente'}</span> • A confirmação é automática (sem precisar recarregar a tela).
-                                        </p>
-                                    </div>
-                                </div>
-                            </Card>
+                            <CheckoutPixDisplay
+                                pixPayment={pixPayment}
+                                paymentStatus={paymentStatus}
+                                onCopyPix={() => {
+                                    navigator.clipboard.writeText(pixPayment.qrCode);
+                                    toast({
+                                        title: '✅ Código PIX Copiado!',
+                                        description: 'Abra o app do seu banco e escolha a opção PIX Copia e Cola.',
+                                    });
+                                }}
+                            />
                         )}
 
                         {/* Consentimento TCLE / CFP Resolução 11/2018 */}
                         {!pixPayment && (
-                            <Card className="p-4 mb-4 border-amber-200 bg-amber-50/50">
-                                <label className="flex items-start gap-3 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        id="tcle-checkbox"
-                                        data-testid="tcle-checkbox"
-                                        checked={acceptedTcle}
-                                        onChange={(e) => setAcceptedTcle(e.target.checked)}
-                                        className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
-                                    />
-                                    <span className="text-xs text-amber-900 leading-relaxed">
-                                        Estou ciente de que meu atendimento é 100% confidencial sob <strong>sigilo ético profissional</strong> e concordo com os <strong>Termos de Cuidado e Política de Reagendamento</strong> (reagende gratuitamente até 24h antes).{' '}
-                                        <Link to="/termos-e-condicoes" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
-                                            Ver termos completos
-                                        </Link>
-                                    </span>
-                                </label>
-                            </Card>
+                            <CheckoutTcleCard
+                                acceptedTcle={acceptedTcle}
+                                setAcceptedTcle={setAcceptedTcle}
+                            />
                         )}
 
+                        {/* Botões Principais Desktop */}
                         {creditCoversTotal ? (
                             <Button
                                 onClick={handlePayment}
@@ -1273,7 +965,6 @@ const CheckoutPage = () => {
                                 size="lg"
                                 className="w-full bg-[#2d8659] hover:bg-[#236b47]"
                             >
-
                                 {processing ? (
                                     <>
                                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
@@ -1285,22 +976,10 @@ const CheckoutPage = () => {
                             </Button>
                         ) : (!pixPayment && (
                             <>
-                                {/* Botão especial para cartão direto */}
                                 {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') && (
                                     <div className="space-y-3">
                                         <Button
-                                            onClick={() => {
-                                                // Redirecionar para página de cartão direto com os dados
-                                                const params = new URLSearchParams({
-                                                    ...(bookingId && { booking_id: bookingId }),
-                                                    ...(inscricaoId && { inscricao_id: inscricaoId }),
-                                                    ...(packageId && { package_id: packageId }),
-                                                    ...(type && { type }),
-                                                    ...(valorParam && { valor: valorParam }),
-                                                    ...(tituloParam && { titulo: tituloParam }),
-                                                });
-                                                navigate(`/checkout-direct?${params.toString()}`);
-                                            }}
+                                            onClick={navigateToDirectCard}
                                             size="lg"
                                             disabled={processing || !acceptedTcle}
                                             className="w-full bg-[#2d8659] hover:bg-[#236b47]"
@@ -1326,15 +1005,12 @@ const CheckoutPage = () => {
                                                     Conectando com segurança...
                                                 </>
                                             ) : (
-                                                <>
-                                                    Pagar em ambiente seguro do Mercado Pago
-                                                </>
+                                                'Pagar em ambiente seguro do Mercado Pago'
                                             )}
                                         </Button>
                                     </div>
                                 )}
 
-                                {/* Botão padrão para outros métodos */}
                                 {selectedMethod !== 'credit_card' && selectedMethod !== 'debit_card' && (
                                     <Button
                                         onClick={handlePayment}
@@ -1343,7 +1019,6 @@ const CheckoutPage = () => {
                                         aria-label={selectedMethod === 'pix' ? 'Gerar código PIX para pagamento imediato' : 'Continuar para pagamento'}
                                         className="w-full bg-[#2d8659] hover:bg-[#236b47] min-h-[48px] font-bold text-base shadow-lg shadow-[#2d8659]/20"
                                     >
-
                                         {processing ? (
                                             <>
                                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
@@ -1355,9 +1030,7 @@ const CheckoutPage = () => {
                                                 Gerar QR Code PIX (Aprovação Instantânea)
                                             </>
                                         ) : (
-                                            <>
-                                                Continuar para Pagamento
-                                            </>
+                                            'Continuar para Pagamento'
                                         )}
                                     </Button>
                                 )}
@@ -1365,305 +1038,82 @@ const CheckoutPage = () => {
                         ))}
                     </div>
 
-                    {/* Resumo do Pedido */}
+                    {/* Coluna Lateral: Resumo do Pedido */}
                     <div>
-                        <Card className="p-6 sticky top-8">
-                            <h3 className="text-lg font-bold mb-4">Resumo do Pedido</h3>
-
-                            <div className="space-y-4">
-                                {type === 'evento' ? (
-                                    <>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Evento</p>
-                                            <p className="font-semibold">{inscricao?.evento?.titulo || tituloParam}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-gray-600">Participante</p>
-                                            <p className="font-semibold">{inscricao?.patient_name}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-gray-600">Data do Evento</p>
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-4 h-4 text-gray-400" />
-                                                <p className="font-semibold">
-                                                    {formatDateSafe(inscricao?.evento?.data_inicio)}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="border-t pt-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <p className="text-gray-600">Valor da Inscrição</p>
-                                                <p className="font-semibold">
-                                                    {MercadoPagoService.formatCurrency(inscricao?.evento?.valor || parseFloat(valorParam))}
-                                                </p>
-                                            </div>
-                                            <div className="flex justify-between items-center text-lg font-bold">
-                                                <p>Total</p>
-                                                <p className="text-[#2d8659]">
-                                                    {MercadoPagoService.formatCurrency(inscricao?.evento?.valor || parseFloat(valorParam))}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : packageData ? (
-                                    <>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Pacote de Consultas</p>
-                                            <p className="font-semibold text-gray-900">{packageData.service_name || 'Psicoterapia'}</p>
-                                            <p className="text-xs text-[#2d8659] font-bold mt-0.5">{packageData.total_sessions} Sessões Agendadas</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-gray-600">Profissional</p>
-                                            <p className="font-semibold">{packageData.professional_name || packageData.professionals?.name || 'Profissional'}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-gray-600">Paciente</p>
-                                            <p className="font-semibold">{packageData.patient_name}</p>
-                                        </div>
-
-                                        <div className="border-t pt-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <p className="text-gray-600">Subtotal ({packageData.total_sessions} sessões)</p>
-                                                <p className="font-semibold">
-                                                    {MercadoPagoService.formatCurrency(bookingTotal)}
-                                                </p>
-                                            </div>
-                                            {creditCoversTotal && (
-                                                <div className="flex justify-between items-center mb-2 text-green-700">
-                                                    <p>Crédito aplicado</p>
-                                                    <p>-{MercadoPagoService.formatCurrency(creditAppliedAmount)}</p>
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between items-center text-lg font-bold">
-                                                <p>Total</p>
-                                                <p className="text-[#2d8659]">
-                                                    {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : bookingTotal)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div>
-                                            <p className="text-sm text-gray-600">Serviço</p>
-                                            <p className="font-semibold">{booking?.service?.name}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-gray-600">Profissional</p>
-                                            <p className="font-semibold">{booking?.professional?.name}</p>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-gray-600">Data e Horário</p>
-                                            <div className="flex items-center gap-2">
-                                                <Calendar className="w-4 h-4 text-gray-400" />
-                                                <p className="font-semibold">
-                                                    {booking && formatDateSafe(booking.booking_date)}
-                                                </p>
-                                            </div>
-                                            <p className="text-sm">{booking?.booking_time}</p>
-                                        </div>
-
-                                        <div className="border-t pt-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <p className="text-gray-600">Subtotal</p>
-                                                <p className="font-semibold">
-                                                    {MercadoPagoService.formatCurrency(bookingTotal)}
-                                                </p>
-                                            </div>
-                                            {creditCoversTotal && (
-                                                <div className="flex justify-between items-center mb-2 text-green-700">
-                                                    <p>Crédito aplicado</p>
-                                                    <p>-{MercadoPagoService.formatCurrency(creditAppliedAmount)}</p>
-                                                </div>
-                                            )}
-                                            <div className="flex justify-between items-center text-lg font-bold">
-                                                <p>Total</p>
-                                                <p className="text-[#2d8659]">
-                                                    {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : bookingTotal)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                                    <div className="flex items-start gap-2">
-                                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                                        <div className="text-sm text-green-900">
-                                            <p className="font-semibold mb-1">Pagamento Seguro</p>
-                                            <p className="text-xs">
-                                                Seus dados são protegidos pelo Mercado Pago, líder em segurança digital na América Latina.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </Card>
+                        <CheckoutOrderSummary
+                            type={type}
+                            packageData={packageData}
+                            booking={booking}
+                            inscricao={inscricao}
+                            tituloParam={tituloParam}
+                            valorParam={valorParam}
+                            bookingTotal={bookingTotal}
+                            creditCoversTotal={creditCoversTotal}
+                            availableCreditAmount={availableCreditAmount}
+                            formatDateSafe={formatDateSafe}
+                            formatCurrency={MercadoPagoService.formatCurrency}
+                        />
                     </div>
                 </div>
-            </div >
+            </div>
 
-            {/* Sticky CTA Mobile Bar - Mantém ação principal acima do fold no mobile */}
+            {/* Barra Sticky Unificada de Ação no Mobile */}
             {!pixPayment && (
-                <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:hidden">
-                    <div className="container max-w-lg mx-auto flex items-center justify-between gap-3">
-                        <div className="flex flex-col min-w-0">
-                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total</span>
-                            <span className="text-xl font-bold text-[#1b5e20] truncate">
-                                {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : (bookingTotal || (inscricao?.evento?.valor || valorParam)))}
-                            </span>
-                        </div>
-                        <Button
-                            onClick={() => {
-                                if (!acceptedTcle) {
-                                    setAcceptedTcle(true);
-                                    toast({
-                                        title: 'Termos aceitos',
-                                        description: 'Prosseguindo com a confirmação do pagamento seguro.'
-                                    });
-                                }
-                                handlePayment();
-                            }}
-                            disabled={processing}
-                            size="lg"
-                            className="flex-1 bg-[#2d8659] hover:bg-[#236b47] text-white font-bold min-h-[48px] shadow-lg shadow-[#2d8659]/20"
-                        >
-                            {processing ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                    Processando...
-                                </>
-                            ) : selectedMethod === 'pix' ? (
-                                <>
-                                    <Smartphone className="w-4 h-4 mr-1.5" />
-                                    Pagar com PIX
-                                </>
-                            ) : selectedMethod === 'credit_card' || selectedMethod === 'debit_card' ? (
-                                <>
-                                    <CreditCard className="w-4 h-4 mr-1.5" />
-                                    Pagar com Cartão
-                                </>
-                            ) : (
-                                'Continuar'
-                            )}
-                        </Button>
-                    </div>
-                </div>
+                <CheckoutStickyCtaMobile
+                    bookingTotal={bookingTotal}
+                    creditCoversTotal={creditCoversTotal}
+                    selectedMethod={selectedMethod}
+                    processing={processing}
+                    onPay={() => {
+                        if (!acceptedTcle) {
+                            setAcceptedTcle(true);
+                            toast({
+                                title: 'Termos aceitos',
+                                description: 'Prosseguindo com a confirmação do pagamento seguro.'
+                            });
+                        }
+                        handlePayment();
+                    }}
+                    onPayDirectCard={navigateToDirectCard}
+                    formatCurrency={MercadoPagoService.formatCurrency}
+                />
             )}
 
-            {
-                showExistingPaymentModal && existingPayment && (
-                    <ExistingPaymentModal
-                        payment={existingPayment}
-                        onContinue={() => {
-                            if (existingPayment?.qr_code && existingPayment?.payment_type === 'pix') {
-                                // Restaurar estado de pagamento PIX existente
-                                setPixPayment({
-                                    payment_id: existingPayment.mp_payment_id,
-                                    qr_code: existingPayment.qr_code,
-                                    success: true
-                                });
-                                startPaymentPolling(existingPayment.mp_payment_id);
-                                setShowExistingPaymentModal(false);
-                                toast({
-                                    title: 'Pagamento restaurado',
-                                    description: 'QR Code recuperado com sucesso.'
-                                });
-                            } else if (existingPayment?.status === 'pending' && existingPayment?.external_resource_url) {
-                                // Se fosse boleto ou link externo
-                                window.location.href = existingPayment.external_resource_url;
-                            } else {
-                                // Fallback
-                                setShowExistingPaymentModal(false);
-                                toast({
-                                    title: 'Continuando',
-                                    description: 'Por favor, aguarde a verificação do pagamento.'
-                                });
-                            }
-                        }}
-                        onNewPayment={async () => {
-                            // Limpar estado de pagamento existente e forçar novo
+            {/* Modal de Pagamento Existente */}
+            {showExistingPaymentModal && existingPayment && (
+                <ExistingPaymentModal
+                    payment={existingPayment}
+                    onContinue={() => {
+                        if (existingPayment?.qr_code && existingPayment?.payment_type === 'pix') {
+                            setPixPayment({
+                                payment_id: existingPayment.mp_payment_id,
+                                qr_code: existingPayment.qr_code,
+                                success: true
+                            });
+                            startPaymentPolling(existingPayment.mp_payment_id);
                             setShowExistingPaymentModal(false);
-                            setExistingPayment(null);
-                            setShouldForceNewPayment(true);
-
-                            // Opcional: Acionar novo pagamento imediatamente para melhor UX
-                            // O usuário disse "não vejo novo qrcode", esperando ação imediata.
-                            // Passamos 'true' para forçar bypass da verificação (importante pois state update é async)
-                            setTimeout(() => handlePayment(true), 100);
-                        }}
-                        onClose={() => setShowExistingPaymentModal(false)}
-                    />
-                )
-            }
-
-            {/* Barra Sticky de Ação no Mobile (CTA acima da dobra) */}
-            {!pixPayment && (
-                <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 md:hidden">
-                    <div className="container max-w-md mx-auto flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                            <span className="text-[11px] text-gray-500 font-medium block">Total</span>
-                            <span className="text-lg font-bold text-[#2d8659] block leading-tight">
-                                {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : bookingTotal)}
-                            </span>
-                        </div>
-                        <div className="flex-1">
-                            {(selectedMethod === 'credit_card' || selectedMethod === 'debit_card') ? (
-                                <Button
-                                    onClick={() => {
-                                        if (!acceptedTcle) {
-                                            setAcceptedTcle(true);
-                                        }
-                                        const params = new URLSearchParams({
-                                            ...(bookingId && { booking_id: bookingId }),
-                                            ...(inscricaoId && { inscricao_id: inscricaoId }),
-                                            ...(packageId && { package_id: packageId }),
-                                            ...(type && { type }),
-                                            ...(valorParam && { valor: valorParam }),
-                                            ...(tituloParam && { titulo: tituloParam }),
-                                        });
-                                        navigate(`/checkout-direct?${params.toString()}`);
-                                    }}
-                                    disabled={processing}
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 rounded-xl shadow-md text-sm flex items-center justify-center gap-1.5"
-                                >
-                                    <CreditCard className="w-4 h-4" />
-                                    Pagar com Cartão
-                                </Button>
-                            ) : (
-                                <Button
-                                    onClick={() => {
-                                        if (!acceptedTcle) {
-                                            setAcceptedTcle(true);
-                                        }
-                                        handlePayment();
-                                    }}
-                                    disabled={processing}
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 rounded-xl shadow-md text-sm flex items-center justify-center gap-1.5"
-                                >
-                                    {processing ? (
-                                        <>
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                            Gerando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Smartphone className="w-4 h-4" />
-                                            {selectedMethod === 'pix' ? 'Gerar PIX (Aprovação 3s)' : 'Continuar'}
-                                        </>
-                                    )}
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                </div>
+                            toast({
+                                title: 'Pagamento restaurado',
+                                description: 'QR Code recuperado com sucesso.'
+                            });
+                        } else if (existingPayment?.status === 'pending' && existingPayment?.external_resource_url) {
+                            window.location.href = existingPayment.external_resource_url;
+                        } else {
+                            setShowExistingPaymentModal(false);
+                            toast({
+                                title: 'Continuando',
+                                description: 'Por favor, aguarde a verificação do pagamento.'
+                            });
+                        }
+                    }}
+                    onNewPayment={async () => {
+                        setShowExistingPaymentModal(false);
+                        setExistingPayment(null);
+                        setShouldForceNewPayment(true);
+                        setTimeout(() => handlePayment(true), 100);
+                    }}
+                    onClose={() => setShowExistingPaymentModal(false)}
+                />
             )}
         </div>
     );
