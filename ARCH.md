@@ -38,11 +38,11 @@
    └──────────────────────────┘              │  mp-create-preference       │
                                              │  mp-process-card-payment    │
                                              │  mp-webhook                 │
-                                             │  zoom-create-meeting        │
-                                             │  send-email                 │
-                                             │  event-send-reminders       │
-                                             │  admin-*                    │
-                                             │  patient-*                  │
+│  post-payment-orchestrator  │
+│  send-email                 │
+│  send-whatsapp-reminder     │
+│  admin-*                    │
+│  patient-*                  │
                                              └──────┬──────────────────────┘
                                                     │
                               ┌─────────────────────┼──────────────────────┐
@@ -87,36 +87,92 @@ src/
 
 ## 3. Rotas da Aplicação
 
-| Rota | Página | Acesso |
-|---|---|---|
-| `/` | `HomePage` | Público |
-| `/agendamento` | `AgendamentoPage` | Público |
-| `/checkout` | `CheckoutPage` | Público |
-| `/checkout-direct` | `CheckoutDirectPage` | Público |
-| `/checkout/success` | `CheckoutSuccessPage` | Público |
-| `/checkout/failure` | `CheckoutFailurePage` | Público |
-| `/checkout/pending` | `CheckoutPendingPage` | Público |
-| `/area-do-paciente` | `PacientePage` | Autenticado |
-| `/minhas-inscricoes` | `MinhasInscricoesPage` | Autenticado |
-| `/recuperar-senha` | `RecuperarSenhaPage` | Público |
-| `/redefinir-senha` | `RedefinirSenhaPage` | Público (token) |
-| `/evento/:slug` | `EventoDetalhePage` | Público |
-| `/doacao` | `DoacaoPage` | Público |
-| `/depoimento` | `DepoimentoPage` | Autenticado |
-| `/quem-somos` | `QuemSomosPage` | Público |
-| `/trabalhe-conosco` | `TrabalheConoscoPage` | Público |
-| `/termos-e-condicoes` | `TermosCondicoesPage` | Público |
-| `/admin` | `AdminPage` | Admin |
-| `/admin/pagamentos` | `PaymentsPage` | Admin |
-| `/admin/usuarios` | `AdminUsuariosPage` | Admin |
-| `/admin/depoimentos` | `DepoimentosAdminPage` | Admin |
-| `/criar-usuarios` | `CreateUsersPage` | **Apenas DEV** |
-| `/pagamento-simulado` | `PagamentoSimuladoPage` | Dev/Staging |
+A aplicação conta com 48 rotas mapeadas em `src/App.jsx`, divididas por domínios de negócio:
+
+### 3.1. Institucional, Agendamento e Conversão
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/` | `HomePage` | Público | Portal institucional e serviços clínicos |
+| `/agendamento` | `AgendamentoPage` | Público | Fluxo de agendamento em 5 etapas |
+| `/checkout` | `CheckoutPage` | Público | Checkout padrão Mercado Pago (PIX/Cartão) com TCLE |
+| `/checkout-direct` | `CheckoutDirectPage` | Público | Checkout transparente direto no cartão |
+| `/checkout/success` / `/checkout-success` | `CheckoutSuccessPage` | Público | Confirmação e dados de acesso à consulta |
+| `/checkout/failure` | `CheckoutFailurePage` | Público | Recuperação e nova tentativa de pagamento |
+| `/checkout/pending` | `CheckoutPendingPage` | Público | Orientações de PIX gerado ou pagamento em análise |
+| `/quem-somos` | `QuemSomosPage` | Público | Linha editorial e corpo clínico |
+| `/trabalhe-conosco` | `TrabalheConoscoPage` | Público | Candidatura para psicólogos parceiros |
+| `/doacao` | `DoacaoPage` | Público | Canal de apoio social |
+| `/termos-e-condicoes` | `TermosCondicoesPage` | Público | Termos de uso, privacidade LGPD e TCLE |
+| `/guia-enem` / `/enem` | `GuiaEnemPage` | Público | Guia e suporte psicológico para famílias |
+
+### 3.2. Área do Paciente e Credenciais
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/area-do-paciente` | `PacientePage` | Autenticado | Consultas, tarefas clínicas e documentos |
+| `/sala-espera/:id` | `SalaEsperaPage` | Autenticado | Sala de espera com link Google Meet |
+| `/minhas-inscricoes` | `MinhasInscricoesPage` | Autenticado | Inscrições em eventos e workshops |
+| `/depoimento` | `DepoimentoPage` | Autenticado | Envio de depoimento sobre atendimento |
+| `/recuperar-senha` | `RecuperarSenhaPage` | Público | Solicitação de link de recuperação |
+| `/redefinir-senha` | `RedefinirSenhaPage` | Público (token) | Redefinição de senha com código PKCE |
+
+### 3.3. Área do Profissional
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/profissional` | `ProfessionalDashboardPage` | Profissional / Admin | Agenda, prontuários de pacientes e horários |
+| `/faturamento-mensal` | `FaturamentoMensalPage` | Profissional / Admin | Demonstrativo de honorários e repasses |
+
+### 3.4. Gestão Administrativa
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/admin` | `AdminPage` | Admin | Gestão de agendamentos e operações |
+| `/admin/dashboard` | `ManagementDashboardPage` | Admin | Indicadores de receita, conversão e ocupação |
+| `/admin/professionals` | `ProfessionalListPage` | Admin | Listagem e credenciamento de psicólogos |
+| `/admin/professionals/:id` | `ProfessionalHubPage` | Admin | Detalhes e métricas por profissional |
+| `/admin/pagamentos` | `PaymentsPage` | Admin | Auditoria fintech, reconciliação e NFS-e |
+| `/admin/usuarios` | `AdminUsuariosPage` | Admin | Gestão de perfis e permissões RBAC |
+| `/admin/depoimentos` | `DepoimentosAdminPage` | Admin | Moderação e aprovação de depoimentos |
+
+### 3.5. Conteúdo e Eventos
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/artigos` | `BlogPage` | Público | Portal de artigos e notícias |
+| `/artigos/:slug` | `ArticlePage` | Público | Artigo científico/clínico completo |
+| `/evento/:slug` | `EventoDetalhePage` | Público | Inscrição em eventos e workshops |
+| `/r/:slug` / `/livro/:slug` | `BookResourcePage` | Público | Recursos complementares de livros |
+
+### 3.6. Landing Pages de Terapia (SEO)
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/terapia/ansiedade` | `TerapiaAnsiedadePage` | Público | Atendimento para sintomas de ansiedade |
+| `/terapia/depressao` | `TerapiaDepressaoPage` | Público | Tratamento clínico para depressão |
+| `/terapia/tdah` | `TerapiaTdahPage` | Público | Diagnóstico e manejo de TDAH |
+| `/terapia/casal` | `TerapiaCasalPage` | Público | Psicoterapia conjugal cristã |
+| `/terapia/burnout` | `TerapiaBurnoutPage` | Público | Estafa e esgotamento profissional |
+| `/terapia/dependencia-emocional` | `TerapiaDependenciaPage` | Público | Autonomia afetiva e relacionamentos |
+| `/terapia/vicio-apostas` | `TerapiaVicioApostasPage` | Público | Cessação de dependência de jogos e bets |
+| `/terapia/abuso-espiritual` | `TerapiaAbusoEspiritualPage` | Público | Acolhimento e superação de trauma religioso |
+
+### 3.7. Ferramentas Psicométricas & Autoavaliação
+| Rota | Página | Acesso | Instrumento Clínico |
+|---|---|---|---|
+| `/ferramentas` | `AssessmentHubPage` | Público | Central de testes psicométricos |
+| `/ferramentas/:slug` | `AssessmentPage` | Público | Aplicação individual de questionário |
+| `/teste-ansiedade-gad7` / `/teste-ansiedade` | `AssessmentPage` | Público | Escala de Ansiedade Geral (GAD-7) |
+| `/teste-burnout` / `/teste-esgotamento` | `AssessmentPage` | Público | Inventário de Burnout e Sobrecarga |
+| `/teste-depressao` / `/teste-depressao-phq9` | `AssessmentPage` | Público | Questionário de Saúde do Paciente (PHQ-9) |
+| `/teste-tdah*` | `AssessmentPage` | Público | Escala de Rastreio TDAH Adulto (ASRS-18) |
+| `/teste-espiritualidade` / `/teste-culpa*` | `AssessmentPage` | Público | Culpa, Perfeccionismo e Saúde Espiritual |
+| `/teste-sono` / `/teste-insonia*` | `AssessmentPage` | Público | Índice de Gravidade de Insônia (ISI) |
+
+### 3.8. Rotas de Ambiente de Desenvolvimento
+| Rota | Página | Acesso | Descrição |
+|---|---|---|---|
+| `/criar-usuarios` | `CreateUsersPage` | **Apenas DEV** | Provisionamento local de testes (bloqueado em prod) |
+| `/pagamento-simulado` | `PagamentoSimuladoPage` | Dev/Staging | Simulador de transação Mercado Pago |
 
 > ⚠️ `/criar-usuarios` é bloqueado em produção via `import.meta.env.DEV`.
 
 ---
-
 ## 4. Autenticação e Autorização (RBAC)
 
 **Provedor:** Supabase Auth (JWT)
@@ -180,13 +236,12 @@ Todas as funções rodam no Supabase Edge (Deno runtime). Chamadas via HTTPS com
 | `mp-create-payment` | Criação manual de pagamentos (admin) |
 | `mp-reconcile-payment` | Reconciliação de pagamentos divergentes |
 
-### Videoconferência
+### Teleconsulta & Videoconferência (Google Meet)
 
 | Função | Descrição |
 |---|---|
-| `zoom-create-meeting` | Cria reunião Zoom e retorna links host/participant |
-| `create-zoom-meeting` | Alias/versão legada |
-| `event-get-meeting` | Retorna link de meeting para inscrito confirmado |
+| `post-payment-orchestrator` | Orquestra pós-pagamento: vincula Google Meet do profissional (`personal_meet_link`), dispara confirmação e lembretes |
+| `event-get-meeting` | Retorna link de meeting da sala para inscrito confirmado em evento |
 | `event-generate-payment` | Gera cobrança para inscrição em evento |
 
 ### Notificações
@@ -352,7 +407,7 @@ eventos ────────────────────────
    ├─ Valida assinatura MP
    ├─ Atualiza `payments` (status: approved)
    ├─ Atualiza `bookings` (status: confirmed)
-   ├─ Chama `zoom-create-meeting` → salva meeting_link
+   ├─ Chama `post-payment-orchestrator` → vincula Google Meet (`personal_meet_link`)
    ├─ Envia email de confirmação (SMTP)
    └─ Envia WhatsApp (Twilio)
 7. Usuário vê página /checkout/success
@@ -365,7 +420,7 @@ eventos ────────────────────────
 2. Frontend renderiza formulário de cartão (Mercado Pago SDK)
 3. Frontend envia token do cartão + dados para `mp-process-card-payment`
    ├─ Tenta cobrança imediata
-   ├─ STATUS approved → mesmos passos do webhook (zoom + email + WA)
+   ├─ STATUS approved → dispara `post-payment-orchestrator` (Google Meet + email + WA)
    └─ STATUS pending → frontend inicia polling via `mp-check-payment`
 4. Após confirmação, mesmo fluxo de notificação
 ```

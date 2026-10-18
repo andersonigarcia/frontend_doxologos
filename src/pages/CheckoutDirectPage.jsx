@@ -531,6 +531,18 @@ const CheckoutDirectPage = () => {
                                     checkoutTotal,
                                     'credit_card'
                                 );
+                                analytics.trackEvent('purchase', {
+                                    transaction_id: statusUpdate.id || bookingId || packageId || `mp_${Date.now()}`,
+                                    value: checkoutTotal,
+                                    currency: 'BRL',
+                                    payment_type: 'credit_card',
+                                    items: [{
+                                        item_id: bookingId || inscricaoId || packageId || 'consulta',
+                                        item_name: type === 'evento' ? (inscricao?.evento?.titulo || 'Inscrição em Evento') : (packageId ? 'Pacote de Consultas' : 'Consulta Psicológica'),
+                                        price: checkoutTotal,
+                                        quantity: 1
+                                    }]
+                                });
                             } catch (trackErr) {
                                 console.warn('CheckoutDirectPage.analytics completion error', trackErr);
                             }
@@ -545,6 +557,17 @@ const CheckoutDirectPage = () => {
                         } else if (statusUpdate.status === 'rejected') {
                             const friendlyMsg = paymentOrchestrator.getErrorMessage(statusUpdate);
                             setPaymentError(friendlyMsg);
+                            try {
+                                analytics.trackEvent('payment_error', {
+                                    event_category: 'Checkout',
+                                    error_message: friendlyMsg,
+                                    payment_method: 'credit_card',
+                                    booking_id: bookingId || inscricaoId || packageId || null,
+                                    status_detail: statusUpdate.status_detail || 'cc_rejected'
+                                });
+                            } catch (errTrack) {
+                                console.warn('CheckoutDirectPage.analytics rejection error', errTrack);
+                            }
                             toast({
                                 variant: 'destructive',
                                 title: getRejectionTitle(friendlyMsg),
@@ -593,7 +616,7 @@ const CheckoutDirectPage = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="min-h-screen bg-gray-50 py-12 px-4 pb-28 md:pb-12">
             <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
                     <Button
@@ -668,7 +691,7 @@ const CheckoutDirectPage = () => {
                         )}
 
                         <Card className="p-6">
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form id="direct-card-form" onSubmit={handleSubmit} className="space-y-4">
                                 {/* Número do Cartão */}
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
@@ -686,7 +709,9 @@ const CheckoutDirectPage = () => {
                                     </div>
                                     <div className="relative">
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoComplete="cc-number"
                                             value={cardNumber}
                                             onChange={handleCardNumberChange}
                                             placeholder="0000 0000 0000 0000"
@@ -705,10 +730,11 @@ const CheckoutDirectPage = () => {
                                     </label>
                                     <input
                                         type="text"
+                                        autoComplete="cc-name"
                                         value={cardholderName}
                                         onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
-                                        placeholder="NOME COMPLETO"
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                        placeholder="NOME COMO NO CARTÃO"
+                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent uppercase"
                                         required
                                     />
                                 </div>
@@ -720,7 +746,9 @@ const CheckoutDirectPage = () => {
                                             Validade
                                         </label>
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoComplete="cc-exp"
                                             value={expirationDate}
                                             onChange={handleExpirationChange}
                                             placeholder="MM/AA"
@@ -734,11 +762,13 @@ const CheckoutDirectPage = () => {
                                             CVV
                                         </label>
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoComplete="cc-csc"
                                             value={securityCode}
                                             onChange={(e) => setSecurityCode(e.target.value.replace(/\D/g, ''))}
                                             placeholder="123"
-                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent font-mono"
                                             maxLength="4"
                                             required
                                         />
@@ -752,7 +782,8 @@ const CheckoutDirectPage = () => {
                                             CPF do Titular
                                         </label>
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
                                             value={docNumber}
                                             onChange={(e) => setDocNumber(e.target.value)}
                                             placeholder="000.000.000-00"
@@ -766,6 +797,8 @@ const CheckoutDirectPage = () => {
                                         </label>
                                         <input
                                             type="email"
+                                            inputMode="email"
+                                            autoComplete="email"
                                             value={payerEmail}
                                             onChange={(e) => setPayerEmail(e.target.value)}
                                             placeholder="seu@email.com"
@@ -796,6 +829,7 @@ const CheckoutDirectPage = () => {
                                     <label className="flex items-start gap-3 cursor-pointer">
                                         <input
                                             type="checkbox"
+                                            data-testid="tcle-checkbox"
                                             checked={acceptedTcle}
                                             onChange={(e) => setAcceptedTcle(e.target.checked)}
                                             className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
@@ -891,6 +925,29 @@ const CheckoutDirectPage = () => {
                         </Card>
                     </div>
                 </div>
+            </div>
+
+            {/* Barra Sticky Mobile (ADR 002) */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 px-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] z-40 flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                    <span className="text-[11px] text-gray-500 font-medium">Total a pagar:</span>
+                    <span className="text-base font-bold text-[#2d8659]">
+                        {MercadoPagoService.formatCurrency(total)}
+                    </span>
+                </div>
+                <Button
+                    type="submit"
+                    form="direct-card-form"
+                    disabled={processing || !acceptedTcle}
+                    className="flex-1 max-w-[220px] bg-[#2d8659] hover:bg-[#236b47] py-3 text-sm font-semibold shadow-md disabled:opacity-50"
+                >
+                    {processing ? 'Processando...' : (
+                        <>
+                            <Lock className="w-4 h-4 mr-1.5" />
+                            Pagar com Cartão
+                        </>
+                    )}
+                </Button>
             </div>
         </div>
     );
