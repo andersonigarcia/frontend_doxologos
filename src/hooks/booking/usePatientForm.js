@@ -113,16 +113,10 @@ const buildPatientSchema = ({ requireIdentityFields, requirePassword, requireCon
       }
 
       if (requireConfirmation) {
-        if (!data.confirmPassword) {
+        if (data.confirmPassword && data.password !== data.confirmPassword) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: '🔄 Por favor, confirme sua senha',
-            path: ['confirmPassword']
-          });
-        } else if (data.password !== data.confirmPassword) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: '🔄 As senhas não conferem. Digite a mesma senha nos dois campos',
+            message: '🔄 As senhas não conferem. Digite a mesma senha nos dois campos ou use o botão de visualização para conferir',
             path: ['confirmPassword']
           });
         }

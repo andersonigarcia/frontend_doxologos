@@ -296,8 +296,8 @@ const CheckoutPendingPage = () => {
                                 
                                 {/* QR Code */}
                                 <div className="flex justify-center mb-4">
-                                    <div className="bg-white p-4 rounded-lg shadow-lg">
-                                        <QRCodeSVG value={payment.qr_code} size={200} />
+                                    <div className="bg-white p-4 rounded-2xl shadow-lg border-2 border-emerald-100 min-w-[220px] min-h-[220px] inline-flex items-center justify-center">
+                                        <QRCodeSVG value={payment.qr_code} size={220} level="M" />
                                     </div>
                                 </div>
 

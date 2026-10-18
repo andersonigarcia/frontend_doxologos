@@ -568,12 +568,12 @@ const AgendamentoPage = () => {
           return;
         }
 
-        if (patientData.password !== patientData.confirmPassword) {
+        if (patientData.confirmPassword && patientData.password !== patientData.confirmPassword) {
           setPasswordError('As senhas precisam ser iguais.');
           toast({
             variant: 'destructive',
             title: 'Senhas não conferem',
-            description: 'Digite a mesma senha nos dois campos para continuar.'
+            description: 'As senhas digitadas estão diferentes. Por favor, confira os caracteres ou use o botão de visualização.'
           });
           return;
         }
@@ -617,11 +617,11 @@ const AgendamentoPage = () => {
           });
         } catch (error) {
           console.error('Erro ao validar senha:', error);
-          setPasswordError('Erro ao validar senha. Tente novamente.');
+          setPasswordError('Não conseguimos confirmar sua senha. Se preferir, use "Esqueci minha senha" para criar um novo acesso.');
           toast({
             variant: 'destructive',
-            title: 'Erro na validação',
-            description: 'Não foi possível validar sua senha. Tente novamente.'
+            title: 'Verifique seus dados de acesso',
+            description: 'Não foi possível confirmar suas credenciais. Você pode tentar novamente ou redefinir sua senha com segurança.'
           });
           return;
         }
@@ -1096,12 +1096,12 @@ const AgendamentoPage = () => {
           return;
         }
 
-        if (!isExistingPatient && patientData.password !== patientData.confirmPassword) {
+        if (!isExistingPatient && patientData.confirmPassword && patientData.password !== patientData.confirmPassword) {
           setPasswordError('As senhas precisam ser iguais.');
           toast({
             variant: 'destructive',
             title: 'Senhas não conferem',
-            description: 'Digite a mesma senha nos dois campos para continuar.'
+            description: 'As senhas digitadas estão diferentes. Por favor, confira os caracteres ou use o botão de visualização.'
           });
           return;
         }
@@ -1633,7 +1633,8 @@ const AgendamentoPage = () => {
               emailExists={emailExists}
               emailCheckError={emailCheckError}
             />
-            <div className="flex flex-col sm:flex-row gap-4 mt-6">
+            {/* Botões Desktop */}
+            <div className="hidden sm:flex flex-row gap-4 mt-6">
               <Button
                 onClick={() => setStep(3)}
                 variant="outline"
@@ -1647,8 +1648,29 @@ const AgendamentoPage = () => {
                 aria-label="Continuar para a revisão do agendamento e pagamento"
                 className="bg-[#2d8659] hover:bg-[#236b47] text-white active:scale-95 min-h-[44px] px-8 font-semibold shadow-md"
               >
-                Continuar
+                Continuar para Pagamento
               </Button>
+            </div>
+
+            {/* Sticky Mobile CTA para Etapa 4 - Acima da dobra mobile */}
+            <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:hidden">
+              <div className="container max-w-4xl mx-auto flex items-center gap-3">
+                <Button
+                  onClick={() => setStep(3)}
+                  variant="outline"
+                  aria-label="Voltar para a escolha de data e horário"
+                  className="min-h-[44px] px-4 text-gray-700"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  onClick={handleProceedToSummary}
+                  aria-label="Continuar para o resumo do agendamento"
+                  className="flex-1 bg-[#2d8659] hover:bg-[#236b47] text-white min-h-[48px] font-bold shadow-lg shadow-[#2d8659]/20 transition-all text-base"
+                >
+                  Continuar para Pagamento
+                </Button>
+              </div>
             </div>
           </>
         );

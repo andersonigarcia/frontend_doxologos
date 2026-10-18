@@ -729,19 +729,21 @@ const CheckoutPage = () => {
         } catch (error) {
             logger.error('CheckoutPage.handlePayment:error', error, buildLogContext());
 
-            // Extrair mensagem amigável: evitar JSON bruto do MP no toast
-            let friendlyMsg = error.message || 'Não foi possível processar o pagamento. Tente novamente.';
+            // Extrair mensagem amigável e empática: evitar JSON bruto ou mensagens frias
+            let friendlyMsg = error.message || '';
             if (friendlyMsg.includes('payer.email must be valid email') || friendlyMsg.includes('4050')) {
-                friendlyMsg = 'O e-mail informado é inválido. Por favor, corrija o campo de e-mail e tente novamente.';
-                setPayerEmailError('E-mail inválido — corrija antes de pagar.');
+                friendlyMsg = 'Identificamos um detalhe no e-mail informado. Por favor, confira o formato (ex: seu@email.com) para podermos enviar a confirmação da consulta.';
+                setPayerEmailError('E-mail com formato inválido — confira antes de pagar.');
             } else if (friendlyMsg.includes('Mercado Pago API error') || friendlyMsg.includes('bad_request')) {
-                friendlyMsg = 'Não foi possível processar o pagamento. Verifique seus dados e tente novamente.';
+                friendlyMsg = 'Tivemos uma oscilação temporária de conexão com o sistema bancário. Seus horários continuam reservados; você pode tentar novamente ou pagar via PIX com aprovação instantânea.';
+            } else if (!friendlyMsg || friendlyMsg.includes('Erro ao processar')) {
+                friendlyMsg = 'Não conseguimos concluir o pagamento neste momento. Seus horários continuam reservados por alguns minutos — tente novamente ou fale com nossa equipe no WhatsApp.';
             }
 
             toast({
                 variant: 'destructive',
-                title: 'Não foi possível concluir o pagamento',
-                description: friendlyMsg || 'Houve uma oscilação momentânea no processamento. Você pode tentar novamente em instantes ou escolher outro meio de pagamento.'
+                title: 'Não conseguimos concluir esta tentativa',
+                description: friendlyMsg
             });
         } finally {
             setProcessing(false);
@@ -1213,14 +1215,14 @@ const CheckoutPage = () => {
                                         <p className="text-xs font-semibold text-gray-700 mb-2">
                                             📷 Ou escaneie o QR Code abaixo com a câmera do app do banco:
                                         </p>
-                                        <div className="bg-white p-3 rounded-2xl border-2 border-emerald-100 shadow-sm inline-block">
+                                        <div className="bg-white p-3 rounded-2xl border-2 border-emerald-100 shadow-sm inline-flex items-center justify-center min-w-[220px] min-h-[220px]">
                                             <QRCodeSVG
                                                 value={pixPayment.qrCode}
                                                 size={220}
                                                 level="M"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-2">
+                                        <p className="text-xs text-gray-600 mt-2 font-medium">
                                             Aprovação instantânea em até 3 segundos após o pagamento
                                         </p>
                                     </div>
@@ -1338,13 +1340,19 @@ const CheckoutPage = () => {
                                         onClick={handlePayment}
                                         disabled={processing || !acceptedTcle}
                                         size="lg"
-                                        className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                                        aria-label={selectedMethod === 'pix' ? 'Gerar código PIX para pagamento imediato' : 'Continuar para pagamento'}
+                                        className="w-full bg-[#2d8659] hover:bg-[#236b47] min-h-[48px] font-bold text-base shadow-lg shadow-[#2d8659]/20"
                                     >
 
                                         {processing ? (
                                             <>
                                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                                                Processando...
+                                                Gerando PIX com segurança...
+                                            </>
+                                        ) : selectedMethod === 'pix' ? (
+                                            <>
+                                                <Smartphone className="w-5 h-5 mr-2" />
+                                                Gerar QR Code PIX (Aprovação Instantânea)
                                             </>
                                         ) : (
                                             <>
@@ -1501,6 +1509,54 @@ const CheckoutPage = () => {
                     </div>
                 </div>
             </div >
+
+            {/* Sticky CTA Mobile Bar - Mantém ação principal acima do fold no mobile */}
+            {!pixPayment && (
+                <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:hidden">
+                    <div className="container max-w-lg mx-auto flex items-center justify-between gap-3">
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total</span>
+                            <span className="text-xl font-bold text-[#1b5e20] truncate">
+                                {MercadoPagoService.formatCurrency(creditCoversTotal ? 0 : (bookingTotal || (inscricao?.evento?.valor || valorParam)))}
+                            </span>
+                        </div>
+                        <Button
+                            onClick={() => {
+                                if (!acceptedTcle) {
+                                    setAcceptedTcle(true);
+                                    toast({
+                                        title: 'Termos aceitos',
+                                        description: 'Prosseguindo com a confirmação do pagamento seguro.'
+                                    });
+                                }
+                                handlePayment();
+                            }}
+                            disabled={processing}
+                            size="lg"
+                            className="flex-1 bg-[#2d8659] hover:bg-[#236b47] text-white font-bold min-h-[48px] shadow-lg shadow-[#2d8659]/20"
+                        >
+                            {processing ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Processando...
+                                </>
+                            ) : selectedMethod === 'pix' ? (
+                                <>
+                                    <Smartphone className="w-4 h-4 mr-1.5" />
+                                    Pagar com PIX
+                                </>
+                            ) : selectedMethod === 'credit_card' || selectedMethod === 'debit_card' ? (
+                                <>
+                                    <CreditCard className="w-4 h-4 mr-1.5" />
+                                    Pagar com Cartão
+                                </>
+                            ) : (
+                                'Continuar'
+                            )}
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {
                 showExistingPaymentModal && existingPayment && (

@@ -315,16 +315,16 @@ const PatientAccountStep = ({
                       className="relative"
                     >
                       <label htmlFor="patient-confirm-password" className="block text-sm font-medium mb-2 text-gray-800">
-                        Confirme a senha*
+                        Confirmar senha <span className="text-xs text-gray-500 font-normal">(opcional)</span>
                       </label>
                       <input
                         id="patient-confirm-password"
                         type={showConfirmPassword ? 'text' : 'password'}
-                        aria-required="true"
+                        aria-required="false"
                         aria-invalid={Boolean(errors.confirmPassword)}
                         {...register('confirmPassword')}
                         className="w-full px-4 py-3 border border-blue-200 rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
-                        placeholder="Repita a senha"
+                        placeholder="Repita ou confira no olho ao lado"
                         autoComplete="new-password"
                       />
                       <button

@@ -1162,10 +1162,10 @@ const PacientePage = () => {
                                                                     <div className="flex flex-col md:flex-row gap-4 items-start">
                                                                         {/* QR Code com tamanho mínimo de 200px para mobile */}
                                                                         <div className="w-full sm:w-auto flex flex-col items-center">
-                                                                            <div className="bg-white p-3 rounded-xl border-2 border-gray-200 shadow-sm inline-block">
+                                                                            <div className="bg-white p-3 rounded-xl border-2 border-gray-200 shadow-sm inline-flex items-center justify-center min-w-[220px] min-h-[220px]">
                                                                                 <QRCodeSVG
                                                                                     value={booking.payment[0].qr_code}
-                                                                                    size={200}
+                                                                                    size={220}
                                                                                     level="H"
                                                                                 />
                                                                             </div>
