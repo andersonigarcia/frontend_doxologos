@@ -1,12 +1,15 @@
 
 
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminSidebar, ADMIN_MODULES } from '@/components/admin/AdminSidebar';
 import { StrategicCockpitModule } from '@/components/admin/StrategicCockpitModule';
 import { FinancialControlModule } from '@/components/admin/FinancialControlModule';
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { PatientAnalyticsDashboard } from '@/components/admin/PatientAnalyticsDashboard';
+import { OperationalRetentionModule } from '@/components/admin/OperationalRetentionModule';
+import { GrowthAnalyticsModule } from '@/components/admin/GrowthAnalyticsModule';
 import { useAdminData } from '@/hooks/useAdminData';
+import { summarizeBookingsFinancials } from '@/lib/adminMetrics';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -1587,6 +1590,10 @@ const AdminPage = () => {
         return calculateTotals(bookings || []);
     }, [bookings, userRole]);
 
+    // KPIs do cockpit: somente receita realizada (confirmed/paid/completed/no-show retido).
+    // Pendentes ficam em "a receber"; canceladas/reembolsadas/expiradas não entram.
+    const cockpitFinancials = useMemo(() => summarizeBookingsFinancials(bookings || []), [bookings]);
+
     const resetServiceForm = () => {
         setIsEditingService(false);
         setServiceFormData({ id: null, name: '', price: '', professional_payout: '', duration_minutes: '50' });
@@ -2186,22 +2193,44 @@ const AdminPage = () => {
         return (
             <>
                 <Helmet><title>Área Administrativa - Doxologos</title></Helmet>
-                <header className="bg-[#f8f6f0] border-b border-[#e4ded5] shadow-xs"><nav className="container mx-auto px-4 py-4 flex items-center justify-between"><Link to="/" className="flex items-center space-x-2"><DoxologosLogo className="h-9 w-auto" /></Link><Link to="/"><Button variant="outline" className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f0ebe1]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link></nav></header>
-                <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
-                        <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">Acesso Restrito</h2>
+                <header className="bg-[#f8f6f0] border-b border-[#e4ded5] shadow-xs">
+                    <nav className="container mx-auto px-4 py-3.5 flex items-center justify-between">
+                        <Link to="/" className="flex items-center space-x-2">
+                            <DoxologosLogo className="h-8 sm:h-9 w-auto" />
+                        </Link>
+                        <Link to="/">
+                            <Button variant="outline" className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f0ebe1] rounded-xl text-xs sm:text-sm font-semibold min-h-[38px]">
+                                <ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar ao Site
+                            </Button>
+                        </Link>
+                    </nav>
+                </header>
+                <div className="min-h-screen bg-[#f8f6f0] flex items-center justify-center py-10 px-4">
+                    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-[#e4ded5] shadow-xs p-6 sm:p-8 max-w-md w-full">
+                        <div className="text-center mb-6">
+                            <div className="w-12 h-12 rounded-2xl bg-[#1b3c37] text-[#f8f6f0] flex items-center justify-center font-bold font-serif text-2xl shadow-xs mx-auto mb-3">
+                                D
+                            </div>
+                            <h2 className="text-2xl font-serif font-bold text-[#1b3c37]">Acesso Restrito</h2>
+                            <p className="text-xs text-[#262624]/70 mt-1">Insira suas credenciais para gerenciar a clínica.</p>
+                        </div>
                         <form onSubmit={handleLogin} className="space-y-4">
-                            <div><label className="block text-sm font-medium mb-2 text-gray-600">Email</label><input type="email" required value={loginData.email} onChange={(e) => setLoginData({ ...loginData, email: e.target.value })} className="w-full input" /></div>
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="block text-sm font-medium text-gray-600">Senha</label>
-                                    <Link to="/recuperar-senha" className="text-sm text-[#2d8659] hover:underline">
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-[#262624]/80">Email</label>
+                                <input type="email" required value={loginData.email} onChange={(e) => setLoginData({ ...loginData, email: e.target.value })} className="w-full input border-[#e4ded5] focus:ring-[#1b3c37]/20 rounded-xl" />
+                            </div>
+                            <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <label className="block text-xs font-semibold uppercase tracking-wider text-[#262624]/80">Senha</label>
+                                    <Link to="/recuperar-senha" className="text-xs text-[#1b3c37] font-semibold hover:underline">
                                         Esqueci minha senha
                                     </Link>
                                 </div>
-                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="w-full input" />
+                                <input type="password" required value={loginData.password} onChange={(e) => setLoginData({ ...loginData, password: e.target.value })} className="w-full input border-[#e4ded5] focus:ring-[#1b3c37]/20 rounded-xl" />
                             </div>
-                            <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">Entrar</Button>
+                            <Button type="submit" className="w-full bg-[#1b3c37] hover:bg-[#16332e] text-[#f8f6f0] font-semibold py-2.5 rounded-xl shadow-xs min-h-[44px]">
+                                Entrar na Plataforma
+                            </Button>
                         </form>
                     </motion.div>
                 </div>
@@ -2222,18 +2251,18 @@ const AdminPage = () => {
     return (
         <>
             <Helmet><title>Painel de Controle - Doxologos</title></Helmet>
-            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-40">
-                <nav className="container mx-auto px-4 py-3 md:py-4">
+            <header className="fixed top-0 w-full bg-[#fcfbf9]/95 backdrop-blur-md border-b border-[#e4ded5] shadow-xs z-40">
+                <nav className="container mx-auto px-4 py-2.5 sm:py-3.5">
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
                             <DoxologosLogo className="h-9 w-auto" />
                         </Link>
                         <div className="flex items-center justify-end gap-4 flex-wrap">
-                            <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
-                                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
+                            <Link to="/" className="inline-flex items-center text-sm font-semibold text-[#1b3c37] hover:text-[#16332e] transition-colors">
+                                <ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar ao Site
                             </Link>
-                            <div className="h-6 w-px bg-gray-300"></div>
+                            <div className="h-6 w-px bg-[#e4ded5]"></div>
                             <UserBadge
                                 user={user}
                                 userRole={userRole}
@@ -2244,7 +2273,7 @@ const AdminPage = () => {
                             {hasEventsTab && (
                                 <Button
                                     variant="outline"
-                                    className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex"
+                                    className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f8f6f0] rounded-xl text-xs font-semibold hidden sm:inline-flex min-h-[38px]"
                                     onClick={() => {
                                         setActiveTab('events');
                                         window.requestAnimationFrame(() => {
@@ -2268,78 +2297,76 @@ const AdminPage = () => {
                         </Link>
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="w-11 h-11 flex items-center justify-center rounded-xl border border-[#e4ded5] bg-white text-[#1b3c37] hover:bg-[#f4efe6] transition-colors active:scale-95 shadow-xs"
+                            aria-label="Abrir menu de navegação"
                         >
                             {mobileMenuOpen ? (
-                                <X className="w-6 h-6 text-[#2d8659]" />
+                                <X className="w-5 h-5 text-[#1b3c37]" />
                             ) : (
-                                <Menu className="w-6 h-6 text-[#2d8659]" />
+                                <Menu className="w-5 h-5 text-[#1b3c37]" />
                             )}
                         </button>
                     </div>
-
-                    {/* Mobile Menu */}
-                    {mobileMenuOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3"
-                        >
-                            <UserBadge
-                                user={user}
-                                userRole={userRole}
-                                onLogout={() => {
-                                    handleLogout();
-                                    setMobileMenuOpen(false);
-                                }}
-                                layout="column"
-                                showLogoutButton={true}
-                                compact={true}
-                            />
-                            <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
-                                <Link
-                                    to="/"
-                                    className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
-                                    onClick={() => setMobileMenuOpen(false)}
-                                >
-                                    <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
-                                </Link>
-                                {userRole === 'admin' && (
-                                    <Link
-                                        to="/admin/dashboard"
-                                        className="block px-2 py-2 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        <LayoutDashboard className="w-4 h-4 mr-2 inline" /> Dashboard Gerencial
-                                    </Link>
-                                )}
-                                {hasEventsTab && (
-                                    <Button
-                                        variant="outline"
-                                        className="w-full border-[#2d8659] text-[#2d8659] justify-start"
-                                        onClick={() => {
-                                            setActiveTab('events');
-                                            setMobileMenuOpen(false);
-                                            window.requestAnimationFrame(() => {
-                                                const tabsElement = document.getElementById('admin-tabs');
-                                                if (tabsElement) {
-                                                    tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }
-                                            });
-                                        }}
-                                    >
-                                        <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
-                                    </Button>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
                 </nav>
+
+                {/* Mobile Quick Module Indicator Bar */}
+                <div className="md:hidden bg-[#f8f6f0] border-t border-[#e4ded5] px-4 py-2 flex items-center justify-between">
+                    <button
+                        onClick={() => setMobileMenuOpen(true)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#1b3c37] bg-white border border-[#e4ded5] px-2.5 py-1.5 rounded-lg active:scale-95 transition-all shadow-xs"
+                    >
+                        <Menu className="w-3.5 h-3.5 text-[#1b3c37]" />
+                        <span className="truncate max-w-[190px]">
+                            {ADMIN_MODULES.find(m => m.id === activeModule)?.title || 'Navegação'}
+                        </span>
+                        <ChevronDown className="w-3 h-3 text-[#9bab9b]" />
+                    </button>
+                    <span className="text-[10px] font-bold text-[#1b3c37] bg-[#1b3c37]/10 px-2 py-0.5 rounded-full border border-[#1b3c37]/20 uppercase tracking-wider">
+                        {activeTab}
+                    </span>
+                </div>
             </header>
 
-            <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
-                {/* Sidebar Lateral Navegável nos 5 Módulos Estruturados */}
+            {/* Mobile Navigation Drawer (Slide-Over) */}
+            {mobileMenuOpen && (
+                <div className="md:hidden">
+                    <div
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 transition-opacity"
+                    />
+                    <div
+                        className="fixed inset-y-0 left-0 w-[85%] max-w-sm bg-[#fcfbf9] z-50 shadow-2xl flex flex-col overflow-hidden border-r border-[#e4ded5]"
+                    >
+                        <AdminSidebar
+                            activeModule={activeModule}
+                            setActiveModule={setActiveModule}
+                            activeTab={activeTab}
+                            setActiveTab={setActiveTab}
+                            userRole={userRole}
+                            userName={displayName}
+                            pendingAlertsCount={professionalStats?.pendingAppointments?.length || 0}
+                            onOpenChangePassword={() => {
+                                setMobileMenuOpen(false);
+                                setIsChangePasswordOpen(true);
+                            }}
+                            onClose={() => setMobileMenuOpen(false)}
+                            isMobile={true}
+                        />
+                        <div className="p-3 border-t border-[#e4ded5] bg-white flex flex-col gap-2">
+                            <Link
+                                to="/"
+                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#1b3c37] hover:bg-[#f4efe6] transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <ArrowLeft className="w-4 h-4" /> Voltar ao Site Principal
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="min-h-screen bg-[#f8f6f0] flex flex-col md:flex-row">
+                {/* Sidebar Lateral Navegável nos 5 Módulos Estruturados (Desktop) */}
                 <div className="hidden md:block flex-shrink-0">
                     <AdminSidebar
                         activeModule={activeModule}
@@ -2353,13 +2380,13 @@ const AdminPage = () => {
                     />
                 </div>
 
-                <div className="flex-1 min-w-0 p-4 md:p-8 pt-24 md:pt-28 overflow-y-auto">
+                <div className="flex-1 min-w-0 p-3 sm:p-6 md:p-8 pt-24 sm:pt-28 md:pt-28 overflow-y-auto">
                     <div className="container mx-auto max-w-7xl">
                         <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center justify-between mb-5 sm:mb-6">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Painel de Controle</h1>
-                            <p className="text-sm text-gray-500 mt-1">Bem-vindo, <span className="font-semibold text-gray-800">{displayName}</span>. Gerencie a operação, relatórios e configurações da plataforma.</p>
+                            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#1b3c37] tracking-tight">Painel de Controle</h1>
+                            <p className="text-xs sm:text-sm text-[#262624]/70 mt-1">Bem-vindo, <span className="font-semibold text-[#1b3c37]">{displayName}</span>. Gerencie a operação, relatórios e configurações da plataforma.</p>
                         </div>
                     </div>
 
@@ -2371,14 +2398,15 @@ const AdminPage = () => {
                             {isAdminView ? (
                                 <StrategicCockpitModule
                                     summaryData={{
-                                        receita_consultas: totals.totalValue,
-                                        consultas_confirmadas: totals.totalBookings,
+                                        receita_consultas: cockpitFinancials.gmvRealized,
+                                        consultas_confirmadas: cockpitFinancials.realizedCount,
                                         total_professionals: professionals.length
                                     }}
                                     financialData={{
-                                        monthlyRevenue: totals.totalValue,
-                                        takeRatePct: totals.totalValue > 0 ? Number(((totals.totalPlatformFee / totals.totalValue) * 100).toFixed(1)) : 40,
-                                        netMargin: totals.totalPlatformFee
+                                        monthlyRevenue: cockpitFinancials.gmvRealized,
+                                        takeRatePct: cockpitFinancials.takeRatePct,
+                                        netMargin: cockpitFinancials.platformGrossMargin,
+                                        toReceive: cockpitFinancials.toReceive
                                     }}
                                     alertsData={{
                                         pendingAppointmentsCount: (bookings || []).filter(b => {
@@ -2386,6 +2414,10 @@ const AdminPage = () => {
                                             return ['pending', 'pending_payment', 'pendente', 'awaiting_payment'].includes(s);
                                         }).length
                                     }}
+                                    bookings={bookings}
+                                    professionals={professionals}
+                                    services={services}
+                                    availability={availability}
                                     onNavigateTab={setActiveTab}
                                 />
                             ) : (
@@ -2582,6 +2614,18 @@ const AdminPage = () => {
                         <TabsContent value="ai-economics" className="mt-6">
                             <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                 <AiEconomicsCockpit onNavigateTab={setActiveTab} />
+                            </Suspense>
+                        </TabsContent>
+
+                        {/* Retenção & No-Show Tab (Fase 3) */}
+                        <TabsContent value="retention-ops" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                <OperationalRetentionModule
+                                    bookings={bookings}
+                                    professionals={professionals}
+                                    availability={availability}
+                                    onNavigateTab={setActiveTab}
+                                />
                             </Suspense>
                         </TabsContent>
 
@@ -2876,14 +2920,17 @@ const AdminPage = () => {
                             )
                         }
 
-                        {/* Aba Growth / Tráfego (Novo) */}
+                        {/* Aba Growth, Funil & Metas (Fase 4) */}
                         {
                             userRole === 'admin' && (
                                 <TabsContent value="growth" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <DashboardGrowth />
-                                </Suspense>
-</TabsContent>
+                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                        <GrowthAnalyticsModule
+                                            bookings={bookings}
+                                            onNavigateTab={setActiveTab}
+                                        />
+                                    </Suspense>
+                                </TabsContent>
                             )
                         }
 

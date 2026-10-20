@@ -1,14 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { Newspaper, Search, Eye, EyeOff, Trash2, RefreshCw, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+    Newspaper,
+    Search,
+    Eye,
+    EyeOff,
+    Trash2,
+    RefreshCw,
+    ExternalLink,
+    Sparkles,
+    AlertCircle,
+    Calendar,
+    CheckCircle2
+} from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const BlogManagementDashboard = () => {
+export const BlogManagementDashboard = () => {
     const [articles, setArticles] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'published', 'draft'
     const [syncing, setSyncing] = useState(false);
     const { toast } = useToast();
 
@@ -23,25 +38,21 @@ const BlogManagementDashboard = () => {
         fetchArticles();
     }, []);
 
+    // Edge function auxiliar (fallback para casos de restrição estrita de RLS)
     const callAdminEdgeFunction = async (body) => {
         const { data, error } = await supabase.functions.invoke('admin-update-article', {
             body: body
         });
 
         if (error) {
-            console.error('[BlogMgmt] Edge function error:', error);
-            // supabase.functions.invoke retorna o erro no objeto error
-            // Se foi lançado pelo Deno (ex: new Response(JSON.stringify({error: ...})))
-            // o body do erro geralmente vem no contexto.
-            
-            let errorMsg = 'Erro desconhecido na operação';
+            console.warn('[BlogMgmt] Edge function error:', error);
+            let errorMsg = 'Erro na operação administrativa';
             try {
-                // Tenta fazer parse do erro se for um HttpError
                 if (error.context && typeof error.context.json === 'function') {
                     const errorJson = await error.context.json();
                     errorMsg = errorJson.details ? `${errorJson.error} - ${errorJson.details}` : (errorJson.error || error.message);
                 } else {
-                    errorMsg = error.message || 'Erro ao chamar função';
+                    errorMsg = error.message || 'Erro ao chamar função de gestão de artigos';
                 }
             } catch (e) {
                 errorMsg = error.message;
@@ -52,17 +63,32 @@ const BlogManagementDashboard = () => {
         return data;
     };
 
+    // Carregamento resiliente: prioriza consulta direta ao banco e usa Edge Function como fallback
     const fetchArticles = async () => {
+        setLoading(true);
+        setFetchError(null);
         try {
-            setLoading(true);
-            // Busca todos os artigos (incluindo rascunhos/ocultos) bypassando o RLS do cliente
+            // 1. Consulta direta à tabela artigos (padrão canônico do Supabase)
+            const { data, error } = await supabase
+                .from('artigos')
+                .select('*')
+                .order('published_at', { ascending: false });
+
+            if (!error && Array.isArray(data)) {
+                setArticles(data);
+                return;
+            }
+
+            // 2. Se a consulta direta retornar erro de RLS, tentar via Edge Function com service_role
+            console.warn('[BlogMgmt] Consulta direta falhou, acionando Edge Function:', error?.message);
             const response = await callAdminEdgeFunction({ action: 'list' });
-            setArticles(response.articles || []);
+            setArticles(response?.articles || []);
         } catch (error) {
-            console.error('Erro ao buscar artigos:', error);
+            console.error('Erro ao buscar artigos do blog:', error);
+            setFetchError(error.message || 'Não foi possível carregar os artigos do blog.');
             toast({
                 variant: 'destructive',
-                title: 'Erro ao carregar',
+                title: 'Erro ao carregar artigos',
                 description: error.message || 'Não foi possível carregar os artigos do blog.'
             });
         } finally {
@@ -73,14 +99,17 @@ const BlogManagementDashboard = () => {
     const handleSync = async () => {
         try {
             setSyncing(true);
-            toast({ title: 'Sincronizando...', description: 'Buscando artigos do Substack.' });
-            
+            toast({
+                title: 'Sincronizando com o Substack...',
+                description: 'Buscando publicações recentes no feed RSS oficial.'
+            });
+
             const { data, error } = await supabase.functions.invoke('sync-substack-manual', {
                 body: { substackUrl: 'https://doxologosoficial.substack.com/feed' }
             });
-            
+
             if (error) {
-                let errorMsg = 'Erro desconhecido na sincronização';
+                let errorMsg = 'Falha ao sincronizar com o feed do Substack';
                 if (error.context && typeof error.context.json === 'function') {
                     const errorJson = await error.context.json();
                     errorMsg = errorJson.error || error.message;
@@ -89,43 +118,57 @@ const BlogManagementDashboard = () => {
                 }
                 throw new Error(errorMsg);
             }
-            
-            toast({ 
-                title: 'Sincronização concluída!', 
-                description: `Novos: ${data.stats?.novos || 0} | Atualizados: ${data.stats?.atualizados || 0}` 
+
+            toast({
+                title: 'Sincronização concluída com sucesso!',
+                description: `Novos: ${data?.stats?.novos || 0} | Atualizados: ${data?.stats?.atualizados || 0}`
             });
-            
-            // Reload list
+
+            // Recarregar a lista atualizada
             fetchArticles();
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Erro na Sincronização', description: e.message });
+            console.error('Erro na sincronização:', e);
+            toast({
+                variant: 'destructive',
+                title: 'Erro na Sincronização',
+                description: e.message || 'Falha ao buscar publicações do Substack.'
+            });
         } finally {
             setSyncing(false);
         }
     };
 
     const toggleVisibility = async (article) => {
-        // 'draft' = oculto, 'published' = visível (valores válidos do schema)
         const newStatus = article.status === 'published' ? 'draft' : 'published';
         try {
-            await callAdminEdgeFunction({
-                action: 'update_status',
-                article_id: article.id,
-                status: newStatus
-            });
+            // 1. Tentar atualização direta no Supabase
+            const { error: directError } = await supabase
+                .from('artigos')
+                .update({ status: newStatus, updated_at: new Date().toISOString() })
+                .eq('id', article.id);
+
+            // 2. Se houver erro de RLS, tentar via Edge Function
+            if (directError) {
+                console.warn('[BlogMgmt] Update direto bloqueado por RLS, tentando Edge Function...');
+                await callAdminEdgeFunction({
+                    action: 'update_status',
+                    article_id: article.id,
+                    status: newStatus
+                });
+            }
 
             toast({
-                title: 'Status atualizado',
-                description: `Artigo "${article.title}" agora está ${newStatus === 'published' ? 'visível' : 'oculto'}.`
+                title: 'Status atualizado com sucesso',
+                description: `O artigo "${article.title}" agora está ${newStatus === 'published' ? 'visível para o público' : 'oculto (rascunho)'}.`
             });
-            
-            setArticles(articles.map(a => a.id === article.id ? { ...a, status: newStatus } : a));
+
+            setArticles(prev => prev.map(a => a.id === article.id ? { ...a, status: newStatus } : a));
         } catch (error) {
             console.error('Erro ao atualizar status:', error);
             toast({
                 variant: 'destructive',
-                title: 'Erro ao atualizar visibilidade',
-                description: error.message || 'Não foi possível atualizar a visibilidade do artigo.'
+                title: 'Erro ao alterar visibilidade',
+                description: error.message || 'Não foi possível alterar o status do artigo.'
             });
         }
     };
@@ -133,26 +176,36 @@ const BlogManagementDashboard = () => {
     const handleDelete = (article) => {
         setConfirmDialog({
             isOpen: true,
-            title: 'Excluir Artigo',
-            message: `Tem certeza que deseja excluir o artigo "${article.title}"? Isso removerá o artigo apenas da plataforma, não afetará o Substack.`,
+            title: 'Excluir Artigo da Plataforma',
+            message: `Tem certeza que deseja excluir o artigo "${article.title}"? Esta ação removerá a publicação do site Doxologos (o post original permanecerá preservado no Substack).`,
             onConfirm: async () => {
                 try {
-                    await callAdminEdgeFunction({
-                        action: 'delete',
-                        article_id: article.id
-                    });
+                    // 1. Tentar exclusão direta
+                    const { error: directError } = await supabase
+                        .from('artigos')
+                        .delete()
+                        .eq('id', article.id);
+
+                    // 2. Fallback via Edge Function
+                    if (directError) {
+                        console.warn('[BlogMgmt] Delete direto bloqueado por RLS, tentando Edge Function...');
+                        await callAdminEdgeFunction({
+                            action: 'delete',
+                            article_id: article.id
+                        });
+                    }
 
                     toast({
-                        title: 'Artigo excluído',
+                        title: 'Artigo removido',
                         description: 'O artigo foi removido da plataforma com sucesso.'
                     });
-                    
-                    setArticles(articles.filter(a => a.id !== article.id));
+
+                    setArticles(prev => prev.filter(a => a.id !== article.id));
                 } catch (error) {
                     console.error('Erro ao excluir artigo:', error);
                     toast({
                         variant: 'destructive',
-                        title: 'Erro',
+                        title: 'Erro ao excluir artigo',
                         description: error.message || 'Não foi possível excluir o artigo.'
                     });
                 } finally {
@@ -163,133 +216,359 @@ const BlogManagementDashboard = () => {
     };
 
     const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString('pt-BR');
+        if (!dateString) return '—';
+        return new Date(dateString).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
     };
 
-    const filteredArticles = articles.filter(a => 
-        a.title?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Filtros combinados de pesquisa e status
+    const filteredArticles = useMemo(() => {
+        return articles.filter(a => {
+            const matchesSearch = !searchTerm ||
+                a.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                a.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+            const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
+
+            return matchesSearch && matchesStatus;
+        });
+    }, [articles, searchTerm, statusFilter]);
+
+    const stats = useMemo(() => {
+        const total = articles.length;
+        const published = articles.filter(a => a.status === 'published').length;
+        const drafts = total - published;
+        return { total, published, drafts };
+    }, [articles]);
 
     return (
-        <div className="bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-2xl font-bold mb-6 flex items-center">
-                <Newspaper className="w-6 h-6 mr-2 text-[#2d8659]" />
-                Gestão do Blog (Substack)
-            </h2>
-
-            {/* Top Bar: Sync and Search */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-                <div className="relative w-full md:w-96">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Search className="h-5 w-5 text-gray-400" />
+        <div className="space-y-4 sm:space-y-6">
+            {/* CABEÇALHO DO BLOG - CARD CLARO PREMIUM DOXOLOGOS */}
+            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-[#e4ded5] shadow-[0_2px_12px_rgba(27,60,55,0.03)] text-[#262624]">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="bg-[#1b3c37]/5 text-[#1b3c37] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#1b3c37]/15 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-[#1b3c37]" />
+                                Gestão de Conteúdo & SEO
+                            </span>
+                            <span className="text-[11px] text-[#262624]/60 font-medium">
+                                Substack RSS Feed • Publicações Oficiais
+                            </span>
+                        </div>
+                        <h1 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#1b3c37]">
+                            Gestão do Blog & Substack
+                        </h1>
+                        <p className="text-xs text-[#262624]/70 mt-1 max-w-2xl leading-relaxed">
+                            Sincronização automatizada da newsletter Doxologos via RSS, curadoria de visibilidade e indexação para atração orgânica de pacientes.
+                        </p>
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Buscar artigo por título..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-[#2d8659] focus:border-[#2d8659]"
-                    />
+
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <Button
+                            size="sm"
+                            onClick={fetchArticles}
+                            variant="outline"
+                            disabled={loading}
+                            className="flex-1 sm:flex-initial border-[#e4ded5] text-[#1b3c37] hover:bg-[#f8f6f0] text-xs font-semibold h-10 sm:h-9 bg-white shadow-2xs gap-1.5 touch-manipulation"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                            Atualizar Lista
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleSync}
+                            disabled={syncing}
+                            className="flex-1 sm:flex-initial bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold text-xs h-10 sm:h-9 gap-1.5 shadow-sm touch-manipulation"
+                        >
+                            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                            {syncing ? 'Sincronizando...' : 'Sincronizar Substack'}
+                        </Button>
+                    </div>
                 </div>
-                
-                <Button 
-                    onClick={handleSync}
-                    disabled={syncing}
-                    className="bg-[#2d8659] hover:bg-[#236b47] flex items-center gap-2 whitespace-nowrap"
-                >
-                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                    {syncing ? 'Sincronizando...' : 'Sincronizar Agora'}
-                </Button>
             </div>
 
-            {/* Articles List */}
-            <div className="overflow-x-auto bg-white border border-gray-200 rounded-lg">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-700">
-                        <tr>
-                            <th className="p-4 font-semibold text-sm">Artigo</th>
-                            <th className="p-4 font-semibold text-sm w-32 text-center">Data</th>
-                            <th className="p-4 font-semibold text-sm w-32 text-center">Status</th>
-                            <th className="p-4 font-semibold text-sm w-40 text-center">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                        {loading ? (
-                            <tr>
-                                <td colSpan="4" className="p-8 text-center text-gray-500">Carregando artigos...</td>
-                            </tr>
-                        ) : filteredArticles.length === 0 ? (
-                            <tr>
-                                <td colSpan="4" className="p-8 text-center text-gray-500">
-                                    Nenhum artigo encontrado.
-                                </td>
-                            </tr>
-                        ) : (
-                            filteredArticles.map(article => (
-                                <tr key={article.id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            {article.cover_image_url && (
-                                                <img src={article.cover_image_url} alt="Capa" className="w-12 h-12 object-cover rounded-md flex-shrink-0" width={48} height={48} loading="lazy" />
-                                            )}
-                                            <div>
-                                                <p className="font-medium text-gray-900 line-clamp-1">{article.title}</p>
-                                                <a 
-                                                    href={`/artigos/${article.slug}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-xs text-[#2d8659] hover:underline flex items-center mt-1"
-                                                >
-                                                    Ver na plataforma <ExternalLink className="w-3 h-3 ml-1" />
-                                                </a>
+            {/* SELETOR DE STATUS, BUSCA E CONTADORES */}
+            <Card className="p-4 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-xs space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    {/* Input de Busca */}
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="w-4 h-4 text-[#262624]/40 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                            type="text"
+                            placeholder="Buscar artigo por título ou tema..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-3 py-2 text-xs bg-[#f8f6f0] border border-[#e4ded5] rounded-xl text-[#262624] placeholder-[#262624]/40 focus:outline-none focus:ring-2 focus:ring-[#1b3c37]/20 focus:border-[#1b3c37] transition-all"
+                        />
+                    </div>
+
+                    {/* Chips de Filtro de Status sem scrollbar visível */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5">
+                        <button
+                            onClick={() => setStatusFilter('all')}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all touch-manipulation whitespace-nowrap ${
+                                statusFilter === 'all'
+                                    ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-2xs'
+                                    : 'bg-[#f4efe6] text-[#262624]/70 hover:bg-[#e4ded5]'
+                            }`}
+                        >
+                            Todos ({stats.total})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('published')}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all touch-manipulation whitespace-nowrap ${
+                                statusFilter === 'published'
+                                    ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-2xs'
+                                    : 'bg-[#f4efe6] text-[#262624]/70 hover:bg-[#e4ded5]'
+                            }`}
+                        >
+                            Visíveis ({stats.published})
+                        </button>
+                        <button
+                            onClick={() => setStatusFilter('draft')}
+                            className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all touch-manipulation whitespace-nowrap ${
+                                statusFilter === 'draft'
+                                    ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-2xs'
+                                    : 'bg-[#f4efe6] text-[#262624]/70 hover:bg-[#e4ded5]'
+                            }`}
+                        >
+                            Ocultos ({stats.drafts})
+                        </button>
+                    </div>
+                </div>
+
+                {/* ALERTA DE ERRO DE CONEXÃO COM AÇÃO DE RETRY */}
+                {fetchError && (
+                    <div className="p-3.5 bg-red-50/70 border border-red-200 rounded-xl text-xs text-red-900 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                            <span><strong>Falha ao carregar artigos:</strong> {fetchError}</span>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={fetchArticles}
+                            className="text-xs border-red-300 text-red-800 hover:bg-red-100 h-8"
+                        >
+                            Tentar Novamente
+                        </Button>
+                    </div>
+                )}
+
+                {/* ESTADO DE CARREGAMENTO */}
+                {loading ? (
+                    <div className="py-12 text-center text-xs text-[#262624]/60 space-y-2">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#1b3c37]" />
+                        <p>Carregando publicações do blog...</p>
+                    </div>
+                ) : filteredArticles.length === 0 ? (
+                    /* ESTADO VAZIO COM ORIENTAÇÃO */
+                    <div className="py-12 px-4 text-center rounded-xl bg-[#f8f6f0] border border-dashed border-[#e4ded5] max-w-lg mx-auto my-4 space-y-3">
+                        <div className="w-10 h-10 rounded-full bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center mx-auto font-bold">
+                            <Newspaper className="w-5 h-5" />
+                        </div>
+                        <h4 className="font-serif font-bold text-[#1b3c37] text-sm">
+                            {searchTerm ? 'Nenhum artigo corresponde à busca' : 'Nenhum artigo encontrado'}
+                        </h4>
+                        <p className="text-xs text-[#262624]/70 max-w-md mx-auto leading-relaxed">
+                            {searchTerm
+                                ? `Não encontramos artigos com o termo "${searchTerm}". Tente buscar por palavras-chave mais gerais.`
+                                : 'Você pode sincronizar os artigos publicados no Substack clicando no botão abaixo.'}
+                        </p>
+                        {!searchTerm && (
+                            <Button
+                                size="sm"
+                                onClick={handleSync}
+                                disabled={syncing}
+                                className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-xs font-semibold h-9 gap-1.5 shadow-sm mx-auto"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                                Sincronizar Agora com o Substack
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    <>
+                        {/* VISÃO MOBILE: CARDS COMPACTOS (< 640px) */}
+                        <div className="block sm:hidden space-y-3">
+                            {filteredArticles.map(article => (
+                                <div
+                                    key={article.id}
+                                    className="p-3.5 bg-white border border-[#e4ded5] rounded-xl shadow-2xs space-y-2.5"
+                                >
+                                    <div className="flex gap-3 items-start">
+                                        {article.cover_image_url && (
+                                            <img
+                                                src={article.cover_image_url}
+                                                alt="Capa"
+                                                className="w-14 h-14 object-cover rounded-lg border border-[#e4ded5] shrink-0"
+                                                loading="lazy"
+                                            />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2 mb-1">
+                                                <span className="text-[10px] text-[#262624]/60 flex items-center gap-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {formatDate(article.published_at)}
+                                                </span>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                                    article.status === 'published'
+                                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                                                }`}>
+                                                    {article.status === 'published' ? 'Visível' : 'Oculto'}
+                                                </span>
                                             </div>
+                                            <h4 className="font-semibold text-xs text-[#262624] line-clamp-2 leading-snug">
+                                                {article.title}
+                                            </h4>
                                         </div>
-                                    </td>
-                                    <td className="p-4 text-center text-sm text-gray-600">
-                                        {formatDate(article.published_at)}
-                                    </td>
-                                    <td className="p-4 text-center">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            article.status === 'published' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                        }`}>
-                                            {article.status === 'published' ? 'Visível' : 'Oculto'}
-                                        </span>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center justify-center gap-2">
+                                    </div>
+
+                                    <div className="flex items-center justify-between pt-2 border-t border-[#f4efe6]">
+                                        <a
+                                            href={`/artigos/${article.slug}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-[11px] font-semibold text-[#1b3c37] hover:underline flex items-center gap-1"
+                                        >
+                                            Ver no site <ExternalLink className="w-3 h-3" />
+                                        </a>
+
+                                        <div className="flex items-center gap-1.5">
                                             <Button
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => toggleVisibility(article)}
-                                                className={`px-2 py-1 h-8 ${
-                                                    article.status === 'published' ? 'text-gray-500 hover:text-gray-700' : 'text-[#2d8659] hover:text-[#236b47]'
+                                                className={`h-8 px-2.5 text-xs border-[#e4ded5] ${
+                                                    article.status === 'published'
+                                                        ? 'text-[#262624]/70 hover:bg-[#f8f6f0]'
+                                                        : 'text-[#1b3c37] bg-emerald-50/50 hover:bg-emerald-50'
                                                 }`}
                                                 title={article.status === 'published' ? 'Ocultar artigo' : 'Exibir artigo'}
                                             >
-                                                {article.status === 'published' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                {article.status === 'published' ? (
+                                                    <span className="flex items-center gap-1"><EyeOff className="w-3.5 h-3.5" /> Ocultar</span>
+                                                ) : (
+                                                    <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> Publicar</span>
+                                                )}
                                             </Button>
                                             <Button
-                                                variant="destructive"
+                                                variant="outline"
                                                 size="sm"
                                                 onClick={() => handleDelete(article)}
-                                                className="px-2 py-1 h-8"
+                                                className="h-8 px-2 text-xs border-red-200 text-red-600 hover:bg-red-50"
                                                 title="Excluir da plataforma"
                                             >
-                                                <Trash2 className="w-4 h-4" />
+                                                <Trash2 className="w-3.5 h-3.5" />
                                             </Button>
                                         </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* VISÃO DESKTOP: TABELA ELEGANTE DOXOLOGOS (>= 640px) */}
+                        <div className="hidden sm:block overflow-x-auto rounded-xl border border-[#e4ded5]">
+                            <table className="w-full text-left border-collapse text-xs text-[#262624]">
+                                <thead className="bg-[#f8f6f0] text-[#262624]/70 font-bold border-b border-[#e4ded5] text-[11px] uppercase tracking-wider">
+                                    <tr>
+                                        <th className="p-3.5">Artigo Publicado</th>
+                                        <th className="p-3.5 w-32 text-center">Data</th>
+                                        <th className="p-3.5 w-28 text-center">Status</th>
+                                        <th className="p-3.5 w-36 text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#f4efe6]">
+                                    {filteredArticles.map(article => (
+                                        <tr key={article.id} className="hover:bg-[#f8f6f0]/60 transition-colors">
+                                            <td className="p-3.5">
+                                                <div className="flex items-center gap-3">
+                                                    {article.cover_image_url ? (
+                                                        <img
+                                                            src={article.cover_image_url}
+                                                            alt="Capa"
+                                                            className="w-12 h-12 object-cover rounded-lg border border-[#e4ded5] shrink-0"
+                                                            loading="lazy"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-lg bg-[#f4efe6] border border-[#e4ded5] flex items-center justify-center text-[#1b3c37] shrink-0">
+                                                            <Newspaper className="w-5 h-5 opacity-60" />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <p className="font-semibold text-[#262624] line-clamp-1 text-xs sm:text-sm">
+                                                            {article.title}
+                                                        </p>
+                                                        <a
+                                                            href={`/artigos/${article.slug}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="text-[11px] text-[#1b3c37] hover:underline flex items-center gap-1 mt-0.5 font-medium"
+                                                        >
+                                                            Ver publicação no site <ExternalLink className="w-3 h-3" />
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-3.5 text-center text-[#262624]/70 font-mono text-[11px]">
+                                                {formatDate(article.published_at)}
+                                            </td>
+                                            <td className="p-3.5 text-center">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                                    article.status === 'published'
+                                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                                                }`}>
+                                                    {article.status === 'published' ? 'Visível' : 'Oculto'}
+                                                </span>
+                                            </td>
+                                            <td className="p-3.5 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => toggleVisibility(article)}
+                                                        className={`h-8 px-2.5 text-xs border-[#e4ded5] ${
+                                                            article.status === 'published'
+                                                                ? 'text-[#262624]/70 hover:bg-[#f8f6f0]'
+                                                                : 'text-[#1b3c37] bg-emerald-50/50 hover:bg-emerald-50'
+                                                        }`}
+                                                        title={article.status === 'published' ? 'Ocultar artigo' : 'Tornar artigo público'}
+                                                    >
+                                                        {article.status === 'published' ? (
+                                                            <EyeOff className="w-3.5 h-3.5" />
+                                                        ) : (
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                        )}
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(article)}
+                                                        className="h-8 px-2 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                                        title="Excluir da plataforma"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
+                )}
+            </Card>
 
             <ConfirmDialog
                 isOpen={confirmDialog.isOpen}
-                onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+                onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
                 onConfirm={confirmDialog.onConfirm}
                 title={confirmDialog.title}
                 message={confirmDialog.message}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import {
     AdminServicesTab,
     sanitizeCurrencyInput,
@@ -126,13 +127,15 @@ describe('Admin Modular Tabs (Onda 4 Architecture Deconstruction)', () => {
                 }
             ];
             render(
-                <AdminBookingsTab
-                    bookings={mockBookings}
-                    services={[{ id: 's1', name: 'Psicoterapia' }]}
-                    professionals={[{ id: 'p1', name: 'Dra. Maria' }]}
-                    userRole="admin"
-                    onRefresh={jest.fn()}
-                />
+                <MemoryRouter>
+                    <AdminBookingsTab
+                        bookings={mockBookings}
+                        services={[{ id: 's1', name: 'Psicoterapia' }]}
+                        professionals={[{ id: 'p1', name: 'Dra. Maria' }]}
+                        userRole="admin"
+                        onRefresh={jest.fn()}
+                    />
+                </MemoryRouter>
             );
             expect(screen.getByText('Ana Silva')).toBeInTheDocument();
             expect(screen.getAllByText('Confirmado').length).toBeGreaterThan(0);

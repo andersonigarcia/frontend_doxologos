@@ -16,7 +16,8 @@ import {
     Newspaper,
     Building2,
     BookOpen,
-    Sparkles
+    Sparkles,
+    Activity
 } from 'lucide-react';
 
 /**
@@ -26,6 +27,8 @@ import {
 export const tabsConfig = {
     admin: [
         { value: 'dashboard', label: 'Dashboard & KPIs', icon: LayoutDashboard },
+        { value: 'retention-ops', label: 'Retenção & No-Show', icon: Activity },
+        { value: 'growth', label: 'Growth & Metas', icon: TrendingUp },
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'financial-control', label: '3. Controladoria & DRE', icon: TrendingUp },
         { value: 'ai-economics', label: 'Copiloto IA & Telemedicina', icon: Sparkles },

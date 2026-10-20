@@ -32,6 +32,7 @@ export const ManagementDashboardPage = () => {
   const [pulseData, setPulseData] = useState(null);
   
   const [apiVersion, setApiVersion] = useState('v2');
+  const [loadIssues, setLoadIssues] = useState([]); // painéis que falharam (nunca silenciar)
 
   useEffect(() => {
     loadDashboardData();
@@ -39,6 +40,11 @@ export const ManagementDashboardPage = () => {
 
   const loadDashboardData = async () => {
     setLoading(true);
+    const issues = [];
+    const reportIssue = (e) => {
+      console.error('Falha em painel do dashboard:', e);
+      issues.push(e?.message || 'erro desconhecido');
+    };
     try {
       let usingFallback = false;
 
@@ -51,6 +57,7 @@ export const ManagementDashboardPage = () => {
         console.warn('⚠️ Falha ao carregar get_dashboard_summary_v3. Usando fallback v1:', err);
         usingFallback = true;
         setApiVersion('v1');
+        issues.push('Resumo em modo reduzido: variações e receita de eventos indisponíveis');
         
         const { data, error } = await supabase.rpc('get_dashboard_summary');
         if (!error) {
@@ -93,36 +100,42 @@ export const ManagementDashboardPage = () => {
       // 3. Workload
       try {
         const { data, error } = await supabase.rpc(usingFallback ? 'get_professional_workload' : 'get_professional_workload_v2', { days_limit: daysLimit });
-        if (!error) setWorkloadData(data || []);
-      } catch (e) {}
+        if (error) throw error;
+        setWorkloadData(data || []);
+      } catch (e) { reportIssue(e); }
 
       // 4. Retention
       try {
         const { data, error } = await supabase.rpc('get_patient_retention');
-        if (!error) setRetentionData(data || []);
-      } catch (e) {}
+        if (error) throw error;
+        setRetentionData(data || []);
+      } catch (e) { reportIssue(e); }
 
       if (!usingFallback) {
         try {
           const { data, error } = await supabase.rpc('get_conversion_funnel', { days_limit: daysLimit });
-          if (!error) setFunnelData(data || []);
-        } catch (e) {}
+          if (error) throw error;
+          setFunnelData(data || []);
+        } catch (e) { reportIssue(e); }
         
         try {
           const { data, error } = await supabase.rpc('get_event_stats', { days_limit: daysLimit });
-          if (!error) setEventStats(data);
-        } catch (e) {}
+          if (error) throw error;
+          setEventStats(data);
+        } catch (e) { reportIssue(e); }
         
         try {
           const { data, error } = await supabase.rpc('get_pending_alerts');
-          if (!error) setAlerts(data);
-        } catch (e) {}
+          if (error) throw error;
+          setAlerts(data);
+        } catch (e) { reportIssue(e); }
 
         // Phase 2: Pulse Data
         try {
           const { data, error } = await supabase.rpc('get_dashboard_pulse_phase2', { days_limit: 1, p_business_model: businessModel });
-          if (!error) setPulseData(data);
-        } catch (e) {}
+          if (error) throw error;
+          setPulseData(data);
+        } catch (e) { reportIssue(e); }
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -132,6 +145,7 @@ export const ManagementDashboardPage = () => {
         description: 'Verifique suas permissões de administrador.'
       });
     } finally {
+      setLoadIssues(Array.from(new Set(issues)));
       setLoading(false);
     }
   };
@@ -139,10 +153,18 @@ export const ManagementDashboardPage = () => {
   const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 
   // Dados para o Traffic Light System Fase 2
-  const m_ocupacao = pulseData?.ocupacao || 0; 
+  const m_ocupacao = pulseData?.ocupacao ?? null; // null = ainda não instrumentado (mostra "—")
+ 
   const m_noshows = pulseData?.noshows || 0; 
   const m_espera = pulseData?.espera_horas || 0;
-  const m_sem_match = pulseData?.sem_match || 0;
+  const m_sem_match = pulseData?.sem_match ?? null;
+
+  // Retenção real (RPC get_patient_retention): % de pacientes com 2+ consultas
+  const retentionTotal = (retentionData || []).reduce((acc, r) => acc + Number(r.count || 0), 0);
+  const retentionReturning = (retentionData || [])
+    .filter((r) => r.category !== 'Única Consulta')
+    .reduce((acc, r) => acc + Number(r.count || 0), 0);
+  const returningPct = retentionTotal > 0 ? `${Math.round((retentionReturning / retentionTotal) * 100)}%` : '—';
 
   if (loading) {
     return (
@@ -224,6 +246,16 @@ export const ManagementDashboardPage = () => {
 
       <main className="container mx-auto p-6 space-y-8">
 
+        {loadIssues.length > 0 && (
+          <div role="alert" className="p-4 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+            <p className="font-bold">Alguns painéis não carregaram — os valores exibidos podem estar incompletos.</p>
+            <ul className="list-disc ml-5 mt-1 text-xs">
+              {loadIssues.map((issue) => <li key={issue}>{issue}</li>)}
+            </ul>
+            <button onClick={loadDashboardData} className="mt-2 text-xs font-semibold underline">Tentar novamente</button>
+          </div>
+        )}
+
         {/* 🔴 SEÇÃO 1: PULSO DIÁRIO (O que exige ação AGORA) */}
         <section>
           <div className="flex items-center gap-2 mb-4">
@@ -233,9 +265,9 @@ export const ManagementDashboardPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
             <ActionCard 
               title="Ocupação da Agenda" 
-              value={`${m_ocupacao}%`} 
+              value={m_ocupacao === null ? '—' : `${m_ocupacao}%`} 
               threshold={{ warn: 80, critical: 85, dir: 'up' }}
-              currentNum={m_ocupacao}
+              currentNum={m_ocupacao ?? 0}
               icon={<Calendar className="w-5 h-5" />}
               subtext="> 85% indica risco de burnout"
             />
@@ -258,11 +290,11 @@ export const ManagementDashboardPage = () => {
             />
             <ActionCard 
               title="Pacientes na fila de Match" 
-              value={m_sem_match} 
+              value={m_sem_match === null ? '—' : m_sem_match} 
               threshold={{ warn: 5, critical: 15, dir: 'up' }}
-              currentNum={m_sem_match}
+              currentNum={m_sem_match ?? 0}
               icon={<AlertTriangle className="w-5 h-5" />}
-              subtext="Aguardando indicação de profissional"
+              subtext={m_sem_match === null ? 'Métrica ainda não instrumentada' : 'Aguardando indicação de profissional'}
             />
           </div>
         </section>
@@ -276,30 +308,21 @@ export const ManagementDashboardPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase">Retenção 1ª {'->'} 3ª Sessão</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase">Pacientes que Retornam (2+ consultas)</p>
                 <div className="flex items-end gap-3 mt-1">
-                  <h3 className="text-2xl font-black text-gray-900">65%</h3>
-                  <div className="flex items-center text-red-500 text-xs font-bold mb-1">
-                    <TrendingDown className="w-3 h-3 mr-0.5" /> -5%
-                  </div>
+                  <h3 className="text-2xl font-black text-gray-900">{returningPct}</h3>
+                  <span className="text-xs text-gray-400 mb-1">{retentionTotal} pacientes na base</span>
                 </div>
               </div>
-              <div className="w-16 h-10 flex items-end justify-between opacity-30">
-                <div className="w-2 bg-gray-900 h-full rounded-t-sm"></div>
-                <div className="w-2 bg-gray-900 h-[80%] rounded-t-sm"></div>
-                <div className="w-2 bg-gray-900 h-[70%] rounded-t-sm"></div>
-                <div className="w-2 bg-red-500 h-[65%] rounded-t-sm"></div>
-              </div>
+              <Users className="w-8 h-8 text-gray-200" />
             </div>
 
             <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase">Turnover de Profissionais</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase">Taxa de Confirmação (período)</p>
                 <div className="flex items-end gap-3 mt-1">
-                  <h3 className="text-2xl font-black text-gray-900">0%</h3>
-                  <div className="flex items-center text-emerald-500 text-xs font-bold mb-1">
-                    <CheckCircle className="w-3 h-3 mr-0.5" /> Estável
-                  </div>
+                  <h3 className="text-2xl font-black text-gray-900">{summary?.taxa_conversao == null ? '—' : `${summary.taxa_conversao}%`}</h3>
+                  <span className="text-xs text-gray-400 mb-1">confirmadas ÷ criadas</span>
                 </div>
               </div>
               <Users className="w-8 h-8 text-gray-200" />
@@ -352,7 +375,7 @@ export const ManagementDashboardPage = () => {
               <div className="bg-gray-900 text-white p-6 rounded-xl shadow-sm">
                 <p className="text-xs text-gray-400 font-bold uppercase">Consultas Faturadas</p>
                 <h3 className="text-3xl font-black mt-1">{formatCurrency(summary?.receita_consultas)}</h3>
-                {summary?.receita_consultas_delta_pct !== null && (
+                {summary?.receita_consultas_delta_pct != null && (
                   <p className="text-sm mt-2 text-gray-300">
                     <span className={summary.receita_consultas_delta_pct >= 0 ? "text-emerald-400 font-bold" : "text-red-400 font-bold"}>
                       {summary.receita_consultas_delta_pct >= 0 ? '+' : ''}{summary.receita_consultas_delta_pct}%

@@ -44,55 +44,71 @@ export function FinancialControlModule({
   const nfseTaxRate = (Number(settings.nfse_estimated_tax_rate_pct) || 6.00) / 100;
   const defaultRetentionPct = Number(settings.platform_default_retention_pct) || 40;
 
-  // Estado para armazenar os dados reais do DRE (sem paginação e sem cancelamentos)
-  const [dreData, setDreData] = useState({ gmv: 0, payoutTotal: 0, count: 0, isLoading: true });
+  // Estado para armazenar os dados reais do DRE (paginado e sem cancelamentos)
+  const [dreData, setDreData] = useState({ gmv: 0, payoutTotal: 0, count: 0, isLoading: true, error: null });
 
   useEffect(() => {
+    let cancelled = false;
+    const PAGE_SIZE = 1000; // limite padrão do Supabase por requisição
+
     async function fetchDRE() {
-      setDreData(prev => ({ ...prev, isLoading: true }));
+      setDreData(prev => ({ ...prev, isLoading: true, error: null }));
       try {
-        let query = supabase.from('bookings').select(`
-          valor_consulta, 
-          valor_repasse_profissional, 
-          status,
-          service:services ( price, professional_payout )
-        `);
-        
-        // Anti Efeito Melancia: Considera apenas Receita Realizada / A Receber
-        query = query.in('status', ['paid', 'completed', 'confirmed']);
-        
-        // Filtros de Data
-        if (selectedYear !== 'all') {
-            const y = Number(selectedYear);
-            if (selectedMonth !== 'all') {
-                const m = Number(selectedMonth);
-                const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
-                const endDate = new Date(y, m, 0).toISOString().split('T')[0];
-                query = query.gte('booking_date', startDate).lte('booking_date', endDate);
-            } else {
-                const startDate = `${y}-01-01`;
-                const endDate = `${y}-12-31`;
-                query = query.gte('booking_date', startDate).lte('booking_date', endDate);
-            }
+        const rows = [];
+        for (let from = 0; ; from += PAGE_SIZE) {
+          let query = supabase.from('bookings').select(`
+            valor_consulta, 
+            valor_repasse_profissional, 
+            status,
+            service:services ( price, professional_payout )
+          `);
+
+          // Anti Efeito Melancia: Considera apenas Receita Realizada / A Receber
+          query = query.in('status', ['paid', 'completed', 'confirmed']);
+
+          // Filtros de Data
+          if (selectedYear !== 'all') {
+              const y = Number(selectedYear);
+              if (selectedMonth !== 'all') {
+                  const m = Number(selectedMonth);
+                  const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+                  const endDate = new Date(y, m, 0).toISOString().split('T')[0];
+                  query = query.gte('booking_date', startDate).lte('booking_date', endDate);
+              } else {
+                  const startDate = `${y}-01-01`;
+                  const endDate = `${y}-12-31`;
+                  query = query.gte('booking_date', startDate).lte('booking_date', endDate);
+              }
+          }
+
+          // order estável é necessário para paginação consistente
+          const { data, error } = await query.order('booking_date', { ascending: true }).range(from, from + PAGE_SIZE - 1);
+          if (error) throw error;
+          rows.push(...(data || []));
+          if (!data || data.length < PAGE_SIZE) break;
         }
 
-        const { data, error } = await query;
-        
-        if (!error && data) {
-            const gmv = data.reduce((acc, b) => acc + (Number(b.valor_consulta || b?.service?.price || 0)), 0);
-            const payoutTotal = data.reduce((acc, b) => acc + (Number(b.valor_repasse_profissional || b?.service?.professional_payout || b.valor_consulta || 0)), 0);
-            setDreData({ gmv, payoutTotal, count: data.length, isLoading: false });
-        } else {
-            console.error("Erro na busca do DRE:", error);
-            setDreData(prev => ({ ...prev, isLoading: false }));
-        }
+        if (cancelled) return;
+
+        // Repasse ausente: usa o take rate configurado (nunca 100% do valor, que zeraria a margem)
+        const payoutShare = 1 - defaultRetentionPct / 100;
+        const gmv = rows.reduce((acc, b) => acc + (Number(b.valor_consulta || b?.service?.price || 0)), 0);
+        const payoutTotal = rows.reduce((acc, b) => {
+          const value = Number(b.valor_consulta || b?.service?.price || 0);
+          const payout = b.valor_repasse_profissional ?? b?.service?.professional_payout;
+          return acc + (payout !== null && payout !== undefined ? Number(payout) : value * payoutShare);
+        }, 0);
+        setDreData({ gmv, payoutTotal, count: rows.length, isLoading: false, error: null });
       } catch (err) {
-        console.error(err);
-        setDreData(prev => ({ ...prev, isLoading: false }));
+        console.error("Erro na busca do DRE:", err);
+        if (!cancelled) {
+          setDreData({ gmv: 0, payoutTotal: 0, count: 0, isLoading: false, error: err?.message || 'Falha ao carregar a DRE' });
+        }
       }
     }
     fetchDRE();
-  }, [selectedMonth, selectedYear]);
+    return () => { cancelled = true; };
+  }, [selectedMonth, selectedYear, defaultRetentionPct]);
 
   // Cálculos da DRE Consolidada
   const gmv = dreData.gmv;
@@ -109,43 +125,43 @@ export function FinancialControlModule({
   return (
     <div className="space-y-6">
       {/* Header da Controladoria */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[#fcfbf9] p-4 sm:p-6 rounded-2xl border border-[#e4ded5] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="bg-[#1b3c37]/10 text-[#1b3c37] border border-[#1b3c37]/20 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               Módulo de Controladoria Unificada
             </span>
           </div>
-          <h2 className="text-xl font-bold text-slate-900">
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#1b3c37]">
             DRE, Extrato Financeiro & Ledger de Repasses
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-[#262624]/70 mt-1">
             Visão consolidada de caixa, conciliação de recebíveis do Mercado Pago, retenção de impostos e repasses aos profissionais.
           </p>
         </div>
 
         {/* Sub-Navegação da Controladoria */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200 overflow-x-auto w-full [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex items-center gap-1 bg-[#f8f6f0] p-1.5 rounded-xl border border-[#e4ded5] overflow-x-auto w-full md:w-auto scrollbar-none flex-nowrap">
           <button
             onClick={() => setSubTab('dre')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
-              subTab === 'dre' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-[38px] ${
+              subTab === 'dre' ? 'bg-[#1b3c37] text-white shadow-xs font-bold' : 'text-[#262624]/70 hover:text-[#1b3c37] hover:bg-white/60'
             }`}
           >
             DRE Consolidada
           </button>
           <button
             onClick={() => setSubTab('ledger')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 ${
-              subTab === 'ledger' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-[38px] ${
+              subTab === 'ledger' ? 'bg-[#1b3c37] text-white shadow-xs font-bold' : 'text-[#262624]/70 hover:text-[#1b3c37] hover:bg-white/60'
             }`}
           >
             Repasses (Ledger)
           </button>
           <button
             onClick={() => onNavigateTab?.('payments')}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 rounded-lg whitespace-nowrap shrink-0"
+            className="px-3 py-2 text-xs font-semibold text-[#262624]/70 hover:text-[#1b3c37] hover:bg-white/60 rounded-lg whitespace-nowrap shrink-0 min-h-[38px]"
           >
             Checkout MP
           </button>
@@ -154,20 +170,26 @@ export function FinancialControlModule({
 
       {/* RENDERIZADOR SUB-TAB: DRE CONSOLIDADA */}
       {subTab === 'dre' && (
-        <div className="space-y-6">
+        <div className="space-y-5 sm:space-y-6">
+          {dreData.error && (
+            <div role="alert" className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 text-xs">
+              <p className="font-bold">Não foi possível carregar a DRE deste período.</p>
+              <p className="mt-0.5">Os valores abaixo não são confiáveis. Tente novamente ou altere o período. ({dreData.error})</p>
+            </div>
+          )}
           {/* SELETOR DE PERÍODO DRE */}
-          <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div className="bg-[#f8f6f0] p-4 rounded-2xl border border-[#e4ded5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2.5">
+              <Calendar className="w-5 h-5 text-[#1b3c37] shrink-0" />
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 block">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#1b3c37] block">
                   Período de Referência do DRE
                 </span>
-                <span className="text-xs text-emerald-700">
+                <span className="text-xs text-[#262624]/70">
                   {selectedMonth === 'all'
                     ? `Acumulado ${selectedYear === 'all' ? 'Histórico Total' : selectedYear}`
                     : `${monthNames[selectedMonth]} de ${selectedYear}`}
-                  <strong className="ml-2 bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded-full text-[11px]">
+                  <strong className="ml-2 bg-[#1b3c37]/10 text-[#1b3c37] border border-[#1b3c37]/20 px-2 py-0.5 rounded-full text-[11px]">
                     {dreData.isLoading ? '...' : `${dreData.count} ${dreData.count === 1 ? 'consulta' : 'consultas'}`}
                   </strong>
                 </span>
@@ -178,7 +200,7 @@ export function FinancialControlModule({
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="flex-1 min-w-0 bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
+                className="flex-1 min-w-0 bg-white border border-[#e4ded5] text-[#262624] text-xs font-semibold rounded-xl px-2.5 sm:px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1b3c37]/20 shadow-xs cursor-pointer hover:border-[#9bab9b] transition-colors min-h-[42px]"
               >
                 <option value="all">Todos os Meses (Acumulado)</option>
                 {Array.from({ length: 12 }, (_, i) => (
@@ -191,7 +213,7 @@ export function FinancialControlModule({
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="shrink-0 w-24 sm:w-auto bg-white border border-emerald-200 text-slate-800 text-xs font-bold rounded-xl px-2 sm:px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 shadow-sm cursor-pointer hover:border-emerald-300 transition-colors"
+                className="shrink-0 w-28 sm:w-auto bg-white border border-[#e4ded5] text-[#262624] text-xs font-semibold rounded-xl px-2.5 sm:px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1b3c37]/20 shadow-xs cursor-pointer hover:border-[#9bab9b] transition-colors min-h-[42px]"
               >
                 <option value="all">Todos os Anos</option>
                 {[2024, 2025, 2026, 2027].map((yr) => (
@@ -203,79 +225,79 @@ export function FinancialControlModule({
             </div>
           </div>
 
-          {/* CARDS RESUMO DRE */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="p-4 bg-white border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 uppercase">Receita Bruta (GMV)</span>
-              <p className="text-xl font-extrabold text-slate-900 mt-1">{formatBrl(gmv)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Total faturado {selectedMonth === 'all' ? (selectedYear === 'all' ? 'no histórico' : `em ${selectedYear}`) : `em ${monthNames[selectedMonth]}/${selectedYear}`}
+          {/* CARDS RESUMO DRE (Grid 2x2 no Mobile) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            <Card className="p-3.5 sm:p-4 bg-white border border-[#e4ded5] rounded-xl shadow-xs">
+              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">Receita Bruta (GMV)</span>
+              <p className="text-lg sm:text-xl font-bold font-serif text-[#1b3c37] mt-1">{formatBrl(gmv)}</p>
+              <p className="text-[10px] text-[#262624]/60 mt-0.5 truncate">
+                {selectedMonth === 'all' ? (selectedYear === 'all' ? 'Histórico geral' : `Ano ${selectedYear}`) : `${monthNames[selectedMonth]}/${selectedYear}`}
               </p>
             </Card>
 
-            <Card className="p-4 bg-white border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 uppercase">Repasse Profissionais</span>
-              <p className="text-xl font-extrabold text-slate-900 mt-1">{formatBrl(payoutTotal)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Devido aos psicólogos no período</p>
+            <Card className="p-3.5 sm:p-4 bg-white border border-[#e4ded5] rounded-xl shadow-xs">
+              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">Repasse Psicólogos</span>
+              <p className="text-lg sm:text-xl font-bold font-serif text-[#262624] mt-1">{formatBrl(payoutTotal)}</p>
+              <p className="text-[10px] text-[#262624]/60 mt-0.5 truncate">Honorários devidos</p>
             </Card>
 
-            <Card className="p-4 bg-white border border-slate-200 rounded-xl">
-              <span className="text-xs font-semibold text-slate-500 uppercase">Margem Bruta Clínica</span>
-              <p className="text-xl font-extrabold text-emerald-600 mt-1">{formatBrl(platformGrossMargin)}</p>
-              <p className="text-[10px] text-emerald-700 font-medium mt-0.5">Take Rate Bruto: {takeRatePct.toFixed(1)}%</p>
+            <Card className="p-3.5 sm:p-4 bg-white border border-[#e4ded5] rounded-xl shadow-xs">
+              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">Margem Bruta</span>
+              <p className="text-lg sm:text-xl font-bold font-serif text-[#1b3c37] mt-1">{formatBrl(platformGrossMargin)}</p>
+              <p className="text-[10px] text-[#1b3c37] font-semibold mt-0.5">Take Rate: {takeRatePct.toFixed(1)}%</p>
             </Card>
 
-            <Card className="p-4 bg-gradient-to-br from-[#2d8659] to-[#236b47] text-white rounded-xl shadow-sm">
-              <span className="text-xs font-semibold text-emerald-100 uppercase">Resultado Líquido</span>
-              <p className="text-xl font-extrabold text-white mt-1">{formatBrl(netMargin)}</p>
-              <p className="text-[10px] text-emerald-100/80 mt-0.5">Após taxas MP e Impostos</p>
+            <Card className="p-3.5 sm:p-4 bg-gradient-to-br from-[#1b3c37] to-[#16332e] text-white rounded-xl shadow-xs border border-[#1b3c37]/30">
+              <span className="text-[10px] sm:text-xs font-semibold text-[#9bab9b] uppercase tracking-wider">Resultado Líquido</span>
+              <p className="text-lg sm:text-xl font-bold font-serif text-[#f8f6f0] mt-1">{formatBrl(netMargin)}</p>
+              <p className="text-[10px] text-[#9bab9b] mt-0.5 truncate">Pós impostos e gateway</p>
             </Card>
           </div>
 
           {/* TABELA DRE SINTÉTICA */}
-          <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm">
-            <h3 className="font-bold text-slate-900 text-base mb-4 border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <Card className="p-4 sm:p-6 bg-white border border-[#e4ded5] rounded-2xl shadow-xs">
+            <h3 className="font-serif font-bold text-[#1b3c37] text-base mb-4 border-b border-[#e4ded5] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-600" />
+                <FileText className="w-4 h-4 text-[#1b3c37]" />
                 Demonstrativo de Resultado do Exercício (DRE Gerencial)
               </div>
-              <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full w-fit">
+              <span className="text-xs font-semibold text-[#1b3c37] bg-[#f8f6f0] border border-[#e4ded5] px-3 py-1 rounded-full w-fit">
                 📅 Período: {selectedMonth === 'all' ? (selectedYear === 'all' ? 'Histórico Geral' : `Ano ${selectedYear}`) : `${monthNames[selectedMonth]} / ${selectedYear}`}
               </span>
             </h3>
 
-            <div className="divide-y divide-slate-100 text-sm">
-              <div className="py-3 flex justify-between font-bold text-slate-900 bg-slate-50/80 px-4 rounded-lg">
+            <div className="divide-y divide-[#f0ebe1] text-xs sm:text-sm">
+              <div className="py-3 flex justify-between font-bold text-[#1b3c37] bg-[#f8f6f0] px-3.5 sm:px-4 rounded-lg">
                 <span>(+) RECEITA OPERACIONAL BRUTA (GMV Consultas)</span>
                 <span>{formatBrl(gmv)}</span>
               </div>
 
-              <div className="py-2.5 flex justify-between text-slate-600 px-4 pl-8">
+              <div className="py-2.5 flex justify-between text-[#262624]/80 px-3.5 sm:px-4 pl-6 sm:pl-8">
                 <span>(-) Repasse devido aos Psicólogos</span>
-                <span className="text-red-600">({formatBrl(payoutTotal)})</span>
+                <span className="text-red-600 font-semibold">({formatBrl(payoutTotal)})</span>
               </div>
 
-              <div className="py-3 flex justify-between font-semibold text-slate-900 bg-emerald-50/50 px-4 rounded-lg">
+              <div className="py-3 flex justify-between font-semibold text-[#1b3c37] bg-[#1b3c37]/5 px-3.5 sm:px-4 rounded-lg">
                 <span>(=) MARGEM BRUTA DA PLATAFORMA (Take Rate)</span>
-                <span className="text-emerald-700">{formatBrl(platformGrossMargin)}</span>
+                <span className="text-[#1b3c37] font-bold">{formatBrl(platformGrossMargin)}</span>
               </div>
 
-              <div className="py-2.5 flex justify-between text-slate-600 px-4 pl-8">
-                <span>(-) Taxas de Processamento de Meio de Pagamento (Mercado Pago ~{(mpFeeRate*100).toFixed(2)}%)</span>
-                <span className="text-red-600">({formatBrl(estimatedMpFees)})</span>
+              <div className="py-2.5 flex justify-between text-[#262624]/80 px-3.5 sm:px-4 pl-6 sm:pl-8">
+                <span>(-) Taxas de Meio de Pagamento (Mercado Pago ~{(mpFeeRate*100).toFixed(2)}%)</span>
+                <span className="text-red-600 font-semibold">({formatBrl(estimatedMpFees)})</span>
               </div>
 
-              <div className="py-2.5 flex justify-between text-slate-600 px-4 pl-8">
+              <div className="py-2.5 flex justify-between text-[#262624]/80 px-3.5 sm:px-4 pl-6 sm:pl-8">
                 <div className="flex items-center gap-1 group relative">
-                  <span>(-) Provisão Tributária NFS-e / Simples Nacional (~{(nfseTaxRate*100).toFixed(0)}%)</span>
+                  <span>(-) Provisão Tributária NFS-e / Simples (~{(nfseTaxRate*100).toFixed(0)}%)</span>
                   <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 w-64 bg-slate-900 text-white text-[10px] p-2 rounded shadow-lg z-10">
                     Calculado sobre a Margem Bruta (Take Rate) assumindo modelo de Split Payment
                   </div>
                 </div>
-                <span className="text-red-600">({formatBrl(estimatedNfseTaxes)})</span>
+                <span className="text-red-600 font-semibold">({formatBrl(estimatedNfseTaxes)})</span>
               </div>
 
-              <div className="py-3.5 flex justify-between font-extrabold text-base bg-[#2d8659] text-white px-4 rounded-xl mt-2 shadow-sm">
+              <div className="py-3.5 flex justify-between font-bold font-serif text-sm sm:text-base bg-[#1b3c37] text-[#f8f6f0] px-3.5 sm:px-4 rounded-xl mt-2 shadow-xs">
                 <span>(=) MARGEM LÍQUIDA OPERACIONAL DOXOLOGOS</span>
                 <span>{formatBrl(netMargin)}</span>
               </div>
