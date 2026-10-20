@@ -28,6 +28,7 @@ export const tabsConfig = {
         { value: 'dashboard', label: 'Dashboard & KPIs', icon: LayoutDashboard },
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
         { value: 'financial-control', label: '3. Controladoria & DRE', icon: TrendingUp },
+        { value: 'ai-economics', label: 'Copiloto IA & Telemedicina', icon: Sparkles },
         { value: 'payments', label: 'Pagamentos', icon: DollarSign },
         { value: 'profit-loss', label: 'Lucro/Prejuízo', icon: TrendingUp },
         { value: 'livro-caixa', label: 'Livro Caixa', icon: FileText },

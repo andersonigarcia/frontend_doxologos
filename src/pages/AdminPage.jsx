@@ -42,6 +42,7 @@ const EventRegistrationsDashboard = lazy(() => import('@/components/admin/EventR
 const BlogManagementDashboard = lazy(() => import('@/components/admin/BlogManagementDashboard'));
 const BookResourcesAdminSection = lazy(() => import('@/components/admin/BookResourcesAdminSection'));
 const AssessmentLeadsSection = lazy(() => import('@/components/admin/AssessmentLeadsSection'));
+const AiEconomicsCockpit = lazy(() => import('@/components/admin/AiEconomicsCockpit'));
 // Fase 5 - Dashboard Profissional
 import ProfessionalListPage from '@/pages/admin/ProfessionalListPage';
 import {
@@ -2376,7 +2377,7 @@ const AdminPage = () => {
                                     }}
                                     financialData={{
                                         monthlyRevenue: totals.totalValue,
-                                        takeRatePct: 20,
+                                        takeRatePct: totals.totalValue > 0 ? Number(((totals.totalPlatformFee / totals.totalValue) * 100).toFixed(1)) : 40,
                                         netMargin: totals.totalPlatformFee
                                     }}
                                     alertsData={{
@@ -2574,6 +2575,13 @@ const AdminPage = () => {
                                     userRole={userRole}
                                     onNavigateTab={setActiveTab}
                                 />
+                            </Suspense>
+                        </TabsContent>
+
+                        {/* Copiloto IA & Telemedicina Tab */}
+                        <TabsContent value="ai-economics" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                <AiEconomicsCockpit onNavigateTab={setActiveTab} />
                             </Suspense>
                         </TabsContent>
 

@@ -13,7 +13,9 @@ import {
   FileText,
   AlertOctagon,
   ArrowRight,
-  ShieldAlert
+  ShieldAlert,
+  Sparkles,
+  Video
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -55,7 +57,15 @@ export const DEFAULT_SYSTEM_PARAMETERS = {
 
   // 5. Segurança e Controle de Sessão
   session_idle_timeout_minutes: 15,
-  session_max_duration_hours: 6
+  session_max_duration_hours: 6,
+
+  // 6. Telemedicina Embarcada & Copiloto IA (CFP/LGPD)
+  ai_copilot_global_enabled: true,
+  ai_copilot_addon_price: 2.90,
+  ai_copilot_trial_limit: 3,
+  ai_monthly_budget_cap: 500.00,
+  telemedicina_buffer_early_minutes: 10,
+  telemedicina_buffer_late_minutes: 60
 };
 
 // Dicionário de Metadados de Impacto e Nível de Risco por Parâmetro
@@ -171,6 +181,54 @@ export const PARAMETER_METADATA = {
     risk: 'HIGH',
     riskLabel: 'Alto',
     unit: 'horas'
+  },
+  ai_copilot_global_enabled: {
+    label: 'Ativação Global do Copiloto IA (CFP)',
+    category: 'Telemedicina & IA',
+    flows: 'Habilita ou desabilita o botão de geração de prontuário IA em todas as consultas da plataforma.',
+    risk: 'MEDIUM',
+    riskLabel: 'Médio',
+    unit: 'switch'
+  },
+  ai_copilot_addon_price: {
+    label: 'Preço do Add-on de Prontuário IA',
+    category: 'Telemedicina & IA',
+    flows: 'Valor debitado no repasse do profissional por evolução clínica gerada após a degustação.',
+    risk: 'HIGH',
+    riskLabel: 'Alto',
+    unit: 'R$'
+  },
+  ai_copilot_trial_limit: {
+    label: 'Limite de Degustações Gratuitas (Trial)',
+    category: 'Telemedicina & IA',
+    flows: 'Quantidade de consultas com IA sem custo concedidas a cada psicólogo para experimentação clínica.',
+    risk: 'MEDIUM',
+    riskLabel: 'Médio',
+    unit: 'consultas'
+  },
+  ai_monthly_budget_cap: {
+    label: 'Teto Orçamentário Mensal (IA / APIs)',
+    category: 'Telemedicina & IA',
+    flows: 'Limite máximo mensal de gasto somado em tokens Gemini e STT antes de pausar novas gerações.',
+    risk: 'HIGH',
+    riskLabel: 'Alto',
+    unit: 'R$'
+  },
+  telemedicina_buffer_early_minutes: {
+    label: 'Abertura Antecipada da Sala de Espera',
+    category: 'Telemedicina & IA',
+    flows: 'Janela em minutos antes do horário da sessão em que o botão de entrada fica ativo.',
+    risk: 'LOW',
+    riskLabel: 'Baixo',
+    unit: 'minutos'
+  },
+  telemedicina_buffer_late_minutes: {
+    label: 'Tolerância Pós-Início de Consulta',
+    category: 'Telemedicina & IA',
+    flows: 'Janela de tempo após o início da sessão em que a sala ainda aceita conexões.',
+    risk: 'LOW',
+    riskLabel: 'Baixo',
+    unit: 'minutos'
   }
 };
 
@@ -656,6 +714,129 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
                 className="bg-white text-sm font-bold text-slate-900"
               />
               <span className="text-xs font-bold text-slate-600">horas</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      {/* BLOCO 6: TELEMEDICINA EMBARCADA & COPILOTO IA (CFP 01/2009) */}
+      <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+            <Sparkles className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">6. Telemedicina Embarcada & Copiloto IA (CFP 01/2009)</h3>
+            <p className="text-xs text-slate-500">Parâmetros de precificação do add-on de prontuário, degustações e buffers de teleconsulta.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+          {/* Item 1: Ativação Global da IA */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Copiloto IA Global</label>
+              <p className="text-[11px] text-slate-500">Disponibiliza o assistente para todos os psicólogos da clínica.</p>
+            </div>
+            <Switch
+              checked={Boolean(draftSettings.ai_copilot_global_enabled ?? true)}
+              onCheckedChange={(checked) => handleDraftChange('ai_copilot_global_enabled', checked)}
+            />
+          </div>
+
+          {/* Item 2: Preço do Add-on (R$) */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Preço do Add-on (por Prontuário)</label>
+              <p className="text-[11px] text-slate-500">Valor cobrado do psicólogo após a degustação (Custo técnico: ~R$ 1,20).</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-600">R$</span>
+              <Input
+                type="number"
+                step="0.10"
+                min="1.50"
+                max="20.00"
+                value={draftSettings.ai_copilot_addon_price ?? 2.90}
+                onChange={(e) => handleDraftChange('ai_copilot_addon_price', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+            </div>
+          </div>
+
+          {/* Item 3: Limite de Consultas Gratuitas de Degustação */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Consultas Gratuitas de Teste (Trial)</label>
+              <p className="text-[11px] text-slate-500">Degustações por profissional para incentivar adoção clínica.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="0"
+                max="10"
+                value={draftSettings.ai_copilot_trial_limit ?? 3}
+                onChange={(e) => handleDraftChange('ai_copilot_trial_limit', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+              <span className="text-xs font-bold text-slate-600">consultas</span>
+            </div>
+          </div>
+
+          {/* Item 4: Teto Orçamentário Mensal (Cap) */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Teto Orçamentário Mensal de IA</label>
+              <p className="text-[11px] text-slate-500">Limite de segurança de custo das APIs (Gemini + STT).</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-600">R$</span>
+              <Input
+                type="number"
+                min="50"
+                max="10000"
+                value={draftSettings.ai_monthly_budget_cap ?? 500.00}
+                onChange={(e) => handleDraftChange('ai_monthly_budget_cap', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+            </div>
+          </div>
+
+          {/* Item 5: Buffer Antecipado da Sala */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Abertura Antecipada da Sala</label>
+              <p className="text-[11px] text-slate-500">Minutos antes da consulta que o paciente pode acessar a sala de espera.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="5"
+                max="60"
+                value={draftSettings.telemedicina_buffer_early_minutes ?? 10}
+                onChange={(e) => handleDraftChange('telemedicina_buffer_early_minutes', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+              <span className="text-xs font-bold text-slate-600">minutos antes</span>
+            </div>
+          </div>
+
+          {/* Item 6: Tolerância Pós-Início */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Tolerância Pós-Início</label>
+              <p className="text-[11px] text-slate-500">Janela após o horário agendado em que a sala permanece aberta.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="15"
+                max="180"
+                value={draftSettings.telemedicina_buffer_late_minutes ?? 60}
+                onChange={(e) => handleDraftChange('telemedicina_buffer_late_minutes', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+              <span className="text-xs font-bold text-slate-600">minutos</span>
             </div>
           </div>
         </div>

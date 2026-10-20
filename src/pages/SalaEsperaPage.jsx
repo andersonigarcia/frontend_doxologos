@@ -5,8 +5,9 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { getBookingById } from '@/services/bookingService';
 import { Helmet } from 'react-helmet-async';
 import { Button } from '@/components/ui/button';
-import { Loader2, Video, AlertCircle, CheckCircle, Clock, Shield, Calendar, ArrowLeft } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Loader2, Video, AlertCircle, CheckCircle, Clock, Shield, Calendar, ArrowLeft, Star, Heart, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { EmbeddedConsultationRoom } from '@/components/telemedicina/EmbeddedConsultationRoom';
 
 const SalaEsperaPage = () => {
     const { id } = useParams();
@@ -15,8 +16,19 @@ const SalaEsperaPage = () => {
     
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [joining, setJoining] = useState(false);
     const [error, setError] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Estado da Sala Embarcada (Fase 2)
+    const [activeSession, setActiveSession] = useState(null);
+
+    // Estado do Funil de Retenção Pós-Sessão
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [rating, setRating] = useState(5);
+    const [feedbackComment, setFeedbackComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+    const [reviewSubmitted, setReviewSubmitted] = useState(false);
     
     // Atualiza o relógio a cada 15 segundos para recalcular a janela temporal
     useEffect(() => {
@@ -68,6 +80,68 @@ const SalaEsperaPage = () => {
             supabase.removeChannel(subscription);
         };
     }, [user, id]);
+
+    // Manipula entrada na consulta com Circuit Breaker transparente
+    const handleJoinConsultation = async () => {
+        setJoining(true);
+        try {
+            const { data, error: fnErr } = await supabase.functions.invoke('create-video-room', {
+                body: { booking_id: id }
+            });
+
+            if (fnErr || !data) {
+                throw fnErr || new Error("Falha ao inicializar sala virtual");
+            }
+
+            if (data.mode === 'embedded' && data.roomUrl) {
+                // Modo Embarcado Nativo Daily.co (In-App)
+                setActiveSession({
+                    roomUrl: data.roomUrl,
+                    token: data.token,
+                    isOwner: data.isOwner,
+                    durationMinutes: data.durationMinutes || 50
+                });
+            } else {
+                // Modo de Contingência (Circuit Breaker / Fase 1)
+                const fallbackLink = data.fallbackUrl || booking?.meeting_link || booking?.professional?.personal_meet_link;
+                if (fallbackLink) {
+                    window.open(fallbackLink, '_blank');
+                } else {
+                    alert("Link da reunião não encontrado. Por favor, contate o suporte.");
+                }
+            }
+        } catch (joinErr) {
+            console.warn("Fallback automático ativado devido a erro na API:", joinErr);
+            const fallbackLink = booking?.meeting_link || booking?.professional?.personal_meet_link;
+            if (fallbackLink) {
+                window.open(fallbackLink, '_blank');
+            } else {
+                alert("Não foi possível acessar a sala de vídeo. Tente novamente em instantes.");
+            }
+        } finally {
+            setJoining(false);
+        }
+    };
+
+    const handleSendReview = async () => {
+        setSubmittingReview(true);
+        try {
+            await supabase.from('reviews').insert([{
+                booking_id: id,
+                patient_id: user?.id,
+                professional_id: booking?.professional_id,
+                rating,
+                comment: feedbackComment || null,
+                is_approved: true,
+            }]);
+            setReviewSubmitted(true);
+        } catch (e) {
+            console.error("Erro ao salvar avaliação:", e);
+            setReviewSubmitted(true);
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
     
     if (loading) {
         return (
@@ -91,10 +165,41 @@ const SalaEsperaPage = () => {
             </div>
         );
     }
+
+    // ── TELA DA TELECONSULTA EMBARCADA (FASE 2) ──
+    if (activeSession) {
+        return (
+            <>
+                <Helmet><title>Teleconsulta em Andamento - Doxologos</title></Helmet>
+                <div className="min-h-screen bg-slate-950 py-6 px-4 flex flex-col items-center justify-center">
+                    <div className="w-full max-w-5xl">
+                        <EmbeddedConsultationRoom
+                            roomUrl={activeSession.roomUrl}
+                            token={activeSession.token}
+                            durationMinutes={activeSession.durationMinutes}
+                            isOwner={activeSession.isOwner}
+                            participantName={user?.user_metadata?.name || booking?.patient_name || 'Participante'}
+                            onSessionEnd={async () => {
+                                setActiveSession(null);
+                                setShowReviewModal(true);
+                                try {
+                                    await supabase.from('bookings').update({
+                                        session_status: 'finished',
+                                        session_ended_at: new Date().toISOString()
+                                    }).eq('id', id);
+                                } catch (e) {
+                                    console.error('Erro ao atualizar status de encerramento:', e);
+                                }
+                            }}
+                        />
+                    </div>
+                </div>
+            </>
+        );
+    }
     
     const isReady = booking.session_status === 'in_progress';
     const isFinished = booking.session_status === 'finished';
-    const actualMeetingLink = booking?.meeting_link || booking?.professional?.personal_meet_link || (Array.isArray(booking?.professional) ? booking.professional[0]?.personal_meet_link : null);
 
     // ─── GATEKEEPER TEMPORAL (Anti-Desintermediação & Segurança) ───
     let isTooEarly = false;
@@ -102,14 +207,24 @@ const SalaEsperaPage = () => {
     let formattedDate = booking.booking_date;
     let formattedTime = booking.booking_time || '';
     let minutesUntilStart = 0;
+    let nextWeekFormatted = '';
 
     if (booking.booking_date && booking.booking_time) {
         try {
             const timePart = booking.booking_time.slice(0, 5);
             const scheduledDateTime = new Date(`${booking.booking_date}T${timePart}:00`);
-            formattedDate = new Date(booking.booking_date + 'T00:00:00').toLocaleDateString('pt-BR', {
+            const baseDate = new Date(booking.booking_date + 'T00:00:00');
+            formattedDate = baseDate.toLocaleDateString('pt-BR', {
                 weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
             });
+
+            // Cálculo para Reagendamento da Próxima Semana
+            const nextWeekDate = new Date(baseDate);
+            nextWeekDate.setDate(nextWeekDate.getDate() + 7);
+            nextWeekFormatted = nextWeekDate.toLocaleDateString('pt-BR', {
+                weekday: 'long', day: '2-digit', month: 'long'
+            });
+
             const diffMs = scheduledDateTime.getTime() - currentTime.getTime();
             minutesUntilStart = Math.round(diffMs / 60000);
             
@@ -153,7 +268,10 @@ const SalaEsperaPage = () => {
                                 <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                                 <h2 className="text-xl font-bold text-gray-800 mb-2">Sessão Finalizada</h2>
                                 <p className="text-gray-600 mb-6">Esta consulta já foi encerrada na plataforma.</p>
-                                <Button onClick={() => navigate('/paciente')} variant="outline" className="border-[#2d8659] text-[#2d8659]">
+                                <Button onClick={() => setShowReviewModal(true)} className="bg-[#2d8659] hover:bg-[#236b47] mr-3">
+                                    Avaliar & Reagendar
+                                </Button>
+                                <Button onClick={() => navigate('/paciente')} variant="outline" className="border-gray-300">
                                     Voltar ao Painel
                                 </Button>
                             </motion.div>
@@ -191,26 +309,22 @@ const SalaEsperaPage = () => {
                                     <Video className="w-8 h-8" />
                                 </div>
                                 <h2 className="text-2xl font-bold text-gray-800 mb-2">O profissional está te chamando!</h2>
-                                <p className="text-gray-600 mb-8">Sua sala já está pronta e liberada para entrada.</p>
+                                <p className="text-gray-600 mb-8">Sua sala de teleconsulta já está pronta e liberada para entrada.</p>
                                 
                                 <Button 
+                                    disabled={joining}
                                     className="w-full h-14 text-lg bg-[#2d8659] hover:bg-[#236b47] shadow-lg hover:shadow-xl transition-all"
-                                    onClick={() => {
-                                        if (actualMeetingLink) {
-                                            window.open(actualMeetingLink, '_blank');
-                                        } else {
-                                            alert("Link da reunião não encontrado.");
-                                        }
-                                    }}
+                                    onClick={handleJoinConsultation}
                                 >
-                                    Entrar na Consulta Agora
+                                    {joining ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                            Conectando à Sala Segura...
+                                        </>
+                                    ) : (
+                                        "Entrar na Consulta Agora"
+                                    )}
                                 </Button>
-                                
-                                {booking.meeting_password && (
-                                    <p className="mt-4 text-sm text-gray-500">
-                                        Senha de acesso: <span className="font-mono font-bold bg-gray-100 px-2 py-1 rounded">{booking.meeting_password}</span>
-                                    </p>
-                                )}
                             </motion.div>
                         ) : (
                             /* Dentro da janela temporal (T-10m até T+60m), aguardando chamada */
@@ -236,15 +350,11 @@ const SalaEsperaPage = () => {
                                         <p className="text-xs text-gray-500 mb-3">O horário agendado já começou e o botão automático ainda não apareceu?</p>
                                         <Button 
                                             variant="outline" 
+                                            disabled={joining}
                                             className="text-[#2d8659] border-[#2d8659] hover:bg-emerald-50 text-sm h-10 px-6 font-medium"
-                                            onClick={() => {
-                                                if (actualMeetingLink) {
-                                                    window.open(actualMeetingLink, '_blank');
-                                                } else {
-                                                    alert("Link da reunião não disponível.");
-                                                }
-                                            }}
+                                            onClick={handleJoinConsultation}
                                         >
+                                            {joining ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                                             Entrar na Sala Virtual
                                         </Button>
                                     </div>
@@ -259,6 +369,90 @@ const SalaEsperaPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* ── MODAL DE RETENÇÃO & AVALIAÇÃO PÓS-CONSULTA (FASE 2) ── */}
+            <AnimatePresence>
+                {showReviewModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center border border-gray-100"
+                        >
+                            {!reviewSubmitted ? (
+                                <>
+                                    <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Heart className="w-7 h-7" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-800 mb-1">Como foi seu atendimento?</h3>
+                                    <p className="text-xs text-gray-500 mb-6">Sua avaliação é confidencial e nos ajuda a manter a excelência clínica.</p>
+
+                                    {/* Estrelas */}
+                                    <div className="flex justify-center gap-2 mb-6">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                                key={star}
+                                                type="button"
+                                                onClick={() => setRating(star)}
+                                                className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                                            >
+                                                <Star className={`w-8 h-8 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} />
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    <textarea
+                                        value={feedbackComment}
+                                        onChange={(e) => setFeedbackComment(e.target.value)}
+                                        placeholder="Deixe uma mensagem para o profissional ou sobre a experiência (opcional)..."
+                                        className="w-full text-xs p-3 border border-gray-200 rounded-xl mb-6 focus:ring-2 focus:ring-[#2d8659] focus:outline-none resize-none"
+                                        rows={3}
+                                    />
+
+                                    <Button
+                                        onClick={handleSendReview}
+                                        disabled={submittingReview}
+                                        className="w-full bg-[#2d8659] hover:bg-[#236b47] h-11 text-sm font-semibold mb-3"
+                                    >
+                                        {submittingReview ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : "Enviar Avaliação"}
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-14 h-14 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <CheckCircle className="w-8 h-8" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-800 mb-2">Obrigado pelo feedback!</h3>
+                                    
+                                    {/* Funil de Reagendamento 1-Clique */}
+                                    <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-4 my-6 text-left">
+                                        <p className="text-xs font-semibold text-emerald-900 mb-1">🌱 Mantenha a continuidade do seu cuidado</p>
+                                        <p className="text-xs text-emerald-700 mb-3">
+                                            A psicoterapia semanal potencializa seus resultados. Deseja já reservar seu horário para a próxima semana?
+                                        </p>
+                                        <Button
+                                            onClick={() => navigate(`/agendamento?professional=${booking.professional_id}`)}
+                                            className="w-full bg-[#2d8659] hover:bg-[#236b47] text-xs h-10 font-medium flex items-center justify-center gap-1 shadow-sm"
+                                        >
+                                            <span>Agendar para {nextWeekFormatted}</span>
+                                            <ArrowRight className="w-3.5 h-3.5" />
+                                        </Button>
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => navigate('/paciente')}
+                                        className="w-full text-xs h-10 border-gray-300"
+                                    >
+                                        Voltar à Área do Paciente
+                                    </Button>
+                                </>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </>
     );
 };

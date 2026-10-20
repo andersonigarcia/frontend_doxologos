@@ -64,6 +64,9 @@ const FinancialDashboard = lazy(() => import('@/components/admin/FinancialDashbo
 const ProfessionalPaymentsList = lazy(() => import('@/components/admin/ProfessionalPaymentsList').then(m => ({ default: m.ProfessionalPaymentsList })));
 const PaymentFormModal = lazy(() => import('@/components/admin/PaymentFormModal').then(m => ({ default: m.PaymentFormModal })));
 const PaymentDetailsModal = lazy(() => import('@/components/admin/PaymentDetailsModal').then(m => ({ default: m.PaymentDetailsModal })));
+const FinancialControlModule = lazy(() => import('@/components/admin/FinancialControlModule').then(m => ({ default: m.FinancialControlModule })));
+const AiEconomicsCockpit = lazy(() => import('@/components/admin/AiEconomicsCockpit'));
+const SystemSettingsManager = lazy(() => import('@/components/admin/SystemSettingsManager').then(m => ({ default: m.SystemSettingsManager })));
 
 
 
@@ -2596,7 +2599,19 @@ const ProfessionalDashboardPage = () => {
                         {/* Financial Control Tab - DRE & Controladoria Unificada */}
                         <TabsContent value="financial-control" className="mt-6">
                             <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                
+                                <FinancialControlModule
+                                    financialData={{ monthlyRevenue: totals.totalValue }}
+                                    bookings={bookings}
+                                    userRole={userRole}
+                                    onNavigateTab={setActiveTab}
+                                />
+                            </Suspense>
+                        </TabsContent>
+
+                        {/* Copiloto IA & Telemedicina Tab */}
+                        <TabsContent value="ai-economics" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                                <AiEconomicsCockpit onNavigateTab={setActiveTab} />
                             </Suspense>
                         </TabsContent>
 
@@ -2896,7 +2911,7 @@ const ProfessionalDashboardPage = () => {
                                 <TabsContent value="settings" className="mt-6">
 <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                     <div className="space-y-6">
-                                        
+                                        <SystemSettingsManager userRole={userRole} />
 
                                         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
                                             <h3 className="font-semibold text-lg mb-4 text-slate-900">Marketing & Lead Magnets</h3>

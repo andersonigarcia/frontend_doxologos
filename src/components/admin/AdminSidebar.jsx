@@ -51,6 +51,8 @@ export const ADMIN_MODULES = [
     icon: TrendingUp,
     tabs: [
       { id: 'financial-control', label: 'DRE & Controladoria', icon: TrendingUp },
+      { id: 'ai-economics', label: 'Copiloto IA & Custos', icon: Sparkles },
+      { id: 'profit-loss', label: 'Lucro / Prejuízo (DRE)', icon: TrendingUp },
       { id: 'financeiro', label: 'Meu Faturamento', icon: DollarSign },
       { id: 'payments', label: 'Pagamentos / Checkout', icon: DollarSign },
       { id: 'livro-caixa', label: 'Livro Caixa', icon: FileText },

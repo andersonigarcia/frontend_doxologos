@@ -17,9 +17,12 @@ import {
     DollarSign,
     CheckCircle2,
     XCircle,
-    AlertCircle
+    AlertCircle,
+    Sparkles
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { ClinicalEvolutionCopilotModal } from '@/components/telemedicina/ClinicalEvolutionCopilotModal';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -77,6 +80,7 @@ export function AdminBookingsTab({
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [expandedZoomCards, setExpandedZoomCards] = useState({});
+    const [selectedCopilotBooking, setSelectedCopilotBooking] = useState(null);
 
     const [bookingFilters, setBookingFilters] = useState({
         service_id: '',
@@ -926,6 +930,22 @@ export function AdminBookingsTab({
                                                     </td>
                                                     <td className="p-3 text-right whitespace-nowrap">
                                                         <div className="flex items-center justify-end gap-1.5">
+                                                            <Link
+                                                                to={`/sala-espera/${b.id}`}
+                                                                title="Entrar na Sala de Teleconsulta"
+                                                                className="inline-flex items-center justify-center h-7 w-7 rounded-lg text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-2xs"
+                                                            >
+                                                                <Video className="w-3.5 h-3.5" />
+                                                            </Link>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                title="Copiloto IA: Evolução Clínica (CFP)"
+                                                                className="h-7 w-7 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                                                                onClick={() => setSelectedCopilotBooking(b)}
+                                                            >
+                                                                <Sparkles className="w-3.5 h-3.5" />
+                                                            </Button>
                                                             <select
                                                                 value={b.status}
                                                                 onChange={(e) => handleQuickStatusChange(b.id, e.target.value, b)}
@@ -1013,18 +1033,22 @@ export function AdminBookingsTab({
                                             </span>
                                         </div>
 
-                                        {b.meeting_link && (
-                                            <div className="pt-2 border-t border-slate-100">
-                                                <a
-                                                    href={b.meeting_link}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1 text-xs text-emerald-700 font-bold hover:underline"
-                                                >
-                                                    <Video className="w-3.5 h-3.5" /> Acessar Videochamada
-                                                </a>
-                                            </div>
-                                        )}
+                                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                            <Link
+                                                to={`/sala-espera/${b.id}`}
+                                                className="inline-flex items-center gap-1.5 text-xs text-emerald-700 font-bold hover:underline bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
+                                            >
+                                                <Video className="w-3.5 h-3.5" /> Entrar na Sala
+                                            </Link>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => setSelectedCopilotBooking(b)}
+                                                className="text-xs text-emerald-700 hover:bg-emerald-50 font-bold gap-1 h-7"
+                                            >
+                                                <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> Evolução IA (CFP)
+                                            </Button>
+                                        </div>
 
                                         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                                             <select
@@ -1241,6 +1265,14 @@ export function AdminBookingsTab({
                 message={confirmDialog.message}
                 warningMessage={confirmDialog.warningMessage}
                 type={confirmDialog.type}
+            />
+
+            <ClinicalEvolutionCopilotModal
+                isOpen={Boolean(selectedCopilotBooking)}
+                onClose={() => setSelectedCopilotBooking(null)}
+                booking={selectedCopilotBooking}
+                professional={currentProfessional || professionals.find(p => p.id === selectedCopilotBooking?.professional_id)}
+                onSaved={onRefresh}
             />
         </div>
     );
