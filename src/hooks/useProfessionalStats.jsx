@@ -27,9 +27,12 @@ async function fetchProfessionalStats(professionalId) {
             todayAppointments: [],
             pendingAppointments: [],
             monthlyRevenue: 0,
+            realizedRevenue: 0,
+            forecastRevenue: 0,
             averageRating: 0,
             totalAppointments: 0,
             confirmedToday: 0,
+            nextAppointment: null,
         };
     }
 
@@ -74,10 +77,16 @@ async function fetchProfessionalStats(professionalId) {
     if (monthlyRes.error) throw monthlyRes.error;
     if (reviewsRes.error) throw reviewsRes.error;
 
-    const revenue = (monthlyRes.data || []).reduce(
-        (sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0),
-        0
-    );
+    const monthlyBookings = monthlyRes.data || [];
+    const realizedRevenue = monthlyBookings
+        .filter((b) => ['completed', 'paid'].includes(b.status))
+        .reduce((sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0), 0);
+
+    const forecastRevenue = monthlyBookings
+        .filter((b) => b.status === 'confirmed')
+        .reduce((sum, b) => sum + (parseFloat(b.valor_repasse_profissional) || 0), 0);
+
+    const totalMonthlyRevenue = realizedRevenue + forecastRevenue;
 
     const avgRating =
         reviewsRes.data?.length > 0
@@ -89,13 +98,23 @@ async function fetchProfessionalStats(professionalId) {
         ['confirmed', 'paid', 'completed'].includes(b.status)
     ).length;
 
+    // Próxima consulta ativa do dia
+    const nowTimeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    const nextUpcoming = todayBookings.find((b) =>
+        ['confirmed', 'paid'].includes(b.status) && (b.booking_time >= nowTimeStr)
+    );
+    const nextAppointment = nextUpcoming || todayBookings.find((b) => ['confirmed', 'paid'].includes(b.status)) || null;
+
     return {
         todayAppointments: todayBookings,
         pendingAppointments: pendingRes.data || [],
-        monthlyRevenue: revenue,
+        monthlyRevenue: totalMonthlyRevenue,
+        realizedRevenue,
+        forecastRevenue,
         averageRating: avgRating,
         totalAppointments: todayBookings.length,
         confirmedToday,
+        nextAppointment,
     };
 }
 
@@ -120,9 +139,12 @@ export function useProfessionalStats(professionalId = null) {
         todayAppointments: query.data?.todayAppointments ?? [],
         pendingAppointments: query.data?.pendingAppointments ?? [],
         monthlyRevenue: query.data?.monthlyRevenue ?? 0,
+        realizedRevenue: query.data?.realizedRevenue ?? 0,
+        forecastRevenue: query.data?.forecastRevenue ?? 0,
         averageRating: query.data?.averageRating ?? 0,
         totalAppointments: query.data?.totalAppointments ?? 0,
         confirmedToday: query.data?.confirmedToday ?? 0,
+        nextAppointment: query.data?.nextAppointment ?? null,
         loading: query.isLoading,
         error: query.error,
         refresh: query.refetch,

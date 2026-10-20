@@ -43,13 +43,10 @@ export function useNotifications(options = {}) {
 
         if (fetchError) {
             setError(fetchError);
-            toast({
-                variant: 'destructive',
-                title: 'Erro ao carregar notificações',
-                description: 'Não foi possível carregar suas notificações.',
-            });
+            console.warn('ℹ️ Notificações offline ou sem permissão:', fetchError?.message || fetchError);
+            setNotifications([]);
         } else {
-            setNotifications(data);
+            setNotifications(data || []);
         }
 
         setLoading(false);

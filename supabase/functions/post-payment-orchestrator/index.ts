@@ -199,9 +199,13 @@ function buildProfessionalConfirmationEmail(booking: any, professional: any): st
         </p>
       </div>
 
-      <div style="text-align:center;margin:0 0 20px;">
-        <a href="https://novo.doxologos.com.br/area-do-profissional" style="display:inline-block;background:#1e3a5f;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">
-          Acessar Meu Painel Profissional
+      <!-- Ações: Google Agenda e Painel -->
+      <div style="text-align:center;margin:0 0 24px;">
+        <a href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Consulta Doxologos: ' + patientName)}&dates=${new Date(booking.booking_date + 'T' + (booking.booking_time?.slice(0, 5) || '00:00') + ':00').toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'}/${new Date(new Date(booking.booking_date + 'T' + (booking.booking_time?.slice(0, 5) || '00:00') + ':00').getTime() + 50 * 60 * 1000).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'}&details=${encodeURIComponent('Atendimento Psicológico Doxologos com ' + patientName + '.\nSala Virtual: https://novo.doxologos.com.br/sala-espera/' + booking.id)}&location=${encodeURIComponent('https://novo.doxologos.com.br/sala-espera/' + booking.id)}" target="_blank" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:600;margin:4px 6px;">
+          📅 Adicionar ao Google Agenda
+        </a>
+        <a href="https://novo.doxologos.com.br/area-do-profissional" style="display:inline-block;background:#1e3a5f;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:600;margin:4px 6px;">
+          Acessar Meu Painel
         </a>
       </div>
     </div>
@@ -412,6 +416,30 @@ Deno.serve(async (req: Request) => {
     } else {
       console.warn(`[Orchestrator] Profissional sem email cadastrado (user_id: ${professional?.user_id}).`);
       results.professional_email = 'skipped_no_email';
+    }
+
+    // ── 5.1 Notificação In-App para o PROFISSIONAL ───────────────────────
+    if (professional?.user_id) {
+      try {
+        const bookingDateStr = new Date(booking.booking_date).toLocaleDateString('pt-BR');
+        const bookingTimeStr = booking.booking_time?.slice(0, 5) || '';
+        await supabase.from('notifications').insert([{
+          user_id: professional.user_id,
+          type: 'booking:confirmed',
+          title: `📅 Nova Consulta: ${booking.patient_name || 'Paciente'}`,
+          message: `Consulta confirmada para ${bookingDateStr} às ${bookingTimeStr}h.`,
+          link: '/profissional',
+          metadata: {
+            booking_id: booking.id,
+            patient_name: booking.patient_name,
+            booking_date: booking.booking_date,
+            booking_time: booking.booking_time,
+          }
+        }]);
+        console.log(`[Orchestrator] Notificação in-app criada para profissional ${professional.user_id}`);
+      } catch (notifErr) {
+        console.error('[Orchestrator] Falha ao criar notificação in-app para profissional (non-fatal):', notifErr);
+      }
     }
 
     // ── 6. WhatsApp (plugável — ativar quando serviço contratado) ──────────

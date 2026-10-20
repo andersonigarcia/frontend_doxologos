@@ -26,7 +26,11 @@ async function fetchPatientData(professionalId) {
     const patientMap = {};
 
     (bookings || []).forEach((booking) => {
-        const patientKey = booking.patient_email || booking.patient_name || 'unknown';
+        // Prioriza email; se ausente, combina telefone com nome para evitar colisão entre homônimos
+        const cleanEmail = booking.patient_email?.trim()?.toLowerCase();
+        const cleanPhone = booking.patient_phone?.replace(/\D/g, '');
+        const cleanName = booking.patient_name?.trim()?.toLowerCase();
+        const patientKey = cleanEmail || (cleanPhone ? `${cleanPhone}_${cleanName}` : cleanName) || 'unknown';
 
         if (!patientMap[patientKey]) {
             patientMap[patientKey] = {
@@ -57,8 +61,13 @@ async function fetchPatientData(professionalId) {
         }
 
         if (['confirmed', 'paid', 'completed'].includes(booking.status)) {
-            patient.totalSpent += parseFloat(booking.valor_consulta || booking.service?.price) || 0;
-            patient.totalRepasse += parseFloat(booking.valor_repasse_profissional || booking.service?.professional_payout || booking.valor_consulta) || 0;
+            const consultationPrice = parseFloat(booking.valor_consulta || booking.service?.price) || 0;
+            const fallbackPayout = booking.service?.professional_payout 
+                ? parseFloat(booking.service.professional_payout) 
+                : (consultationPrice * 0.60); // 60% taxa padrão de repasse em vez de 100%
+
+            patient.totalSpent += consultationPrice;
+            patient.totalRepasse += parseFloat(booking.valor_repasse_profissional) || fallbackPayout;
         }
 
         if (booking.status === 'completed') {

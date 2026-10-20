@@ -55,9 +55,16 @@ class NotificationService {
         } = options;
 
         try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const currentUserId = sessionData?.session?.user?.id;
+            if (!currentUserId) {
+                return { data: [], error: null };
+            }
+
             let query = supabase
                 .from('notifications')
                 .select('*')
+                .eq('user_id', currentUserId)
                 .order('created_at', { ascending: false })
                 .limit(limit);
 
@@ -72,13 +79,13 @@ class NotificationService {
             const { data, error } = await query;
 
             if (error) {
-                console.error('❌ Erro ao buscar notificações:', error);
+                console.warn('ℹ️ Erro ao buscar notificações (não fatal):', error?.message || error);
                 return { data: [], error };
             }
 
-            return { data, error: null };
+            return { data: data || [], error: null };
         } catch (error) {
-            console.error('❌ Erro crítico ao buscar notificações:', error);
+            console.warn('ℹ️ Exceção ao buscar notificações (não fatal):', error?.message || error);
             return { data: [], error };
         }
     }
@@ -90,19 +97,26 @@ class NotificationService {
      */
     async getUnreadCount() {
         try {
+            const { data: sessionData } = await supabase.auth.getSession();
+            const currentUserId = sessionData?.session?.user?.id;
+            if (!currentUserId) {
+                return { count: 0, error: null };
+            }
+
             const { count, error } = await supabase
                 .from('notifications')
                 .select('*', { count: 'exact', head: true })
+                .eq('user_id', currentUserId)
                 .eq('read', false);
 
             if (error) {
-                console.error('❌ Erro ao contar notificações:', error);
+                console.warn('ℹ️ Erro ao contar notificações (não fatal):', error?.message || error);
                 return { count: 0, error };
             }
 
-            return { count, error: null };
+            return { count: count || 0, error: null };
         } catch (error) {
-            console.error('❌ Erro crítico ao contar notificações:', error);
+            console.warn('ℹ️ Exceção ao contar notificações (não fatal):', error?.message || error);
             return { count: 0, error };
         }
     }
@@ -233,23 +247,33 @@ class NotificationService {
      * @returns {Object} Subscription object
      */
     subscribeToNotifications(callback) {
-        const subscription = supabase
-            .channel('notifications')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'notifications',
-                },
-                (payload) => {
-                    console.log('📬 Nova notificação recebida:', payload.new);
-                    callback(payload.new);
-                }
-            )
-            .subscribe();
+        try {
+            if (!supabase || typeof supabase.channel !== 'function') {
+                return null;
+            }
+            const subscription = supabase
+                .channel('notifications_realtime')
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'notifications',
+                    },
+                    (payload) => {
+                        console.log('📬 Nova notificação recebida:', payload?.new);
+                        if (payload?.new && callback) {
+                            callback(payload.new);
+                        }
+                    }
+                )
+                .subscribe();
 
-        return subscription;
+            return subscription;
+        } catch (e) {
+            console.warn('⚠️ Falha ao inicializar realtime de notificações:', e);
+            return null;
+        }
     }
 
     /**
@@ -258,8 +282,15 @@ class NotificationService {
      * @param {Object} subscription - Objeto de subscrição
      */
     unsubscribeFromNotifications(subscription) {
-        if (subscription) {
-            supabase.removeChannel(subscription);
+        if (!subscription) return;
+        try {
+            if (typeof supabase.removeChannel === 'function') {
+                supabase.removeChannel(subscription);
+            } else if (typeof subscription.unsubscribe === 'function') {
+                subscription.unsubscribe();
+            }
+        } catch (e) {
+            console.warn('⚠️ Erro ao cancelar canal de notificações:', e);
         }
     }
 }

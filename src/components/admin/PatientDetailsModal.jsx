@@ -132,8 +132,8 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
-    const tabTriggerClass = "data-[state=active]:border-b-2 data-[state=active]:border-emerald-600 data-[state=active]:text-emerald-700 data-[state=active]:shadow-none bg-transparent rounded-none px-2 py-3 font-semibold text-gray-500 hover:text-gray-700";
-    const fieldClass = "w-full border border-gray-200 rounded-xl p-3 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all resize-none";
+    const tabTriggerClass = "data-[state=active]:border-b-2 data-[state=active]:border-slate-900 data-[state=active]:text-slate-900 data-[state=active]:shadow-none bg-transparent rounded-none px-2 py-3 font-semibold text-slate-500 hover:text-slate-800 transition-colors text-xs sm:text-sm";
+    const fieldClass = "w-full border border-slate-200/90 rounded-xl p-3 text-sm bg-slate-50/70 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none transition-all resize-none font-sans";
 
     return (
         <AnimatePresence>
@@ -143,7 +143,7 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                     <motion.div
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/50 z-50"
+                        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50"
                     />
 
                     {/* Modal */}
@@ -151,33 +151,38 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+                        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 pointer-events-none"
                     >
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col">
+                        <div className="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-4xl max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col font-sans">
 
                             {/* Header */}
-                            <div className="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white p-6 flex items-center justify-between shrink-0">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                                        <User className="w-6 h-6" />
+                            <div className="bg-slate-900 text-white p-5 sm:p-6 flex items-center justify-between shrink-0 border-b border-slate-800">
+                                <div className="flex items-center gap-3.5">
+                                    <div className="w-11 h-11 bg-white/10 rounded-xl flex items-center justify-center text-white border border-white/10 shrink-0">
+                                        <User className="w-5 h-5 text-slate-200" />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-bold">{patient.name}</h2>
-                                        <p className="text-emerald-50 text-sm font-medium">Prontuário do Paciente</p>
+                                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">{patient.name}</h2>
+                                        <p className="text-slate-400 text-xs font-medium flex items-center gap-1.5 mt-0.5">
+                                            <span>Prontuário & Registro de Sessões</span>
+                                            <span className="text-slate-600">•</span>
+                                            <span className="text-slate-300">Sigilo CFP Res. 001/2009</span>
+                                        </p>
                                     </div>
                                 </div>
                                 <button
                                     id="btn-close-patient-modal"
                                     onClick={onClose}
-                                    className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+                                    className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                                    aria-label="Fechar modal"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-4 h-4" />
                                 </button>
                             </div>
 
                             <Tabs defaultValue="prontuario" className="flex flex-col flex-1 overflow-hidden">
                                 {/* Navegação das Abas */}
-                                <div className="px-6 pt-2 border-b border-gray-200 shrink-0 bg-white">
+                                <div className="px-6 pt-1 border-b border-slate-200/80 shrink-0 bg-white">
                                     <TabsList className="bg-transparent w-full justify-start rounded-none h-auto p-0 gap-6">
                                         <TabsTrigger value="overview" className={tabTriggerClass}>Visão Geral</TabsTrigger>
                                         <TabsTrigger value="prontuario" className={tabTriggerClass}>
@@ -332,11 +337,11 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                                                 id="btn-save-prontuario"
                                                 onClick={handleSaveNotes}
                                                 disabled={isSaving || (!form.chief_complaint.trim() && !form.session_development.trim() && !form.notes.trim())}
-                                                className="flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold px-6 shadow-sm"
+                                                className="flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 shadow-xs transition-colors"
                                             >
                                                 {isSaving
-                                                    ? <><Loader2 className="w-4 h-4 animate-spin" />Salvando...</>
-                                                    : <><Save className="w-4 h-4" />Salvar Sessão no Histórico</>
+                                                    ? <><Loader2 className="w-4 h-4 animate-spin text-white" />Salvando...</>
+                                                    : <><Save className="w-4 h-4 text-emerald-400" />Salvar Sessão no Histórico</>
                                                 }
                                             </Button>
                                         </div>

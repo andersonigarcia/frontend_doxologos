@@ -52,6 +52,17 @@ class SupabaseClientWrapper {
   constructor() {
     this.client = supabaseClient;
     this.setupErrorHandling();
+
+    return new Proxy(this, {
+      get: (target, prop) => {
+        if (prop in target) {
+          const val = target[prop];
+          return typeof val === 'function' ? val.bind(target) : val;
+        }
+        const clientVal = target.client[prop];
+        return typeof clientVal === 'function' ? clientVal.bind(target.client) : clientVal;
+      }
+    });
   }
 
   setupErrorHandling() {
@@ -80,6 +91,9 @@ class SupabaseClientWrapper {
   get storage() { return this.client.storage; }
   get functions() { return this.client.functions; }
   get channel() { return this.client.channel.bind(this.client); }
+  get removeChannel() { return this.client.removeChannel ? this.client.removeChannel.bind(this.client) : () => {}; }
+  get removeAllChannels() { return this.client.removeAllChannels ? this.client.removeAllChannels.bind(this.client) : () => {}; }
+  get getChannels() { return this.client.getChannels ? this.client.getChannels.bind(this.client) : () => []; }
 
   isJWTError(error) {
     if (!error) return false;

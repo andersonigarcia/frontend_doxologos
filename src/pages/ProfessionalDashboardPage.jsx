@@ -1,16 +1,17 @@
-
-
 import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { ProfessionalSidebar } from '@/components/admin/ProfessionalSidebar';
-
-
-
+import { ProfessionalBottomNav } from '@/components/professional/ProfessionalBottomNav';
+import { ImmediateCareCard } from '@/components/professional/ImmediateCareCard';
+import { ProfessionalScheduleCockpit } from '@/components/professional/ProfessionalScheduleCockpit';
+import { RecentBookingsBanner } from '@/components/professional/RecentBookingsBanner';
+import { CalendarSyncModal } from '@/components/professional/CalendarSyncModal';
+import { NotificationCenter } from '@/components/NotificationCenter';
 
 import { useAdminData } from '@/hooks/useAdminData';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter, AlertTriangle, FileText } from 'lucide-react';
+import { ArrowLeft, Calendar, CalendarCheck, Clock, LogOut, Briefcase, Trash2, Edit, Users, UserPlus, CalendarX, Star, Check, ShieldOff, MessageCircle, DollarSign, Loader2, ChevronDown, ChevronUp, ShieldCheck, Stethoscope, UserCircle, Menu, X, Ticket, TrendingUp, LayoutDashboard, Activity, List, LayoutGrid, Settings, Newspaper, Filter, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
@@ -40,42 +41,20 @@ import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
 import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner';
 import {
     AdminBookingsTab,
-    AdminEventsTab,
-    AdminServicesTab,
     AdminProfessionalsTab,
-    AdminPaymentsTab,
-    AdminTestimonialsTab
+    AdminPaymentsTab
 } from '@/components/admin/tabs';
 
-
-
-
 // Fase 5 - Dashboard Profissional
-
 import { DashboardCard } from '@/components/shared/DashboardCard';
 import { StatCard } from '@/components/common/StatCard';
 import { TimelineView } from '@/components/common/TimelineView';
-import { QuickActions } from '@/components/common/QuickActions';
 
-const AppointmentCalendar = lazy(() => import('@/components/admin/AppointmentCalendar').then(m => ({ default: m.AppointmentCalendar })));
 const PatientList = lazy(() => import('@/components/admin/PatientList').then(m => ({ default: m.PatientList })));
 const PatientDetailsModal = lazy(() => import('@/components/admin/PatientDetailsModal').then(m => ({ default: m.PatientDetailsModal })));
 const FinancialDashboard = lazy(() => import('@/components/admin/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })));
-const ProfessionalPaymentsList = lazy(() => import('@/components/admin/ProfessionalPaymentsList').then(m => ({ default: m.ProfessionalPaymentsList })));
-const PaymentFormModal = lazy(() => import('@/components/admin/PaymentFormModal').then(m => ({ default: m.PaymentFormModal })));
-const PaymentDetailsModal = lazy(() => import('@/components/admin/PaymentDetailsModal').then(m => ({ default: m.PaymentDetailsModal })));
-const FinancialControlModule = lazy(() => import('@/components/admin/FinancialControlModule').then(m => ({ default: m.FinancialControlModule })));
-const AiEconomicsCockpit = lazy(() => import('@/components/admin/AiEconomicsCockpit'));
-const SystemSettingsManager = lazy(() => import('@/components/admin/SystemSettingsManager').then(m => ({ default: m.SystemSettingsManager })));
-
-
-
-
-
 const AvailabilityManager = lazy(() => import('@/components/admin/availability/AvailabilityManager').then(m => ({ default: m.AvailabilityManager })));
 const RevenueAnalytics = lazy(() => import('@/components/admin/RevenueAnalytics').then(m => ({ default: m.RevenueAnalytics })));
-
-
 
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { EmergencyBookingModal } from '@/components/admin/EmergencyBookingModal';
@@ -85,29 +64,6 @@ import { useMonthlyRevenue } from '@/hooks/useMonthlyRevenue';
 import { usePatientData } from '@/hooks/usePatientData';
 import { cn } from '@/lib/utils';
 import { tabsConfig } from '@/config/tabsConfig';
-import { useSystemSettings } from '@/hooks/useSystemSettings';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-
-const SettingsToggle = () => {
-    const { settings, updateSetting, loading, error } = useSystemSettings();
-
-    if (loading) return <div className="text-sm text-gray-500">Carregando configurações...</div>;
-    if (error) return <div className="text-sm text-red-500">Não foi possível carregar configurações.</div>;
-
-    return (
-        <div className="flex items-center space-x-2">
-            <Switch
-                id="lead-magnet-toggle"
-                checked={settings.lead_magnet_enabled ?? false}
-                onCheckedChange={(checked) => updateSetting('lead_magnet_enabled', checked)}
-            />
-            <Label htmlFor="lead-magnet-toggle" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                Ativar Isca Digital (Guia de Ansiedade)
-            </Label>
-        </div>
-    );
-};
 
 
 const ROLE_DISPLAY = {
@@ -162,6 +118,7 @@ const ProfessionalDashboardPage = () => {
     const navigate = useNavigate();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isEmergencyBookingModalOpen, setIsEmergencyBookingModalOpen] = useState(false);
+    const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
 
     // P-03: Dados e fetching centralizados no hook useAdminData
     const {
@@ -2272,19 +2229,20 @@ const ProfessionalDashboardPage = () => {
 
     return (
         <>
-            <Helmet><title>Painel de Controle - Doxologos</title></Helmet>
-            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-40">
-                <nav className="container mx-auto px-4 py-3 md:py-4">
+            <Helmet><title>Painel do Psicólogo - Doxologos</title></Helmet>
+            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-xs border-b border-slate-200/80 z-40">
+                <nav className="container mx-auto px-4 py-3 md:py-3.5">
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
                             <DoxologosLogo className="h-9 md:h-10 w-auto" />
                         </Link>
-                        <div className="flex items-center justify-end gap-4 flex-wrap">
-                            <Link to="/" className="inline-flex items-center text-sm font-medium text-[#2d8659] hover:text-[#236b47] transition-colors">
-                                <ArrowLeft className="w-4 h-4 mr-1" /> Voltar ao Site
+                        <div className="flex items-center justify-end gap-3 flex-wrap">
+                            <NotificationCenter />
+                            <Link to="/" className="inline-flex items-center text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors px-2.5 py-1.5 rounded-lg hover:bg-slate-100">
+                                <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Voltar ao Site
                             </Link>
-                            <div className="h-6 w-px bg-gray-300"></div>
+                            <div className="h-5 w-px bg-slate-200"></div>
                             <UserBadge
                                 user={user}
                                 userRole={userRole}
@@ -2292,50 +2250,37 @@ const ProfessionalDashboardPage = () => {
                                 layout="row"
                                 showLogoutButton={true}
                             />
-                            {hasEventsTab && (
-                                <Button
-                                    variant="outline"
-                                    className="border-[#2d8659] text-[#2d8659] hidden sm:inline-flex"
-                                    onClick={() => {
-                                        setActiveTab('events');
-                                        window.requestAnimationFrame(() => {
-                                            const tabsElement = document.getElementById('admin-tabs');
-                                            if (tabsElement) {
-                                                tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                            }
-                                        });
-                                    }}
-                                >
-                                    <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
-                                </Button>
-                            )}
                         </div>
                     </div>
 
                     {/* Mobile Header */}
                     <div className="flex md:hidden items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
-                            <DoxologosLogo className="h-8 md:h-9 w-auto" />
+                            <DoxologosLogo className="h-8 w-auto" />
                         </Link>
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                            {mobileMenuOpen ? (
-                                <X className="w-6 h-6 text-[#2d8659]" />
-                            ) : (
-                                <Menu className="w-6 h-6 text-[#2d8659]" />
-                            )}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                            <NotificationCenter />
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-700"
+                                aria-label="Menu"
+                            >
+                                {mobileMenuOpen ? (
+                                    <X className="w-6 h-6 text-slate-900" />
+                                ) : (
+                                    <Menu className="w-6 h-6 text-slate-900" />
+                                )}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Mobile Menu */}
+                    {/* Mobile Menu Drawer */}
                     {mobileMenuOpen && (
                         <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
-                            className="md:hidden mt-3 pb-3 border-t border-gray-200 pt-3"
+                            className="md:hidden mt-3 pb-3 border-t border-slate-200 pt-3 space-y-3"
                         >
                             <UserBadge
                                 user={user}
@@ -2348,48 +2293,67 @@ const ProfessionalDashboardPage = () => {
                                 showLogoutButton={true}
                                 compact={true}
                             />
-                            <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
+                            
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                                <button
+                                    onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold transition-colors ${activeTab === 'dashboard' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    <LayoutDashboard className="w-4 h-4" /> Visão Geral
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('bookings'); setMobileMenuOpen(false); }}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold transition-colors ${activeTab === 'bookings' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    <Calendar className="w-4 h-4" /> Agenda
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('patients'); setMobileMenuOpen(false); }}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold transition-colors ${activeTab === 'patients' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    <UserCircle className="w-4 h-4" /> Pacientes
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('availability'); setMobileMenuOpen(false); }}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold transition-colors ${activeTab === 'availability' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    <Clock className="w-4 h-4" /> Horários
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('financeiro'); setMobileMenuOpen(false); }}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold transition-colors ${activeTab === 'financeiro' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    <DollarSign className="w-4 h-4" /> Honorários
+                                </button>
+                                <button
+                                    onClick={() => { setActiveTab('professionals'); setMobileMenuOpen(false); }}
+                                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl font-bold transition-colors ${activeTab === 'professionals' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-50 text-slate-700 hover:bg-slate-100'}`}
+                                >
+                                    <UserCircle className="w-4 h-4" /> Meu Perfil
+                                </button>
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-2 flex items-center justify-between text-xs">
                                 <Link
                                     to="/"
-                                    className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
+                                    className="px-3 py-2 rounded-lg font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1.5"
                                     onClick={() => setMobileMenuOpen(false)}
                                 >
-                                    <ArrowLeft className="w-4 h-4 mr-2 inline" /> Voltar ao Site
+                                    <ArrowLeft className="w-4 h-4" /> Voltar ao Site
                                 </Link>
-                                {userRole === 'admin' && (
-                                    <Link
-                                        to="/admin/dashboard"
-                                        className="block px-2 py-2 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50 transition-colors"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                    >
-                                        <LayoutDashboard className="w-4 h-4 mr-2 inline" /> Dashboard Gerencial
-                                    </Link>
-                                )}
-                                {hasEventsTab && (
-                                    <Button
-                                        variant="outline"
-                                        className="w-full border-[#2d8659] text-[#2d8659] justify-start"
-                                        onClick={() => {
-                                            setActiveTab('events');
-                                            setMobileMenuOpen(false);
-                                            window.requestAnimationFrame(() => {
-                                                const tabsElement = document.getElementById('admin-tabs');
-                                                if (tabsElement) {
-                                                    tabsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                                }
-                                            });
-                                        }}
-                                    >
-                                        <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
-                                    </Button>
-                                )}
+                                <button
+                                    onClick={() => { setIsChangePasswordOpen(true); setMobileMenuOpen(false); }}
+                                    className="px-3 py-2 rounded-lg font-semibold text-slate-700 hover:bg-slate-100"
+                                >
+                                    Alterar Senha
+                                </button>
                             </div>
                         </motion.div>
                     )}
                 </nav>
             </header>
 
-            <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row">
+            <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row pb-24 md:pb-8 font-sans">
                 {/* Sidebar Lateral Navegável nos 5 Módulos Estruturados */}
                 <div className="hidden md:block flex-shrink-0">
                     <ProfessionalSidebar
@@ -2400,35 +2364,65 @@ const ProfessionalDashboardPage = () => {
                     />
                 </div>
 
-                <div className="flex-1 min-w-0 p-4 md:p-8 pt-24 md:pt-28 overflow-y-auto">
-                    <div className="container mx-auto max-w-7xl">
+                <div className="flex-1 min-w-0 p-4 md:p-8 pt-20 md:pt-24 overflow-y-auto">
+                    <div className="container mx-auto max-w-7xl space-y-6">
                         <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Painel de Controle</h1>
-                            <p className="text-sm text-gray-500 mt-1">Bem-vindo, <span className="font-semibold text-gray-800">{displayName}</span>. Gerencie a operação, relatórios e configurações da plataforma.</p>
+                        
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Painel do Psicólogo</h1>
+                                <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                                    Olá, <span className="font-bold text-slate-800">{displayName}</span>. Acompanhe seus atendimentos, prontuários e repasses.
+                                </p>
+                            </div>
                         </div>
-                    </div>
 
                     <Tabs id="admin-tabs" value={activeTab} onValueChange={setActiveTab} className="w-full">
 
-                        {/* Dashboard Tab - Cockpit Estratégico ou Visão do Profissional */}
-                        <TabsContent value="dashboard" className="mt-6">
-                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
+                        {/* Dashboard Tab - Cockpit Estratégico e Agenda Clínica */}
+                        <TabsContent value="dashboard" className="mt-4 focus:outline-none">
+                            <Suspense fallback={<div className="p-12 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-slate-900" /></div>}>
                             <div className="space-y-6">
-                                {/* Header */}
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                                            <LayoutDashboard className="w-8 h-8 text-[#2d8659]" />
-                                            Dashboard
-                                        </h2>
-                                        <p className="text-gray-600 mt-1">Visão geral da sua atividade profissional</p>
-                                    </div>
+                                {/* Radar de Novos Agendamentos (Alertas das últimas 48h) */}
+                                <RecentBookingsBanner
+                                    bookings={bookings}
+                                    onSelectBookingDate={() => {
+                                        const el = document.getElementById('professional-schedule-cockpit');
+                                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                    }}
+                                />
+
+                                {/* Card de Atendimento Imediato (1-Clique para Sessão & Prontuário) */}
+                                <ImmediateCareCard
+                                    appointment={professionalStats.nextAppointment}
+                                    onOpenProntuario={(appt) => {
+                                        handlePatientClick({
+                                            name: appt.patient_name,
+                                            email: appt.patient_email,
+                                            phone: appt.patient_phone
+                                        });
+                                    }}
+                                    onViewAllBookings={() => setActiveTab('bookings')}
+                                />
+
+                                {/* Cockpit Diário da Agenda Clínica com Sincronização de Calendário */}
+                                <div id="professional-schedule-cockpit">
+                                    <ProfessionalScheduleCockpit
+                                        bookings={bookings}
+                                        currentProfessional={currentProfessional}
+                                        onOpenProntuario={(appt) => {
+                                            handlePatientClick({
+                                                name: appt.patient_name,
+                                                email: appt.patient_email,
+                                                phone: appt.patient_phone
+                                            });
+                                        }}
+                                        onOpenCalendarSync={() => setIsCalendarSyncOpen(true)}
+                                    />
                                 </div>
 
                                 {/* Métricas Cards */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <StatCard
                                         label="Consultas Hoje"
                                         value={professionalStats.totalAppointments}
@@ -2438,19 +2432,19 @@ const ProfessionalDashboardPage = () => {
                                     />
 
                                     <StatCard
-                                        label="Pendentes"
+                                        label="Aguardando Confirmação"
                                         value={professionalStats.pendingAppointments?.length || 0}
                                         format="number"
                                         loading={professionalStats.loading}
-                                        comparison="aguardando confirmação"
+                                        comparison="consultas pendentes"
                                     />
 
                                     <StatCard
-                                        label="Receita do Mês"
+                                        label="Meus Honorários (Mês)"
                                         value={professionalStats.monthlyRevenue}
                                         format="currency"
                                         loading={professionalStats.loading}
-                                        comparison="total faturado"
+                                        comparison={`R$ ${(professionalStats.forecastRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} previstos`}
                                     />
 
                                     <StatCard
@@ -2458,102 +2452,14 @@ const ProfessionalDashboardPage = () => {
                                         value={professionalStats.averageRating}
                                         format="number"
                                         loading={professionalStats.loading}
-                                        comparison={professionalStats.averageRating > 0 ? `${professionalStats.averageRating.toFixed(1)} ⭐` : 'Sem avaliações'}
+                                        comparison={professionalStats.averageRating > 0 ? `${professionalStats.averageRating.toFixed(1)} ⭐ dos pacientes` : 'Sem avaliações'}
                                     />
                                 </div>
 
-                                {/* Gráfico de Receita Mensal */}
-                                <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <RevenueAnalytics professionalId={currentProfessional?.id} className="mb-6" />
-                                </Suspense>
-
-                                {/* Ações Rápidas */}
-                                <QuickActions
-                                    title="Ações Rápidas"
-                                    layout="grid"
-                                    columns={3}
-                                    actions={[
-                                        {
-                                            id: 'view-bookings',
-                                            label: 'Ver Agendamentos',
-                                            description: 'Gerenciar suas consultas',
-                                            icon: Calendar,
-                                            onClick: () => setActiveTab('bookings'),
-                                            variant: 'default',
-                                        },
-                                        {
-                                            id: 'manage-availability',
-                                            label: 'Disponibilidade',
-                                            description: 'Configurar horários',
-                                            icon: Clock,
-                                            onClick: () => setActiveTab('availability'),
-                                            variant: 'outline',
-                                        },
-                                        {
-                                            id: 'view-profile',
-                                            label: 'Meu Perfil',
-                                            description: 'Gerenciar seus dados',
-                                            icon: UserCircle,
-                                            onClick: () => setActiveTab('professionals'),
-                                            variant: 'outline',
-                                        },
-                                        {
-                                            id: 'faturamento-mensal',
-                                            label: 'Faturamento',
-                                            description: 'NFSe e fechamento mensal',
-                                            icon: FileText,
-                                            onClick: () => navigate('/faturamento-mensal'),
-                                            variant: 'outline',
-                                        },
-                                    ]}
-                                />
-
-                                {/* Próximas Consultas do Dia */}
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                        <Activity className="w-5 h-5 text-[#2d8659]" />
-                                        Consultas de Hoje
-                                    </h3>
-
-                                    {professionalStats.loading ? (
-                                        <div className="flex items-center justify-center py-12">
-                                            <LoadingSpinner />
-                                        </div>
-                                    ) : (
-                                        <TimelineView
-                                            items={professionalStats.todayAppointments.map(appointment => ({
-                                                id: appointment.id,
-                                                date: appointment.booking_date,
-                                                time: appointment.booking_time,
-                                                title: appointment.patient_name || 'Paciente',
-                                                description: appointment.service?.name || 'Consulta',
-                                                status: appointment.status === 'confirmed' || appointment.status === 'paid'
-                                                    ? 'confirmed'
-                                                    : appointment.status === 'completed'
-                                                        ? 'completed'
-                                                        : appointment.status.includes('cancelled')
-                                                            ? 'cancelled'
-                                                            : 'pending',
-                                                actions: [
-                                                    {
-                                                        label: 'Ver Detalhes',
-                                                        onClick: () => {
-                                                            setActiveTab('bookings');
-                                                            // Scroll to booking would go here
-                                                        },
-                                                        variant: 'primary'
-                                                    }
-                                                ]
-                                            }))}
-                                            groupBy="none"
-                                            emptyMessage="Nenhuma consulta agendada para hoje"
-                                        />
-                                    )}
-                                </div>
 
                                 {/* Consultas Pendentes */}
                                 {professionalStats.pendingAppointments && professionalStats.pendingAppointments.length > 0 && (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-xl shadow-sm p-6">
+                                    <div className="bg-amber-50/60 border border-amber-200/90 rounded-xl shadow-xs p-5 sm:p-6">
                                         <h3 className="text-xl font-bold text-amber-900 mb-4 flex items-center gap-2">
                                             <Clock className="w-5 h-5 text-amber-600" />
                                             Consultas Pendentes ({professionalStats.pendingAppointments.length})
@@ -2596,24 +2502,7 @@ const ProfessionalDashboardPage = () => {
                         </Suspense>
 </TabsContent>
 
-                        {/* Financial Control Tab - DRE & Controladoria Unificada */}
-                        <TabsContent value="financial-control" className="mt-6">
-                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                <FinancialControlModule
-                                    financialData={{ monthlyRevenue: totals.totalValue }}
-                                    bookings={bookings}
-                                    userRole={userRole}
-                                    onNavigateTab={setActiveTab}
-                                />
-                            </Suspense>
-                        </TabsContent>
 
-                        {/* Copiloto IA & Telemedicina Tab */}
-                        <TabsContent value="ai-economics" className="mt-6">
-                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                <AiEconomicsCockpit onNavigateTab={setActiveTab} />
-                            </Suspense>
-                        </TabsContent>
 
                         {/* Bookings Tab */}
                         <TabsContent value="bookings" className="mt-6">
@@ -2686,263 +2575,48 @@ const ProfessionalDashboardPage = () => {
 </TabsContent>
 
 
-                        {/* Patients Tab - Admin e Profissional */}
-                        <TabsContent value="patients" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                            <div className="space-y-6">
-                                <PatientList
-                                    patients={patientData.patients}
-                                    onPatientClick={handlePatientClick}
-                                    loading={patientData.loading}
+                        {/* Patients Tab - Profissional */}
+                        <TabsContent value="patients" className="mt-6 focus:outline-none">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-slate-900" /></div>}>
+                                <div className="space-y-6">
+                                    <PatientList
+                                        patients={patientData.patients}
+                                        onPatientClick={handlePatientClick}
+                                        loading={patientData.loading}
+                                    />
+                                </div>
+
+                                <PatientDetailsModal
+                                    patient={selectedPatient}
+                                    isOpen={isPatientModalOpen}
+                                    onClose={() => {
+                                        setIsPatientModalOpen(false);
+                                        setSelectedPatient(null);
+                                    }}
+                                    onSaveNotes={handleSavePatientNotes}
                                 />
-                            </div>
-
-                            <PatientDetailsModal
-                                patient={selectedPatient}
-                                isOpen={isPatientModalOpen}
-                                onClose={() => {
-                                    setIsPatientModalOpen(false);
-                                    setSelectedPatient(null);
-                                }}
-                                onSaveNotes={handleSavePatientNotes}
-                            />
-</Suspense>
-</TabsContent>
-
-                        {/* Financial Dashboard Tab - Professional View Only */}
-                        {
-                            isProfessionalView && (
-                                <TabsContent value="financeiro" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <FinancialDashboard professionalId={currentProfessional?.id} />
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-
-                        <TabsContent value="payments" className="mt-6">
-                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                <AdminPaymentsTab professionals={professionals} />
                             </Suspense>
                         </TabsContent>
 
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="profit-loss" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
+                        {/* Financial Dashboard Tab - Meus Honorários e Repasses */}
+                        <TabsContent value="financeiro" className="mt-6 focus:outline-none">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-slate-900" /></div>}>
+                                <div className="space-y-6">
+                                    <RevenueAnalytics professionalId={currentProfessional?.id} />
+                                    <FinancialDashboard professionalId={currentProfessional?.id} />
+                                </div>
+                            </Suspense>
+                        </TabsContent>
 
-                                    {/* Cost Form Modal */}
-                                    
-
-                                    {/* Delete Cost Confirmation Dialog */}
-                                    <AlertDialog open={costDeleteConfirmOpen} onOpenChange={setCostDeleteConfirmOpen}>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-                                                <AlertDialogDescription className="space-y-2">
-                                                    <p>Tem certeza que deseja excluir este custo?</p>
-                                                    {costToDelete && (
-                                                        <div className="mt-4 p-4 bg-gray-50 rounded-lg space-y-1 text-sm">
-                                                            <p><strong>Categoria:</strong> {costToDelete.category}</p>
-                                                            <p><strong>Descrição:</strong> {costToDelete.description}</p>
-                                                            <p><strong>Valor:</strong> R$ {costToDelete.amount?.toFixed(2)}</p>
-                                                            <p><strong>Data:</strong> {new Date(costToDelete.cost_date).toLocaleDateString('pt-BR')}</p>
-                                                        </div>
-                                                    )}
-                                                    <p className="text-red-600 font-medium mt-4">
-                                                        ⚠️ Esta ação não pode ser desfeita.
-                                                    </p>
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={() => setCostToDelete(null)}>
-                                                    Cancelar
-                                                </AlertDialogCancel>
-                                                <AlertDialogAction
-                                                    onClick={async () => {
-                                                        if (costToDelete) {
-                                                            try {
-                                                                const { error } = await supabase
-                                                                    .from('platform_costs')
-                                                                    .delete()
-                                                                    .eq('id', costToDelete.id);
-
-                                                                if (error) throw error;
-
-                                                                toast({
-                                                                    title: 'Custo excluído',
-                                                                    description: `Custo "${costToDelete.description}" foi excluído com sucesso.`
-                                                                });
-
-                                                                setCostRefreshKey(prev => prev + 1);
-                                                                setCostToDelete(null);
-                                                            } catch (error) {
-                                                                console.error('Error deleting cost:', error);
-                                                                toast({
-                                                                    title: 'Erro ao excluir',
-                                                                    description: error.message || 'Não foi possível excluir o custo',
-                                                                    variant: 'destructive'
-                                                                });
-                                                            }
-                                                        }
-                                                    }}
-                                                    className="bg-red-600 hover:bg-red-700"
-                                                >
-                                                    Excluir Custo
-                                                </AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-
-                        {/* Ledger Tab - Admin Only */}
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="livro-caixa" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
-                                    
-                                    
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="nfse" className="mt-6">
-                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                        
-                                    </Suspense>
-                                </TabsContent>
-                            )
-                        }
-
-                        {
-                            (userRole === 'admin' || userRole === 'professional') && (
-                                <TabsContent value="professionals" className="mt-6">
-                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                        <AdminProfessionalsTab
-                                            userRole={userRole}
-                                            professionals={professionals}
-                                            services={services}
-                                            onRefresh={fetchAllData}
-                                        />
-                                    </Suspense>
-                                </TabsContent>
-                            )
-                        }
-
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="services" className="mt-6">
-                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                        <AdminServicesTab
-                                            services={services}
-                                            professionals={professionals}
-                                            onRefresh={fetchAllData}
-                                        />
-                                    </Suspense>
-                                </TabsContent>
-                            )
-                        }
-
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="events" className="mt-6">
-                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                        <AdminEventsTab
-                                            events={events}
-                                            professionals={professionals}
-                                            onRefresh={fetchAllData}
-                                        />
-                                    </Suspense>
-                                </TabsContent>
-                            )
-                        }
-
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="growth" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="event-registrations" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-
-                        {/* Depoimentos Section */}
-                        {/* Depoimentos Section */}
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="testimonials" className="mt-6">
-                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                        <AdminTestimonialsTab />
-                                    </Suspense>
-                                </TabsContent>
-                            )
-                        }
-
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="refunds" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="settings" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    <div className="space-y-6">
-                                        <SystemSettingsManager userRole={userRole} />
-
-                                        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                                            <h3 className="font-semibold text-lg mb-4 text-slate-900">Marketing & Lead Magnets</h3>
-                                            <SettingsToggle />
-                                        </div>
-                                    </div>
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="blog" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="book-resources" className="mt-6">
-<Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                    
-                                </Suspense>
-</TabsContent>
-                            )
-                        }
-                        <TabsContent value="assessment-leads" className="mt-6">
-                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                
+                        {/* Meu Perfil Profissional */}
+                        <TabsContent value="professionals" className="mt-6 focus:outline-none">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-slate-900" /></div>}>
+                                <AdminProfessionalsTab
+                                    userRole={userRole}
+                                    professionals={professionals}
+                                    services={services}
+                                    onRefresh={fetchAllData}
+                                />
                             </Suspense>
                         </TabsContent>
                     </Tabs>
@@ -2950,6 +2624,9 @@ const ProfessionalDashboardPage = () => {
                 </div>
             </div>
         </div>
+
+            {/* Barra de Navegação Inferior para Mobile */}
+            <ProfessionalBottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
 
             <ConfirmDialog
                 isOpen={confirmDialog.isOpen}
@@ -2972,6 +2649,13 @@ const ProfessionalDashboardPage = () => {
             <ChangePasswordModal
                 isOpen={isChangePasswordOpen}
                 onClose={() => setIsChangePasswordOpen(false)}
+            />
+
+            <CalendarSyncModal
+                isOpen={isCalendarSyncOpen}
+                onClose={() => setIsCalendarSyncOpen(false)}
+                appointments={bookings}
+                professionalName={currentProfessional?.name}
             />
         </>
     );
