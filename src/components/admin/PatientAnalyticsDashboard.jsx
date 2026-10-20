@@ -144,7 +144,7 @@ export function PatientAnalyticsDashboard({
   if (loading) {
     return (
       <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2d8659]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900" />
       </div>
     );
   }
@@ -152,11 +152,11 @@ export function PatientAnalyticsDashboard({
   return (
     <div className="space-y-6">
       {/* Cabeçalho do Analytics */}
-      <div className="bg-gradient-to-r from-emerald-50 via-teal-50/40 to-white p-6 rounded-2xl border border-emerald-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-6 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="bg-[#2d8659]/10 text-[#2d8659] text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5" />
+            <span className="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <Sparkles className="w-3.5 h-3.5 text-slate-600" />
               Patient Intelligence & Retention Cockpit
             </span>
           </div>
@@ -175,12 +175,12 @@ export function PatientAnalyticsDashboard({
         <Card className="p-5 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">LTV Médio por Paciente</span>
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-[#2d8659] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
           <div className="mt-3">
-            <h3 className="text-2xl font-extrabold text-slate-900">{formatBrl(analytics.avgLtv)}</h3>
+            <h3 className="text-2xl font-extrabold text-slate-900 tabular-nums">{formatBrl(analytics.avgLtv)}</h3>
             <p className="text-xs text-slate-500 mt-1 font-medium">
               Média de <span className="font-bold text-slate-800">{analytics.avgSessions.toFixed(1)} sessões</span> /paciente
             </p>
@@ -310,7 +310,7 @@ export function PatientAnalyticsDashboard({
                     <td className="p-3">
                       <button
                         onClick={() => onPatientClick?.(patient)}
-                        className="font-bold text-slate-900 hover:text-[#2d8659] text-left underline"
+                        className="font-bold text-slate-900 hover:text-slate-700 text-left underline"
                       >
                         {patient.name}
                       </button>

@@ -5,16 +5,16 @@ import ProfessionalListPage from '@/pages/admin/ProfessionalListPage';
 export function AdminProfessionalsTab({ userRole = 'admin', professionals = [], services = [], onRefresh }) {
     if (userRole === 'admin') {
         return (
-            <div className="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 overflow-hidden">
                 <ProfessionalListPage isEmbedded onRefresh={onRefresh} />
             </div>
         );
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-100">
-            <h2 className="text-2xl font-bold mb-6 flex items-center text-slate-800">
-                <Users className="w-6 h-6 mr-2 text-[#2d8659]" /> Meu Perfil Profissional
+        <div className="bg-white rounded-xl shadow-xs p-6 border border-slate-200/80">
+            <h2 className="text-xl font-bold mb-6 flex items-center text-slate-900">
+                <Users className="w-6 h-6 mr-2 text-slate-800" /> Meu Perfil Profissional
             </h2>
             <div className="space-y-4">
                 {professionals.map((prof, index) => (

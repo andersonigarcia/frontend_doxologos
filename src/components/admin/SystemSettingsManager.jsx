@@ -347,7 +347,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
   if (loading) {
     return (
       <div className="p-8 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2d8659]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900" />
       </div>
     );
   }
@@ -358,7 +358,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="bg-[#2d8659]/10 text-[#2d8659] text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <span className="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5" />
               Central de Parâmetros Globais (Gravação Intencional)
             </span>
@@ -374,7 +374,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
         {hasChanges && (
           <Button
             onClick={() => setIsImpactModalOpen(true)}
-            className="bg-[#2d8659] hover:bg-[#236b47] text-white font-bold shadow-md transition-all text-xs flex items-center gap-2"
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-xs transition-all text-xs flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
             Avaliar Impacto & Gravar ({changedParameters.length})
@@ -385,7 +385,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
       {/* BLOCO 1: POLÍTICAS FINANCEIRAS E RETENÇÃO */}
       <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#2d8659] flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
             <DollarSign className="w-4 h-4" />
           </div>
           <div>
@@ -866,7 +866,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
             <Button
               size="sm"
               onClick={() => setIsImpactModalOpen(true)}
-              className="bg-[#2d8659] hover:bg-[#236b47] text-white font-bold text-xs shadow-md"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs"
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Avaliar Impacto & Salvar
@@ -879,7 +879,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
       <Dialog open={isImpactModalOpen} onOpenChange={setIsImpactModalOpen}>
         <DialogContent className="max-w-2xl bg-white rounded-2xl p-6 space-y-5">
           <DialogHeader>
-            <div className="flex items-center gap-2.5 text-[#2d8659]">
+            <div className="flex items-center gap-2.5 text-slate-900">
               <ShieldAlert className="w-6 h-6 text-amber-500" />
               <DialogTitle className="text-lg font-bold text-slate-900">
                 Avaliação de Impacto e Gravação Intencional
@@ -912,7 +912,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
                       <div className="flex items-center justify-center gap-1.5">
                         <span className="text-slate-500 line-through">{String(item.oldValue)}{item.meta.unit}</span>
                         <ArrowRight className="w-3 h-3 text-slate-400" />
-                        <span className="font-bold text-[#2d8659] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        <span className="font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                           {String(item.newValue)}{item.meta.unit}
                         </span>
                       </div>
@@ -956,7 +956,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
               size="sm"
               onClick={handleConfirmAndSaveAll}
               disabled={isSaving}
-              className="bg-[#2d8659] hover:bg-[#236b47] text-white font-bold text-xs shadow-md"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs"
             >
               {isSaving ? 'Gravando Parâmetros...' : 'Confirmar e Gravar Parâmetros Auditados'}
             </Button>

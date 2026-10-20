@@ -243,7 +243,7 @@ export function LedgerTable({ className = '' }) {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
-                            <FileText className="w-5 h-5 text-[#2d8659]" />
+                            <FileText className="w-5 h-5 text-slate-800" />
                             Livro Caixa (Ledger)
                         </CardTitle>
                         <p className="text-xs text-slate-500 mt-1">
@@ -251,7 +251,7 @@ export function LedgerTable({ className = '' }) {
                         </p>
                     </div>
                     <div className="flex gap-2">
-                        <Button size="sm" onClick={handleCreate} className="bg-[#2d8659] hover:bg-[#236b47] text-white rounded-xl shadow-xs font-semibold text-xs h-9 px-4">
+                        <Button size="sm" onClick={handleCreate} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs font-semibold text-xs h-9 px-4">
                             <Plus className="w-4 h-4 mr-1.5" />
                             Novo Lançamento
                         </Button>
@@ -270,7 +270,7 @@ export function LedgerTable({ className = '' }) {
                         </label>
                         <Input
                             type="date"
-                            className="bg-white border-slate-200 rounded-xl text-xs h-9 focus:ring-2 focus:ring-[#2d8659]/30"
+                            className="bg-white border-slate-200 rounded-xl text-xs h-9 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                         />
@@ -281,7 +281,7 @@ export function LedgerTable({ className = '' }) {
                         </label>
                         <Input
                             type="date"
-                            className="bg-white border-slate-200 rounded-xl text-xs h-9 focus:ring-2 focus:ring-[#2d8659]/30"
+                            className="bg-white border-slate-200 rounded-xl text-xs h-9 focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                         />
@@ -291,7 +291,7 @@ export function LedgerTable({ className = '' }) {
                             <Building2 className="w-3.5 h-3.5 text-slate-400" /> Conta
                         </label>
                         <select
-                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 cursor-pointer"
+                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 cursor-pointer"
                             value={accountFilter}
                             onChange={(e) => setAccountFilter(e.target.value)}
                         >
@@ -308,7 +308,7 @@ export function LedgerTable({ className = '' }) {
                             <Filter className="w-3.5 h-3.5 text-slate-400" /> Tipo
                         </label>
                         <select
-                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-[#2d8659]/30 cursor-pointer"
+                            className="w-full bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-3 py-2 h-9 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 cursor-pointer"
                             value={typeFilter}
                             onChange={(e) => setTypeFilter(e.target.value)}
                         >
@@ -338,7 +338,7 @@ export function LedgerTable({ className = '' }) {
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center h-28 text-slate-500">
                                         <div className="flex items-center justify-center gap-2 text-xs font-semibold">
-                                            <RefreshCw className="w-4 h-4 animate-spin text-[#2d8659]" />
+                                            <RefreshCw className="w-4 h-4 animate-spin text-slate-800" />
                                             Carregando registros contábeis...
                                         </div>
                                     </TableCell>

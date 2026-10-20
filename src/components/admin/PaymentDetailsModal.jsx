@@ -34,7 +34,7 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-[#2d8659]" />
+                        <FileText className="w-5 h-5 text-slate-800" />
                         Detalhes do Pagamento
                     </DialogTitle>
                 </DialogHeader>
@@ -58,7 +58,7 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
                         </div>
                         <div>
                             <p className="text-sm text-gray-600">Valor Total</p>
-                            <p className="text-2xl font-bold text-[#2d8659]">{formatCurrency(payment.total_amount)}</p>
+                            <p className="text-2xl font-extrabold text-emerald-700 tabular-nums">{formatCurrency(payment.total_amount)}</p>
                         </div>
                     </div>
 
@@ -106,7 +106,7 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
                                                 {formatDate(booking.booking_date)} - {booking.booking_time}
                                             </p>
                                         </div>
-                                        <p className="font-semibold text-[#2d8659]">
+                                        <p className="font-bold text-emerald-700 tabular-nums">
                                             {formatCurrency(booking.valor_repasse_profissional)}
                                         </p>
                                     </div>

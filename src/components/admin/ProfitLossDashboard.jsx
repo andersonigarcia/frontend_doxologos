@@ -92,42 +92,42 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-                        <PieChart className="w-8 h-8 text-[#2d8659]" />
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <PieChart className="w-6 h-6 text-slate-800" />
                         Dashboard Financeiro
                     </h2>
-                    <p className="text-gray-600 mt-1">Lucro/Prejuízo e análise de custos</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Lucro/Prejuízo e análise de custos operacionais</p>
                 </div>
-                <Button onClick={onAddCost} className="rounded-full bg-[#2d8659] hover:bg-[#236b47]">
-                    <Plus className="w-4 h-4 mr-2" />
+                <Button onClick={onAddCost} className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-9 px-4 shadow-xs">
+                    <Plus className="w-4 h-4 mr-1.5" />
                     Adicionar Custo
                 </Button>
             </div>
 
             {/* Filtros de Período */}
-            <div className="flex gap-4 items-center">
-                <div className="flex gap-2">
-                    <Button variant={period === 'month' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('month')}
-                        className={`rounded-full ${period === 'month' ? 'bg-[#2d8659]' : ''}`}>
+            <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+                    <Button variant="ghost" size="sm" onClick={() => setPeriod('month')}
+                        className={`rounded-lg text-xs font-bold transition-all h-8 px-3 ${period === 'month' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
                         Este Mês
                     </Button>
-                    <Button variant={period === 'quarter' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('quarter')}
-                        className={`rounded-full ${period === 'quarter' ? 'bg-[#2d8659]' : ''}`}>
+                    <Button variant="ghost" size="sm" onClick={() => setPeriod('quarter')}
+                        className={`rounded-lg text-xs font-bold transition-all h-8 px-3 ${period === 'quarter' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
                         Trimestre
                     </Button>
-                    <Button variant={period === 'year' ? 'default' : 'outline'} size="sm" onClick={() => setPeriod('year')}
-                        className={`rounded-full ${period === 'year' ? 'bg-[#2d8659]' : ''}`}>
+                    <Button variant="ghost" size="sm" onClick={() => setPeriod('year')}
+                        className={`rounded-lg text-xs font-bold transition-all h-8 px-3 ${period === 'year' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}>
                         Ano
                     </Button>
                 </div>
 
                 {/* Seletor de Ano */}
                 <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 font-medium">Ano:</span>
+                    <span className="text-xs text-slate-500 font-semibold">Ano:</span>
                     <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                        className="px-4 py-1.5 border border-gray-200 rounded-full text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2d8659] focus:border-transparent bg-gray-50 hover:bg-gray-100 transition-all cursor-pointer"
+                        className="px-3 py-1.5 border border-slate-200/80 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 bg-white hover:bg-slate-50 transition-all cursor-pointer shadow-xs"
                     >
                         {availableYears.map(year => (
                             <option key={year} value={year}>
@@ -146,7 +146,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     value={totalRevenue}
                     format="currency"
                     tooltip="Valor total recebido dos clientes no período (bruto)."
-                    className="border-l-4 border-l-blue-500 bg-blue-50"
+                    className="border-l-4 border-l-blue-500 bg-blue-50/70 border border-slate-200/80 shadow-xs rounded-xl"
                 />
                 {/* Verde — margem da plataforma */}
                 <StatCard
@@ -154,7 +154,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     value={platformMargin}
                     format="currency"
                     tooltip="Comissão da plataforma (% sobre cada agendamento)."
-                    className="border-l-4 border-l-emerald-500 bg-emerald-50"
+                    className="border-l-4 border-l-emerald-500 bg-emerald-50/70 border border-slate-200/80 shadow-xs rounded-xl"
                 />
                 {/* Roxo — obrigação com profissionais (liability) */}
                 <StatCard
@@ -162,7 +162,7 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     value={totalPayouts}
                     format="currency"
                     tooltip="Total repassado (ou a repassar) aos profissionais no período."
-                    className="border-l-4 border-l-violet-500 bg-violet-50"
+                    className="border-l-4 border-l-violet-500 bg-violet-50/70 border border-slate-200/80 shadow-xs rounded-xl"
                 />
                 {/* Âmbar — custos operacionais (despesa) */}
                 <StatCard
@@ -170,43 +170,43 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     value={totalCosts}
                     format="currency"
                     tooltip="Soma das despesas operacionais (servidor, marketing, etc)."
-                    className="border-l-4 border-l-amber-500 bg-amber-50"
+                    className="border-l-4 border-l-amber-500 bg-amber-50/70 border border-slate-200/80 shadow-xs rounded-xl"
                 />
                 <motion.div className={cn(
-                    'rounded-2xl border shadow-sm p-6',
-                    isProfitable ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                    'rounded-xl border shadow-xs p-5',
+                    isProfitable ? 'bg-emerald-50/70 border-emerald-200/80' : 'bg-rose-50/70 border-rose-200/80'
                 )}>
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-gray-600">Lucro/Prejuízo</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">Lucro/Prejuízo</p>
                             <Tooltip content="Resultado final: Margem da Plataforma - Custos Totais.">
-                                <HelpCircle className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                                <HelpCircle className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600 cursor-help" />
                             </Tooltip>
                         </div>
-                        {isProfitable ? <TrendingUp className="w-5 h-5 text-green-600" /> : <TrendingDown className="w-5 h-5 text-red-600" />}
+                        {isProfitable ? <TrendingUp className="w-4 h-4 text-emerald-600" /> : <TrendingDown className="w-4 h-4 text-rose-600" />}
                     </div>
-                    <p className={cn('text-3xl font-bold', isProfitable ? 'text-green-900' : 'text-red-900')}>
+                    <p className={cn('text-2xl font-extrabold tabular-nums tracking-tight', isProfitable ? 'text-emerald-950' : 'text-rose-950')}>
                         {formatCurrency(profitLoss)}
                     </p>
-                    <p className="text-xs text-gray-600 mt-1">{profitMargin.toFixed(1)}% margem</p>
+                    <p className={cn('text-xs font-semibold mt-1 tabular-nums', isProfitable ? 'text-emerald-700' : 'text-rose-700')}>{profitMargin.toFixed(1)}% margem</p>
                 </motion.div>
             </div>
 
             {/* Breakdown de Custos */}
             {Object.keys(costsByCategory).length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                    <h3 className="text-lg font-semibold mb-4">Custos por Categoria</h3>
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6">
+                    <h3 className="text-base font-bold text-slate-900 mb-4">Custos por Categoria</h3>
                     <div className="space-y-3">
                         {Object.entries(costsByCategory).map(([category, data]) => {
                             const percentage = totalCosts > 0 ? (data.total / totalCosts) * 100 : 0;
                             return (
                                 <div key={category}>
-                                    <div className="flex justify-between text-sm mb-1">
-                                        <span className="font-medium">{getCategoryLabel(category)}</span>
-                                        <span>{formatCurrency(data.total)} ({percentage.toFixed(1)}%)</span>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span className="font-semibold text-slate-700">{getCategoryLabel(category)}</span>
+                                        <span className="tabular-nums font-semibold text-slate-900">{formatCurrency(data.total)} ({percentage.toFixed(1)}%)</span>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div className="bg-[#2d8659] h-2 rounded-full" style={{ width: `${percentage}%` }} />
+                                    <div className="w-full bg-slate-100 rounded-full h-2">
+                                        <div className="bg-emerald-600 h-2 rounded-full transition-all" style={{ width: `${percentage}%` }} />
                                     </div>
                                 </div>
                             );
@@ -214,55 +214,54 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     </div>
                 </div>
             )}
-
             {/* Lista de Custos Individuais */}
             {costs.length > 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-                    <h3 className="text-lg font-semibold mb-4">Custos Detalhados</h3>
+                <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6">
+                    <h3 className="text-base font-bold text-slate-900 mb-4">Custos Detalhados</h3>
                     <div className="space-y-2">
                         {costs.map((cost) => (
                             <motion.div
                                 key={cost.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="flex items-center justify-between p-5 border border-gray-100 rounded-2xl bg-gray-50/50 hover:bg-white hover:shadow-sm transition-all"
+                                className="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/50 hover:bg-white hover:shadow-xs transition-all"
                             >
                                 <div className="flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200">
                                             {getCategoryLabel(cost.category)}
                                         </span>
-                                        <p className="font-medium">{cost.description}</p>
+                                        <p className="font-semibold text-slate-900 text-sm">{cost.description}</p>
                                         {cost.is_recurring && (
-                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md border border-blue-200">
                                                 Recorrente
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-600 mt-1">
+                                    <p className="text-xs text-slate-500 mt-1">
                                         {formatDate(cost.cost_date)}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <p className="text-lg font-bold text-gray-900">
+                                    <p className="text-base font-extrabold text-slate-900 tabular-nums">
                                         {formatCurrency(cost.amount)}
                                     </p>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1">
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="rounded-full"
+                                            className="rounded-lg h-8 w-8 p-0 text-slate-500 hover:text-slate-900 hover:bg-slate-100"
                                             onClick={() => onEditCost(cost)}
                                         >
-                                            <Pencil className="w-4 h-4 text-gray-500" />
+                                            <Pencil className="w-4 h-4" />
                                         </Button>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="rounded-full hover:bg-red-50 hover:text-red-600"
+                                            className="rounded-lg h-8 w-8 p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
                                             onClick={() => onDeleteCost(cost)}
                                         >
-                                            <Trash2 className="w-4 h-4 text-gray-500 hover:text-red-600" />
+                                            <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 </div>
@@ -271,8 +270,13 @@ export function ProfitLossDashboard({ onAddCost, onEditCost, onDeleteCost, class
                     </div>
                 </div>
             ) : (
-                <EmptyState icon={DollarSign} title="Nenhum custo registrado"
-                    description="Adicione custos para ver a análise completa" compact={true} />
+                <EmptyState
+                    icon={DollarSign}
+                    title="Nenhum custo registrado"
+                    description="Adicione custos operacionais para acompanhar a saúde financeira da plataforma."
+                    actionLabel="Adicionar Custo"
+                    onAction={onAddCost}
+                />
             )}
         </div>
     );

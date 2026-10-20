@@ -145,16 +145,15 @@ export const AvailabilityManager = ({
     const m3 = ((selectedMonth + 1) % 12) + 1;
 
     return (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative">
-            {/* Header da Seção */}
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6 relative">
             {/* Header da Seção */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 pb-4">
                 <div>
-                    <h2 className="text-2xl font-bold flex items-center text-gray-900">
-                        <Clock className="w-6 h-6 mr-2 text-[#2d8659]" />
+                    <h2 className="text-xl font-bold flex items-center text-slate-900">
+                        <Clock className="w-6 h-6 mr-2 text-slate-800" />
                         Disponibilidade de Agenda
                     </h2>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-xs text-slate-500 mt-1">
                         Configure seu padrão de horários para a semana e gerencie exceções.
                     </p>
                 </div>

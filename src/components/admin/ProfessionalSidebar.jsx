@@ -17,16 +17,16 @@ export function ProfessionalSidebar({
   ];
 
   return (
-    <aside className="w-64 bg-white text-slate-800 flex flex-col flex-shrink-0 min-h-screen border-r border-slate-200 shadow-sm">
-      <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+    <aside className="w-64 bg-white text-slate-800 flex flex-col flex-shrink-0 min-h-screen border-r border-slate-200/80 shadow-xs font-sans">
+      <div className="p-5 border-b border-slate-200/80 bg-white flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#2d8659] text-white flex items-center justify-center font-bold text-xl shadow-md">
+          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-xl shadow-xs">
             D
           </div>
           <div>
             <h2 className="font-bold text-slate-900 text-sm tracking-wide">Doxologos</h2>
-            <p className="text-xs text-[#2d8659] font-semibold flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
               Painel do Psicólogo
             </p>
           </div>
@@ -44,7 +44,7 @@ export function ProfessionalSidebar({
               onClick={() => setActiveTab(tab.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
-                  ? 'bg-[#2d8659] text-white shadow-sm'
+                  ? 'bg-slate-900 text-white shadow-xs font-semibold'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -55,9 +55,9 @@ export function ProfessionalSidebar({
         })}
       </div>
 
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col gap-2.5 text-xs">
+      <div className="p-4 border-t border-slate-200/80 bg-slate-50/70 flex flex-col gap-2.5 text-xs">
         <div className="flex items-center gap-2.5 truncate">
-          <div className="w-8 h-8 rounded-full bg-[#2d8659]/10 text-[#2d8659] border border-[#2d8659]/20 flex items-center justify-center font-bold">
+          <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-800 border border-slate-300 flex items-center justify-center font-bold">
             {userName.charAt(0)}
           </div>
           <div className="truncate">
@@ -69,9 +69,9 @@ export function ProfessionalSidebar({
         {onOpenChangePassword && (
           <button
             onClick={onOpenChangePassword}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-[#2d8659] hover:bg-emerald-50 transition-colors border border-slate-200 bg-white shadow-xs"
+            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-colors border border-slate-200 bg-white shadow-xs"
           >
-            <KeyRound className="w-3.5 h-3.5 text-[#2d8659]" />
+            <KeyRound className="w-3.5 h-3.5 text-slate-600" />
             Alterar Minha Senha
           </button>
         )}

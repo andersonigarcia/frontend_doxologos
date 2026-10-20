@@ -153,7 +153,7 @@ const AssessmentLeadsSection = ({ currentUserId }) => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-[#2d8659]" />
+            <Sparkles className="w-6 h-6 text-slate-800" />
             <span>Leads & Autoavaliações Psicométricas</span>
           </h2>
           <p className="text-xs sm:text-sm text-gray-500">
@@ -228,7 +228,7 @@ const AssessmentLeadsSection = ({ currentUserId }) => {
             placeholder="Buscar por nome, e-mail ou WhatsApp..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-xs sm:text-sm outline-none focus:bg-white focus:border-[#2d8659]"
+            className="w-full pl-9 pr-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-xs sm:text-sm outline-none focus:bg-white focus:border-slate-900"
           />
         </div>
 
@@ -236,7 +236,7 @@ const AssessmentLeadsSection = ({ currentUserId }) => {
           <select
             value={selectedSeverity}
             onChange={(e) => setSelectedSeverity(e.target.value)}
-            className="px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium outline-none focus:border-[#2d8659]"
+            className="px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium outline-none focus:border-slate-900"
           >
             <option value="all">Todas as Gravidades</option>
             <option value="severe">🚨 Gravidade Severa / Crítica</option>
@@ -248,7 +248,7 @@ const AssessmentLeadsSection = ({ currentUserId }) => {
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium outline-none focus:border-[#2d8659]"
+            className="px-3 py-2 bg-gray-50 rounded-xl border border-gray-200 text-xs font-medium outline-none focus:border-slate-900"
           >
             <option value="all">Todos os Status</option>
             <option value="novo">Novo</option>
@@ -264,7 +264,7 @@ const AssessmentLeadsSection = ({ currentUserId }) => {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-xs overflow-hidden">
         {loading ? (
           <div className="py-12 text-center text-sm text-gray-500 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin text-[#2d8659]" />
+            <RefreshCw className="w-4 h-4 animate-spin text-slate-800" />
             <span>Carregando leads psicométricos...</span>
           </div>
         ) : leads.length === 0 ? (

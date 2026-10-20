@@ -171,9 +171,9 @@ export function AdminServicesTab({ services = [], professionals = [], onRefresh 
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg p-6 border border-slate-100">
-                <h2 className="text-2xl font-bold mb-6 flex items-center text-slate-800">
-                    <Briefcase className="w-6 h-6 mr-2 text-[#2d8659]" /> Serviços
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-xs p-6 border border-slate-200/80">
+                <h2 className="text-xl font-bold mb-6 flex items-center text-slate-900">
+                    <Briefcase className="w-6 h-6 mr-2 text-slate-800" /> Serviços
                 </h2>
                 <div className="space-y-4">
                     {services.map((service, index) => {
@@ -353,7 +353,7 @@ export function AdminServicesTab({ services = [], professionals = [], onRefresh 
                     </div>
 
                     <div className="flex gap-2 pt-2">
-                        <Button type="submit" className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                        <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold">
                             {isEditingService ? 'Salvar Alterações' : 'Criar Serviço'}
                         </Button>
                         {isEditingService && (

@@ -135,17 +135,17 @@ export function AdminSidebar({
   };
 
   return (
-    <aside className={`w-full ${isMobile ? 'h-full bg-[#fcfbf9]' : 'w-64 bg-[#fcfbf9] min-h-screen border-r border-[#e4ded5]'} text-[#262624] flex flex-col flex-shrink-0 shadow-xs select-none`}>
+    <aside className={`w-full ${isMobile ? 'h-full bg-white' : 'w-64 bg-white min-h-screen border-r border-slate-200/80'} text-slate-800 flex flex-col flex-shrink-0 shadow-xs select-none font-sans`}>
       {/* Header do Painel */}
-      <div className="p-4 sm:p-5 border-b border-[#e4ded5] bg-[#f8f6f0]/80 flex items-center justify-between">
+      <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#1b3c37] text-[#f8f6f0] flex items-center justify-center font-bold font-serif text-xl shadow-xs">
+          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-xs">
             D
           </div>
           <div>
-            <h2 className="font-serif font-bold text-[#1b3c37] text-base tracking-tight">Doxologos</h2>
-            <p className="text-[11px] text-[#1b3c37]/80 font-medium flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#1b3c37]" />
+            <h2 className="font-bold text-slate-900 text-base tracking-tight">Doxologos</h2>
+            <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
               {isProfessional ? 'Painel do Psicólogo' : 'Painel Executivo'}
             </p>
           </div>
@@ -155,7 +155,7 @@ export function AdminSidebar({
           <button
             onClick={onClose}
             aria-label="Fechar menu"
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#e4ded5] text-[#262624] hover:bg-[#f4efe6] transition-colors"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors"
           >
             <span className="text-xl leading-none">&times;</span>
           </button>
@@ -163,7 +163,7 @@ export function AdminSidebar({
       </div>
 
       {/* Navegação por Módulos */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3.5 custom-scrollbar">
         {availableModules.map((module) => {
           const ModuleIcon = module.icon;
           const isModuleActive = activeModule === module.id || module.tabs.some(t => t.id === activeTab);
@@ -180,20 +180,20 @@ export function AdminSidebar({
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all min-h-[42px] ${
                   isModuleActive
-                    ? 'text-[#1b3c37] bg-[#f4efe6] border border-[#e4ded5]'
-                    : 'text-[#262624]/70 hover:text-[#1b3c37] hover:bg-[#f4efe6]/60 border border-transparent'
+                    ? 'text-slate-900 bg-slate-100 border border-slate-200/90 shadow-2xs'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-2.5 text-left">
-                  <ModuleIcon className={`w-4 h-4 shrink-0 ${isModuleActive ? 'text-[#1b3c37]' : 'text-[#9bab9b]'}`} />
+                  <ModuleIcon className={`w-4 h-4 shrink-0 ${isModuleActive ? 'text-slate-900' : 'text-slate-400'}`} />
                   <span className="truncate">{module.title}</span>
                 </div>
-                <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isModuleActive ? 'rotate-90 text-[#1b3c37]' : 'text-[#9bab9b]'}`} />
+                <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${isModuleActive ? 'rotate-90 text-slate-800' : 'text-slate-400'}`} />
               </button>
 
               {/* Sub-tabs do Módulo */}
               {isModuleActive && (
-                <div className="pl-2 space-y-1 border-l-2 border-[#1b3c37]/20 ml-4 my-1.5">
+                <div className="pl-2 space-y-1 border-l-2 border-slate-200 ml-4 my-1.5">
                   {module.tabs.map((tab) => {
                     const TabIcon = tab.icon;
                     const isTabActive = activeTab === tab.id;
@@ -204,18 +204,18 @@ export function AdminSidebar({
                         onClick={() => handleSelectTab(module.id, tab.id)}
                         className={`w-full flex items-center justify-between px-3 py-2 sm:py-2 text-xs rounded-lg font-medium transition-all min-h-[38px] ${
                           isTabActive
-                            ? 'bg-[#1b3c37] text-white font-semibold shadow-xs'
-                            : 'text-[#262624]/80 hover:text-[#1b3c37] hover:bg-[#f4efe6]/80'
+                            ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 text-left truncate">
-                          <TabIcon className={`w-3.5 h-3.5 shrink-0 ${isTabActive ? 'text-[#9bab9b]' : 'text-[#262624]/50'}`} />
+                          <TabIcon className={`w-3.5 h-3.5 shrink-0 ${isTabActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                           <span className="truncate">{tab.label}</span>
                         </div>
 
                         {tab.id === 'bookings' && pendingAlertsCount > 0 && (
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ml-1.5 ${
-                            isTabActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-900 border border-amber-200'
+                            isTabActive ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}>
                             {pendingAlertsCount}
                           </span>
@@ -231,14 +231,14 @@ export function AdminSidebar({
       </div>
 
       {/* User Footer Profile */}
-      <div className="p-3 sm:p-4 border-t border-[#e4ded5] bg-[#f8f6f0]/70 flex flex-col gap-2.5 text-xs">
+      <div className="p-3 sm:p-4 border-t border-slate-200/80 bg-slate-50/60 flex flex-col gap-2.5 text-xs">
         <div className="flex items-center gap-2.5 truncate">
-          <div className="w-8 h-8 rounded-full bg-[#1b3c37]/10 text-[#1b3c37] border border-[#1b3c37]/20 flex items-center justify-center font-bold shrink-0">
+          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold shrink-0 text-xs shadow-2xs">
             {userName.charAt(0)}
           </div>
           <div className="truncate">
-            <p className="font-semibold text-[#262624] truncate">{userName}</p>
-            <p className="text-[10px] text-[#262624]/60 capitalize">{userRole}</p>
+            <p className="font-semibold text-slate-900 truncate">{userName}</p>
+            <p className="text-[10px] text-slate-500 capitalize">{userRole}</p>
           </div>
         </div>
 
@@ -248,9 +248,9 @@ export function AdminSidebar({
               if (onClose) onClose();
               onOpenChangePassword();
             }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#1b3c37] hover:bg-[#f4efe6] transition-colors border border-[#e4ded5] bg-white shadow-xs min-h-[38px]"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors border border-slate-200 bg-white shadow-xs min-h-[36px]"
           >
-            <KeyRound className="w-3.5 h-3.5 text-[#1b3c37]" />
+            <KeyRound className="w-3.5 h-3.5 text-slate-600" />
             Alterar Minha Senha
           </button>
         )}

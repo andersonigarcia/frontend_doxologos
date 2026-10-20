@@ -93,31 +93,31 @@ export function DashboardGrowth() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div>
-                <h2 className="text-2xl font-bold flex items-center text-gray-800">
-                    <TrendingUp className="w-6 h-6 mr-2 text-[#2d8659]" />
+                <h2 className="text-xl font-bold flex items-center text-slate-900">
+                    <TrendingUp className="w-6 h-6 mr-2 text-slate-800" />
                     Growth & Marketing Dashboard
                 </h2>
-                <p className="text-gray-600 mt-1">
+                <p className="text-xs text-slate-500 mt-0.5">
                     Monitore a saúde do crescimento da clínica, métricas de novos pacientes e retenção de longo prazo.
                 </p>
             </div>
 
             {/* Top Cards: Native Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border-l-4 border-l-[#2d8659]">
+                <Card className="border-l-4 border-l-emerald-500 bg-white border border-slate-200/80 shadow-xs rounded-xl">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium text-gray-500 flex items-center justify-between">
+                        <CardTitle className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                             Novos Pacientes (Mês Atual)
-                            <Users className="w-4 h-4 text-[#2d8659]" />
+                            <Users className="w-4 h-4 text-emerald-600" />
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {metrics.loading ? (
-                            <div className="h-8 bg-gray-100 animate-pulse rounded w-1/2"></div>
+                            <div className="h-8 bg-slate-100 animate-pulse rounded w-1/2"></div>
                         ) : (
                             <>
-                                <div className="text-2xl font-bold">{metrics.newPatientsMonth}</div>
-                                <p className="text-xs text-gray-500 mt-1">Primeira consulta agendada neste mês</p>
+                                <div className="text-2xl font-extrabold text-slate-900 tabular-nums">{metrics.newPatientsMonth}</div>
+                                <p className="text-xs text-slate-500 mt-1">Primeira consulta agendada neste mês</p>
                             </>
                         )}
                     </CardContent>

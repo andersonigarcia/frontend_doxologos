@@ -193,7 +193,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                         <Button
                             size="sm"
                             onClick={handleExportCSV}
-                            className="rounded-full bg-[#2d8659] hover:bg-[#236b47] text-xs"
+                            className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-9 px-4 shadow-xs"
                         >
                             <Download className="w-4 h-4 mr-2" />
                             Exportar CSV
@@ -307,10 +307,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-6"
+                className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6"
             >
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-[#2d8659]" />
+                <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-slate-800" />
                     Receita por Serviço
                 </h3>
 
@@ -329,20 +329,20 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                                     <div className="flex justify-between items-center">
                                         <span className="font-medium text-gray-900">{service.name}</span>
                                         <div className="text-right">
-                                            <span className="font-semibold text-[#2d8659]">
+                                            <span className="font-bold text-emerald-700 tabular-nums">
                                                 R$ {service.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
-                                            <span className="text-sm text-gray-600 ml-2">
+                                            <span className="text-xs text-slate-500 ml-2 font-medium">
                                                 ({percentage.toFixed(1)}%)
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div className="w-full bg-slate-100 rounded-full h-2.5">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${percentage}%` }}
                                             transition={{ delay: 0.7 + index * 0.05, duration: 0.5 }}
-                                            className="bg-[#2d8659] h-2.5 rounded-full"
+                                            className="bg-emerald-600 h-2.5 rounded-full"
                                         />
                                     </div>
                                     <p className="text-xs text-gray-500">

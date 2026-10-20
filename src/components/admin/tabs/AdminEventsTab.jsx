@@ -466,9 +466,9 @@ export function AdminEventsTab({ events = [], professionals = [], onRefresh }) {
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-5 bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold mb-6 flex items-center">
-                    <Calendar className="w-6 h-6 mr-2 text-[#2d8659]" /> Eventos
+            <div className="lg:col-span-5 bg-white rounded-xl shadow-xs border border-slate-200/80 p-6">
+                <h2 className="text-xl font-bold mb-6 flex items-center text-slate-900">
+                    <Calendar className="w-6 h-6 mr-2 text-slate-800" /> Eventos
                 </h2>
                 {events.map((event, index) => {
                     const dataInicio = new Date(event.data_inicio);
@@ -675,7 +675,7 @@ export function AdminEventsTab({ events = [], professionals = [], onRefresh }) {
                             <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                                 <input
                                     type="checkbox"
-                                    className="h-4 w-4 text-[#2d8659]"
+                                    className="h-4 w-4 text-slate-900 rounded focus:ring-slate-900"
                                     checked={isFreeEvent}
                                     onChange={(e) => {
                                         setIsFreeEvent(e.target.checked);
@@ -925,7 +925,7 @@ export function AdminEventsTab({ events = [], professionals = [], onRefresh }) {
                                 id="evento_ativo"
                                 checked={eventFormData.ativo === true}
                                 onChange={e => setEventFormData(prev => ({ ...prev, ativo: e.target.checked }))}
-                                className="w-4 h-4 text-[#2d8659] border-2 border-gray-300 rounded focus:ring-[#2d8659] focus:ring-2"
+                                className="w-4 h-4 text-slate-900 border-2 border-slate-300 rounded focus:ring-slate-900 focus:ring-2"
                             />
                             <label htmlFor="evento_ativo" className="text-sm font-medium text-gray-700 cursor-pointer">
                                 Evento ativo e visível para pacientes
@@ -939,7 +939,7 @@ export function AdminEventsTab({ events = [], professionals = [], onRefresh }) {
                             <label className="flex items-center gap-2 text-xs font-semibold text-gray-600">
                                 <input
                                     type="checkbox"
-                                    className="h-4 w-4 text-[#2d8659]"
+                                    className="h-4 w-4 text-slate-900 rounded focus:ring-slate-900"
                                     checked={showManualZoomFields}
                                     onChange={(e) => {
                                         setShowManualZoomFields(e.target.checked);
@@ -1023,7 +1023,7 @@ export function AdminEventsTab({ events = [], professionals = [], onRefresh }) {
                                     Cancelar edição
                                 </Button>
                             )}
-                            <Button type="submit" className="bg-[#2d8659] hover:bg-[#236b47]">
+                            <Button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold">
                                 {isEditingEvent ? 'Salvar alterações' : 'Criar evento'}
                             </Button>
                         </div>

@@ -40,7 +40,7 @@ import {
   Legend
 } from 'recharts';
 
-const COHORT_COLORS = ['#3b82f6', '#2d8659', '#8b5cf6'];
+const COHORT_COLORS = ['#3b82f6', '#059669', '#8b5cf6'];
 
 export function OperationalRetentionModule({
   bookings = [],
@@ -81,27 +81,27 @@ export function OperationalRetentionModule({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* CABEÇALHO DO MÓDULO OPERACIONAL */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-[#e4ded5] shadow-[0_2px_12px_rgba(27,60,55,0.03)] text-[#262624]">
+      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs text-slate-900 font-sans">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="bg-[#1b3c37]/5 text-[#1b3c37] text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border border-[#1b3c37]/15">
-                <Activity className="w-3.5 h-3.5 text-[#1b3c37]" />
+              <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border border-slate-200">
+                <Activity className="w-3.5 h-3.5 text-emerald-600" />
                 Operação & Retenção Clínica
               </span>
-              <span className="text-[11px] text-[#262624]/60 font-medium">Fidelização • No-Show • Capacidade</span>
+              <span className="text-[11px] text-slate-400 font-medium">Fidelização • No-Show • Capacidade</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#262624]">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               Saúde da Operação & Retenção de Pacientes
             </h2>
-            <p className="text-xs text-[#262624]/70 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
               Acompanhe o retorno para a segunda sessão, a taxa de faltas (no-show) por psicólogo, a ocupação das grades e o mapa de prevenção de abandono clínico.
             </p>
           </div>
 
           {/* Seletor de Sub-Abas do Módulo com Rolagem Horizontal Suave para Mobile */}
           <div className="w-full lg:w-auto overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5">
-            <div className="inline-flex bg-[#f4efe6] p-1 rounded-xl border border-[#e4ded5] shadow-inner gap-1 min-w-full sm:min-w-0">
+            <div className="inline-flex bg-slate-100 p-1 rounded-lg border border-slate-200/80 shadow-inner gap-1 min-w-full sm:min-w-0">
               {[
                 { id: 'overview', label: 'Retenção & Coortes' },
                 { id: 'noshow', label: 'No-Show & Cancelamentos' },
@@ -111,10 +111,10 @@ export function OperationalRetentionModule({
                 <button
                   key={tab.id}
                   onClick={() => setActiveSubTab(tab.id)}
-                  className={`text-xs px-3 py-1.5 rounded-lg transition-all whitespace-nowrap font-medium flex-1 sm:flex-initial text-center touch-manipulation ${
+                  className={`text-xs px-3 py-1.5 rounded-md transition-all whitespace-nowrap font-medium flex-1 sm:flex-initial text-center touch-manipulation ${
                     activeSubTab === tab.id
-                      ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-sm font-semibold'
-                      : 'text-[#262624]/70 hover:text-[#262624] hover:bg-white/60'
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-white/50'
                   }`}
                 >
                   {tab.label}
@@ -126,27 +126,27 @@ export function OperationalRetentionModule({
       </div>
 
       {/* TOP METRICS - 4 CARDS VITAIS EM GRID 2X2 NO MOBILE */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 font-sans">
         {/* KPI 1: Taxa de Retorno (2ª Consulta) */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Retorno para 2ª Sessão
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
                 <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {formatPct(retentionMetrics.secondSessionReturnRatePct)}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>{retentionMetrics.multiSessionCount} de {retentionMetrics.totalPatients} retornaram</span>
               </p>
               {retentionMetrics.avgDaysToSecondSession !== null && (
-                <p className="text-[10px] sm:text-[11px] text-[#1b3c37] font-medium mt-1 truncate">
+                <p className="text-[10px] sm:text-[11px] text-emerald-700 font-medium mt-1 truncate">
                   Intervalo médio: ~{retentionMetrics.avgDaysToSecondSession} dias
                 </p>
               )}
@@ -155,24 +155,24 @@ export function OperationalRetentionModule({
         </Card>
 
         {/* KPI 2: Taxa de No-Show */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Taxa de No-Show (Faltas)
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#dc2626] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center">
                 <UserX className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {formatPct(noShowMetrics.noShowRatePct)}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>{noShowMetrics.noShowCount} falta(s) registrada(s)</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#262624]/60 mt-1 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">
                 De {noShowMetrics.completedCount + noShowMetrics.noShowCount} marcadas
               </p>
             </div>
@@ -180,24 +180,24 @@ export function OperationalRetentionModule({
         </Card>
 
         {/* KPI 3: Cancelamentos Gerais */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Cancelamentos
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#d97706] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 flex items-center justify-center">
                 <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {formatPct(noShowMetrics.cancellationRatePct)}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>{noShowMetrics.cancelledCount} cancelamento(s)</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#262624]/60 mt-1 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-1 truncate">
                 De {noShowMetrics.total} agendamentos totais
               </p>
             </div>
@@ -205,24 +205,24 @@ export function OperationalRetentionModule({
         </Card>
 
         {/* KPI 4: Pacientes em Risco de Abandono */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs hover:shadow-md transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                 Em Risco de Abandono
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
                 <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {atRiskPatients.length}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>Sem consulta há {'>'} {churnDaysThreshold} dias</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#1b3c37] font-medium mt-1 truncate">
+              <p className="text-[10px] sm:text-[11px] text-amber-600 font-medium mt-1 truncate">
                 Sem agendamento futuro
               </p>
             </div>
@@ -279,7 +279,7 @@ export function OperationalRetentionModule({
                   <RechartsTooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Bar dataKey="count" name="Pacientes" fill="#2d8659" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="count" name="Pacientes" fill="#059669" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -289,7 +289,7 @@ export function OperationalRetentionModule({
           <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
-                <ShieldCheck className="w-5 h-5 text-[#2d8659]" />
+                <ShieldCheck className="w-5 h-5 text-emerald-700" />
                 <h3 className="font-bold text-slate-900 text-sm">Diretrizes de Retenção Ética</h3>
               </div>
               <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
@@ -411,7 +411,7 @@ export function OperationalRetentionModule({
                     <RechartsTooltip
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
-                    <Bar dataKey="completed" name="Concluídas" fill="#2d8659" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="completed" name="Concluídas" fill="#059669" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="noShow" name="No-Show (Faltas)" fill="#ef4444" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="cancelled" name="Canceladas" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                   </BarChart>

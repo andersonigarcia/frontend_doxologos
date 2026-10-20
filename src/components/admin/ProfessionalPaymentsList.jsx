@@ -168,7 +168,7 @@ export function ProfessionalPaymentsList({
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                            <DollarSign className="w-5 h-5 text-[#2d8659]" />
+                            <DollarSign className="w-5 h-5 text-slate-800" />
                             Pagamentos aos Profissionais
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">
@@ -178,7 +178,7 @@ export function ProfessionalPaymentsList({
 
                     <Button
                         onClick={() => onCreatePayment()}
-                        className="bg-[#2d8659] hover:bg-[#236b47] text-white rounded-xl shadow-sm px-5 font-semibold text-xs h-10"
+                        className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-xs px-5 font-semibold text-xs h-10"
                     >
                         <Plus className="w-4 h-4 mr-1.5" />
                         Novo Pagamento
@@ -220,7 +220,7 @@ export function ProfessionalPaymentsList({
                             className={cn(
                                 'px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5',
                                 statusFilter === 'paid'
-                                    ? 'bg-[#2d8659] text-white shadow-xs'
+                                    ? 'bg-emerald-600 text-white shadow-xs'
                                     : 'text-emerald-700 hover:text-emerald-900'
                             )}
                         >
@@ -235,7 +235,7 @@ export function ProfessionalPaymentsList({
                             placeholder="Buscar por profissional ou email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-[#2d8659]/30 focus:border-[#2d8659] transition-all font-medium"
+                            className="w-full pl-9 pr-4 py-2 text-xs border border-slate-200 rounded-xl bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900 transition-all font-medium"
                         />
                     </div>
                 </div>
@@ -291,7 +291,7 @@ export function ProfessionalPaymentsList({
 
                                             <div className="space-y-1.5">
                                                 <div className="flex flex-wrap items-center gap-2.5">
-                                                    <h3 className="font-bold text-slate-900 text-base group-hover:text-[#2d8659] transition-colors">
+                                                    <h3 className="font-bold text-slate-900 text-base group-hover:text-slate-700 transition-colors">
                                                         {profName}
                                                     </h3>
                                                     {getStatusBadge(payment.status)}
@@ -327,7 +327,7 @@ export function ProfessionalPaymentsList({
                                         <div className="flex items-center justify-between lg:justify-end gap-5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100">
                                             <div className="text-left lg:text-right">
                                                 <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Valor do Repasse</span>
-                                                <p className="text-2xl font-extrabold text-[#2d8659]">
+                                                <p className="text-2xl font-extrabold text-emerald-700 tabular-nums">
                                                     {formatCurrency(payment.total_amount)}
                                                 </p>
                                             </div>

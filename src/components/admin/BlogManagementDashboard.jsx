@@ -247,22 +247,22 @@ export const BlogManagementDashboard = () => {
     return (
         <div className="space-y-4 sm:space-y-6">
             {/* CABEÇALHO DO BLOG - CARD CLARO PREMIUM DOXOLOGOS */}
-            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-[#e4ded5] shadow-[0_2px_12px_rgba(27,60,55,0.03)] text-[#262624]">
+            <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs text-slate-900 font-sans">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span className="bg-[#1b3c37]/5 text-[#1b3c37] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#1b3c37]/15 flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-[#1b3c37]" />
+                            <span className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-emerald-700" />
                                 Gestão de Conteúdo & SEO
                             </span>
-                            <span className="text-[11px] text-[#262624]/60 font-medium">
+                            <span className="text-[11px] text-slate-500 font-medium">
                                 Substack RSS Feed • Publicações Oficiais
                             </span>
                         </div>
-                        <h1 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#1b3c37]">
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                             Gestão do Blog & Substack
                         </h1>
-                        <p className="text-xs text-[#262624]/70 mt-1 max-w-2xl leading-relaxed">
+                        <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
                             Sincronização automatizada da newsletter Doxologos via RSS, curadoria de visibilidade e indexação para atração orgânica de pacientes.
                         </p>
                     </div>
@@ -273,7 +273,7 @@ export const BlogManagementDashboard = () => {
                             onClick={fetchArticles}
                             variant="outline"
                             disabled={loading}
-                            className="flex-1 sm:flex-initial border-[#e4ded5] text-[#1b3c37] hover:bg-[#f8f6f0] text-xs font-semibold h-10 sm:h-9 bg-white shadow-2xs gap-1.5 touch-manipulation"
+                            className="flex-1 sm:flex-initial border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold h-10 sm:h-9 bg-white shadow-2xs gap-1.5 touch-manipulation"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                             Atualizar Lista
@@ -282,7 +282,7 @@ export const BlogManagementDashboard = () => {
                             size="sm"
                             onClick={handleSync}
                             disabled={syncing}
-                            className="flex-1 sm:flex-initial bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold text-xs h-10 sm:h-9 gap-1.5 shadow-sm touch-manipulation"
+                            className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-10 sm:h-9 gap-1.5 shadow-xs touch-manipulation"
                         >
                             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
                             {syncing ? 'Sincronizando...' : 'Sincronizar Substack'}
@@ -292,17 +292,17 @@ export const BlogManagementDashboard = () => {
             </div>
 
             {/* SELETOR DE STATUS, BUSCA E CONTADORES */}
-            <Card className="p-4 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-xs space-y-4">
+            <Card className="p-4 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs space-y-4 font-sans">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                     {/* Input de Busca */}
                     <div className="relative flex-1 max-w-md">
-                        <Search className="w-4 h-4 text-[#262624]/40 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <input
                             type="text"
                             placeholder="Buscar artigo por título ou tema..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-xs bg-[#f8f6f0] border border-[#e4ded5] rounded-xl text-[#262624] placeholder-[#262624]/40 focus:outline-none focus:ring-2 focus:ring-[#1b3c37]/20 focus:border-[#1b3c37] transition-all"
+                            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200/80 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:border-slate-900 transition-all"
                         />
                     </div>
 
@@ -312,8 +312,8 @@ export const BlogManagementDashboard = () => {
                             onClick={() => setStatusFilter('all')}
                             className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all touch-manipulation whitespace-nowrap ${
                                 statusFilter === 'all'
-                                    ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-2xs'
-                                    : 'bg-[#f4efe6] text-[#262624]/70 hover:bg-[#e4ded5]'
+                                    ? 'bg-slate-900 text-white shadow-2xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                         >
                             Todos ({stats.total})
@@ -322,8 +322,8 @@ export const BlogManagementDashboard = () => {
                             onClick={() => setStatusFilter('published')}
                             className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all touch-manipulation whitespace-nowrap ${
                                 statusFilter === 'published'
-                                    ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-2xs'
-                                    : 'bg-[#f4efe6] text-[#262624]/70 hover:bg-[#e4ded5]'
+                                    ? 'bg-slate-900 text-white shadow-2xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                         >
                             Visíveis ({stats.published})
@@ -332,8 +332,8 @@ export const BlogManagementDashboard = () => {
                             onClick={() => setStatusFilter('draft')}
                             className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all touch-manipulation whitespace-nowrap ${
                                 statusFilter === 'draft'
-                                    ? 'bg-[#1b3c37] text-[#f0ebe1] shadow-2xs'
-                                    : 'bg-[#f4efe6] text-[#262624]/70 hover:bg-[#e4ded5]'
+                                    ? 'bg-slate-900 text-white shadow-2xs'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                         >
                             Ocultos ({stats.drafts})
@@ -343,16 +343,16 @@ export const BlogManagementDashboard = () => {
 
                 {/* ALERTA DE ERRO DE CONEXÃO COM AÇÃO DE RETRY */}
                 {fetchError && (
-                    <div className="p-3.5 bg-red-50/70 border border-red-200 rounded-xl text-xs text-red-900 flex items-center justify-between gap-3">
+                    <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                             <span><strong>Falha ao carregar artigos:</strong> {fetchError}</span>
                         </div>
                         <Button
                             size="sm"
                             variant="outline"
                             onClick={fetchArticles}
-                            className="text-xs border-red-300 text-red-800 hover:bg-red-100 h-8"
+                            className="text-xs border-rose-300 text-rose-800 hover:bg-rose-100 h-8"
                         >
                             Tentar Novamente
                         </Button>
@@ -361,20 +361,20 @@ export const BlogManagementDashboard = () => {
 
                 {/* ESTADO DE CARREGAMENTO */}
                 {loading ? (
-                    <div className="py-12 text-center text-xs text-[#262624]/60 space-y-2">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#1b3c37]" />
+                    <div className="py-12 text-center text-xs text-slate-500 space-y-2">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-slate-800" />
                         <p>Carregando publicações do blog...</p>
                     </div>
                 ) : filteredArticles.length === 0 ? (
                     /* ESTADO VAZIO COM ORIENTAÇÃO */
-                    <div className="py-12 px-4 text-center rounded-xl bg-[#f8f6f0] border border-dashed border-[#e4ded5] max-w-lg mx-auto my-4 space-y-3">
-                        <div className="w-10 h-10 rounded-full bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center mx-auto font-bold">
+                    <div className="py-12 px-4 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200 max-w-lg mx-auto my-4 space-y-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-900 flex items-center justify-center mx-auto font-bold">
                             <Newspaper className="w-5 h-5" />
                         </div>
-                        <h4 className="font-serif font-bold text-[#1b3c37] text-sm">
+                        <h4 className="font-bold text-slate-900 text-sm">
                             {searchTerm ? 'Nenhum artigo corresponde à busca' : 'Nenhum artigo encontrado'}
                         </h4>
-                        <p className="text-xs text-[#262624]/70 max-w-md mx-auto leading-relaxed">
+                        <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
                             {searchTerm
                                 ? `Não encontramos artigos com o termo "${searchTerm}". Tente buscar por palavras-chave mais gerais.`
                                 : 'Você pode sincronizar os artigos publicados no Substack clicando no botão abaixo.'}
@@ -384,7 +384,7 @@ export const BlogManagementDashboard = () => {
                                 size="sm"
                                 onClick={handleSync}
                                 disabled={syncing}
-                                className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] text-xs font-semibold h-9 gap-1.5 shadow-sm mx-auto"
+                                className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold h-9 gap-1.5 shadow-xs mx-auto"
                             >
                                 <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
                                 Sincronizar Agora com o Substack
@@ -398,43 +398,43 @@ export const BlogManagementDashboard = () => {
                             {filteredArticles.map(article => (
                                 <div
                                     key={article.id}
-                                    className="p-3.5 bg-white border border-[#e4ded5] rounded-xl shadow-2xs space-y-2.5"
+                                    className="p-3.5 bg-white border border-slate-200/80 rounded-xl shadow-xs space-y-2.5"
                                 >
                                     <div className="flex gap-3 items-start">
                                         {article.cover_image_url && (
                                             <img
                                                 src={article.cover_image_url}
                                                 alt="Capa"
-                                                className="w-14 h-14 object-cover rounded-lg border border-[#e4ded5] shrink-0"
+                                                className="w-14 h-14 object-cover rounded-lg border border-slate-200 shrink-0"
                                                 loading="lazy"
                                             />
                                         )}
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-2 mb-1">
-                                                <span className="text-[10px] text-[#262624]/60 flex items-center gap-1">
+                                                <span className="text-[10px] text-slate-500 flex items-center gap-1">
                                                     <Calendar className="w-3 h-3" />
-                                                    {formatDate(article.published_at)}
+                                                    <span className="tabular-nums">{formatDate(article.published_at)}</span>
                                                 </span>
                                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                                                     article.status === 'published'
-                                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                                                        : 'bg-slate-100 text-slate-700 border-slate-200'
                                                 }`}>
                                                     {article.status === 'published' ? 'Visível' : 'Oculto'}
                                                 </span>
                                             </div>
-                                            <h4 className="font-semibold text-xs text-[#262624] line-clamp-2 leading-snug">
+                                            <h4 className="font-semibold text-xs text-slate-900 line-clamp-2 leading-snug">
                                                 {article.title}
                                             </h4>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between pt-2 border-t border-[#f4efe6]">
+                                    <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                                         <a
                                             href={`/artigos/${article.slug}`}
                                             target="_blank"
                                             rel="noreferrer"
-                                            className="text-[11px] font-semibold text-[#1b3c37] hover:underline flex items-center gap-1"
+                                            className="text-[11px] font-semibold text-slate-900 hover:underline flex items-center gap-1"
                                         >
                                             Ver no site <ExternalLink className="w-3 h-3" />
                                         </a>
@@ -444,10 +444,10 @@ export const BlogManagementDashboard = () => {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => toggleVisibility(article)}
-                                                className={`h-8 px-2.5 text-xs border-[#e4ded5] ${
+                                                className={`h-8 px-2.5 text-xs border-slate-200 ${
                                                     article.status === 'published'
-                                                        ? 'text-[#262624]/70 hover:bg-[#f8f6f0]'
-                                                        : 'text-[#1b3c37] bg-emerald-50/50 hover:bg-emerald-50'
+                                                        ? 'text-slate-600 hover:bg-slate-100'
+                                                        : 'text-emerald-800 bg-emerald-50/50 hover:bg-emerald-50'
                                                 }`}
                                                 title={article.status === 'published' ? 'Ocultar artigo' : 'Exibir artigo'}
                                             >
@@ -461,7 +461,7 @@ export const BlogManagementDashboard = () => {
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => handleDelete(article)}
-                                                className="h-8 px-2 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                                className="h-8 px-2 text-xs border-rose-200 text-rose-600 hover:bg-rose-50"
                                                 title="Excluir da plataforma"
                                             >
                                                 <Trash2 className="w-3.5 h-3.5" />
@@ -472,10 +472,10 @@ export const BlogManagementDashboard = () => {
                             ))}
                         </div>
 
-                        {/* VISÃO DESKTOP: TABELA ELEGANTE DOXOLOGOS (>= 640px) */}
-                        <div className="hidden sm:block overflow-x-auto rounded-xl border border-[#e4ded5]">
-                            <table className="w-full text-left border-collapse text-xs text-[#262624]">
-                                <thead className="bg-[#f8f6f0] text-[#262624]/70 font-bold border-b border-[#e4ded5] text-[11px] uppercase tracking-wider">
+                        {/* VISÃO DESKTOP: TABELA ELEGANTE CLEAN ANALYTICS (>= 640px) */}
+                        <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-200/80">
+                            <table className="w-full text-left border-collapse text-xs text-slate-700">
+                                <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200 text-[11px] uppercase tracking-wider">
                                     <tr>
                                         <th className="p-3.5">Artigo Publicado</th>
                                         <th className="p-3.5 w-32 text-center">Data</th>
@@ -483,46 +483,46 @@ export const BlogManagementDashboard = () => {
                                         <th className="p-3.5 w-36 text-center">Ações</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#f4efe6]">
+                                <tbody className="divide-y divide-slate-100">
                                     {filteredArticles.map(article => (
-                                        <tr key={article.id} className="hover:bg-[#f8f6f0]/60 transition-colors">
+                                        <tr key={article.id} className="hover:bg-slate-50/80 transition-colors">
                                             <td className="p-3.5">
                                                 <div className="flex items-center gap-3">
                                                     {article.cover_image_url ? (
                                                         <img
                                                             src={article.cover_image_url}
                                                             alt="Capa"
-                                                            className="w-12 h-12 object-cover rounded-lg border border-[#e4ded5] shrink-0"
+                                                            className="w-12 h-12 object-cover rounded-lg border border-slate-200 shrink-0"
                                                             loading="lazy"
                                                         />
                                                     ) : (
-                                                        <div className="w-12 h-12 rounded-lg bg-[#f4efe6] border border-[#e4ded5] flex items-center justify-center text-[#1b3c37] shrink-0">
+                                                        <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 shrink-0">
                                                             <Newspaper className="w-5 h-5 opacity-60" />
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="font-semibold text-[#262624] line-clamp-1 text-xs sm:text-sm">
+                                                        <p className="font-semibold text-slate-900 line-clamp-1 text-xs sm:text-sm">
                                                             {article.title}
                                                         </p>
                                                         <a
                                                             href={`/artigos/${article.slug}`}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="text-[11px] text-[#1b3c37] hover:underline flex items-center gap-1 mt-0.5 font-medium"
+                                                            className="text-[11px] text-slate-600 hover:text-slate-900 hover:underline flex items-center gap-1 mt-0.5 font-medium"
                                                         >
                                                             Ver publicação no site <ExternalLink className="w-3 h-3" />
                                                         </a>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="p-3.5 text-center text-[#262624]/70 font-mono text-[11px]">
+                                            <td className="p-3.5 text-center text-slate-600 font-mono text-[11px] tabular-nums">
                                                 {formatDate(article.published_at)}
                                             </td>
                                             <td className="p-3.5 text-center">
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                                                     article.status === 'published'
-                                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                                        : 'bg-gray-100 text-gray-700 border-gray-200'
+                                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
+                                                        : 'bg-slate-100 text-slate-700 border-slate-200'
                                                 }`}>
                                                     {article.status === 'published' ? 'Visível' : 'Oculto'}
                                                 </span>
@@ -533,10 +533,10 @@ export const BlogManagementDashboard = () => {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => toggleVisibility(article)}
-                                                        className={`h-8 px-2.5 text-xs border-[#e4ded5] ${
+                                                        className={`h-8 px-2.5 text-xs border-slate-200 ${
                                                             article.status === 'published'
-                                                                ? 'text-[#262624]/70 hover:bg-[#f8f6f0]'
-                                                                : 'text-[#1b3c37] bg-emerald-50/50 hover:bg-emerald-50'
+                                                                ? 'text-slate-600 hover:bg-slate-100'
+                                                                : 'text-emerald-800 bg-emerald-50/50 hover:bg-emerald-50'
                                                         }`}
                                                         title={article.status === 'published' ? 'Ocultar artigo' : 'Tornar artigo público'}
                                                     >
@@ -550,7 +550,7 @@ export const BlogManagementDashboard = () => {
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => handleDelete(article)}
-                                                        className="h-8 px-2 text-xs border-red-200 text-red-600 hover:bg-red-50"
+                                                        className="h-8 px-2 text-xs border-rose-200 text-rose-600 hover:bg-rose-50"
                                                         title="Excluir da plataforma"
                                                     >
                                                         <Trash2 className="w-3.5 h-3.5" />

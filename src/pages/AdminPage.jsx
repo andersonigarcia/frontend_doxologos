@@ -2251,18 +2251,18 @@ const AdminPage = () => {
     return (
         <>
             <Helmet><title>Painel de Controle - Doxologos</title></Helmet>
-            <header className="fixed top-0 w-full bg-[#fcfbf9]/95 backdrop-blur-md border-b border-[#e4ded5] shadow-xs z-40">
-                <nav className="container mx-auto px-4 py-2.5 sm:py-3.5">
+            <header className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs z-40">
+                <nav className="container mx-auto px-4 py-2.5 sm:py-3">
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
-                            <DoxologosLogo className="h-9 w-auto" />
+                            <DoxologosLogo className="h-8 w-auto" />
                         </Link>
                         <div className="flex items-center justify-end gap-4 flex-wrap">
-                            <Link to="/" className="inline-flex items-center text-sm font-semibold text-[#1b3c37] hover:text-[#16332e] transition-colors">
-                                <ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar ao Site
+                            <Link to="/" className="inline-flex items-center text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors">
+                                <ArrowLeft className="w-3.5 h-3.5 mr-1.5" /> Voltar ao Site
                             </Link>
-                            <div className="h-6 w-px bg-[#e4ded5]"></div>
+                            <div className="h-5 w-px bg-slate-200"></div>
                             <UserBadge
                                 user={user}
                                 userRole={userRole}
@@ -2273,7 +2273,7 @@ const AdminPage = () => {
                             {hasEventsTab && (
                                 <Button
                                     variant="outline"
-                                    className="border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-[#f8f6f0] rounded-xl text-xs font-semibold hidden sm:inline-flex min-h-[38px]"
+                                    className="border-slate-300 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold hidden sm:inline-flex min-h-[36px]"
                                     onClick={() => {
                                         setActiveTab('events');
                                         window.requestAnimationFrame(() => {
@@ -2284,7 +2284,7 @@ const AdminPage = () => {
                                         });
                                     }}
                                 >
-                                    <Calendar className="w-4 h-4 mr-2" /> Meus Eventos
+                                    <Calendar className="w-3.5 h-3.5 mr-1.5" /> Meus Eventos
                                 </Button>
                             )}
                         </div>
@@ -2293,35 +2293,35 @@ const AdminPage = () => {
                     {/* Mobile Header */}
                     <div className="flex md:hidden items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <DoxologosLogo className="h-8 w-auto" />
+                            <DoxologosLogo className="h-7 w-auto" />
                         </Link>
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="w-11 h-11 flex items-center justify-center rounded-xl border border-[#e4ded5] bg-white text-[#1b3c37] hover:bg-[#f4efe6] transition-colors active:scale-95 shadow-xs"
+                            className="w-10 h-10 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 transition-colors active:scale-95 shadow-xs"
                             aria-label="Abrir menu de navegação"
                         >
                             {mobileMenuOpen ? (
-                                <X className="w-5 h-5 text-[#1b3c37]" />
+                                <X className="w-5 h-5 text-slate-800" />
                             ) : (
-                                <Menu className="w-5 h-5 text-[#1b3c37]" />
+                                <Menu className="w-5 h-5 text-slate-800" />
                             )}
                         </button>
                     </div>
                 </nav>
 
                 {/* Mobile Quick Module Indicator Bar */}
-                <div className="md:hidden bg-[#f8f6f0] border-t border-[#e4ded5] px-4 py-2 flex items-center justify-between">
+                <div className="md:hidden bg-slate-100 border-t border-slate-200 px-4 py-1.5 flex items-center justify-between">
                     <button
                         onClick={() => setMobileMenuOpen(true)}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-[#1b3c37] bg-white border border-[#e4ded5] px-2.5 py-1.5 rounded-lg active:scale-95 transition-all shadow-xs"
+                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-200 px-2.5 py-1 rounded-lg active:scale-95 transition-all shadow-xs"
                     >
-                        <Menu className="w-3.5 h-3.5 text-[#1b3c37]" />
+                        <Menu className="w-3.5 h-3.5 text-slate-700" />
                         <span className="truncate max-w-[190px]">
                             {ADMIN_MODULES.find(m => m.id === activeModule)?.title || 'Navegação'}
                         </span>
-                        <ChevronDown className="w-3 h-3 text-[#9bab9b]" />
+                        <ChevronDown className="w-3 h-3 text-slate-400" />
                     </button>
-                    <span className="text-[10px] font-bold text-[#1b3c37] bg-[#1b3c37]/10 px-2 py-0.5 rounded-full border border-[#1b3c37]/20 uppercase tracking-wider">
+                    <span className="text-[10px] font-bold text-slate-800 bg-slate-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
                         {activeTab}
                     </span>
                 </div>
@@ -2332,10 +2332,10 @@ const AdminPage = () => {
                 <div className="md:hidden">
                     <div
                         onClick={() => setMobileMenuOpen(false)}
-                        className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 transition-opacity"
+                        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 transition-opacity"
                     />
                     <div
-                        className="fixed inset-y-0 left-0 w-[85%] max-w-sm bg-[#fcfbf9] z-50 shadow-2xl flex flex-col overflow-hidden border-r border-[#e4ded5]"
+                        className="fixed inset-y-0 left-0 w-[85%] max-w-sm bg-white z-50 shadow-2xl flex flex-col overflow-hidden border-r border-slate-200"
                     >
                         <AdminSidebar
                             activeModule={activeModule}
@@ -2352,10 +2352,10 @@ const AdminPage = () => {
                             onClose={() => setMobileMenuOpen(false)}
                             isMobile={true}
                         />
-                        <div className="p-3 border-t border-[#e4ded5] bg-white flex flex-col gap-2">
+                        <div className="p-3 border-t border-slate-200 bg-slate-50 flex flex-col gap-2">
                             <Link
                                 to="/"
-                                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-[#1b3c37] hover:bg-[#f4efe6] transition-colors"
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
                                 onClick={() => setMobileMenuOpen(false)}
                             >
                                 <ArrowLeft className="w-4 h-4" /> Voltar ao Site Principal
@@ -2365,7 +2365,7 @@ const AdminPage = () => {
                 </div>
             )}
 
-            <div className="min-h-screen bg-[#f8f6f0] flex flex-col md:flex-row">
+            <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans antialiased">
                 {/* Sidebar Lateral Navegável nos 5 Módulos Estruturados (Desktop) */}
                 <div className="hidden md:block flex-shrink-0">
                     <AdminSidebar
@@ -2380,13 +2380,13 @@ const AdminPage = () => {
                     />
                 </div>
 
-                <div className="flex-1 min-w-0 p-3 sm:p-6 md:p-8 pt-24 sm:pt-28 md:pt-28 overflow-y-auto">
+                <div className="flex-1 min-w-0 p-3 sm:p-6 md:p-8 pt-20 sm:pt-24 md:pt-24 overflow-y-auto">
                     <div className="container mx-auto max-w-7xl">
                         <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
                     <div className="flex items-center justify-between mb-5 sm:mb-6">
                         <div>
-                            <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#1b3c37] tracking-tight">Painel de Controle</h1>
-                            <p className="text-xs sm:text-sm text-[#262624]/70 mt-1">Bem-vindo, <span className="font-semibold text-[#1b3c37]">{displayName}</span>. Gerencie a operação, relatórios e configurações da plataforma.</p>
+                            <h1 className="text-2xl sm:text-3xl font-sans font-bold text-slate-900 tracking-tight">Painel de Controle</h1>
+                            <p className="text-xs sm:text-sm text-slate-500 mt-1">Bem-vindo, <span className="font-semibold text-slate-900">{displayName}</span>. Gerencie a operação, relatórios e configurações da plataforma.</p>
                         </div>
                     </div>
 

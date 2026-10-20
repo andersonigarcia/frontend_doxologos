@@ -54,7 +54,7 @@ import {
   Legend
 } from 'recharts';
 
-const CHANNEL_COLORS = ['#2d8659', '#3b82f6', '#8b5cf6', '#f59e0b', '#06b6d4'];
+const CHANNEL_COLORS = ['#059669', '#3b82f6', '#8b5cf6', '#f59e0b', '#06b6d4'];
 
 export function GrowthAnalyticsModule({
   bookings = [],
@@ -201,22 +201,22 @@ export function GrowthAnalyticsModule({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 font-sans">
       {/* CABEÇALHO DO MÓDULO DE GROWTH */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-[#e4ded5] shadow-[0_2px_12px_rgba(27,60,55,0.03)] text-[#262624]">
+      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs text-slate-900">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="bg-[#1b3c37]/5 text-[#1b3c37] text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border border-[#1b3c37]/15">
-                <TrendingUp className="w-3.5 h-3.5 text-[#1b3c37]" />
+              <span className="bg-emerald-50 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1.5 border border-emerald-200/80">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-700" />
                 Growth & Aquisição
               </span>
-              <span className="text-[11px] text-[#262624]/60 font-medium">Metas • Funil • Canais</span>
+              <span className="text-[11px] text-slate-500 font-medium">Metas • Funil • Canais</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-serif font-bold tracking-tight text-[#262624]">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               Crescimento, Funil de Conversão & Metas
             </h2>
-            <p className="text-xs text-[#262624]/70 mt-1 max-w-2xl leading-relaxed">
+            <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
               Acompanhe o atingimento das metas mensais, a passagem de leads para consultas, o abandono de checkout e a receita por canal.
             </p>
           </div>
@@ -225,7 +225,7 @@ export function GrowthAnalyticsModule({
             <Button
               size="sm"
               onClick={() => setIsGoalsModalOpen(true)}
-              className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold text-xs shadow-sm h-9 sm:h-8"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs h-9 sm:h-8"
             >
               <Target className="w-3.5 h-3.5 mr-1.5" />
               Configurar Metas
@@ -237,22 +237,22 @@ export function GrowthAnalyticsModule({
       {/* TOP CARDS: 4 INDICADORES DE CRESCIMENTO EM GRID 2X2 NO MOBILE */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* KPI 1: Novos Pacientes no Mês */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Novos Pacientes (Mês)
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
                 <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">{newPatientsCount}</h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <h3 className="text-base sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">{newPatientsCount}</h3>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>Primeira sessão realizada este mês</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#1b3c37] font-medium mt-1">
+              <p className="text-[10px] sm:text-[11px] text-blue-700 font-medium mt-1">
                 Base ativa: {retention.totalPatients} pacientes
               </p>
             </div>
@@ -260,24 +260,24 @@ export function GrowthAnalyticsModule({
         </Card>
 
         {/* KPI 2: Conversão do Checkout */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Conversão de Checkout
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
                 <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-base sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {formatPct(funnelMetrics.checkoutConversionPct)}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>{funnelMetrics.realizedBookings} pagamentos confirmados</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#262624]/60 mt-1 truncate">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 mt-1 truncate">
                 De {funnelMetrics.totalBookingsCreated} checkouts iniciados
               </p>
             </div>
@@ -285,24 +285,24 @@ export function GrowthAnalyticsModule({
         </Card>
 
         {/* KPI 3: Conversão Leads GAD-7 */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Conversão Leads GAD-7
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
                 <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-base sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {formatPct(funnelMetrics.leadConversionPct)}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>{funnelMetrics.leadsBooked} agendaram após teste</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#1b3c37] font-medium mt-1 truncate">
+              <p className="text-[10px] sm:text-[11px] text-purple-700 font-medium mt-1 truncate">
                 De {funnelMetrics.totalLeads} testes concluídos
               </p>
             </div>
@@ -310,24 +310,24 @@ export function GrowthAnalyticsModule({
         </Card>
 
         {/* KPI 4: Abandono de Checkout (PIX Expirado / Não Pago) */}
-        <Card className="p-3.5 sm:p-5 bg-white border border-[#e4ded5] rounded-2xl shadow-[0_2px_8px_rgba(27,60,55,0.03)] flex flex-col justify-between">
+        <Card className="p-3.5 sm:p-5 bg-white border border-slate-200/80 rounded-xl shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Abandono de Checkout
               </span>
-              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#d97706] flex items-center justify-center">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
                 <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
             <div className="mt-2 sm:mt-3">
-              <h3 className="text-base sm:text-2xl font-extrabold text-[#262624] tracking-tight">
+              <h3 className="text-base sm:text-2xl font-extrabold text-slate-900 tracking-tight tabular-nums">
                 {formatPct(funnelMetrics.checkoutAbandonmentPct)}
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60 mt-1">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">
                 <span>{funnelMetrics.pendingBookings + funnelMetrics.cancelledBookings} pendentes / cancelados</span>
               </p>
-              <p className="text-[10px] sm:text-[11px] text-[#d97706] font-medium mt-1 truncate">
+              <p className="text-[10px] sm:text-[11px] text-amber-700 font-medium mt-1 truncate">
                 Oportunidade de recuperação
               </p>
             </div>
@@ -336,17 +336,17 @@ export function GrowthAnalyticsModule({
       </div>
 
       {/* SEÇÃO 1: PAINEL DE METAS MENSAIS (TARGETS VS REALIZADO) */}
-      <Card className="p-4 sm:p-6 bg-white border border-[#e4ded5] rounded-2xl shadow-sm">
-        <div className="flex items-center justify-between pb-3 sm:pb-4 mb-4 sm:mb-6 border-b border-[#f4efe6]">
+      <Card className="p-4 sm:p-6 bg-white border border-slate-200/80 rounded-xl shadow-xs">
+        <div className="flex items-center justify-between pb-3 sm:pb-4 mb-4 sm:mb-6 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-slate-100 text-slate-900 flex items-center justify-center">
               <Award className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-sm sm:text-base text-[#262624]">
+              <h3 className="font-sans font-bold text-sm sm:text-base text-slate-900">
                 Acompanhamento de Metas Mensais
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60">
+              <p className="text-[11px] sm:text-xs text-slate-500">
                 Progresso percentual de atingimento das metas configuradas pela coordenação da clínica.
               </p>
             </div>
@@ -367,18 +367,18 @@ export function GrowthAnalyticsModule({
             return (
               <div
                 key={g.id}
-                className="p-3.5 sm:p-4 rounded-xl border border-[#e4ded5] bg-[#f4efe6]/30 flex flex-col justify-between"
+                className="p-3.5 sm:p-4 rounded-xl border border-slate-200/80 bg-slate-50 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-bold text-[#262624]">{g.title}</span>
+                    <span className="text-xs font-bold text-slate-900">{g.title}</span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ${
                         isAchieved
-                          ? 'bg-[#1b3c37]/10 text-[#1b3c37]'
+                          ? 'bg-emerald-100 text-emerald-800'
                           : isOnTrack
-                          ? 'bg-[#128a62]/10 text-[#128a62]'
-                          : 'bg-[#d97706]/10 text-[#d97706]'
+                          ? 'bg-blue-100 text-blue-800'
+                          : 'bg-amber-100 text-amber-800'
                       }`}
                     >
                       {g.progressPct}%
@@ -386,30 +386,30 @@ export function GrowthAnalyticsModule({
                   </div>
 
                   <div className="mt-2 space-y-1">
-                    <div className="flex justify-between text-xs text-[#262624]/70">
+                    <div className="flex justify-between text-xs text-slate-600">
                       <span>Realizado:</span>
-                      <strong className="text-[#262624]">{formatVal(g.current)}</strong>
+                      <strong className="text-slate-900 tabular-nums">{formatVal(g.current)}</strong>
                     </div>
-                    <div className="flex justify-between text-xs text-[#262624]/50">
+                    <div className="flex justify-between text-xs text-slate-400">
                       <span>Meta:</span>
-                      <span>{formatVal(g.target)}</span>
+                      <span className="tabular-nums">{formatVal(g.target)}</span>
                     </div>
                   </div>
 
                   {/* Barra de Progresso */}
-                  <div className="w-full bg-[#e4ded5] h-1.5 sm:h-2 rounded-full mt-3 overflow-hidden">
+                  <div className="w-full bg-slate-200 h-1.5 sm:h-2 rounded-full mt-3 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
-                        isAchieved ? 'bg-[#1b3c37]' : isOnTrack ? 'bg-[#128a62]' : 'bg-[#d97706]'
+                        isAchieved ? 'bg-emerald-600' : isOnTrack ? 'bg-blue-600' : 'bg-amber-500'
                       }`}
                       style={{ width: `${Math.min(100, g.progressPct)}%` }}
                     />
                   </div>
                 </div>
 
-                <div className="mt-3 pt-2 border-t border-[#e4ded5]/60 text-[11px] text-[#262624]/60 flex justify-between">
+                <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] text-slate-500 flex justify-between">
                   <span>Status:</span>
-                  <span className="font-semibold text-[#262624]">
+                  <span className="font-semibold text-slate-900">
                     {isAchieved ? 'Meta Atingida 🎉' : isOnTrack ? 'No Ritmo' : 'Abaixo do Esperado'}
                   </span>
                 </div>
@@ -422,13 +422,13 @@ export function GrowthAnalyticsModule({
       {/* SEÇÃO 2: FUNIL COMPLETO DE CONVERSÃO & CANAIS DE NEGÓCIO */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Funil Visual de Conversão */}
-        <Card className="lg:col-span-2 p-4 sm:p-6 bg-white border border-[#e4ded5] rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#f4efe6]">
+        <Card className="lg:col-span-2 p-4 sm:p-6 bg-white border border-slate-200/80 rounded-xl shadow-xs">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
             <div>
-              <h3 className="font-serif font-bold text-sm sm:text-base text-[#262624]">
+              <h3 className="font-sans font-bold text-sm sm:text-base text-slate-900">
                 Funil de Aquisição & Conversão
               </h3>
-              <p className="text-[11px] sm:text-xs text-[#262624]/60">
+              <p className="text-[11px] sm:text-xs text-slate-500">
                 Passagem de visitantes de testes psicológicos até a realização da consulta.
               </p>
             </div>
@@ -438,23 +438,23 @@ export function GrowthAnalyticsModule({
             {funnelMetrics.funnelStages.map((stage, idx) => (
               <div
                 key={stage.stage}
-                className="p-3 sm:p-3.5 rounded-xl border border-[#e4ded5] bg-[#f4efe6]/20 flex items-center justify-between"
+                className="p-3 sm:p-3.5 rounded-xl border border-slate-200/80 bg-slate-50 flex items-center justify-between hover:bg-slate-100/60 transition-colors"
               >
                 <div className="flex items-center gap-2.5 sm:gap-3">
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#f4efe6] text-[#1b3c37] flex items-center justify-center text-xs font-bold">
+                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
                     {idx + 1}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-[#262624]">{stage.stage}</p>
-                    <p className="text-[10px] sm:text-[11px] text-[#262624]/60">{stage.count} registros no período</p>
+                    <p className="text-xs font-bold text-slate-900">{stage.stage}</p>
+                    <p className="text-[10px] sm:text-[11px] text-slate-500 tabular-nums">{stage.count} registros no período</p>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs font-bold text-[#1b3c37]">
+                  <span className="text-xs font-bold text-emerald-700 tabular-nums">
                     {stage.conversionPct !== null ? `${stage.conversionPct}%` : '—'}
                   </span>
-                  <p className="text-[10px] text-[#262624]/40">conversão</p>
+                  <p className="text-[10px] text-slate-400">conversão</p>
                 </div>
               </div>
             ))}
@@ -462,14 +462,14 @@ export function GrowthAnalyticsModule({
         </Card>
 
         {/* Canais de Origem & Faturamento */}
-        <Card className="p-4 sm:p-6 bg-white border border-[#e4ded5] rounded-2xl shadow-sm flex flex-col justify-between">
+        <Card className="p-4 sm:p-6 bg-white border border-slate-200/80 rounded-xl shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#f4efe6]">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
               <div>
-                <h3 className="font-serif font-bold text-sm sm:text-base text-[#262624]">
+                <h3 className="font-sans font-bold text-sm sm:text-base text-slate-900">
                   Canais de Faturamento
                 </h3>
-                <p className="text-[11px] sm:text-xs text-[#262624]/60">Origem de receita por modelo de negócio.</p>
+                <p className="text-[11px] sm:text-xs text-slate-500">Origem de receita por modelo de negócio.</p>
               </div>
             </div>
 
@@ -480,14 +480,14 @@ export function GrowthAnalyticsModule({
                 channelData.map((c) => (
                   <div
                     key={c.channel}
-                    className="p-3 rounded-xl border border-[#e4ded5] bg-[#f4efe6]/30 flex items-center justify-between"
+                    className="p-3 rounded-xl border border-slate-200/80 bg-slate-50 flex items-center justify-between"
                   >
                     <div>
-                      <p className="text-xs font-bold text-[#262624]">{c.channel}</p>
-                      <p className="text-[10px] sm:text-[11px] text-[#262624]/60">{c.count} agendamento(s)</p>
+                      <p className="text-xs font-bold text-slate-900">{c.channel}</p>
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 tabular-nums">{c.count} agendamento(s)</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-extrabold text-[#1b3c37]">{formatBrl(c.revenue)}</p>
+                      <p className="text-xs font-extrabold text-slate-900 tabular-nums">{formatBrl(c.revenue)}</p>
                     </div>
                   </div>
                 ))
@@ -495,12 +495,12 @@ export function GrowthAnalyticsModule({
             </div>
           </div>
 
-          <div className="pt-3 sm:pt-4 border-t border-[#f4efe6] mt-4">
+          <div className="pt-3 sm:pt-4 border-t border-slate-100 mt-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onNavigateTab?.('assessment-leads')}
-              className="w-full text-xs font-semibold text-[#1b3c37] hover:bg-[#f4efe6] border-[#e4ded5] h-9"
+              className="w-full text-xs font-semibold text-slate-700 hover:bg-slate-100 border-slate-200/80 h-9"
             >
               Ver Central de Leads GAD-7 &rarr;
             </Button>
@@ -510,20 +510,20 @@ export function GrowthAnalyticsModule({
 
       {/* MODAL DE CONFIGURAÇÃO DE METAS MENSAIS */}
       <Dialog open={isGoalsModalOpen} onOpenChange={setIsGoalsModalOpen}>
-        <DialogContent className="max-w-md bg-white border border-[#e4ded5]">
+        <DialogContent className="max-w-md bg-white border border-slate-200/80">
           <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg font-serif font-bold text-[#262624] flex items-center gap-2">
-              <Target className="w-5 h-5 text-[#1b3c37]" />
+            <DialogTitle className="text-base sm:text-lg font-sans font-bold text-slate-900 flex items-center gap-2">
+              <Target className="w-5 h-5 text-slate-900" />
               Configurar Metas Mensais da Clínica
             </DialogTitle>
-            <DialogDescription className="text-xs text-[#262624]/60">
+            <DialogDescription className="text-xs text-slate-500">
               Defina as metas operacionais e financeiras de referência para acompanhamento executivo.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 sm:space-y-4 py-2 sm:py-3">
             <div>
-              <label className="text-xs font-semibold text-[#262624] block mb-1">
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Meta de Faturamento Bruto (R$ GMV):
               </label>
               <Input
@@ -535,12 +535,12 @@ export function GrowthAnalyticsModule({
                     target_monthly_revenue_brl: e.target.value
                   }))
                 }
-                className="text-xs border-[#e4ded5]"
+                className="text-xs border-slate-200"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#262624] block mb-1">
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Meta de Consultas Concluídas:
               </label>
               <Input
@@ -552,12 +552,12 @@ export function GrowthAnalyticsModule({
                     target_monthly_bookings_count: e.target.value
                   }))
                 }
-                className="text-xs border-[#e4ded5]"
+                className="text-xs border-slate-200"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#262624] block mb-1">
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Meta de Novos Pacientes no Mês:
               </label>
               <Input
@@ -569,12 +569,12 @@ export function GrowthAnalyticsModule({
                     target_new_patients_count: e.target.value
                   }))
                 }
-                className="text-xs border-[#e4ded5]"
+                className="text-xs border-slate-200"
               />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-[#262624] block mb-1">
+              <label className="text-xs font-semibold text-slate-700 block mb-1">
                 Meta de Retorno para 2ª Sessão (%):
               </label>
               <Input
@@ -588,7 +588,7 @@ export function GrowthAnalyticsModule({
                     target_retention_return_rate_pct: e.target.value
                   }))
                 }
-                className="text-xs border-[#e4ded5]"
+                className="text-xs border-slate-200"
               />
             </div>
           </div>
@@ -598,14 +598,14 @@ export function GrowthAnalyticsModule({
               variant="outline"
               size="sm"
               onClick={() => setIsGoalsModalOpen(false)}
-              className="text-xs border-[#e4ded5]"
+              className="text-xs border-slate-200"
             >
               Cancelar
             </Button>
             <Button
               size="sm"
               onClick={handleSaveGoals}
-              className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold text-xs h-9 sm:h-8"
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-9 sm:h-8"
             >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               Salvar Metas

@@ -539,7 +539,7 @@ export default function BookResourcesAdminSection() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div>
                     <div className="flex items-center gap-2">
-                        <div className="p-2.5 bg-emerald-100 text-[#2d8659] rounded-xl">
+                        <div className="p-2.5 bg-slate-100 text-slate-800 rounded-xl">
                             <BookOpen className="w-6 h-6" />
                         </div>
                         <div>
@@ -568,7 +568,7 @@ export default function BookResourcesAdminSection() {
                             setCustomUrlModePaid(false);
                             setIsModalOpen(true);
                         }}
-                        className="bg-[#2d8659] hover:bg-[#236b47] text-white gap-1.5 shadow-sm"
+                        className="bg-slate-900 hover:bg-slate-800 text-white gap-1.5 shadow-xs font-semibold"
                     >
                         <Plus className="w-4 h-4" /> Novo Material
                     </Button>
@@ -634,7 +634,7 @@ export default function BookResourcesAdminSection() {
                     onClick={() => setActiveTab('resources')}
                     className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
                         activeTab === 'resources'
-                            ? 'border-[#2d8659] text-[#2d8659]'
+                            ? 'border-slate-900 text-slate-900 font-bold'
                             : 'border-transparent text-slate-500 hover:text-slate-700'
                     }`}
                 >
@@ -646,7 +646,7 @@ export default function BookResourcesAdminSection() {
                     onClick={() => setActiveTab('storage')}
                     className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
                         activeTab === 'storage'
-                            ? 'border-[#2d8659] text-[#2d8659]'
+                            ? 'border-slate-900 text-slate-900 font-bold'
                             : 'border-transparent text-slate-500 hover:text-slate-700'
                     }`}
                 >
@@ -663,7 +663,7 @@ export default function BookResourcesAdminSection() {
                     onClick={() => setActiveTab('leads')}
                     className={`pb-3 text-sm font-semibold flex items-center gap-2 border-b-2 transition-all ${
                         activeTab === 'leads'
-                            ? 'border-[#2d8659] text-[#2d8659]'
+                            ? 'border-slate-900 text-slate-900 font-bold'
                             : 'border-transparent text-slate-500 hover:text-slate-700'
                     }`}
                 >
@@ -707,7 +707,7 @@ export default function BookResourcesAdminSection() {
                                     {loading ? (
                                         <tr>
                                             <td colSpan={9} className="p-8 text-center text-slate-400">
-                                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#2d8659]" />
+                                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-slate-800" />
                                                 Carregando materiais...
                                             </td>
                                         </tr>
@@ -978,7 +978,7 @@ export default function BookResourcesAdminSection() {
                                                                 <Button
                                                                     size="sm"
                                                                     onClick={() => handleCreateFromBucketFile(file)}
-                                                                    className="bg-[#2d8659] hover:bg-[#236b47] text-white text-xs gap-1 h-8"
+                                                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs gap-1 h-8 font-semibold"
                                                                 >
                                                                     <Plus className="w-3.5 h-3.5" />
                                                                     Criar Material
@@ -1037,7 +1037,7 @@ export default function BookResourcesAdminSection() {
                                 {loading ? (
                                     <tr>
                                         <td colSpan={7} className="p-8 text-center text-slate-400">
-                                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-[#2d8659]" />
+                                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-slate-800" />
                                             Carregando acessos...
                                         </td>
                                     </tr>
@@ -1508,7 +1508,7 @@ export default function BookResourcesAdminSection() {
                             </Button>
                             <Button
                                 type="submit"
-                                className="bg-[#2d8659] hover:bg-[#236b47] text-white"
+                                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold"
                                 disabled={saving}
                             >
                                 {saving ? (
@@ -1624,7 +1624,7 @@ export default function BookResourcesAdminSection() {
                                     <Copy className="w-3.5 h-3.5 mr-1" /> Copiar Link
                                 </Button>
                                 <Button
-                                    className="flex-1 bg-[#2d8659] hover:bg-[#236b47] text-white text-xs"
+                                    className="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold"
                                     onClick={() => window.open(`/r/${qrPreviewResource.slug}`, '_blank')}
                                 >
                                     <ExternalLink className="w-3.5 h-3.5 mr-1" /> Abrir

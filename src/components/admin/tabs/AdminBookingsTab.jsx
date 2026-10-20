@@ -323,19 +323,19 @@ export function AdminBookingsTab({
     };
 
     const statusColors = {
-        'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'pending_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'awaiting_payment': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-        'confirmed': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        'paid': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        'completed': 'bg-blue-100 text-blue-800 border-blue-200',
-        'cancelled': 'bg-red-100 text-red-800 border-red-200',
-        'cancelled_by_patient': 'bg-red-100 text-red-800 border-red-200',
-        'cancelled_by_professional': 'bg-gray-100 text-gray-800 border-gray-200',
-        'expired': 'bg-gray-100 text-gray-600 border-gray-200',
-        'no_show_unjustified': 'bg-orange-100 text-orange-800 border-orange-200',
-        'refunded': 'bg-purple-100 text-purple-800 border-purple-200',
-        'partially_refunded': 'bg-purple-100 text-purple-800 border-purple-200'
+        'pending': 'bg-amber-50 text-amber-800 border-amber-200/90',
+        'pending_payment': 'bg-amber-50 text-amber-800 border-amber-200/90',
+        'awaiting_payment': 'bg-amber-50 text-amber-800 border-amber-200/90',
+        'confirmed': 'bg-emerald-50 text-emerald-800 border-emerald-200/90',
+        'paid': 'bg-emerald-50 text-emerald-800 border-emerald-200/90',
+        'completed': 'bg-blue-50 text-blue-800 border-blue-200/90',
+        'cancelled': 'bg-rose-50 text-rose-800 border-rose-200/90',
+        'cancelled_by_patient': 'bg-rose-50 text-rose-800 border-rose-200/90',
+        'cancelled_by_professional': 'bg-slate-100 text-slate-700 border-slate-200',
+        'expired': 'bg-slate-100 text-slate-600 border-slate-200',
+        'no_show_unjustified': 'bg-amber-100/90 text-amber-900 border-amber-300',
+        'refunded': 'bg-purple-50 text-purple-800 border-purple-200/90',
+        'partially_refunded': 'bg-purple-50 text-purple-800 border-purple-200/90'
     };
 
     const handleQuickStatusChange = async (bookingId, newStatus, bookingData) => {
@@ -582,12 +582,12 @@ export function AdminBookingsTab({
     ];
 
     return (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-4 sm:p-6 space-y-5 font-sans">
             {/* Header e Toolbar */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
                 <div>
-                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-[#2d8659]" />
+                    <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2 tracking-tight">
+                        <Calendar className="w-5 h-5 text-slate-900" />
                         Gestão Operacional de Agendamentos
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
@@ -596,27 +596,27 @@ export function AdminBookingsTab({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200 text-xs">
+                    <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200/80 text-xs">
                         <button
                             onClick={() => setBookingView('list')}
-                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
-                                bookingView === 'list' ? 'bg-white text-[#2d8659] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs ${
+                                bookingView === 'list' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
                             <List className="w-3.5 h-3.5" /> Tabela
                         </button>
                         <button
                             onClick={() => setBookingView('cards')}
-                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
-                                bookingView === 'cards' ? 'bg-white text-[#2d8659] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs ${
+                                bookingView === 'cards' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
                             <LayoutGrid className="w-3.5 h-3.5" /> Cards
                         </button>
                         <button
                             onClick={() => setBookingView('calendar')}
-                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-bold ${
-                                bookingView === 'calendar' ? 'bg-white text-[#2d8659] shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-semibold text-xs ${
+                                bookingView === 'calendar' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
                             <Calendar className="w-3.5 h-3.5" /> Calendário
@@ -634,7 +634,7 @@ export function AdminBookingsTab({
                         {(() => {
                             const activeCount = Object.values(bookingFilters).filter(v => v !== '').length;
                             return activeCount > 0 ? (
-                                <span className="ml-1.5 bg-[#2d8659] text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                                <span className="ml-1.5 bg-slate-900 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                                     {activeCount}
                                 </span>
                             ) : null;
@@ -656,37 +656,37 @@ export function AdminBookingsTab({
             </div>
 
             {/* Pipeline Status Bar */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 text-xs">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 flex flex-wrap lg:flex-nowrap items-center justify-between gap-4 text-xs">
                 {isAdminView && (
                     <div className="flex items-center gap-1.5 border-r border-slate-200 pr-4">
                         <span className="text-slate-500">Valor Grade:</span>
-                        <span className="font-extrabold text-slate-900">
+                        <span className="font-extrabold text-slate-900 tabular-nums">
                             R$ {filteredTotals.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 )}
                 <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">A Receber:</span>
-                    <span className="font-bold text-blue-600">
+                    <span className="font-bold text-blue-700 tabular-nums">
                         R$ {filteredTotals.confirmedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Recebidos:</span>
-                    <span className="font-bold text-emerald-700">
+                    <span className="font-bold text-emerald-700 tabular-nums">
                         R$ {filteredTotals.completedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <span className="text-slate-500 font-medium">Pendentes:</span>
-                    <span className="font-bold text-amber-600">
+                    <span className="font-bold text-amber-700 tabular-nums">
                         R$ {filteredTotals.pendingValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                 </div>
                 {filteredTotals.cancelledValue > 0 && (
                     <div className="flex items-center gap-1.5">
                         <span className="text-slate-500 font-medium">Cancelados:</span>
-                        <span className="font-bold text-red-600">
+                        <span className="font-bold text-rose-700 tabular-nums">
                             R$ {filteredTotals.cancelledValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
@@ -703,7 +703,7 @@ export function AdminBookingsTab({
                                 onClick={() => handleBookingSort('default')}
                                 variant="ghost"
                                 size="sm"
-                                className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'default' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'default' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
                             >
                                 Padrão
                             </Button>
@@ -711,7 +711,7 @@ export function AdminBookingsTab({
                                 onClick={() => handleBookingSort('status')}
                                 variant="ghost"
                                 size="sm"
-                                className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'status' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'status' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
                             >
                                 Status {bookingSortField === 'status' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                             </Button>
@@ -719,7 +719,7 @@ export function AdminBookingsTab({
                                 onClick={() => handleBookingSort('date')}
                                 variant="ghost"
                                 size="sm"
-                                className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'date' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'date' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
                             >
                                 Data {bookingSortField === 'date' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                             </Button>
@@ -728,7 +728,7 @@ export function AdminBookingsTab({
                                     onClick={() => handleBookingSort('professional')}
                                     variant="ghost"
                                     size="sm"
-                                    className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'professional' ? 'bg-[#2d8659] text-white font-bold' : 'text-slate-600 hover:bg-slate-200'}`}
+                                    className={`h-7 px-2.5 text-xs rounded-lg ${bookingSortField === 'professional' ? 'bg-slate-900 text-white font-semibold shadow-xs' : 'text-slate-600 hover:bg-slate-200'}`}
                                 >
                                     Profissional {bookingSortField === 'professional' && (bookingSortOrder === 'asc' ? '↑' : '↓')}
                                 </Button>
@@ -841,7 +841,7 @@ export function AdminBookingsTab({
 
             {/* Conteúdo: Tabela vs Cards vs Calendário */}
             {bookingView === 'calendar' ? (
-                <Suspense fallback={<div className="p-8 flex justify-center items-center"><LoadingSpinner size="md" className="text-[#2d8659]" /></div>}>
+                <Suspense fallback={<div className="p-8 flex justify-center items-center"><LoadingSpinner size="md" className="text-slate-800" /></div>}>
                     <AppointmentCalendar
                         bookings={filteredBookings}
                         professionals={professionals}
@@ -888,11 +888,11 @@ export function AdminBookingsTab({
                                             return (
                                                 <tr key={b.id} className="hover:bg-slate-50 transition-colors">
                                                     <td className="p-3 whitespace-nowrap">
-                                                        <span className="font-bold text-slate-900 block">
+                                                        <span className="font-bold text-slate-900 block tabular-nums">
                                                             {new Date(`${b.booking_date}T00:00:00`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                                         </span>
                                                         <span className="text-slate-500 text-[11px] flex items-center gap-1">
-                                                            <Clock className="w-3 h-3 text-[#2d8659]" /> {b.booking_time}h
+                                                            <Clock className="w-3 h-3 text-slate-400" /> {b.booking_time}h
                                                         </span>
                                                     </td>
                                                     <td className="p-3">
@@ -911,14 +911,14 @@ export function AdminBookingsTab({
                                                     <td className="p-3 whitespace-nowrap">
                                                         {isAdminView ? (
                                                             <div>
-                                                                <span className="font-bold text-slate-900">R$ {patientValue.toFixed(2)}</span>
-                                                                <span className="text-slate-400 block text-[10px]">
+                                                                <span className="font-bold text-slate-900 tabular-nums">R$ {patientValue.toFixed(2)}</span>
+                                                                <span className="text-slate-400 block text-[10px] tabular-nums">
                                                                     Repasse: R$ {professionalValue.toFixed(2)} | Taxa: R$ {platformFee.toFixed(2)}
                                                                 </span>
                                                             </div>
                                                         ) : (
                                                             <div>
-                                                                <span className="font-bold text-emerald-700">R$ {professionalValue.toFixed(2)}</span>
+                                                                <span className="font-bold text-emerald-700 tabular-nums">R$ {professionalValue.toFixed(2)}</span>
                                                                 <span className="text-slate-400 block text-[10px]">Repasse Líquido</span>
                                                             </div>
                                                         )}
@@ -1021,14 +1021,14 @@ export function AdminBookingsTab({
 
                                         <div className="flex items-center gap-4 text-xs text-slate-600 border-t border-slate-100 pt-2">
                                             <span className="flex items-center gap-1">
-                                                <Calendar className="w-3.5 h-3.5 text-[#2d8659]" />
-                                                {new Date(`${b.booking_date}T00:00:00`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                                <span className="tabular-nums">{new Date(`${b.booking_date}T00:00:00`).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
                                             </span>
                                             <span className="flex items-center gap-1">
-                                                <Clock className="w-3.5 h-3.5 text-[#2d8659]" />
-                                                {b.booking_time}h
+                                                <Clock className="w-3.5 h-3.5 text-slate-500" />
+                                                <span className="tabular-nums">{b.booking_time}h</span>
                                             </span>
-                                            <span className="font-bold text-slate-900 ml-auto">
+                                            <span className="font-bold text-slate-900 ml-auto tabular-nums">
                                                 {isAdminView ? `R$ ${patientValue.toFixed(2)}` : `R$ ${professionalValue.toFixed(2)}`}
                                             </span>
                                         </div>
@@ -1129,7 +1129,7 @@ export function AdminBookingsTab({
                     <DialogContent className="max-w-xl">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
-                                <Edit className="w-5 h-5 text-[#2d8659]" /> Editar Agendamento
+                                <Edit className="w-5 h-5 text-slate-800" /> Editar Agendamento
                             </DialogTitle>
                         </DialogHeader>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4 text-xs">
@@ -1248,7 +1248,7 @@ export function AdminBookingsTab({
                                 isLoading={isItemLoading('edit', editingBooking.id)}
                                 loadingText="Salvando..."
                                 onClick={handleUpdateBooking}
-                                className="bg-[#2d8659] hover:bg-[#236b47]"
+                                className="bg-slate-900 hover:bg-slate-800 text-white"
                             >
                                 Salvar Alterações
                             </LoadingButton>

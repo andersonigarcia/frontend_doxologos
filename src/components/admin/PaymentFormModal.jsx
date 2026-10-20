@@ -251,7 +251,7 @@ export function PaymentFormModal({
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-[#2d8659]" />
+                        <DollarSign className="w-5 h-5 text-slate-800" />
                         {payment ? 'Editar Pagamento' : 'Novo Pagamento'}
                     </DialogTitle>
                 </DialogHeader>
@@ -265,7 +265,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.professional_id}
                             onChange={(e) => setFormData(prev => ({ ...prev, professional_id: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                             required
                             disabled={!!payment}
                         >
@@ -288,7 +288,7 @@ export function PaymentFormModal({
                                 type="date"
                                 value={formData.period_start}
                                 onChange={(e) => setFormData(prev => ({ ...prev, period_start: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                                 required
                                 disabled={!!payment}
                             />
@@ -301,7 +301,7 @@ export function PaymentFormModal({
                                 type="date"
                                 value={formData.period_end}
                                 onChange={(e) => setFormData(prev => ({ ...prev, period_end: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                                 required
                                 disabled={!!payment}
                             />
@@ -337,7 +337,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.payment_method}
                             onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                         >
                             <option value="">Selecione</option>
                             <option value="pix">PIX</option>
@@ -356,7 +356,7 @@ export function PaymentFormModal({
                             type="date"
                             value={formData.payment_date}
                             onChange={(e) => setFormData(prev => ({ ...prev, payment_date: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                         />
                     </div>
 
@@ -368,7 +368,7 @@ export function PaymentFormModal({
                         {!formData.payment_proof_url ? (
                             <div className="flex items-center gap-4">
                                 <label className="flex-1 cursor-pointer">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-[#2d8659] transition-colors">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-slate-900 transition-colors">
                                         <div className="flex items-center justify-center gap-2 text-gray-600">
                                             <Upload className="w-5 h-5" />
                                             <span className="text-sm">
@@ -434,7 +434,7 @@ export function PaymentFormModal({
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             rows={3}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                             placeholder="Adicione observações sobre este pagamento..."
                         />
                     </div>
@@ -447,7 +447,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.status}
                             onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                         >
                             <option value="pending">Pendente</option>
                             <option value="paid">Pago</option>
@@ -466,7 +466,7 @@ export function PaymentFormModal({
                         </Button>
                         <Button
                             type="submit"
-                            className="rounded-full bg-[#2d8659] hover:bg-[#236b47]"
+                            className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold"
                             disabled={loading || calculatingAmount}
                         >
                             {loading ? (

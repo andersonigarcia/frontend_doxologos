@@ -123,30 +123,30 @@ export function FinancialControlModule({
   const takeRatePct = gmv > 0 ? (platformGrossMargin / gmv) * 100 : defaultRetentionPct;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 font-sans">
       {/* Header da Controladoria */}
-      <div className="bg-[#fcfbf9] p-4 sm:p-6 rounded-2xl border border-[#e4ded5] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-slate-900">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="bg-[#1b3c37]/10 text-[#1b3c37] border border-[#1b3c37]/20 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
               Módulo de Controladoria Unificada
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold text-[#1b3c37]">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
             DRE, Extrato Financeiro & Ledger de Repasses
           </h2>
-          <p className="text-xs text-[#262624]/70 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Visão consolidada de caixa, conciliação de recebíveis do Mercado Pago, retenção de impostos e repasses aos profissionais.
           </p>
         </div>
 
         {/* Sub-Navegação da Controladoria */}
-        <div className="flex items-center gap-1 bg-[#f8f6f0] p-1.5 rounded-xl border border-[#e4ded5] overflow-x-auto w-full md:w-auto scrollbar-none flex-nowrap">
+        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 overflow-x-auto w-full md:w-auto scrollbar-none flex-nowrap">
           <button
             onClick={() => setSubTab('dre')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-[38px] ${
-              subTab === 'dre' ? 'bg-[#1b3c37] text-white shadow-xs font-bold' : 'text-[#262624]/70 hover:text-[#1b3c37] hover:bg-white/60'
+              subTab === 'dre' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             DRE Consolidada
@@ -154,14 +154,14 @@ export function FinancialControlModule({
           <button
             onClick={() => setSubTab('ledger')}
             className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-[38px] ${
-              subTab === 'ledger' ? 'bg-[#1b3c37] text-white shadow-xs font-bold' : 'text-[#262624]/70 hover:text-[#1b3c37] hover:bg-white/60'
+              subTab === 'ledger' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
             Repasses (Ledger)
           </button>
           <button
             onClick={() => onNavigateTab?.('payments')}
-            className="px-3 py-2 text-xs font-semibold text-[#262624]/70 hover:text-[#1b3c37] hover:bg-white/60 rounded-lg whitespace-nowrap shrink-0 min-h-[38px]"
+            className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-lg whitespace-nowrap shrink-0 min-h-[38px]"
           >
             Checkout MP
           </button>
@@ -172,24 +172,24 @@ export function FinancialControlModule({
       {subTab === 'dre' && (
         <div className="space-y-5 sm:space-y-6">
           {dreData.error && (
-            <div role="alert" className="p-4 rounded-xl border border-red-200 bg-red-50 text-red-900 text-xs">
+            <div role="alert" className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-900 text-xs">
               <p className="font-bold">Não foi possível carregar a DRE deste período.</p>
               <p className="mt-0.5">Os valores abaixo não são confiáveis. Tente novamente ou altere o período. ({dreData.error})</p>
             </div>
           )}
           {/* SELETOR DE PERÍODO DRE */}
-          <div className="bg-[#f8f6f0] p-4 rounded-2xl border border-[#e4ded5] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
             <div className="flex items-center gap-2.5">
-              <Calendar className="w-5 h-5 text-[#1b3c37] shrink-0" />
+              <Calendar className="w-5 h-5 text-slate-700 shrink-0" />
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#1b3c37] block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-900 block">
                   Período de Referência do DRE
                 </span>
-                <span className="text-xs text-[#262624]/70">
+                <span className="text-xs text-slate-500">
                   {selectedMonth === 'all'
                     ? `Acumulado ${selectedYear === 'all' ? 'Histórico Total' : selectedYear}`
                     : `${monthNames[selectedMonth]} de ${selectedYear}`}
-                  <strong className="ml-2 bg-[#1b3c37]/10 text-[#1b3c37] border border-[#1b3c37]/20 px-2 py-0.5 rounded-full text-[11px]">
+                  <strong className="ml-2 bg-slate-200 text-slate-800 border border-slate-300 px-2 py-0.5 rounded-full text-[11px] tabular-nums">
                     {dreData.isLoading ? '...' : `${dreData.count} ${dreData.count === 1 ? 'consulta' : 'consultas'}`}
                   </strong>
                 </span>
@@ -200,7 +200,7 @@ export function FinancialControlModule({
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="flex-1 min-w-0 bg-white border border-[#e4ded5] text-[#262624] text-xs font-semibold rounded-xl px-2.5 sm:px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1b3c37]/20 shadow-xs cursor-pointer hover:border-[#9bab9b] transition-colors min-h-[42px]"
+                className="flex-1 min-w-0 bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-2.5 sm:px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900/20 shadow-xs cursor-pointer hover:border-slate-400 transition-colors min-h-[42px]"
               >
                 <option value="all">Todos os Meses (Acumulado)</option>
                 {Array.from({ length: 12 }, (_, i) => (
@@ -213,7 +213,7 @@ export function FinancialControlModule({
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-                className="shrink-0 w-28 sm:w-auto bg-white border border-[#e4ded5] text-[#262624] text-xs font-semibold rounded-xl px-2.5 sm:px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#1b3c37]/20 shadow-xs cursor-pointer hover:border-[#9bab9b] transition-colors min-h-[42px]"
+                className="shrink-0 w-28 sm:w-auto bg-white border border-slate-200 text-slate-800 text-xs font-semibold rounded-xl px-2.5 sm:px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900/20 shadow-xs cursor-pointer hover:border-slate-400 transition-colors min-h-[42px]"
               >
                 <option value="all">Todos os Anos</option>
                 {[2024, 2025, 2026, 2027].map((yr) => (
@@ -227,79 +227,79 @@ export function FinancialControlModule({
 
           {/* CARDS RESUMO DRE (Grid 2x2 no Mobile) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            <Card className="p-3.5 sm:p-4 bg-white border border-[#e4ded5] rounded-xl shadow-xs">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">Receita Bruta (GMV)</span>
-              <p className="text-lg sm:text-xl font-bold font-serif text-[#1b3c37] mt-1">{formatBrl(gmv)}</p>
-              <p className="text-[10px] text-[#262624]/60 mt-0.5 truncate">
+            <Card className="p-3.5 sm:p-4 bg-white border border-slate-200/80 rounded-xl shadow-xs">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Receita Bruta (GMV)</span>
+              <p className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 tabular-nums">{formatBrl(gmv)}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 truncate">
                 {selectedMonth === 'all' ? (selectedYear === 'all' ? 'Histórico geral' : `Ano ${selectedYear}`) : `${monthNames[selectedMonth]}/${selectedYear}`}
               </p>
             </Card>
 
-            <Card className="p-3.5 sm:p-4 bg-white border border-[#e4ded5] rounded-xl shadow-xs">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">Repasse Psicólogos</span>
-              <p className="text-lg sm:text-xl font-bold font-serif text-[#262624] mt-1">{formatBrl(payoutTotal)}</p>
-              <p className="text-[10px] text-[#262624]/60 mt-0.5 truncate">Honorários devidos</p>
+            <Card className="p-3.5 sm:p-4 bg-white border border-slate-200/80 rounded-xl shadow-xs">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Repasse Psicólogos</span>
+              <p className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 tabular-nums">{formatBrl(payoutTotal)}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 truncate">Honorários devidos</p>
             </Card>
 
-            <Card className="p-3.5 sm:p-4 bg-white border border-[#e4ded5] rounded-xl shadow-xs">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#262624]/60 uppercase tracking-wider">Margem Bruta</span>
-              <p className="text-lg sm:text-xl font-bold font-serif text-[#1b3c37] mt-1">{formatBrl(platformGrossMargin)}</p>
-              <p className="text-[10px] text-[#1b3c37] font-semibold mt-0.5">Take Rate: {takeRatePct.toFixed(1)}%</p>
+            <Card className="p-3.5 sm:p-4 bg-white border border-slate-200/80 rounded-xl shadow-xs">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Margem Bruta</span>
+              <p className="text-lg sm:text-xl font-extrabold text-emerald-700 mt-1 tabular-nums">{formatBrl(platformGrossMargin)}</p>
+              <p className="text-[10px] text-emerald-800 font-semibold mt-0.5 tabular-nums">Take Rate: {takeRatePct.toFixed(1)}%</p>
             </Card>
 
-            <Card className="p-3.5 sm:p-4 bg-gradient-to-br from-[#1b3c37] to-[#16332e] text-white rounded-xl shadow-xs border border-[#1b3c37]/30">
-              <span className="text-[10px] sm:text-xs font-semibold text-[#9bab9b] uppercase tracking-wider">Resultado Líquido</span>
-              <p className="text-lg sm:text-xl font-bold font-serif text-[#f8f6f0] mt-1">{formatBrl(netMargin)}</p>
-              <p className="text-[10px] text-[#9bab9b] mt-0.5 truncate">Pós impostos e gateway</p>
+            <Card className="p-3.5 sm:p-4 bg-slate-900 text-white rounded-xl shadow-xs border border-slate-800">
+              <span className="text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider">Resultado Líquido</span>
+              <p className="text-lg sm:text-xl font-extrabold text-white mt-1 tabular-nums">{formatBrl(netMargin)}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5 truncate">Pós impostos e gateway</p>
             </Card>
           </div>
 
           {/* TABELA DRE SINTÉTICA */}
-          <Card className="p-4 sm:p-6 bg-white border border-[#e4ded5] rounded-2xl shadow-xs">
-            <h3 className="font-serif font-bold text-[#1b3c37] text-base mb-4 border-b border-[#e4ded5] pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <Card className="p-4 sm:p-6 bg-white border border-slate-200/80 rounded-xl shadow-xs">
+            <h3 className="font-bold text-slate-900 text-base mb-4 border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-[#1b3c37]" />
+                <FileText className="w-4 h-4 text-slate-900" />
                 Demonstrativo de Resultado do Exercício (DRE Gerencial)
               </div>
-              <span className="text-xs font-semibold text-[#1b3c37] bg-[#f8f6f0] border border-[#e4ded5] px-3 py-1 rounded-full w-fit">
+              <span className="text-xs font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1 rounded-full w-fit">
                 📅 Período: {selectedMonth === 'all' ? (selectedYear === 'all' ? 'Histórico Geral' : `Ano ${selectedYear}`) : `${monthNames[selectedMonth]} / ${selectedYear}`}
               </span>
             </h3>
 
-            <div className="divide-y divide-[#f0ebe1] text-xs sm:text-sm">
-              <div className="py-3 flex justify-between font-bold text-[#1b3c37] bg-[#f8f6f0] px-3.5 sm:px-4 rounded-lg">
+            <div className="divide-y divide-slate-100 text-xs sm:text-sm">
+              <div className="py-3 flex justify-between font-bold text-slate-900 bg-slate-50 px-3.5 sm:px-4 rounded-lg">
                 <span>(+) RECEITA OPERACIONAL BRUTA (GMV Consultas)</span>
-                <span>{formatBrl(gmv)}</span>
+                <span className="tabular-nums">{formatBrl(gmv)}</span>
               </div>
 
-              <div className="py-2.5 flex justify-between text-[#262624]/80 px-3.5 sm:px-4 pl-6 sm:pl-8">
+              <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
                 <span>(-) Repasse devido aos Psicólogos</span>
-                <span className="text-red-600 font-semibold">({formatBrl(payoutTotal)})</span>
+                <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(payoutTotal)})</span>
               </div>
 
-              <div className="py-3 flex justify-between font-semibold text-[#1b3c37] bg-[#1b3c37]/5 px-3.5 sm:px-4 rounded-lg">
+              <div className="py-3 flex justify-between font-semibold text-emerald-950 bg-emerald-50/70 px-3.5 sm:px-4 rounded-lg border border-emerald-100">
                 <span>(=) MARGEM BRUTA DA PLATAFORMA (Take Rate)</span>
-                <span className="text-[#1b3c37] font-bold">{formatBrl(platformGrossMargin)}</span>
+                <span className="text-emerald-800 font-bold tabular-nums">{formatBrl(platformGrossMargin)}</span>
               </div>
 
-              <div className="py-2.5 flex justify-between text-[#262624]/80 px-3.5 sm:px-4 pl-6 sm:pl-8">
+              <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
                 <span>(-) Taxas de Meio de Pagamento (Mercado Pago ~{(mpFeeRate*100).toFixed(2)}%)</span>
-                <span className="text-red-600 font-semibold">({formatBrl(estimatedMpFees)})</span>
+                <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(estimatedMpFees)})</span>
               </div>
 
-              <div className="py-2.5 flex justify-between text-[#262624]/80 px-3.5 sm:px-4 pl-6 sm:pl-8">
+              <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
                 <div className="flex items-center gap-1 group relative">
                   <span>(-) Provisão Tributária NFS-e / Simples (~{(nfseTaxRate*100).toFixed(0)}%)</span>
                   <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 w-64 bg-slate-900 text-white text-[10px] p-2 rounded shadow-lg z-10">
                     Calculado sobre a Margem Bruta (Take Rate) assumindo modelo de Split Payment
                   </div>
                 </div>
-                <span className="text-red-600 font-semibold">({formatBrl(estimatedNfseTaxes)})</span>
+                <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(estimatedNfseTaxes)})</span>
               </div>
 
-              <div className="py-3.5 flex justify-between font-bold font-serif text-sm sm:text-base bg-[#1b3c37] text-[#f8f6f0] px-3.5 sm:px-4 rounded-xl mt-2 shadow-xs">
+              <div className="py-3.5 flex justify-between font-extrabold text-sm sm:text-base bg-slate-900 text-white px-3.5 sm:px-4 rounded-xl mt-2 shadow-xs">
                 <span>(=) MARGEM LÍQUIDA OPERACIONAL DOXOLOGOS</span>
-                <span>{formatBrl(netMargin)}</span>
+                <span className="tabular-nums">{formatBrl(netMargin)}</span>
               </div>
             </div>
           </Card>
