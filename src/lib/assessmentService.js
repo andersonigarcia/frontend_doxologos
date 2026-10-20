@@ -2,40 +2,39 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 
+import {
+  validateLeadPhone,
+  validateLeadEmail,
+  validateLeadName,
+  validateLeadData,
+} from '@/lib/leadValidator';
+
 /**
  * Normaliza e sanitiza número de telefone para o padrão E.164 brasileiro (+5511999998888)
+ * Rejeita números com DDD inválido, repetições excessivas ou fictícios.
  */
 export function sanitizePhone(phone) {
   if (!phone) return null;
-  const digits = String(phone).replace(/\D/g, '');
-  if (!digits) return null;
-
-  // Se já tem DDI 55 com 12 ou 13 dígitos
-  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
-    return `+${digits}`;
-  }
-  // Se tem 10 ou 11 dígitos (DDD + número)
-  if (digits.length === 10 || digits.length === 11) {
-    return `+55${digits}`;
-  }
-  return `+${digits}`;
+  const res = validateLeadPhone(phone);
+  return res.isValid ? res.sanitizedPhone : null;
 }
 
 /**
- * Sanitiza endereço de e-mail (lowercase e trim)
+ * Sanitiza endereço de e-mail (lowercase e trim), validando formato e bloqueando domínios fictícios
  */
 export function sanitizeEmail(email) {
   if (!email) return null;
-  const clean = String(email).trim().toLowerCase();
-  return /\S+@\S+\.\S+/.test(clean) ? clean : null;
+  const res = validateLeadEmail(email);
+  return res.isValid ? res.sanitizedEmail : null;
 }
 
 /**
- * Sanitiza nome do paciente (remove espaços extras)
+ * Sanitiza nome do paciente (remove espaços extras e bloqueia nomes fictícios como "teste")
  */
 export function sanitizeName(name) {
   if (!name) return null;
-  return String(name).trim().replace(/\s+/g, ' ');
+  const res = validateLeadName(name);
+  return res.isValid ? res.sanitizedName : null;
 }
 
 import emailService from '@/lib/emailService';
@@ -76,9 +75,21 @@ export async function saveAssessmentLead({
   answers = {},
   functionalImpact = null,
 }) {
-  const sanitizedName = sanitizeName(name);
-  const sanitizedEmail = sanitizeEmail(email);
-  const sanitizedPhone = sanitizePhone(phone);
+  // Validação estrita de integridade para evitar poluição da base com dados fictícios
+  const validation = validateLeadData({ name, email, phone });
+  if (!validation.isValid) {
+    const errorMsg = Object.values(validation.errors).join(' ');
+    console.warn('⚠️ Tentativa de envio de lead rejeitada por conter dados fictícios ou inválidos:', validation.errors);
+    return {
+      success: false,
+      validationErrors: validation.errors,
+      error: errorMsg || 'Por favor, informe dados de contato válidos.'
+    };
+  }
+
+  const sanitizedName = validation.sanitized.name || sanitizeName(name);
+  const sanitizedEmail = validation.sanitized.email || null;
+  const sanitizedPhone = validation.sanitized.phone || null;
   const normalizedSeverity = normalizeSeverityEnum(severity);
 
   const payload = {

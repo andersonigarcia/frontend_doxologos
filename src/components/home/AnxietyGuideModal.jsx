@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import emailService from '@/lib/emailService';
 import { useEventTracking } from '@/hooks/useAnalytics';
+import { validateLeadData } from '@/lib/leadValidator';
 
 const QUESTIONS = [
   {
@@ -138,11 +139,21 @@ const AnxietyGuideModal = ({ enabled = true }) => {
   // PASSO 1: Envio inicial dos dados do Lead para garantir que nunca perderemos o contato
   const handleStartQuiz = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || !email.trim()) {
+
+    const validation = validateLeadData({
+      name,
+      email,
+      phone,
+      requireName: true,
+      requireBothContacts: true,
+    });
+
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0];
       toast({
         variant: 'destructive',
-        title: 'Campos obrigatórios',
-        description: 'Por favor, preencha nome, WhatsApp e e-mail.'
+        title: 'Verifique seus dados',
+        description: firstError || 'Por favor, preencha nome, WhatsApp e e-mail válidos.'
       });
       return;
     }
@@ -413,7 +424,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                       <div>
                         <label className="block text-xs font-semibold text-[#1b3c37] mb-1">Seu Nome Completo *</label>
                         <Input
-                          placeholder="Digite seu nome completo"
+                          placeholder="Ex: Maria Silva"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
                           required
@@ -424,7 +435,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                       <div>
                         <label className="block text-xs font-semibold text-[#1b3c37] mb-1">Seu WhatsApp / Telefone *</label>
                         <Input
-                          placeholder="(31) 99999-9999"
+                          placeholder="(31) 98456-7890"
                           value={phone}
                           onChange={handlePhoneChange}
                           required
@@ -436,7 +447,7 @@ const AnxietyGuideModal = ({ enabled = true }) => {
                         <label className="block text-xs font-semibold text-[#1b3c37] mb-1">Seu Melhor E-mail *</label>
                         <Input
                           type="email"
-                          placeholder="seu@email.com"
+                          placeholder="seu.email@gmail.com"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required

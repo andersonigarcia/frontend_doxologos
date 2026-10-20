@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { saveAssessmentLead } from '@/lib/assessmentService';
 import { getAssessmentBookingLink } from '@/lib/assessmentEngine';
+import { validateLeadData, validateLeadPhone, validateLeadEmail, validateLeadName } from '@/lib/leadValidator';
 import analytics from '@/lib/analytics';
 
 const formatBRPhone = (value) => {
@@ -46,6 +47,7 @@ const LeadCaptureSection = ({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(true);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -64,24 +66,55 @@ const LeadCaptureSection = ({
     { name, email, phone }
   );
 
+  const handleBlurField = (field, value) => {
+    if (!value || !value.trim()) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+      return;
+    }
+
+    if (field === 'name') {
+      const res = validateLeadName(value);
+      setFieldErrors((prev) => ({
+        ...prev,
+        name: res.isValid ? undefined : res.error,
+      }));
+    } else if (field === 'email') {
+      const res = validateLeadEmail(value);
+      setFieldErrors((prev) => ({
+        ...prev,
+        email: res.isValid ? undefined : res.error,
+      }));
+    } else if (field === 'phone') {
+      const res = validateLeadPhone(value);
+      setFieldErrors((prev) => ({
+        ...prev,
+        phone: res.isValid ? undefined : res.error,
+      }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!email.trim() && !phone.trim()) {
-      setErrorMsg('Por favor, informe pelo menos seu E-mail ou WhatsApp para receber o relatório.');
+    const validation = validateLeadData({ name, email, phone });
+    if (!validation.isValid) {
+      setFieldErrors(validation.errors);
+      if (validation.errors.general) {
+        setErrorMsg(validation.errors.general);
+      }
       return;
     }
 
-    if (email.trim() && !/\S+@\S+\.\S+/.test(email)) {
-      setErrorMsg('Por favor, informe um endereço de e-mail válido.');
-      return;
-    }
-
+    setFieldErrors({});
     setIsSubmitting(true);
 
     try {
-      await saveAssessmentLead({
+      const result = await saveAssessmentLead({
         assessmentId,
         assessmentTitle,
         score,
@@ -94,12 +127,20 @@ const LeadCaptureSection = ({
         dimensions,
         therapyQuestions,
         psychoeducation,
-        name,
-        email,
-        phone,
+        name: validation.sanitized.name || name,
+        email: validation.sanitized.email || email,
+        phone: validation.sanitized.phone || phone,
         answers,
         functionalImpact,
       });
+
+      if (result && result.success === false) {
+        if (result.validationErrors) {
+          setFieldErrors(result.validationErrors);
+        }
+        setErrorMsg(result.error || 'Por favor, confira os dados informados.');
+        return;
+      }
 
       setIsSubmitted(true);
     } catch (err) {
@@ -208,12 +249,23 @@ const LeadCaptureSection = ({
                 <input
                   id="lead-name"
                   type="text"
-                  placeholder="Como prefere ser chamado(a)"
+                  placeholder="Ex: Maria Silva"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-sm focus:border-[#2d8659] focus:ring-1 focus:ring-[#2d8659] outline-none transition-all"
+                  onBlur={() => handleBlurField('name', name)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (fieldErrors.name) setFieldErrors((prev) => ({ ...prev, name: undefined }));
+                  }}
+                  className={`w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border text-sm outline-none transition-all ${
+                    fieldErrors.name
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-gray-200 focus:border-[#2d8659] focus:ring-1 focus:ring-[#2d8659]'
+                  }`}
                 />
               </div>
+              {fieldErrors.name && (
+                <p className="text-[11px] text-rose-600 font-medium mt-1 leading-tight">{fieldErrors.name}</p>
+              )}
             </div>
 
             {/* E-mail */}
@@ -226,12 +278,26 @@ const LeadCaptureSection = ({
                 <input
                   id="lead-email"
                   type="email"
-                  placeholder="seuemail@exemplo.com"
+                  placeholder="seu.email@gmail.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-sm focus:border-[#2d8659] focus:ring-1 focus:ring-[#2d8659] outline-none transition-all"
+                  onBlur={() => handleBlurField('email', email)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setErrorMsg('');
+                    if (fieldErrors.email || fieldErrors.general) {
+                      setFieldErrors((prev) => ({ ...prev, email: undefined, general: undefined }));
+                    }
+                  }}
+                  className={`w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border text-sm outline-none transition-all ${
+                    fieldErrors.email
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-gray-200 focus:border-[#2d8659] focus:ring-1 focus:ring-[#2d8659]'
+                  }`}
                 />
               </div>
+              {fieldErrors.email && (
+                <p className="text-[11px] text-rose-600 font-medium mt-1 leading-tight">{fieldErrors.email}</p>
+              )}
             </div>
 
             {/* WhatsApp */}
@@ -244,12 +310,26 @@ const LeadCaptureSection = ({
                 <input
                   id="lead-phone"
                   type="tel"
-                  placeholder="(00) 00000-0000"
+                  placeholder="(11) 98456-7890"
                   value={phone}
-                  onChange={(e) => setPhone(formatBRPhone(e.target.value))}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border border-gray-200 text-sm focus:border-[#2d8659] focus:ring-1 focus:ring-[#2d8659] outline-none transition-all"
+                  onBlur={() => handleBlurField('phone', phone)}
+                  onChange={(e) => {
+                    setPhone(formatBRPhone(e.target.value));
+                    setErrorMsg('');
+                    if (fieldErrors.phone || fieldErrors.general) {
+                      setFieldErrors((prev) => ({ ...prev, phone: undefined, general: undefined }));
+                    }
+                  }}
+                  className={`w-full pl-9 pr-3 py-2.5 bg-white rounded-xl border text-sm outline-none transition-all ${
+                    fieldErrors.phone
+                      ? 'border-rose-300 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20'
+                      : 'border-gray-200 focus:border-[#2d8659] focus:ring-1 focus:ring-[#2d8659]'
+                  }`}
                 />
               </div>
+              {fieldErrors.phone && (
+                <p className="text-[11px] text-rose-600 font-medium mt-1 leading-tight">{fieldErrors.phone}</p>
+              )}
             </div>
           </div>
 

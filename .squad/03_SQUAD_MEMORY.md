@@ -33,6 +33,7 @@
 | **ADR 022** | 2026-10-19 | Operação, Retenção & No-Show | Fórmulas canônicas de no-show/cancelamento, coortes de retorno à 2ª sessão, prevenção de abandono (Zero PII) e módulo `OperationalRetentionModule`. | [`ADR_022`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-19_ADR_022_RETENCAO_CLINICA_NO_SHOW_E_COORTES.md) |
 | **ADR 023** | 2026-10-19 | Growth, Funil & Metas | Funil de 5 etapas (leads GAD-7 a consultas), canais de negócio, metas mensais dinâmicas persistidas em `system_settings` e `GrowthAnalyticsModule`. | [`ADR_023`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-19_ADR_023_GROWTH_FUNIL_AQUISICAO_E_METAS_MENSAIS.md) |
 | **ADR 024** | 2026-10-19 | UI/UX Admin Mobile-First | Redesign completo alinhado ao Design System Doxologos (`#1b3c37`, `#f8f6f0`), grid 2x2 mobile de KPIs, touch targets ≥44px e slide-over navigation drawer. | [`ADR_024`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-19_ADR_024_REDESIGN_UI_UX_MOBILE_FIRST_E_IDENTIDADE_DOXOLOGOS.md) |
+| **ADR 025** | 2026-10-19 | Leads, Antifraude & Qualidade | `leadValidator.js` canônico, validação estrita de DDDs reais (Anatel), bloqueio de telefones repetidos/blocos, domínios descartáveis e nomes fictícios (ex: e-mail colado no nome). | [`ADR_025`](file:///c:/Users/ander/source/repos/frontend_doxologos/.squad/history/2026-10-19_ADR_025_BLINDAGEM_INTEGRIDADE_LEADS_E_VALIDACAO_ANTIFRAUDE.md) |
 
 ---
 
@@ -43,6 +44,7 @@
 4. **Idempotência Fintech:** Toda Edge Function que recebe pagamentos ou webhooks verifica chave de idempotência ou `mp_payment_id` antes de qualquer execução contábil.
 5. **Cache Reativo TanStack Query:** Consultas usam `staleTime` mínimo de 5 minutos para dados estáticos/semi-estáticos, com invalidação precisa pós-mutação.
 6. **Conformidade Ética & Sigilo (CFP / LGPD):** Zero PII em logs; proteção absoluta de prontuários psicológicos (Art. 9º Código CFP e Art. 11 LGPD).
+7. **Validação e Integridade de Leads:** Mutações de captura de lead passam por `leadValidator.js`, barrando telefones/e-mails fictícios e abortando disparos automáticos SMTP que poderiam degradar a reputação do domínio.
 
 ---
 
@@ -58,6 +60,7 @@
 | **400 Bad Request ao Salvar Prontuário (`BUG-01`)** | `patientService.js` enviava `action: 'save_session_note'`, mas Edge Function aceitava apenas `action: 'save'`. | Unificação do payload para `action: 'save'` e suporte ao alias retrocompatível em `patient-notes-manager`. | Testes unitários em `patientService.test.js` e validação de contratos Zod/Edge. |
 | **Vulnerabilidade Open Mail Relay (`SEC-02`)** | `send-email` não validava token de autorização, permitindo disparo anônimo via SMTP Hostinger. | Imposição de `Authorization: Bearer <token>` obrigatório e trava anti-spoofing de `fromEmail`. | Validação de autorização em Edge Functions e testes de segurança. |
 | **Lista Vazia em Gestão de Blog (`BUG-02`)** | Dependência exclusiva de Edge Function remota para listar artigos gerava falha silenciosa/401 mesmo com dados no banco. | Consulta direta canônica à tabela `artigos` do Supabase com fallback resiliente para Edge Function, status chips e redesign Card Claro Premium. | Suíte de testes `BlogManagementDashboard.test.jsx` e padrão de leitura direta de banco com fallback gracioso. |
+| **Leads Fictícios e Lixo no CRM (`BUG-03`)** | Validação fraca no frontend, placeholders induzindo dados falsos (`(00) 00000-0000`, `seuemail@exemplo.com`) e ausência de sanitização antifraude no backend. | Criação de `leadValidator.js` com verificação de DDDs reais, anti-repetição/blocos, bloqueio de domínios descartáveis, e-mail colado no nome e placeholders realistas. | Suíte `leadValidator.test.js` (20 testes) e interceptação em `assessmentService.js`. |
 
 ---
 
