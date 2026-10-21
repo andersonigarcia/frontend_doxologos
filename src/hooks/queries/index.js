@@ -7,3 +7,4 @@ export * from './useBookingsQuery';
 export * from './usePaymentStatusQuery';
 export * from './usePatientHistoryQuery';
 export * from './useBookingMutations';
+export * from './usePatientRetentionQuery';

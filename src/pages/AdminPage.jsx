@@ -7,6 +7,7 @@ import { FinancialControlModule } from '@/components/admin/FinancialControlModul
 import { SystemSettingsManager } from '@/components/admin/SystemSettingsManager';
 import { PatientAnalyticsDashboard } from '@/components/admin/PatientAnalyticsDashboard';
 import { OperationalRetentionModule } from '@/components/admin/OperationalRetentionModule';
+import { PatientRetentionFollowUpModule } from '@/components/admin/PatientRetentionFollowUpModule';
 import { GrowthAnalyticsModule } from '@/components/admin/GrowthAnalyticsModule';
 import { useAdminData } from '@/hooks/useAdminData';
 import { summarizeBookingsFinancials } from '@/lib/adminMetrics';
@@ -2614,6 +2615,17 @@ const AdminPage = () => {
                         <TabsContent value="ai-economics" className="mt-6">
                             <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
                                 <AiEconomicsCockpit onNavigateTab={setActiveTab} />
+                            </Suspense>
+                        </TabsContent>
+
+                        {/* Acompanhamento & Retenção Ativa Tab */}
+                        <TabsContent value="patient-followup" className="mt-6">
+                            <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-slate-900" /></div>}>
+                                <PatientRetentionFollowUpModule
+                                    bookings={bookings}
+                                    professionals={professionals}
+                                    onNavigateTab={setActiveTab}
+                                />
                             </Suspense>
                         </TabsContent>
 

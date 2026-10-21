@@ -21,7 +21,8 @@ import {
   BookOpen,
   Sparkles,
   KeyRound,
-  Activity
+  Activity,
+  HeartHandshake
 } from 'lucide-react';
 import { tabsConfig } from '@/config/tabsConfig';
 
@@ -41,6 +42,7 @@ export const ADMIN_MODULES = [
     description: 'Gestão de Agenda, Consultas e Grades',
     icon: Calendar,
     tabs: [
+      { id: 'patient-followup', label: 'Acompanhamento & Retenção', icon: HeartHandshake },
       { id: 'retention-ops', label: 'Retenção & No-Show', icon: Activity },
       { id: 'bookings', label: 'Agendamentos', icon: Calendar },
       { id: 'availability', label: 'Disponibilidade / Grades', icon: Clock },

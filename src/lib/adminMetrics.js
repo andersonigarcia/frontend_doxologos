@@ -821,4 +821,209 @@ export function computeMonthlyGoalsProgress(currentMetrics = {}, targets = {}) {
     return goals;
 }
 
+/**
+ * Consolida o radar de acompanhamento e retenção ativa de pacientes para a administração.
+ * 
+ * Segmenta e direciona pacientes com base em risco de abandono e ausência de retorno:
+ *  - 'single_session': Só 1 consulta realizada e sem retorno agendado há >= 7 dias (Drop-off precoce).
+ *  - 'over_30d': Sem retorno agendado há 30 a 59 dias (Risco Moderado/Alto).
+ *  - 'critical_60d': Inativo há mais de 60 dias sem agendamento (Abandono prolongado).
+ *  - 'recent_no_next': Atendimento recente (8 a 29 dias) mas sem próxima sessão marcada (Atenção preventiva).
+ * 
+ * Gera scripts de acolhimento humanizado em estrita conformidade com o Código de Ética do Psicólogo (CFP).
+ * 
+ * @param {Array} bookings - Lista de agendamentos
+ * @param {Object} [options={}]
+ * @param {Date} [options.referenceDate=new Date()]
+ * @param {number} [options.singleSessionDaysThreshold=7]
+ * @param {number} [options.noReturnDaysThreshold=30]
+ * @param {number} [options.criticalDaysThreshold=60]
+ * @param {Object} [options.adminStatusMap={}] - Mapeamento de status gerido pelo admin { [patientKey]: { status, notes, updated_at } }
+ * @returns {Object}
+ */
+export function computePatientFollowUpAndRetention(bookings = [], options = {}) {
+    const list = Array.isArray(bookings) ? bookings : [];
+    const ref = options.referenceDate ? new Date(options.referenceDate) : new Date();
+    const refYmd = ref.toISOString().slice(0, 10);
+
+    const singleSessionDaysThreshold = options.singleSessionDaysThreshold ?? 7;
+    const noReturnDaysThreshold = options.noReturnDaysThreshold ?? 30;
+    const criticalDaysThreshold = options.criticalDaysThreshold ?? 60;
+    const adminStatusMap = options.adminStatusMap || {};
+
+    const patientMap = {};
+
+    list.forEach(b => {
+        const patientKey = (b.patient_email || b.user_id || b.patient_name || '').toLowerCase().trim();
+        if (!patientKey) return;
+
+        if (!patientMap[patientKey]) {
+            patientMap[patientKey] = {
+                key: patientKey,
+                rawName: b.patient_name || 'Paciente',
+                email: b.patient_email || '',
+                phone: b.patient_phone || '',
+                pastSessions: [],
+                futureBookings: []
+            };
+        }
+
+        const dateStr = b.booking_date ? String(b.booking_date).slice(0, 10) : '';
+        const status = (b.status || '').toLowerCase().trim();
+        const price = Number(b.valor_consulta ?? b?.service?.price ?? 150);
+
+        if (dateStr >= refYmd && ['confirmed', 'paid', 'pending', 'pending_payment'].includes(status)) {
+            patientMap[patientKey].futureBookings.push({
+                id: b.id,
+                date: dateStr,
+                time: b.booking_time ? String(b.booking_time).slice(0, 5) : '00:00',
+                status
+            });
+        } else if (REALIZED_STATUSES.includes(status)) {
+            patientMap[patientKey].pastSessions.push({
+                id: b.id,
+                date: dateStr,
+                time: b.booking_time ? String(b.booking_time).slice(0, 5) : '00:00',
+                professionalName: b.professional?.name || 'Psicólogo(a)',
+                professionalId: b.professional_id,
+                price
+            });
+        }
+    });
+
+    const atRiskList = [];
+    let singleSessionDropoffCount = 0;
+    let over30DaysNoReturnCount = 0;
+    let criticalOver60DaysCount = 0;
+    let recentWithoutNextCount = 0;
+    let potentialRecoverableRevenue = 0;
+
+    const followUpFunnelCounts = {
+        pendente: 0,
+        contatado: 0,
+        reagendado: 0,
+        pausa: 0,
+        concluido: 0
+    };
+
+    Object.values(patientMap).forEach(p => {
+        // Se possui agendamento futuro garantido, não está em risco de abandono
+        if (p.futureBookings.length > 0) return;
+        // Se não possui nenhuma sessão realizada no passado, não iniciou tratamento ainda
+        if (p.pastSessions.length === 0) return;
+
+        p.pastSessions.sort((a, b) => (b.date > a.date ? 1 : -1));
+        const lastSession = p.pastSessions[0];
+        if (!lastSession.date) return;
+
+        const dateParts = lastSession.date.split('-').map(Number);
+        if (dateParts.length < 3 || dateParts.some(Number.isNaN)) return;
+        const [y, m, d] = dateParts;
+        const lastDateUtc = Date.UTC(y, m - 1, d);
+        const refDateUtc = Date.UTC(ref.getUTCFullYear(), ref.getUTCMonth(), ref.getUTCDate());
+
+        const daysSinceLastSession = Math.max(0, Math.round((refDateUtc - lastDateUtc) / (1000 * 60 * 60 * 24)));
+        const totalSessions = p.pastSessions.length;
+        const avgSessionPrice = lastSession.price || 150;
+
+        let segment = null;
+        let urgency = 'medium';
+        let riskReason = '';
+        let suggestedAction = '';
+
+        if (daysSinceLastSession >= criticalDaysThreshold) {
+            segment = 'critical_60d';
+            urgency = 'critical';
+            riskReason = `Abandono prolongado (sem agendar há ${daysSinceLastSession} dias)`;
+            suggestedAction = 'Reconexão suave e afetuosa: perguntar como tem passado e reafirmar que o espaço terapêutico segue aberto.';
+            criticalOver60DaysCount += 1;
+        } else if (totalSessions === 1 && daysSinceLastSession >= singleSessionDaysThreshold) {
+            segment = 'single_session';
+            urgency = 'critical';
+            riskReason = `Drop-off de 1ª consulta (sem retorno há ${daysSinceLastSession} dias)`;
+            suggestedAction = 'Acolhimento da 1ª Consulta: verificar como se sentiu com o profissional e apoiar a continuidade do processo.';
+            singleSessionDropoffCount += 1;
+        } else if (daysSinceLastSession >= noReturnDaysThreshold) {
+            segment = 'over_30d';
+            urgency = 'high';
+            riskReason = `Sem retorno há mais de 30 dias (${daysSinceLastSession} dias sem consulta)`;
+            suggestedAction = 'Contato de cuidado e escuta: verificar bem-estar e checar se deseja retomar ou agendar novo horário.';
+            over30DaysNoReturnCount += 1;
+        } else if (daysSinceLastSession >= 8) {
+            segment = 'recent_no_next';
+            urgency = 'preventive';
+            riskReason = `Atendimento recente sem agendamento futuro (${daysSinceLastSession} dias)`;
+            suggestedAction = 'Apoio preventivo de agenda: verificar se deseja fixar o horário semanal para manter o ritmo terapêutico.';
+            recentWithoutNextCount += 1;
+        }
+
+        // Se o paciente foi enquadrado em algum segmento de acompanhamento
+        if (segment) {
+            potentialRecoverableRevenue += avgSessionPrice;
+
+            const adminInfo = adminStatusMap[p.key] || {};
+            const followUpStatus = adminInfo.status || 'pendente';
+            if (followUpFunnelCounts[followUpStatus] !== undefined) {
+                followUpFunnelCounts[followUpStatus] += 1;
+            } else {
+                followUpFunnelCounts.pendente += 1;
+            }
+
+            const firstName = p.rawName?.trim()?.split(' ')[0] || 'Paciente';
+            const profName = lastSession.professionalName || 'seu(sua) psicólogo(a)';
+
+            // Mensagens humanizadas pautadas nas normas do CFP (Acolhimento sem pressão comercial)
+            const messageTemplates = {
+                firstSessionCare: `Olá, ${firstName}! Aqui é da equipe de acolhimento da Doxologos Psicologia. Esperamos que seu primeiro encontro com ${profName} tenha sido um momento confortável e seguro. Gostaríamos de saber como você se sentiu e se você precisa de algum apoio para dar continuidade ao seu processo terapêutico. Como você tem passado?`,
+                gentleReconnection: `Olá, ${firstName}, tudo bem? Aqui é da equipe Doxologos. Passando com muito carinho para saber como você está. Sabemos que a rotina por vezes pede pausas e que a terapia tem seu próprio tempo. Queremos que você saiba que nosso espaço e ${profName} continuam de portas abertas quando você sentir que é a hora de retomar. Conte sempre conosco!`,
+                operationalSupport: `Olá, ${firstName}! Aqui é da Doxologos Psicologia. Notamos que faz alguns dias desde seu último encontro com ${profName}. Gostaríamos de verificar se você teve qualquer dificuldade com horários ou agendamento na plataforma. Se precisar de apoio para encontrar um horário ideal para sua rotina, estamos à disposição para ajudar!`
+            };
+
+            atRiskList.push({
+                patientId: p.key,
+                rawName: p.rawName,
+                patientDisplay: anonymizePatientName(p.rawName),
+                email: p.email,
+                phone: p.phone,
+                cleanPhone: p.phone ? p.phone.replace(/\D/g, '') : '',
+                totalSessions,
+                lastSessionDate: lastSession.date,
+                daysSinceLastSession,
+                professionalName: lastSession.professionalName,
+                professionalId: lastSession.professionalId,
+                segment,
+                urgency,
+                riskReason,
+                suggestedAction,
+                estimatedSessionValue: avgSessionPrice,
+                followUpStatus,
+                adminNotes: adminInfo.notes || '',
+                statusUpdatedAt: adminInfo.updated_at || null,
+                messageTemplates
+            });
+        }
+    });
+
+    // Ordenação prioritária: Maior urgência e maior tempo de inatividade
+    const urgencyWeight = { critical: 3, high: 2, preventive: 1, medium: 1 };
+    atRiskList.sort((a, b) => {
+        const weightDiff = (urgencyWeight[b.urgency] || 0) - (urgencyWeight[a.urgency] || 0);
+        if (weightDiff !== 0) return weightDiff;
+        return b.daysSinceLastSession - a.daysSinceLastSession;
+    });
+
+    return {
+        summary: {
+            totalAtRisk: atRiskList.length,
+            singleSessionDropoffCount,
+            over30DaysNoReturnCount,
+            criticalOver60DaysCount,
+            recentWithoutNextCount,
+            potentialRecoverableRevenue,
+            followUpFunnelCounts
+        },
+        patients: atRiskList
+    };
+}
+
 

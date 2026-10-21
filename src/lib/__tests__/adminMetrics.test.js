@@ -12,7 +12,8 @@ import {
     computeCapacityAndDemandByDay,
     computeFunnelMetrics,
     computeChannelAcquisition,
-    computeMonthlyGoalsProgress
+    computeMonthlyGoalsProgress,
+    computePatientFollowUpAndRetention
 } from '../adminMetrics';
 
 describe('pctDelta', () => {
@@ -358,6 +359,130 @@ describe('computeMonthlyGoalsProgress', () => {
         const ret = goals.find(g => g.id === 'retention');
         expect(ret.progressPct).toBe(100.0);
         expect(ret.status).toBe('achieved');
+    });
+});
+
+describe('computePatientFollowUpAndRetention (Acompanhamento e Retenção)', () => {
+    const fixedToday = new Date('2026-10-20T12:00:00Z');
+
+    const testBookings = [
+        // Paciente 1: Fez 1 consulta há 14 dias (2026-10-06), sem agendamento futuro -> Drop-off 1ª consulta
+        {
+            id: 'b-single',
+            patient_email: 'joao@email.com',
+            patient_name: 'João Pedro',
+            patient_phone: '11988887777',
+            booking_date: '2026-10-06',
+            booking_time: '14:00',
+            status: 'completed',
+            valor_consulta: 160,
+            professional: { name: 'Dra. Helena' }
+        },
+        // Paciente 2: Fez 3 consultas, última há 40 dias (2026-09-10), sem agendamento futuro -> Inativo 30d+
+        {
+            id: 'b-over30-1',
+            patient_email: 'maria@email.com',
+            patient_name: 'Maria Santos',
+            booking_date: '2026-08-20',
+            status: 'completed',
+            valor_consulta: 150,
+            professional: { name: 'Dr. Lucas' }
+        },
+        {
+            id: 'b-over30-2',
+            patient_email: 'maria@email.com',
+            patient_name: 'Maria Santos',
+            booking_date: '2026-09-10',
+            status: 'completed',
+            valor_consulta: 150,
+            professional: { name: 'Dr. Lucas' }
+        },
+        // Paciente 3: Inativo há 75 dias (2026-08-06) -> Crítico 60d+
+        {
+            id: 'b-crit',
+            patient_email: 'carlos@email.com',
+            patient_name: 'Carlos Mendes',
+            booking_date: '2026-08-06',
+            status: 'completed',
+            valor_consulta: 180,
+            professional: { name: 'Dra. Helena' }
+        },
+        // Paciente 4: Fez consulta no passado mas JÁ TEM agendamento futuro confirmado em 2026-10-25 -> NÃO DEVE ESTAR EM RISCO
+        {
+            id: 'b-active-past',
+            patient_email: 'ana@email.com',
+            patient_name: 'Ana Clara',
+            booking_date: '2026-10-01',
+            status: 'completed',
+            valor_consulta: 150,
+            professional: { name: 'Dr. Lucas' }
+        },
+        {
+            id: 'b-active-future',
+            patient_email: 'ana@email.com',
+            patient_name: 'Ana Clara',
+            booking_date: '2026-10-25',
+            status: 'confirmed',
+            valor_consulta: 150,
+            professional: { name: 'Dr. Lucas' }
+        }
+    ];
+
+    it('segmenta corretamente os pacientes e exclui quem tem agendamento futuro', () => {
+        const result = computePatientFollowUpAndRetention(testBookings, { referenceDate: fixedToday });
+
+        expect(result.summary.totalAtRisk).toBe(3);
+        expect(result.summary.singleSessionDropoffCount).toBe(1);
+        expect(result.summary.over30DaysNoReturnCount).toBe(1);
+        expect(result.summary.criticalOver60DaysCount).toBe(1);
+
+        // Paciente Ana Clara não pode estar na lista porque tem agendamento futuro
+        const ana = result.patients.find(p => p.patientId === 'ana@email.com');
+        expect(ana).toBeUndefined();
+
+        // Paciente João (1 consulta)
+        const joao = result.patients.find(p => p.patientId === 'joao@email.com');
+        expect(joao).toBeDefined();
+        expect(joao.segment).toBe('single_session');
+        expect(joao.urgency).toBe('critical');
+        expect(joao.totalSessions).toBe(1);
+        expect(joao.daysSinceLastSession).toBe(14);
+        expect(joao.messageTemplates.firstSessionCare).toContain('João');
+        expect(joao.messageTemplates.firstSessionCare).toContain('Dra. Helena');
+
+        // Paciente Maria (inativo 30d+)
+        const maria = result.patients.find(p => p.patientId === 'maria@email.com');
+        expect(maria).toBeDefined();
+        expect(maria.segment).toBe('over_30d');
+        expect(maria.totalSessions).toBe(2);
+
+        // Paciente Carlos (crítico 60d+)
+        const carlos = result.patients.find(p => p.patientId === 'carlos@email.com');
+        expect(carlos).toBeDefined();
+        expect(carlos.segment).toBe('critical_60d');
+    });
+
+    it('aplica e reflete os status de acompanhamento do admin', () => {
+        const adminMap = {
+            'joao@email.com': { status: 'contatado', notes: 'Mensagem enviada no WhatsApp' },
+            'maria@email.com': { status: 'reagendado', notes: 'Reagendou para próxima quinta' }
+        };
+
+        const result = computePatientFollowUpAndRetention(testBookings, {
+            referenceDate: fixedToday,
+            adminStatusMap: adminMap
+        });
+
+        const joao = result.patients.find(p => p.patientId === 'joao@email.com');
+        expect(joao.followUpStatus).toBe('contatado');
+        expect(joao.adminNotes).toBe('Mensagem enviada no WhatsApp');
+
+        const maria = result.patients.find(p => p.patientId === 'maria@email.com');
+        expect(maria.followUpStatus).toBe('reagendado');
+
+        expect(result.summary.followUpFunnelCounts.contatado).toBe(1);
+        expect(result.summary.followUpFunnelCounts.reagendado).toBe(1);
+        expect(result.summary.followUpFunnelCounts.pendente).toBe(1);
     });
 });
 

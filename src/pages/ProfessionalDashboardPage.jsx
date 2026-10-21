@@ -42,7 +42,10 @@ import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner
 import {
     AdminBookingsTab,
     AdminProfessionalsTab,
-    AdminPaymentsTab
+    AdminPaymentsTab,
+    AdminEventsTab,
+    AdminServicesTab,
+    AdminTestimonialsTab
 } from '@/components/admin/tabs';
 
 // Fase 5 - Dashboard Profissional

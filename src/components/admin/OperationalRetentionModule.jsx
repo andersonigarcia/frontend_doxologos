@@ -26,6 +26,7 @@ import {
   identifyDisengagedPatients,
   computeCapacityAndDemandByDay
 } from '@/lib/adminMetrics';
+import { PatientRetentionFollowUpModule } from './PatientRetentionFollowUpModule';
 import {
   ResponsiveContainer,
   BarChart,
@@ -81,46 +82,45 @@ export function OperationalRetentionModule({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* CABEÇALHO DO MÓDULO OPERACIONAL */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs text-slate-900 font-sans">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border border-slate-200">
-                <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                Operação & Retenção Clínica
-              </span>
-              <span className="text-[11px] text-slate-400 font-medium">Fidelização • No-Show • Capacidade</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-              Saúde da Operação & Retenção de Pacientes
-            </h2>
-            <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-              Acompanhe o retorno para a segunda sessão, a taxa de faltas (no-show) por psicólogo, a ocupação das grades e o mapa de prevenção de abandono clínico.
-            </p>
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs text-slate-900 font-sans space-y-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border border-slate-200">
+              <Activity className="w-3.5 h-3.5 text-emerald-600" />
+              Operação & Retenção Clínica
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">Fidelização • No-Show • Capacidade</span>
           </div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            Saúde da Operação & Retenção de Pacientes
+          </h2>
+          <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
+            Acompanhe o retorno para a segunda sessão, a taxa de faltas (no-show) por psicólogo, a ocupação das grades e o mapa de prevenção de abandono clínico.
+          </p>
+        </div>
 
-          {/* Seletor de Sub-Abas do Módulo com Rolagem Horizontal Suave para Mobile */}
-          <div className="w-full lg:w-auto overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5">
-            <div className="inline-flex bg-slate-100 p-1 rounded-lg border border-slate-200/80 shadow-inner gap-1 min-w-full sm:min-w-0">
-              {[
-                { id: 'overview', label: 'Retenção & Coortes' },
-                { id: 'noshow', label: 'No-Show & Cancelamentos' },
-                { id: 'churn_risk', label: 'Prevenção de Abandono' },
-                { id: 'capacity', label: 'Capacidade vs Demanda' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveSubTab(tab.id)}
-                  className={`text-xs px-3 py-1.5 rounded-md transition-all whitespace-nowrap font-medium flex-1 sm:flex-initial text-center touch-manipulation ${
-                    activeSubTab === tab.id
-                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                      : 'text-slate-500 hover:text-slate-900 hover:bg-white/50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+        {/* Seletor de Sub-Abas do Módulo Posicionado Embaixo do Texto (Largura Total sem Scroll Lateral no Desktop) */}
+        <div className="pt-3 border-t border-slate-100 overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="inline-flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner gap-1 min-w-full sm:min-w-0">
+            {[
+              { id: 'overview', label: 'Retenção & Coortes' },
+              { id: 'followup', label: 'Acompanhamento & Reversão' },
+              { id: 'noshow', label: 'No-Show & Cancelamentos' },
+              { id: 'churn_risk', label: 'Prevenção de Abandono' },
+              { id: 'capacity', label: 'Capacidade vs Demanda' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSubTab(tab.id)}
+                className={`text-xs px-3.5 py-2 rounded-lg transition-all whitespace-nowrap font-medium flex-1 sm:flex-initial text-center touch-manipulation ${
+                  activeSubTab === tab.id
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -315,6 +315,15 @@ export function OperationalRetentionModule({
             </Button>
           </Card>
         </div>
+      )}
+
+      {/* ABA: ACOMPANHAMENTO & REVERSÃO ATIVA (NOVO RADAR CFP) */}
+      {activeSubTab === 'followup' && (
+        <PatientRetentionFollowUpModule
+          bookings={bookings}
+          professionals={professionals}
+          onNavigateTab={onNavigateTab}
+        />
       )}
 
       {/* ABA 2: NO-SHOW & CANCELAMENTOS */}

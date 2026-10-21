@@ -17,7 +17,8 @@ import {
     Building2,
     BookOpen,
     Sparkles,
-    Activity
+    Activity,
+    HeartHandshake
 } from 'lucide-react';
 
 /**
@@ -27,6 +28,7 @@ import {
 export const tabsConfig = {
     admin: [
         { value: 'dashboard', label: 'Dashboard & KPIs', icon: LayoutDashboard },
+        { value: 'patient-followup', label: 'Acompanhamento & Retenção', icon: HeartHandshake },
         { value: 'retention-ops', label: 'Retenção & No-Show', icon: Activity },
         { value: 'growth', label: 'Growth & Metas', icon: TrendingUp },
         { value: 'bookings', label: 'Agendamentos', icon: Calendar },
