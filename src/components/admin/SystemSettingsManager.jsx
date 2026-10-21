@@ -54,6 +54,7 @@ export const DEFAULT_SYSTEM_PARAMETERS = {
   default_appointment_duration_minutes: 50,
   professional_monthly_capacity_slots: 80,
   whatsapp_reminders_enabled: true,
+  prontuario_show_emotional_triage: true,
 
   // 5. Segurança e Controle de Sessão
   session_idle_timeout_minutes: 15,
@@ -164,6 +165,14 @@ export const PARAMETER_METADATA = {
     flows: 'Disparo automático de mensagens de confirmação e alerta aos pacientes.',
     risk: 'MEDIUM',
     riskLabel: 'Médio',
+    unit: ''
+  },
+  prontuario_show_emotional_triage: {
+    label: 'Exibir Triagem Prévia (GAD-7) no Prontuário',
+    category: 'Operação e Clínica',
+    flows: 'Controla a exibição automática das respostas do teste de ansiedade (GAD-7) e triagem emocional no prontuário do psicólogo.',
+    risk: 'LOW',
+    riskLabel: 'Baixo / Clínico',
     unit: ''
   },
   session_idle_timeout_minutes: {
@@ -613,7 +622,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
           {/* Item 1: Duração Padrão da Sessão */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
             <div>
@@ -661,6 +670,18 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
             <Switch
               checked={Boolean(draftSettings.whatsapp_reminders_enabled)}
               onCheckedChange={(checked) => handleDraftChange('whatsapp_reminders_enabled', checked)}
+            />
+          </div>
+
+          {/* Item 4: Triagem Prévia (GAD-7) no Prontuário */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Triagem Prévia (GAD-7)</label>
+              <p className="text-[11px] text-slate-500">Exibe autoavaliação emocional no prontuário do psicólogo.</p>
+            </div>
+            <Switch
+              checked={Boolean(draftSettings.prontuario_show_emotional_triage ?? true)}
+              onCheckedChange={(checked) => handleDraftChange('prontuario_show_emotional_triage', checked)}
             />
           </div>
         </div>

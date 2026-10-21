@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, User, Mail, Phone, Calendar, DollarSign, TrendingUp, Clock,
-    FileText, Save, History, ChevronDown, ChevronUp, AlertCircle, Loader2
+    FileText, Save, History, ChevronDown, ChevronUp, AlertCircle, Loader2,
+    CalendarPlus, Sparkles, Brain
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -10,6 +11,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TimelineView } from '@/components/common/TimelineView';
 import { supabase } from '@/lib/customSupabaseClient';
 import { getPatientNotesHistory } from '@/services/patientService';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
+import { ScheduleNextSessionModal } from '@/components/professional/ScheduleNextSessionModal';
 
 /**
  * PatientDetailsModal - Modal com detalhes completos do paciente e prontuário estruturado
@@ -19,9 +22,68 @@ import { getPatientNotesHistory } from '@/services/patientService';
  * @param {boolean} props.isOpen - Estado de abertura do modal
  * @param {Function} props.onClose - Callback para fechar modal
  * @param {Function} props.onSaveNotes - Callback para salvar prontuário
+ * @param {Object} [props.currentProfessional] - Dados do profissional autenticado
+ * @param {Array} [props.services] - Lista de serviços para agendamento
+ * @param {Function} [props.onBookingCreated] - Callback quando nova sessão é agendada
  */
-export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) => {
+export const PatientDetailsModal = ({
+    patient,
+    isOpen,
+    onClose,
+    onSaveNotes,
+    currentProfessional = null,
+    services = [],
+    onBookingCreated = null
+}) => {
     const { toast } = useToast();
+    const { settings } = useSystemSettings();
+    const showTriage = settings?.prontuario_show_emotional_triage !== false;
+
+    const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+    const [assessmentData, setAssessmentData] = useState(null);
+    const [assessmentLoading, setAssessmentLoading] = useState(false);
+
+    // Carregar triagem prévia (GAD-7 / Autoavaliação) do paciente se o toggle estiver ativo
+    useEffect(() => {
+        if (!isOpen || !patient || !showTriage) {
+            setAssessmentData(null);
+            return;
+        }
+
+        async function fetchAssessment() {
+            setAssessmentLoading(true);
+            try {
+                let query = supabase
+                    .from('assessment_leads')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+
+                if (patient.email) {
+                    query = query.eq('patient_email', patient.email.trim().toLowerCase());
+                } else if (patient.phone) {
+                    const cleanPhone = String(patient.phone).replace(/\D/g, '');
+                    query = query.ilike('patient_phone', `%${cleanPhone.slice(-8)}%`);
+                } else {
+                    setAssessmentData(null);
+                    return;
+                }
+
+                const { data, error } = await query;
+                if (!error && data && data.length > 0) {
+                    setAssessmentData(data[0]);
+                } else {
+                    setAssessmentData(null);
+                }
+            } catch (err) {
+                console.warn('Erro ao carregar triagem:', err);
+            } finally {
+                setAssessmentLoading(false);
+            }
+        }
+
+        fetchAssessment();
+    }, [patient, isOpen, showTriage]);
 
     // ── Estado do formulário de prontuário ────────────────────────────────────
     const [form, setForm] = useState({
@@ -170,14 +232,26 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                                         </p>
                                     </div>
                                 </div>
-                                <button
-                                    id="btn-close-patient-modal"
-                                    onClick={onClose}
-                                    className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-                                    aria-label="Fechar modal"
-                                >
-                                    <X className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => setIsScheduleModalOpen(true)}
+                                        className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs h-8 px-3 flex items-center gap-1.5 shadow-xs transition-colors"
+                                    >
+                                        <CalendarPlus className="w-3.5 h-3.5" />
+                                        <span className="hidden sm:inline">Agendar Próxima</span>
+                                        <span className="sm:hidden">Agendar</span>
+                                    </Button>
+                                    <button
+                                        id="btn-close-patient-modal"
+                                        onClick={onClose}
+                                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                                        aria-label="Fechar modal"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </div>
 
                             <Tabs defaultValue="prontuario" className="flex flex-col flex-1 overflow-hidden">
@@ -241,6 +315,66 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
 
                                     {/* ── Prontuário (Sessão Atual) ────────────────────── */}
                                     <TabsContent value="prontuario" className="m-0 focus:outline-none">
+                                        {/* Bloco de Triagem Emocional Prévia (Controlado por Toggle do Admin) */}
+                                        {showTriage && assessmentData && (
+                                            <div className="mb-5 p-4 rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-slate-50">
+                                                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-xs font-bold shadow-xs">
+                                                            <Brain className="w-4 h-4" />
+                                                        </span>
+                                                        <div>
+                                                            <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                                                                Triagem Prévia: {assessmentData.assessment_title || 'Autoavaliação Psicométrica (GAD-7)'}
+                                                            </h4>
+                                                            <p className="text-[11px] text-slate-500">Dados autodeclarados pelo paciente antes da 1ª sessão</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                                            assessmentData.severity === 'severe'
+                                                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                                                : assessmentData.severity === 'moderate'
+                                                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                        }`}>
+                                                            Gravidade {assessmentData.severity === 'severe' ? 'Severa' : assessmentData.severity === 'moderate' ? 'Moderada' : assessmentData.severity === 'mild' ? 'Leve' : 'Mínima'}
+                                                        </span>
+                                                        <span className="text-xs font-bold text-slate-700 bg-white px-2 py-0.5 rounded-full border border-slate-200 shadow-2xs">
+                                                            Escore: {assessmentData.score} / {assessmentData.max_score || 21}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-xs text-slate-600">
+                                                    Preenchido em <strong>{new Date(assessmentData.created_at).toLocaleDateString('pt-BR')}</strong>.
+                                                    {assessmentData.functional_impact && (
+                                                        <span className="ml-1 text-slate-700 font-medium">
+                                                            Impacto relatado nas atividades cotidianas: <em>{assessmentData.functional_impact}</em>
+                                                        </span>
+                                                    )}
+                                                </p>
+
+                                                {assessmentData.answers && Object.keys(assessmentData.answers).length > 0 && (
+                                                    <div className="mt-2.5 pt-2 border-t border-indigo-100">
+                                                        <details className="text-xs text-slate-600 cursor-pointer">
+                                                            <summary className="font-semibold text-indigo-700 hover:text-indigo-800 select-none">
+                                                                Ver respostas dos sintomas declarados na autoavaliação
+                                                            </summary>
+                                                            <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 bg-white/90 rounded-lg border border-slate-200">
+                                                                {Object.entries(assessmentData.answers).map(([key, val]) => (
+                                                                    <div key={key} className="text-[11px] text-slate-700">
+                                                                        <span className="font-bold text-slate-900">{key}:</span> {String(val)}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </details>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
                                         <div className="mb-5 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 text-sm text-amber-800">
                                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                                             <p>Registre as anotações da <strong>sessão atual</strong>. Ao salvar, um snapshot imutável é gravado no Histórico.</p>
@@ -332,12 +466,22 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                                             />
                                         </div>
 
-                                        <div className="flex justify-end">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setIsScheduleModalOpen(true)}
+                                                className="flex items-center gap-2 rounded-xl border-slate-300 hover:border-slate-900 text-slate-800 font-bold px-4 h-10 shadow-xs"
+                                            >
+                                                <CalendarPlus className="w-4 h-4 text-emerald-600" />
+                                                Agendar Próxima Sessão
+                                            </Button>
+
                                             <Button
                                                 id="btn-save-prontuario"
                                                 onClick={handleSaveNotes}
                                                 disabled={isSaving || (!form.chief_complaint.trim() && !form.session_development.trim() && !form.notes.trim())}
-                                                className="flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 shadow-xs transition-colors"
+                                                className="flex items-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold px-6 h-10 shadow-xs transition-colors"
                                             >
                                                 {isSaving
                                                     ? <><Loader2 className="w-4 h-4 animate-spin text-white" />Salvando...</>
@@ -460,6 +604,19 @@ export const PatientDetailsModal = ({ patient, isOpen, onClose, onSaveNotes }) =
                     </motion.div>
                 </>
             )}
+
+            {/* Modal de Agendamento da Próxima Sessão */}
+            <ScheduleNextSessionModal
+                isOpen={isScheduleModalOpen}
+                onClose={() => setIsScheduleModalOpen(false)}
+                patient={patient}
+                currentProfessional={currentProfessional}
+                services={services}
+                onBookingCreated={(newBooking) => {
+                    if (onBookingCreated) onBookingCreated(newBooking);
+                    toast({ title: '✅ Agenda atualizada', description: 'Próxima consulta gravada com sucesso.' });
+                }}
+            />
         </AnimatePresence>
     );
 };

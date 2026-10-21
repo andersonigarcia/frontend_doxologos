@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/common/StatCard';
 import { SkeletonStatsGrid, SkeletonList } from '@/components/common/SkeletonLoaders';
@@ -81,6 +81,52 @@ export function FinancialDashboard({ professionalId, className = '' }) {
         const link = document.createElement('a');
         link.href = url;
         link.download = `relatorio-financeiro-${dateRange.start}-${dateRange.end}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleExportCarneLeao = () => {
+        // Relatório Canônico Livro-Caixa / Carnê-Leão (Receita Federal)
+        // Código Ocupação: 2515-10 (Psicólogo Clínico)
+        const carneLeaoData = [
+            ['RELATÓRIO LIVRO-CAIXA / CARNÊ-LEÃO - RECEITA FEDERAL'],
+            ['Profissional ID', professionalId || 'Psicólogo Doxologos'],
+            ['Período de Apuração', `${new Date(dateRange.start + 'T12:00:00').toLocaleDateString('pt-BR')} até ${new Date(dateRange.end + 'T12:00:00').toLocaleDateString('pt-BR')}`],
+            ['Regime de Apuração', 'Regime de Caixa (Sessões Realizadas / Liquidadas)'],
+            ['Total Apurado (R$)', totalPayoutPaid.toFixed(2)],
+            [''],
+            [
+                'Data da Sessão',
+                'CBO Ocupação',
+                'Descrição Ocupação',
+                'Nome do Paciente',
+                'CPF do Paciente / Titular',
+                'Discriminação do Serviço',
+                'Valor Recebido (R$)',
+                'Status'
+            ],
+            ...payoutsPaid.map(p => [
+                p.booking_date ? new Date(p.booking_date + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+                '2515-10',
+                'Psicólogo Clínico',
+                p.patient_name || 'Paciente',
+                p.patient_cpf || 'Não informado',
+                p.service_name || 'Atendimento Psicológico Clínico Individual',
+                parseFloat(p.valor_repasse_profissional || p.amount || 0).toFixed(2),
+                'Realizado / Pago'
+            ])
+        ];
+
+        if (payoutsPaid.length === 0 && pendingPayments.length > 0) {
+            carneLeaoData.push(['* Nenhuma sessão marcada como liquidada no período. Sessões pendentes não devem ser declaradas no Carnê-Leão até o efetivo recebimento.']);
+        }
+
+        const csvContent = '\uFEFF' + carneLeaoData.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `carne-leao-livro-caixa-${dateRange.start}-${dateRange.end}.csv`;
         link.click();
         URL.revokeObjectURL(url);
     };
@@ -189,6 +235,15 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             className="text-xs rounded-full"
                         >
                             Ano
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleExportCarneLeao}
+                            className="rounded-xl border-slate-300 hover:border-slate-800 text-slate-800 font-semibold text-xs h-9 px-3.5 flex items-center gap-1.5 shadow-xs"
+                        >
+                            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                            Carnê-Leão (Livro-Caixa)
                         </Button>
                         <Button
                             size="sm"

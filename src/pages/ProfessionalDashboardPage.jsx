@@ -55,6 +55,8 @@ const PatientDetailsModal = lazy(() => import('@/components/admin/PatientDetails
 const FinancialDashboard = lazy(() => import('@/components/admin/FinancialDashboard').then(m => ({ default: m.FinancialDashboard })));
 const AvailabilityManager = lazy(() => import('@/components/admin/availability/AvailabilityManager').then(m => ({ default: m.AvailabilityManager })));
 const RevenueAnalytics = lazy(() => import('@/components/admin/RevenueAnalytics').then(m => ({ default: m.RevenueAnalytics })));
+const ProfessionalShareCard = lazy(() => import('@/components/professional/ProfessionalShareCard').then(m => ({ default: m.ProfessionalShareCard })));
+const ScheduleNextSessionModal = lazy(() => import('@/components/professional/ScheduleNextSessionModal').then(m => ({ default: m.ScheduleNextSessionModal })));
 
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { EmergencyBookingModal } from '@/components/admin/EmergencyBookingModal';
@@ -119,6 +121,8 @@ const ProfessionalDashboardPage = () => {
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [isEmergencyBookingModalOpen, setIsEmergencyBookingModalOpen] = useState(false);
     const [isCalendarSyncOpen, setIsCalendarSyncOpen] = useState(false);
+    const [isScheduleNextOpen, setIsScheduleNextOpen] = useState(false);
+    const [scheduleNextPatient, setScheduleNextPatient] = useState(null);
 
     // P-03: Dados e fetching centralizados no hook useAdminData
     const {
@@ -2403,6 +2407,14 @@ const ProfessionalDashboardPage = () => {
                                         });
                                     }}
                                     onViewAllBookings={() => setActiveTab('bookings')}
+                                    onOpenScheduleNext={(appt) => {
+                                        setScheduleNextPatient({
+                                            name: appt.patient_name,
+                                            email: appt.patient_email,
+                                            phone: appt.patient_phone
+                                        });
+                                        setIsScheduleNextOpen(true);
+                                    }}
                                 />
 
                                 {/* Cockpit Diário da Agenda Clínica com Sincronização de Calendário */}
@@ -2418,6 +2430,14 @@ const ProfessionalDashboardPage = () => {
                                             });
                                         }}
                                         onOpenCalendarSync={() => setIsCalendarSyncOpen(true)}
+                                        onOpenScheduleNext={(appt) => {
+                                            setScheduleNextPatient({
+                                                name: appt.patient_name,
+                                                email: appt.patient_email,
+                                                phone: appt.patient_phone
+                                            });
+                                            setIsScheduleNextOpen(true);
+                                        }}
                                     />
                                 </div>
 
@@ -2594,6 +2614,9 @@ const ProfessionalDashboardPage = () => {
                                         setSelectedPatient(null);
                                     }}
                                     onSaveNotes={handleSavePatientNotes}
+                                    currentProfessional={currentProfessional}
+                                    services={services}
+                                    onBookingCreated={fetchAllData}
                                 />
                             </Suspense>
                         </TabsContent>
@@ -2611,12 +2634,15 @@ const ProfessionalDashboardPage = () => {
                         {/* Meu Perfil Profissional */}
                         <TabsContent value="professionals" className="mt-6 focus:outline-none">
                             <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-slate-900" /></div>}>
-                                <AdminProfessionalsTab
-                                    userRole={userRole}
-                                    professionals={professionals}
-                                    services={services}
-                                    onRefresh={fetchAllData}
-                                />
+                                <div className="space-y-6">
+                                    <ProfessionalShareCard currentProfessional={currentProfessional} />
+                                    <AdminProfessionalsTab
+                                        userRole={userRole}
+                                        professionals={professionals}
+                                        services={services}
+                                        onRefresh={fetchAllData}
+                                    />
+                                </div>
                             </Suspense>
                         </TabsContent>
                     </Tabs>
@@ -2656,6 +2682,18 @@ const ProfessionalDashboardPage = () => {
                 onClose={() => setIsCalendarSyncOpen(false)}
                 appointments={bookings}
                 professionalName={currentProfessional?.name}
+            />
+
+            <ScheduleNextSessionModal
+                isOpen={isScheduleNextOpen}
+                onClose={() => {
+                    setIsScheduleNextOpen(false);
+                    setScheduleNextPatient(null);
+                }}
+                patient={scheduleNextPatient}
+                currentProfessional={currentProfessional}
+                services={services}
+                onBookingCreated={fetchAllData}
             />
         </>
     );

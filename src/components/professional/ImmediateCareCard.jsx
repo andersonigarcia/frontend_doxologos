@@ -1,16 +1,44 @@
-import React from 'react';
-import { Video, FileText, MessageCircle, Clock, Calendar, CheckCircle, ArrowRight, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+    Video, FileText, MessageCircle, Clock, Calendar, CheckCircle,
+    ArrowRight, UserCheck, CalendarPlus, Play, Pause, RotateCcw
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 /**
  * ImmediateCareCard - Card de Atendimento Imediato (1-Clique para Sessão)
- * Focado na ergonomia do psicólogo entre consultas: entrar no Meet e abrir Prontuário instantaneamente.
+ * Focado na ergonomia do psicólogo entre consultas: entrar no Meet, abrir Prontuário,
+ * cronometrar a sessão com alerta de 45min e agendar a próxima consulta.
  */
 export function ImmediateCareCard({
     appointment,
     onOpenProntuario,
-    onViewAllBookings
+    onViewAllBookings,
+    onOpenScheduleNext
 }) {
+    const [timerSeconds, setTimerSeconds] = useState(0);
+    const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+    useEffect(() => {
+        let interval = null;
+        if (isTimerRunning) {
+            interval = setInterval(() => {
+                setTimerSeconds(s => s + 1);
+            }, 1000);
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [isTimerRunning]);
+
+    const formatTimer = (totalSeconds) => {
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    };
+
+    const isClosingWindow = timerSeconds >= 45 * 60; // 45 minutos (5 min para encerrar)
+
     if (!appointment) {
         return (
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -51,13 +79,50 @@ export function ImmediateCareCard({
     const whatsappLink = patientPhone ? `https://wa.me/55${patientPhone}?text=${whatsappText}` : null;
 
     return (
-        <div className="bg-white border-2 border-slate-900/10 rounded-2xl p-5 md:p-6 shadow-sm relative overflow-hidden">
-            {/* Top Badge */}
+        <div className="bg-white border-2 border-slate-900/10 rounded-2xl p-5 md:p-6 shadow-sm relative overflow-hidden font-sans">
+            {/* Top Badge & Timer */}
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold tracking-tight">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Próximo Atendimento de Hoje
+                <div className="flex items-center gap-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold tracking-tight">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        Próximo Atendimento de Hoje
+                    </div>
+
+                    {/* Timer Discreto de Sessão */}
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            type="button"
+                            onClick={() => setIsTimerRunning(!isTimerRunning)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold transition-all ${
+                                isClosingWindow
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                                    : isTimerRunning
+                                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                            title={isTimerRunning ? 'Pausar cronômetro' : 'Iniciar cronômetro de 50 minutos'}
+                        >
+                            {isTimerRunning ? <Pause className="w-3 h-3 text-indigo-600" /> : <Play className="w-3 h-3 text-slate-600" />}
+                            <span className="tabular-nums font-mono text-[11px]">{formatTimer(timerSeconds)} / 50:00</span>
+                            {isClosingWindow && (
+                                <span className="font-extrabold text-[10px] text-amber-800 ml-1">
+                                    (5 min p/ fechar)
+                                </span>
+                            )}
+                        </button>
+                        {timerSeconds > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => { setIsTimerRunning(false); setTimerSeconds(0); }}
+                                className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+                                title="Zerar cronômetro"
+                            >
+                                <RotateCcw className="w-2.5 h-2.5" />
+                            </button>
+                        )}
+                    </div>
                 </div>
+
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
                     <Clock className="w-3.5 h-3.5 text-slate-500" />
                     <span className="tabular-nums">{bookingTime}</span>
@@ -88,17 +153,32 @@ export function ImmediateCareCard({
                     </div>
                 </div>
 
-                {whatsappLink && (
-                    <a
-                        href={whatsappLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shrink-0"
-                    >
-                        <MessageCircle className="w-4 h-4 text-emerald-600" />
-                        Lembrar via WhatsApp
-                    </a>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                    {onOpenScheduleNext && (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onOpenScheduleNext(appointment)}
+                            className="rounded-xl border-emerald-300 text-emerald-800 hover:bg-emerald-50 text-xs font-bold h-9 px-3 flex items-center gap-1.5"
+                        >
+                            <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
+                            Agendar Próxima
+                        </Button>
+                    )}
+
+                    {whatsappLink && (
+                        <a
+                            href={whatsappLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors shrink-0"
+                        >
+                            <MessageCircle className="w-4 h-4 text-emerald-600" />
+                            Lembrar no WhatsApp
+                        </a>
+                    )}
+                </div>
             </div>
 
             {/* Quick Action Buttons - 1 Touch */}
@@ -107,6 +187,9 @@ export function ImmediateCareCard({
                     href={meetingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => {
+                        if (!isTimerRunning && timerSeconds === 0) setIsTimerRunning(true);
+                    }}
                     className="inline-flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm shadow-xs transition-all duration-150 active:scale-[0.98] min-h-[48px]"
                 >
                     <Video className="w-5 h-5 text-emerald-400 shrink-0" />

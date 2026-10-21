@@ -15,7 +15,8 @@ import {
     ExternalLink,
     Sparkles,
     UserCheck,
-    CalendarCheck
+    CalendarCheck,
+    CalendarPlus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '@/lib/calendarUtils';
@@ -29,7 +30,8 @@ export function ProfessionalScheduleCockpit({
     bookings = [],
     currentProfessional = null,
     onOpenProntuario,
-    onOpenCalendarSync
+    onOpenCalendarSync,
+    onOpenScheduleNext
 }) {
     // Data ativa no Cockpit: Padrão é Hoje (YYYY-MM-DD no fuso local)
     const todayStr = useMemo(() => {
@@ -339,6 +341,19 @@ export function ProfessionalScheduleCockpit({
                                             <FileText className="w-4 h-4 text-slate-600 shrink-0" />
                                             <span>Prontuário</span>
                                         </Button>
+
+                                        {/* Agendar Próxima Sessão */}
+                                        {onOpenScheduleNext && (
+                                            <Button
+                                                onClick={() => onOpenScheduleNext(appointment)}
+                                                variant="outline"
+                                                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border-emerald-300 bg-emerald-50/60 hover:bg-emerald-100 text-emerald-800 font-bold text-xs shadow-xs h-10 min-h-[40px]"
+                                                title="Agendar próxima consulta para este paciente"
+                                            >
+                                                <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
+                                                <span className="hidden sm:inline">Próxima</span>
+                                            </Button>
+                                        )}
 
                                         {/* Google Agenda */}
                                         <a
