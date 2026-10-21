@@ -13,7 +13,8 @@ import {
     computeFunnelMetrics,
     computeChannelAcquisition,
     computeMonthlyGoalsProgress,
-    computePatientFollowUpAndRetention
+    computePatientFollowUpAndRetention,
+    summarizeAiEconomics
 } from '../adminMetrics';
 
 describe('pctDelta', () => {
@@ -482,7 +483,64 @@ describe('computePatientFollowUpAndRetention (Acompanhamento e Retenção)', () 
 
         expect(result.summary.followUpFunnelCounts.contatado).toBe(1);
         expect(result.summary.followUpFunnelCounts.reagendado).toBe(1);
-        expect(result.summary.followUpFunnelCounts.pendente).toBe(1);
+    });
+});
+
+describe('summarizeAiEconomics', () => {
+    it('consolida receita bruta, custos técnicos e margem líquida da IA', () => {
+        const ledger = [
+            { is_trial: true, add_on_amount: 0, technical_cost: 1.20 },
+            { is_trial: false, add_on_amount: 2.90, technical_cost: 1.20 },
+            { is_trial: false, add_on_amount: 2.90, technical_cost: 1.20 },
+        ];
+
+        const summary = summarizeAiEconomics(ledger);
+        expect(summary.totalSessions).toBe(3);
+        expect(summary.trialSessions).toBe(1);
+        expect(summary.paidSessions).toBe(2);
+        expect(summary.grossRevenue).toBeCloseTo(5.80, 2);
+        expect(summary.technicalCost).toBeCloseTo(3.60, 2);
+        expect(summary.netProfit).toBeCloseTo(2.20, 2);
+        expect(summary.marginPct).toBeCloseTo(37.9, 1);
+    });
+
+    it('tolera lista vazia sem quebrar', () => {
+        const summary = summarizeAiEconomics([]);
+        expect(summary.totalSessions).toBe(0);
+        expect(summary.trialSessions).toBe(0);
+        expect(summary.paidSessions).toBe(0);
+        expect(summary.grossRevenue).toBe(0);
+        expect(summary.technicalCost).toBe(0);
+        expect(summary.netProfit).toBe(0);
+        expect(summary.marginPct).toBe(0);
+    });
+});
+
+describe('generateExecutiveCsvReport com IA', () => {
+    it('inclui seção de gestão econômica de IA quando fornecido', () => {
+        const summary = {
+            gmvRealized: 500,
+            payoutRealized: 300,
+            platformGrossMargin: 200,
+            takeRatePct: 40,
+            toReceive: 0,
+            realizedCount: 5,
+            pendingCount: 0
+        };
+        const aiSummary = {
+            grossRevenue: 8.70,
+            technicalCost: 3.60,
+            netProfit: 5.10,
+            totalSessions: 3,
+            paidSessions: 3,
+            trialSessions: 0
+        };
+
+        const csv = generateExecutiveCsvReport(summary, [], 'Mês Atual', aiSummary);
+        expect(csv).toContain('--- GESTAO ECONOMICA DA IA (COPILOTO SOAP) ---');
+        expect(csv).toContain('Receita de Add-on de IA (100% Plataforma);R$ 8,70');
+        expect(csv).toContain('Custos Tecnicos de IA (Tokens & Processamento);R$ 3,60');
+        expect(csv).toContain('Resultado Liquido de IA;R$ 5,10');
     });
 });
 

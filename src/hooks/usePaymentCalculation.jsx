@@ -97,10 +97,36 @@ export function usePendingPaymentAmount(professionalId, startDate, endDate, excl
 
             const unpaidBookings = (bookings || []).filter(b => !paidBookingIds.has(b.id));
 
-            // M-01: soma via centavos
-            const totalCents = unpaidBookings.reduce((s, b) => s + toCents(b.valor_repasse_profissional), 0);
+            // Buscar lançamentos de uso de IA pendentes de dedução para o profissional
+            let aiLedgerEntries = [];
+            try {
+                const { data: aiData, error: aiError } = await supabase
+                    .from('ai_usage_ledger')
+                    .select('id, booking_id, is_trial, add_on_amount, technical_cost, billing_status, created_at')
+                    .eq('professional_id', professionalId)
+                    .eq('billing_status', 'pending_payout_deduction');
 
-            setData({ totalAmount: fromCents(totalCents), bookings: unpaidBookings, totalBookings: unpaidBookings.length });
+                if (!aiError && aiData) {
+                    aiLedgerEntries = aiData;
+                }
+            } catch (aiQueryErr) {
+                console.warn('[usePendingPaymentAmount] Tabela ai_usage_ledger inacessível ou sem registros:', aiQueryErr);
+            }
+
+            // M-01: soma via centavos para precisão contábil
+            const grossCents = unpaidBookings.reduce((s, b) => s + toCents(b.valor_repasse_profissional), 0);
+            const aiDeductionCents = aiLedgerEntries.reduce((s, item) => s + toCents(item.add_on_amount || 0), 0);
+            const netCents = Math.max(0, grossCents - aiDeductionCents);
+
+            setData({
+                totalAmount: fromCents(netCents),
+                grossAmount: fromCents(grossCents),
+                aiDeductionsTotal: fromCents(aiDeductionCents),
+                aiDeductionsCount: aiLedgerEntries.length,
+                aiDeductions: aiLedgerEntries,
+                bookings: unpaidBookings,
+                totalBookings: unpaidBookings.length
+            });
         } catch (err) {
             console.error('Error calculating pending amount:', err);
             setError(err);

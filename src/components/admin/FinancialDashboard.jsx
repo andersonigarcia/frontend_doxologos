@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle, FileText } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle, FileText, Sparkles, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/common/StatCard';
 import { SkeletonStatsGrid, SkeletonList } from '@/components/common/SkeletonLoaders';
@@ -26,6 +26,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
         dailyRevenue,
         weeklyRevenue,
         monthlyRevenue,
+        grossRevenue = monthlyRevenue,
+        netRevenue = monthlyRevenue,
+        aiDeductionsTotal = 0,
+        aiUsageSummary = null,
         pendingPayments,
         serviceBreakdown,
         totalPending,
@@ -45,28 +49,32 @@ export function FinancialDashboard({ professionalId, className = '' }) {
     const handleExportCSV = () => {
         // Prepare CSV data
         const csvData = [
-            ['Relatório Financeiro'],
+            ['Relatório Financeiro do Profissional — Doxologos'],
             ['Período', `${dateRange.start} a ${dateRange.end}`],
             [''],
-            ['Resumo'],
-            ['Receita Diária', dailyRevenue.toFixed(2)],
-            ['Receita Semanal', weeklyRevenue.toFixed(2)],
-            ['Receita do Período', monthlyRevenue.toFixed(2)],
-            ['Repasses Pagos (Período)', totalPayoutPaid.toFixed(2)],
-            ['Repasses Pendentes (Período)', totalPayoutPending.toFixed(2)],
-            ['Aguardando Pagto. de Pacientes', totalPending.toFixed(2)],
+            ['Resumo de Repasse'],
+            ['Honorários Brutos de Consultas (Período)', grossRevenue.toFixed(2)],
+            ['Dedução Uso de Assistente IA (Add-on)', (-aiDeductionsTotal).toFixed(2)],
+            ['Repasse Líquido do Período', netRevenue.toFixed(2)],
+            ['Sessões com Assistente IA Pagas', aiUsageSummary?.paidAiSessionsCount || 0],
+            ['Sessões com Degustação Gratuita IA', aiUsageSummary?.trialSessionsCount || 0],
+            ['Receita Diária Bruta', dailyRevenue.toFixed(2)],
+            ['Receita Semanal Bruta', weeklyRevenue.toFixed(2)],
+            ['Repasses Já Pagos (Período)', totalPayoutPaid.toFixed(2)],
+            ['Repasses Pendentes de Liquidação', totalPayoutPending.toFixed(2)],
+            ['Consultas Aguardando Pagamento de Pacientes', totalPending.toFixed(2)],
             [''],
             ['Receita por Serviço'],
-            ['Serviço', 'Receita (R$)', 'Quantidade', 'Percentual (%)'],
+            ['Serviço', 'Receita Bruta (R$)', 'Quantidade', 'Percentual (%)'],
             ...serviceBreakdown.map(s => [
                 s.name,
                 s.revenue.toFixed(2),
                 s.count,
-                ((s.revenue / monthlyRevenue) * 100).toFixed(1)
+                ((s.revenue / (grossRevenue || 1)) * 100).toFixed(1)
             ]),
             [''],
             ['Sessões com Pagamento Pendente'],
-            ['Paciente', 'Data', 'Horário', 'Valor (R$)'],
+            ['Paciente', 'Data', 'Horário', 'Valor Repasse (R$)'],
             ...pendingPayments.map(p => [
                 p.patient_name,
                 new Date(p.booking_date).toLocaleDateString('pt-BR'),
@@ -257,6 +265,125 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 </div>
             </div>
 
+            {/* BANNER INFORMATIVO: STATUS DO ASSISTENTE DE IA & DEGUSTAÇÃO */}
+            {aiUsageSummary && (
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                                <Sparkles className="w-4 h-4 text-emerald-700" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                                        Assistente de Evolução Clínica IA
+                                    </h4>
+                                    {aiUsageSummary.trialsRemaining > 0 ? (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            Degustação Gratuita Ativa ({aiUsageSummary.trialsRemaining} de {aiUsageSummary.trialLimit} restantes)
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                            Plano Add-on Ativo (R$ 2,90/sessão)
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    {aiUsageSummary.trialsRemaining > 0
+                                        ? `Aproveite ${aiUsageSummary.trialsRemaining} consulta(s) de teste sem nenhum desconto no seu repasse.`
+                                        : 'A IA sintetiza suas notas clínicas no padrão SOAP automaticamente, economizando seu tempo entre atendimentos.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                            <span className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg font-medium">
+                                Usos no período: <strong className="text-slate-900 font-bold tabular-nums">{aiUsageSummary.totalAiSessions}</strong> ({aiUsageSummary.paidAiSessionsCount} com taxa • {aiUsageSummary.trialSessionsCount} gratuitos)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* DEMONSTRATIVO SIMPLES DO SEU REPASSE (DIDÁTICA ACOLHEDORA PARA PSICÓLOGOS) */}
+            <div className="bg-linear-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
+                    <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                            Extrato Transparente
+                        </span>
+                        <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                            Entenda o Cálculo do Seu Repasse
+                        </h3>
+                        <p className="text-xs text-slate-300 mt-0.5">
+                            Sem contas complicadas: tudo o que você atendeu e o que cai no seu bolso.
+                        </p>
+                    </div>
+
+                    <div className="text-right">
+                        <span className="text-[11px] text-slate-400 block">Seu Repasse Líquido Estimado</span>
+                        <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tabular-nums">
+                            R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                </div>
+
+                {/* FLUXO VISUAL EM 3 PASSOS SIMPLES */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
+                    {/* Passo 1: Bruto */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                1. Suas Consultas
+                            </span>
+                            <p className="text-lg font-extrabold text-white mt-1 tabular-nums">
+                                R$ {grossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-2">
+                            Total de honorários das consultas confirmadas e atendidas.
+                        </p>
+                    </div>
+
+                    {/* Passo 2: Dedução IA */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wider">
+                                    2. Assistente IA
+                                </span>
+                                <span className="text-[10px] text-slate-400">100% Tecnologia</span>
+                            </div>
+                            <p className="text-lg font-extrabold text-amber-300 mt-1 tabular-nums">
+                                {aiDeductionsTotal > 0
+                                    ? `- R$ ${aiDeductionsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    : 'R$ 0,00'}
+                            </p>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-2">
+                            {aiDeductionsTotal > 0
+                                ? `${aiUsageSummary?.paidAiSessionsCount || 0} prontuário(s) assistido(s) (R$ 2,90 cada).`
+                                : 'Nenhum desconto de IA no período (usou degustação ou não utilizou).'}
+                        </p>
+                    </div>
+
+                    {/* Passo 3: Líquido */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
+                                3. Líquido a Receber
+                            </span>
+                            <p className="text-lg font-extrabold text-emerald-300 mt-1 tabular-nums">
+                                R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <p className="text-[11px] text-emerald-200 mt-2">
+                            Consultas menos o custo da IA. Valor exato do repasse para você.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             {/* Revenue Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <motion.div
@@ -296,9 +423,9 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            label="Receita do Período"
-                            tooltip="Receita total do período selecionado (consultas confirmadas, pagas ou completadas)"
-                            value={monthlyRevenue}
+                            label="Repasse Líquido do Período"
+                            tooltip="Receita líquida total a receber no período selecionado (já deduzido o uso do assistente de IA)"
+                            value={netRevenue}
                             format="currency"
                         />
                     </div>

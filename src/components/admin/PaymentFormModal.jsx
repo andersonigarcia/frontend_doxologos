@@ -40,7 +40,16 @@ export function PaymentFormModal({
         status: 'pending'
     });
 
-    const { totalAmount, bookings, totalBookings, loading: calculatingAmount } = usePendingPaymentAmount(
+    const {
+        totalAmount,
+        grossAmount = 0,
+        aiDeductionsTotal = 0,
+        aiDeductionsCount = 0,
+        aiDeductions = [],
+        bookings,
+        totalBookings,
+        loading: calculatingAmount
+    } = usePendingPaymentAmount(
         formData.professional_id,
         formData.period_start,
         formData.period_end,
@@ -144,6 +153,14 @@ export function PaymentFormModal({
 
             const { data: { user } } = await supabase.auth.getUser();
 
+            const aiNotesTag = aiDeductionsTotal > 0
+                ? `\n\n[Extrato de Repasse: Honorários Brutos R$ ${grossAmount.toFixed(2)} | Dedução IA (${aiDeductionsCount} uso(s)): -R$ ${aiDeductionsTotal.toFixed(2)} | Repasse Líquido: R$ ${totalAmount.toFixed(2)}]`
+                : '';
+
+            const finalNotes = formData.notes
+                ? (formData.notes.includes('[Extrato de Repasse:') ? formData.notes : `${formData.notes}${aiNotesTag}`)
+                : (aiNotesTag ? aiNotesTag.trim() : null);
+
             const paymentData = {
                 professional_id: formData.professional_id,
                 period_start: formData.period_start,
@@ -153,7 +170,7 @@ export function PaymentFormModal({
                 payment_method: formData.payment_method || null,
                 payment_date: formData.payment_date || null,
                 payment_proof_url: formData.payment_proof_url || null,
-                notes: formData.notes || null,
+                notes: finalNotes,
                 status: formData.status,
                 created_by: user?.id,
                 paid_by: formData.status === 'paid' ? user?.id : null
@@ -217,6 +234,19 @@ export function PaymentFormModal({
                         .insert(paymentBookings);
 
                     if (bookingsError) throw bookingsError;
+                }
+            }
+
+            // Atualizar status no ledger de IA para 'deducted' quando incluído no fechamento
+            if (aiDeductions && aiDeductions.length > 0) {
+                const aiIds = aiDeductions.map(d => d.id);
+                try {
+                    await supabase
+                        .from('ai_usage_ledger')
+                        .update({ billing_status: 'deducted' })
+                        .in('id', aiIds);
+                } catch (aiLedgerErr) {
+                    console.warn('[PaymentFormModal] Falha ao atualizar status de deduções no ledger de IA:', aiLedgerErr);
                 }
             }
 
@@ -308,19 +338,55 @@ export function PaymentFormModal({
                         </div>
                     </div>
 
-                    {/* Valor Calculado */}
+                    {/* Discriminativo Financeiro do Repasse & IA */}
                     {formData.professional_id && formData.period_start && formData.period_end && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
-                            <div className="flex items-center justify-between">
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                                 <div>
-                                    <p className="text-sm font-medium text-blue-900">Valor Calculado</p>
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        {totalBookings} consulta(s) no período
+                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Demonstrativo do Repasse</p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                        {totalBookings} consulta(s) elegíveis no período
                                     </p>
                                 </div>
-                                <p className="text-2xl font-bold text-blue-900">
+                                <span className="text-[11px] font-semibold bg-white border border-slate-200 px-2.5 py-0.5 rounded-full text-slate-700">
+                                    Regime de Caixa
+                                </span>
+                            </div>
+
+                            <div className="space-y-1.5 text-xs">
+                                <div className="flex justify-between text-slate-700">
+                                    <span>(+) Honorários Brutos das Consultas:</span>
+                                    <span className="font-semibold tabular-nums">
+                                        {calculatingAmount ? '...' : formatCurrency(grossAmount)}
+                                    </span>
+                                </div>
+
+                                {aiDeductionsCount > 0 ? (
+                                    <div className="flex justify-between items-center text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200/80">
+                                        <div>
+                                            <span className="font-medium block">(-) Assistente de Prontuários IA ({aiDeductionsCount} uso(s)):</span>
+                                            <span className="text-[10px] text-amber-700 font-normal">Add-on retido integralmente pela plataforma</span>
+                                        </div>
+                                        <span className="font-bold text-amber-900 tabular-nums">
+                                            -{formatCurrency(aiDeductionsTotal)}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between text-slate-400 text-[11px]">
+                                        <span>(-) Deduções de IA:</span>
+                                        <span>Nenhum uso pago no período</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-900">(=) Repasse Líquido ao Profissional:</p>
+                                    <p className="text-[10px] text-slate-500">Valor exato a ser transferido</p>
+                                </div>
+                                <p className="text-xl sm:text-2xl font-extrabold text-emerald-700 tabular-nums">
                                     {calculatingAmount ? (
-                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
                                     ) : (
                                         formatCurrency(totalAmount)
                                     )}

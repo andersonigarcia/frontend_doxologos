@@ -175,6 +175,27 @@ export function AiEconomicsCockpit({ onNavigateTab }) {
                 </div>
             </div>
 
+            {/* DIRETRIZ FINANCEIRA DE REPASSE E MONETIZAÇÃO */}
+            <div className="bg-emerald-50 border border-emerald-200/80 rounded-xl p-3.5 sm:p-4 text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
+                    <div>
+                        <p className="font-bold text-emerald-900">Regra de Monetização: 100% da Receita de IA Pertence à Plataforma</p>
+                        <p className="text-emerald-700 mt-0.5">
+                            O valor do Add-on (R$ 2,90/sessão) é retido integralmente pela Doxologos e descontado do repasse do profissional ao término das 3 consultas de degustação gratuita.
+                        </p>
+                    </div>
+                </div>
+                <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onNavigateTab?.('financial-control')}
+                    className="shrink-0 bg-white border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-semibold h-8"
+                >
+                    Ver DRE Consolidada
+                </Button>
+            </div>
+
             {/* 4 KPIS VITAIS DE ECONOMIA DA IA (GRID 2x2 NO MOBILE / 4 NO DESKTOP) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 font-sans">
                 {/* KPI 1: Faturamento Bruto da IA */}
@@ -198,8 +219,8 @@ export function AiEconomicsCockpit({ onNavigateTab }) {
                         </div>
                     </div>
                     <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] sm:text-[11px] text-emerald-800 font-semibold">
-                        <span>Repasse quinzenal</span>
-                        <span className="text-slate-400">Automático</span>
+                        <span>100% Plataforma</span>
+                        <span className="text-slate-400">Deduzido no repasse</span>
                     </div>
                 </Card>
 

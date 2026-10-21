@@ -53,6 +53,53 @@ export function useFinancialData(professionalId, startDate, endDate) {
             const weeklyRevenue = sumMoney(confirmed.filter(b => b.booking_date >= weekAgoStr), b => b.valor_repasse_profissional ?? b.service?.professional_payout);
             const monthlyRevenue = sumMoney(confirmed, b => b.valor_repasse_profissional ?? b.service?.professional_payout);
 
+            // 2. Buscar uso de IA e deduções do período
+            let aiUsageEntries = [];
+            try {
+                const { data: aiData, error: aiError } = await supabase
+                    .from('ai_usage_ledger')
+                    .select('id, booking_id, is_trial, add_on_amount, technical_cost, billing_status, created_at')
+                    .eq('professional_id', professionalId)
+                    .gte('created_at', `${startDate}T00:00:00`)
+                    .lte('created_at', `${endDate}T23:59:59`);
+
+                if (!aiError && aiData) {
+                    aiUsageEntries = aiData;
+                }
+            } catch (aiErr) {
+                console.warn('[useFinancialData] Tabela ai_usage_ledger inacessível:', aiErr);
+            }
+
+            // 3. Buscar limites e degustação do profissional
+            let profInfo = null;
+            try {
+                const { data: pData } = await supabase
+                    .from('professionals')
+                    .select('ai_copilot_enabled, ai_trial_sessions_used, ai_trial_limit')
+                    .eq('id', professionalId)
+                    .maybeSingle();
+                profInfo = pData;
+            } catch (pErr) {
+                console.warn('[useFinancialData] Erro ao buscar dados de trial:', pErr);
+            }
+
+            const paidAiSessions = aiUsageEntries.filter(e => !e.is_trial);
+            const trialAiSessions = aiUsageEntries.filter(e => e.is_trial);
+            const aiDeductionsTotal = sumMoney(paidAiSessions, e => e.add_on_amount || 2.90);
+            const netRevenue = Math.max(0, monthlyRevenue - aiDeductionsTotal);
+
+            const aiUsageSummary = {
+                totalAiSessions: aiUsageEntries.length,
+                paidAiSessionsCount: paidAiSessions.length,
+                trialSessionsCount: trialAiSessions.length,
+                aiDeductionsTotal,
+                trialsUsed: profInfo?.ai_trial_sessions_used || 0,
+                trialLimit: profInfo?.ai_trial_limit ?? 3,
+                trialsRemaining: Math.max(0, (profInfo?.ai_trial_limit ?? 3) - (profInfo?.ai_trial_sessions_used || 0)),
+                copilotEnabled: profInfo?.ai_copilot_enabled ?? true,
+                entries: aiUsageEntries
+            };
+
             // Cálculos da clínica foram removidos deste hook para blindagem de dados estratégicos.
             // O componente FinancialControlModule de admin tem seu próprio gerenciamento.
 
@@ -79,6 +126,10 @@ export function useFinancialData(professionalId, startDate, endDate) {
                 dailyRevenue,
                 weeklyRevenue,
                 monthlyRevenue,
+                grossRevenue: monthlyRevenue,
+                netRevenue,
+                aiDeductionsTotal,
+                aiUsageSummary,
                 pendingPayments,
                 serviceBreakdown,
                 totalPending

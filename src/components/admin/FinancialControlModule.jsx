@@ -13,7 +13,9 @@ import {
   ArrowDownRight,
   PieChart,
   ShieldCheck,
-  Calendar
+  Calendar,
+  Sparkles,
+  Cpu
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,7 +47,17 @@ export function FinancialControlModule({
   const defaultRetentionPct = Number(settings.platform_default_retention_pct) || 40;
 
   // Estado para armazenar os dados reais do DRE (paginado e sem cancelamentos)
-  const [dreData, setDreData] = useState({ gmv: 0, payoutTotal: 0, count: 0, isLoading: true, error: null });
+  const [dreData, setDreData] = useState({
+    gmv: 0,
+    payoutTotal: 0,
+    count: 0,
+    aiGrossRevenue: 0,
+    aiTechnicalCost: 0,
+    aiSessionsCount: 0,
+    aiTrialCount: 0,
+    isLoading: true,
+    error: null
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +100,43 @@ export function FinancialControlModule({
           if (!data || data.length < PAGE_SIZE) break;
         }
 
+        // Buscar dados de uso de IA do mesmo período (ai_usage_ledger)
+        let aiGrossRevenue = 0;
+        let aiTechnicalCost = 0;
+        let aiSessionsCount = 0;
+        let aiTrialCount = 0;
+
+        try {
+          let aiQuery = supabase.from('ai_usage_ledger').select('add_on_amount, technical_cost, is_trial, billing_status, created_at');
+          if (selectedYear !== 'all') {
+            const y = Number(selectedYear);
+            if (selectedMonth !== 'all') {
+              const m = Number(selectedMonth);
+              const startDate = `${y}-${String(m).padStart(2, '0')}-01T00:00:00`;
+              const endDate = new Date(y, m, 0).toISOString().split('T')[0] + 'T23:59:59';
+              aiQuery = aiQuery.gte('created_at', startDate).lte('created_at', endDate);
+            } else {
+              const startDate = `${y}-01-01T00:00:00`;
+              const endDate = `${y}-12-31T23:59:59`;
+              aiQuery = aiQuery.gte('created_at', startDate).lte('created_at', endDate);
+            }
+          }
+          const { data: aiRows, error: aiError } = await aiQuery;
+          if (!aiError && aiRows) {
+            aiSessionsCount = aiRows.length;
+            aiRows.forEach(item => {
+              if (item.is_trial) {
+                aiTrialCount += 1;
+              } else {
+                aiGrossRevenue += Number(item.add_on_amount || 2.90);
+              }
+              aiTechnicalCost += Number(item.technical_cost || 1.20);
+            });
+          }
+        } catch (aiErr) {
+          console.warn('[FinancialControlModule] Erro ao carregar ai_usage_ledger para DRE:', aiErr);
+        }
+
         if (cancelled) return;
 
         // Repasse ausente: usa o take rate configurado (nunca 100% do valor, que zeraria a margem)
@@ -98,11 +147,32 @@ export function FinancialControlModule({
           const payout = b.valor_repasse_profissional ?? b?.service?.professional_payout;
           return acc + (payout !== null && payout !== undefined ? Number(payout) : value * payoutShare);
         }, 0);
-        setDreData({ gmv, payoutTotal, count: rows.length, isLoading: false, error: null });
+
+        setDreData({
+          gmv,
+          payoutTotal,
+          count: rows.length,
+          aiGrossRevenue,
+          aiTechnicalCost,
+          aiSessionsCount,
+          aiTrialCount,
+          isLoading: false,
+          error: null
+        });
       } catch (err) {
         console.error("Erro na busca do DRE:", err);
         if (!cancelled) {
-          setDreData({ gmv: 0, payoutTotal: 0, count: 0, isLoading: false, error: err?.message || 'Falha ao carregar a DRE' });
+          setDreData({
+            gmv: 0,
+            payoutTotal: 0,
+            count: 0,
+            aiGrossRevenue: 0,
+            aiTechnicalCost: 0,
+            aiSessionsCount: 0,
+            aiTrialCount: 0,
+            isLoading: false,
+            error: err?.message || 'Falha ao carregar a DRE'
+          });
         }
       }
     }
@@ -113,14 +183,22 @@ export function FinancialControlModule({
   // Cálculos da DRE Consolidada
   const gmv = dreData.gmv;
   const payoutTotal = dreData.payoutTotal;
+  const aiGrossRevenue = dreData.aiGrossRevenue || 0;
+  const aiTechnicalCost = dreData.aiTechnicalCost || 0;
+  const aiNetMargin = aiGrossRevenue - aiTechnicalCost;
+
   const estimatedMpFees = gmv * mpFeeRate; // Taxa de Gateway cobra sobre o Transacionado (GMV)
-  const platformGrossMargin = Math.max(0, gmv - payoutTotal);
+  const platformConsultationMargin = Math.max(0, gmv - payoutTotal);
   
-  // CORREÇÃO CONTÁBIL: NFS-e cobrada sobre a Margem da Plataforma (Take Rate) e não sobre o GMV
+  // MARGEM BRUTA CONSOLIDADA: Margem de Consultas + Receita de IA (que fica 100% com a plataforma)
+  const platformGrossMargin = platformConsultationMargin + aiGrossRevenue;
+  
+  // CORREÇÃO CONTÁBIL: NFS-e cobrada sobre a Margem da Plataforma (Take Rate de Consultas + Receita IA)
   const estimatedNfseTaxes = platformGrossMargin * nfseTaxRate; 
   
-  const netMargin = Math.max(0, platformGrossMargin - estimatedMpFees - estimatedNfseTaxes);
-  const takeRatePct = gmv > 0 ? (platformGrossMargin / gmv) * 100 : defaultRetentionPct;
+  // RESULTADO LÍQUIDO OPERACIONAL: Margem Bruta - MP Fees - Impostos - Custos Técnicos de IA
+  const netMargin = Math.max(0, platformGrossMargin - estimatedMpFees - estimatedNfseTaxes - aiTechnicalCost);
+  const takeRatePct = (gmv + aiGrossRevenue) > 0 ? (platformGrossMargin / (gmv + aiGrossRevenue)) * 100 : defaultRetentionPct;
 
   return (
     <div className="space-y-6 font-sans">
@@ -238,11 +316,18 @@ export function FinancialControlModule({
             <Card className="p-3.5 sm:p-4 bg-white border border-slate-200/80 rounded-xl shadow-xs">
               <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Repasse Psicólogos</span>
               <p className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1 tabular-nums">{formatBrl(payoutTotal)}</p>
-              <p className="text-[10px] text-slate-500 mt-0.5 truncate">Honorários devidos</p>
+              <p className="text-[10px] text-slate-500 mt-0.5 truncate">Honorários de consultas</p>
             </Card>
 
             <Card className="p-3.5 sm:p-4 bg-white border border-slate-200/80 rounded-xl shadow-xs">
-              <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Margem Bruta</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Margem Bruta</span>
+                {aiGrossRevenue > 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-0.5">
+                    <Sparkles className="w-2.5 h-2.5" /> IA inclusa
+                  </span>
+                )}
+              </div>
               <p className="text-lg sm:text-xl font-extrabold text-emerald-700 mt-1 tabular-nums">{formatBrl(platformGrossMargin)}</p>
               <p className="text-[10px] text-emerald-800 font-semibold mt-0.5 tabular-nums">Take Rate: {takeRatePct.toFixed(1)}%</p>
             </Card>
@@ -250,7 +335,7 @@ export function FinancialControlModule({
             <Card className="p-3.5 sm:p-4 bg-slate-900 text-white rounded-xl shadow-xs border border-slate-800">
               <span className="text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider">Resultado Líquido</span>
               <p className="text-lg sm:text-xl font-extrabold text-white mt-1 tabular-nums">{formatBrl(netMargin)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate">Pós impostos e gateway</p>
+              <p className="text-[10px] text-slate-400 mt-0.5 truncate">Pós impostos, gateway e IA</p>
             </Card>
           </div>
 
@@ -272,14 +357,39 @@ export function FinancialControlModule({
                 <span className="tabular-nums">{formatBrl(gmv)}</span>
               </div>
 
+              {/* Receita Add-on IA — 100% da plataforma */}
+              <div className="py-2.5 flex justify-between text-emerald-800 font-semibold px-3.5 sm:px-4 pl-6 sm:pl-8 bg-emerald-50/40">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>(+) RECEITA DE SERVIÇOS DE IA (Add-ons • 100% Retido pela Plataforma)</span>
+                </div>
+                <div className="text-right">
+                  <span className="tabular-nums">+{formatBrl(aiGrossRevenue)}</span>
+                  {dreData.aiSessionsCount > 0 && (
+                    <span className="text-[10px] text-emerald-700 font-normal block">
+                      {dreData.aiSessionsCount - dreData.aiTrialCount} sessão(ões) faturadas • {dreData.aiTrialCount} em degustação
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
-                <span>(-) Repasse devido aos Psicólogos</span>
+                <span>(-) Repasse devido aos Psicólogos (Honorários de Consulta)</span>
                 <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(payoutTotal)})</span>
               </div>
 
               <div className="py-3 flex justify-between font-semibold text-emerald-950 bg-emerald-50/70 px-3.5 sm:px-4 rounded-lg border border-emerald-100">
-                <span>(=) MARGEM BRUTA DA PLATAFORMA (Take Rate)</span>
+                <span>(=) MARGEM BRUTA CONSOLIDADA DA PLATAFORMA</span>
                 <span className="text-emerald-800 font-bold tabular-nums">{formatBrl(platformGrossMargin)}</span>
+              </div>
+
+              {/* Custo Técnico de IA */}
+              <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
+                <div className="flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-slate-500" />
+                  <span>(-) Custos Técnicos de IA (APIs Gemini, Transcrição & Processamento)</span>
+                </div>
+                <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(aiTechnicalCost)})</span>
               </div>
 
               <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
@@ -291,14 +401,19 @@ export function FinancialControlModule({
                 <div className="flex items-center gap-1 group relative">
                   <span>(-) Provisão Tributária NFS-e / Simples (~{(nfseTaxRate*100).toFixed(0)}%)</span>
                   <div className="hidden group-hover:block absolute bottom-full left-0 mb-1 w-64 bg-slate-900 text-white text-[10px] p-2 rounded shadow-lg z-10">
-                    Calculado sobre a Margem Bruta (Take Rate) assumindo modelo de Split Payment
+                    Calculado sobre a Margem Bruta Consolidada (Take Rate + Receita IA)
                   </div>
                 </div>
                 <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(estimatedNfseTaxes)})</span>
               </div>
 
               <div className="py-3.5 flex justify-between font-extrabold text-sm sm:text-base bg-slate-900 text-white px-3.5 sm:px-4 rounded-xl mt-2 shadow-xs">
-                <span>(=) MARGEM LÍQUIDA OPERACIONAL DOXOLOGOS</span>
+                <div>
+                  <span>(=) RESULTADO LÍQUIDO OPERACIONAL CONSOLIDADO</span>
+                  <span className="text-[11px] text-slate-300 font-normal block">
+                    Reflete Margem Consultas ({formatBrl(platformConsultationMargin)}) + Margem Líquida IA ({formatBrl(aiNetMargin)}) - Gateway & Tributos
+                  </span>
+                </div>
                 <span className="tabular-nums">{formatBrl(netMargin)}</span>
               </div>
             </div>

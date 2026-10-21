@@ -252,10 +252,45 @@ export function filterBookingsByPeriod(bookings = [], period = '30d', referenceD
 }
 
 /**
+ * Consolida a economia e monetização de IA a partir do ai_usage_ledger.
+ * O valor do Add-on de IA (R$ 2,90) é 100% da plataforma.
+ */
+export function summarizeAiEconomics(aiLedgerEntries = []) {
+    const list = Array.isArray(aiLedgerEntries) ? aiLedgerEntries : [];
+    let grossRevenue = 0;
+    let technicalCost = 0;
+    let trialSessions = 0;
+    let paidSessions = 0;
+
+    list.forEach(item => {
+        if (item?.is_trial) {
+            trialSessions += 1;
+        } else {
+            paidSessions += 1;
+            grossRevenue += Number(item?.add_on_amount || 2.90);
+        }
+        technicalCost += Number(item?.technical_cost || 1.20);
+    });
+
+    const netProfit = grossRevenue - technicalCost;
+    const marginPct = grossRevenue > 0 ? Number(((netProfit / grossRevenue) * 100).toFixed(1)) : 0;
+
+    return {
+        totalSessions: list.length,
+        trialSessions,
+        paidSessions,
+        grossRevenue, // 100% retido pela plataforma
+        technicalCost, // Custo de APIs/LLM
+        netProfit, // Resultado líquido de IA
+        marginPct
+    };
+}
+
+/**
  * Gera string CSV estruturada para fechamento e auditoria executiva.
  * ZERO PII: Não exporta prontuários, documentos ou anotações clínicas.
  */
-export function generateExecutiveCsvReport(summary = {}, bookings = [], periodLabel = 'Período') {
+export function generateExecutiveCsvReport(summary = {}, bookings = [], periodLabel = 'Período', aiSummary = null) {
     const lines = [];
 
     lines.push('RELATORIO EXECUTIVO DE FECHAMENTO — DOXOLOGOS PSICOLOGIA');
@@ -270,6 +305,28 @@ export function generateExecutiveCsvReport(summary = {}, bookings = [], periodLa
     lines.push(`A Receber (Pendentes de Confirmacao);R$ ${(summary.toReceive || 0).toFixed(2).replace('.', ',')}`);
     lines.push(`Consultas Realizadas / Concluidas;${summary.realizedCount || 0}`);
     lines.push(`Cobrancas Pendentes;${summary.pendingCount || 0}`);
+
+    // Integração de Economia de IA no Relatório Executivo
+    const resolvedAi = aiSummary || (summary.aiGrossRevenue !== undefined ? {
+        grossRevenue: summary.aiGrossRevenue,
+        technicalCost: summary.aiTechnicalCost,
+        netProfit: (summary.aiGrossRevenue || 0) - (summary.aiTechnicalCost || 0),
+        totalSessions: summary.aiSessionsCount || 0,
+        paidSessions: (summary.aiSessionsCount || 0) - (summary.aiTrialCount || 0),
+        trialSessions: summary.aiTrialCount || 0
+    } : null);
+
+    if (resolvedAi) {
+        lines.push('');
+        lines.push('--- GESTAO ECONOMICA DA IA (COPILOTO SOAP) ---');
+        lines.push(`Receita de Add-on de IA (100% Plataforma);R$ ${(resolvedAi.grossRevenue || 0).toFixed(2).replace('.', ',')}`);
+        lines.push(`Custos Tecnicos de IA (Tokens & Processamento);R$ ${(resolvedAi.technicalCost || 0).toFixed(2).replace('.', ',')}`);
+        lines.push(`Resultado Liquido de IA;R$ ${(resolvedAi.netProfit || 0).toFixed(2).replace('.', ',')}`);
+        lines.push(`Total de Sessoes com IA;${resolvedAi.totalSessions || 0}`);
+        lines.push(`Sessoes Pagas (Add-on);${resolvedAi.paidSessions || 0}`);
+        lines.push(`Sessoes em Degustacao Gratuita;${resolvedAi.trialSessions || 0}`);
+    }
+
     lines.push('');
     lines.push('--- DISCRIMINATIVO DE ATENDIMENTOS ---');
     lines.push('ID;Data;Horario;Profissional;Servico;Status;Valor Consulta (R$);Repasse Profissional (R$);Margem Clinica (R$)');
