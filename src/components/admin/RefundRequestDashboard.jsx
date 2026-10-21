@@ -32,6 +32,7 @@ import { Loader2, CheckCircle, XCircle, AlertCircle, RefreshCw } from 'lucide-re
 import { formatCurrency } from '@/utils/formatters';
 import emailService from '@/lib/emailService';
 import emailTemplates from '@/lib/emailTemplates';
+import { processEventRefundReversal, sanitizeRefundReason } from '@/services/refundService';
 
 export default function RefundRequestDashboard() {
     const [refunds, setRefunds] = useState([]);
@@ -64,7 +65,6 @@ export default function RefundRequestDashboard() {
           cancellation_reason,
           cancelled_at,
           payment_id,
-          payment_id,
           patient_name,
           patient_email,
           eventos (
@@ -96,13 +96,11 @@ export default function RefundRequestDashboard() {
 
         try {
             setProcessing(true);
-            let newStatus = '';
+            const adminUser = (await supabase.auth.getUser()).data.user;
+            const safeNotes = sanitizeRefundReason(notes, 'Atualização administrativa sobre a inscrição');
+            const safeCancellationReason = sanitizeRefundReason(selectedRequest.cancellation_reason, 'Cancelamento de inscrição');
 
-            if (actionType === 'approve') newStatus = 'approved';
-            if (actionType === 'reject') newStatus = 'rejected';
-            if (actionType === 'process') newStatus = 'processed';
-
-            // 2. If approving, create/log in event_refunds (if not exists)
+            // 1. If approving, create/log in event_refunds (if not exists)
             if (actionType === 'approve') {
                 const { data: existingRefund } = await supabase
                     .from('event_refunds')
@@ -119,36 +117,20 @@ export default function RefundRequestDashboard() {
                             payment_id: selectedRequest.payment_id,
                             amount: selectedRequest.eventos?.valor,
                             status: 'pending',
-                            reason: selectedRequest.cancellation_reason,
-                            processed_by: (await supabase.auth.getUser()).data.user?.id
+                            reason: safeCancellationReason,
+                            processed_by: adminUser?.id
                         });
                     if (insertError) console.error('Error logging refund:', insertError);
                 }
             }
 
-            // 3. If processing (Mark as Paid), use RPC to handle financial reversal
-            if (actionType === 'process') {
-                const { data: rpcData, error: rpcError } = await supabase.rpc('process_refund_reversal', {
-                    p_inscricao_id: selectedRequest.id,
-                    p_admin_id: (await supabase.auth.getUser()).data.user?.id
-                });
-
-                if (rpcError) throw rpcError;
-                console.log('Reversal processed:', rpcData);
-            } else {
-                // Only update status for approve/reject (process handled by RPC above)
-                if (actionType !== 'process') {
-                    const { error: updateError } = await supabase
-                        .from('inscricoes_eventos')
-                        .update({
-                            refund_status: newStatus,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', selectedRequest.id);
-
-                    if (updateError) throw updateError;
-                }
-            }
+            // 2. Chamar o serviço canônico unificado de reversão de eventos
+            await processEventRefundReversal({
+                inscricaoId: selectedRequest.id,
+                adminId: adminUser?.id,
+                actionType,
+                reason: safeNotes
+            });
 
 
 
@@ -174,7 +156,7 @@ export default function RefundRequestDashboard() {
                         emailHtml = emailTemplates.eventoReembolsoRejeitado(
                             inscricaoMock,
                             selectedRequest.eventos,
-                            notes
+                            safeNotes
                         );
                         subject = `Atualização sobre Reembolso - ${eventTitle}`;
                     }

@@ -14,7 +14,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import MercadoPagoService from '@/lib/mercadoPagoService';
-import { submitManualRefund, MAX_MANUAL_REFUND_PROOF_SIZE, fetchManualRefunds, getManualRefundProof } from '@/lib/manualRefundService';
+import { MAX_MANUAL_REFUND_PROOF_SIZE, fetchManualRefunds, getManualRefundProof } from '@/lib/manualRefundService';
+import { checkPayoutIntegrityForRefund, processManualPaymentRefund } from '@/services/refundService';
 
 const VIEWER_ROLES = new Set(['admin', 'professional', 'finance_admin', 'finance_supervisor', 'finance_team']);
 const MANUAL_REFUND_ROLES = new Set(['admin', 'finance_admin', 'finance_supervisor', 'finance_team']);
@@ -49,6 +50,8 @@ const PaymentsPage = () => {
     const [manualRefundFile, setManualRefundFile] = useState(null);
     const [manualRefundLoading, setManualRefundLoading] = useState(false);
     const [manualRefundError, setManualRefundError] = useState(null);
+    const [payoutWarning, setPayoutWarning] = useState(null);
+    const [checkingPayout, setCheckingPayout] = useState(false);
     const [refundsByPayment, setRefundsByPayment] = useState({});
     const [refundErrorsByPayment, setRefundErrorsByPayment] = useState({});
     const [refundsLoadingPaymentId, setRefundsLoadingPaymentId] = useState(null);
@@ -170,6 +173,18 @@ const PaymentsPage = () => {
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+        setPayoutWarning(null);
+        setCheckingPayout(true);
+        checkPayoutIntegrityForRefund({
+            paymentId: payment.id,
+            bookingId: payment.booking_id
+        }).then(({ warningMessage }) => {
+            setPayoutWarning(warningMessage);
+        }).catch((err) => {
+            console.warn('[PaymentsPage] Erro ao verificar integridade de repasse:', err);
+        }).finally(() => {
+            setCheckingPayout(false);
+        });
         setManualRefundDialogOpen(true);
     };
 
@@ -335,7 +350,17 @@ const PaymentsPage = () => {
                 payload.notification = notificationPayload;
             }
 
-            await submitManualRefund(payload);
+            await processManualPaymentRefund({
+                paymentId: manualRefundPayment.id,
+                amount: amountValue ?? null,
+                currency: manualRefundForm.currency.trim() ? manualRefundForm.currency.trim().toUpperCase() : 'BRL',
+                reason,
+                proofBase64,
+                proofFilename: manualRefundFile.name,
+                proofChecksum,
+                notification: notificationPayload,
+                adminId: user?.id
+            });
 
             toast({
                 title: 'Reembolso manual registrado',
@@ -932,6 +957,16 @@ const PaymentsPage = () => {
                                             <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
                                                 Confirme que o valor já foi devolvido no provedor de pagamento antes de registrar o reembolso manual.
                                             </div>
+
+                                            {payoutWarning && (
+                                                <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800 flex items-start gap-2">
+                                                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <strong className="block font-semibold">Alerta de Descasamento Financeiro:</strong>
+                                                        {payoutWarning}
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 <div>

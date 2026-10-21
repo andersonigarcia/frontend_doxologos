@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { rescheduleBooking } from '@/services/bookingService';
+import { executePatientCancellation, evaluatePatientCancellationEligibility } from '@/services/refundService';
 import MercadoPagoService from '@/lib/mercadoPagoService';
 import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -267,27 +268,11 @@ const PacientePage = () => {
                 throw new Error('Sessão expirada. Faça login novamente.');
             }
 
-            // Registrar no audit log
-            await auditLogger.info(AuditAction.BOOKING_CANCEL, {
-                resourceType: 'booking',
-                resourceId: bookingId,
-                details: { triggered_by: 'patient_portal' }
+            const data = await executePatientCancellation({
+                bookingId,
+                accessToken,
+                reason: 'Cancelamento solicitado pelo paciente via portal'
             });
-
-            const { data, error } = await supabase.functions.invoke('patient-cancel-booking', {
-                body: { booking_id: bookingId },
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
-
-            if (error) {
-                throw new Error(error.message || 'Falha ao cancelar agendamento');
-            }
-
-            if (data?.error) {
-                throw new Error(data.error);
-            }
 
             const creditCreated = Boolean(data?.credit_created);
             const creditCurrency = data?.credit?.currency || 'BRL';
@@ -1267,10 +1252,10 @@ const PacientePage = () => {
                                                 )}
                                                 {booking.status !== 'cancelled_by_patient' && new Date(booking.booking_date) > new Date() && (
                                                     (() => {
-                                                        const bDate = new Date(`${booking.booking_date}T${booking.booking_time}`);
-                                                        const hDiff = (bDate - new Date()) / (1000 * 60 * 60);
-                                                        const cancelMessage = hDiff >= 24
-                                                            ? `Como você está cancelando com mais de 24h de antecedência, o valor integral de R$ ${(booking.payment?.[0]?.amount || 150).toFixed(2)} será creditado na sua carteira Doxologos para você reagendar quando quiser. Deseja confirmar?`
+                                                        const { isEligibleForCredit } = evaluatePatientCancellationEligibility(booking.booking_date, booking.booking_time);
+                                                        const bookingAmount = Number(booking.payment?.[0]?.amount || booking.valor_consulta || 150);
+                                                        const cancelMessage = isEligibleForCredit
+                                                            ? `Como você está cancelando com mais de 24h de antecedência, o valor integral de R$ ${bookingAmount.toFixed(2)} será creditado na sua carteira Doxologos para você reagendar quando quiser. Deseja confirmar?`
                                                             : `Como faltam menos de 24 horas para o seu encontro, o profissional já reservou este horário exclusivo para cuidar de você e não é possível gerar créditos ou reembolso. Se preferir manter sua sessão, estamos aqui. Deseja mesmo cancelar?`;
                                                             
                                                         return (

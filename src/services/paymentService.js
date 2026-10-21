@@ -249,3 +249,12 @@ export async function createPaymentRecord(payload) {
   if (error) throw error;
   return data;
 }
+
+// Re-exportações do serviço canônico unificado de reembolsos (Fase 4 - Domain Unification)
+export {
+  checkPayoutIntegrityForRefund,
+  recordRefundLedgerEntries,
+  processManualPaymentRefund,
+  sanitizeRefundReason
+} from './refundService';
+

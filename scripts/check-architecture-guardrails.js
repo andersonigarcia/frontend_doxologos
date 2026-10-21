@@ -129,6 +129,28 @@ if (checkFileExists('src/services/patientService.js', 'Serviço canônico de pac
   );
 }
 
+if (checkFileExists('src/services/refundService.js', 'Serviço canônico de reembolsos e cancelamentos')) {
+  checkFileContains(
+    'src/services/refundService.js',
+    [
+      'export const HOURS_CANCELLATION_LIMIT',
+      'export const PACKAGE_REFUND_PERCENTAGE',
+      'export const PACKAGE_PLATFORM_RETENTION',
+      'export const ALLOWED_PAYMENT_REFUND_FIELDS',
+      'export const ALLOWED_PAYMENT_LEDGER_FIELDS',
+      'export function sanitizeRefundReason',
+      'export async function checkPayoutIntegrityForRefund',
+      'export async function recordRefundLedgerEntries',
+      'export async function processManualPaymentRefund',
+      'export function evaluatePatientCancellationEligibility',
+      'export async function executePatientCancellation',
+      'export function evaluatePackageRefund',
+      'export async function processEventRefundReversal'
+    ],
+    'refundService.js'
+  );
+}
+
 // 2. Prevenção de Schema Drift (Campos Fantasmas & Catálogo de Banco)
 console.log('2️⃣  Validando ausência de Schema Drift e integridade contra o catálogo de banco...');
 
@@ -192,6 +214,26 @@ if (catalog?.tables?.patient_notes?.columns) {
   for (const field of allowedPatientFields) {
     if (!dbPatientCols.includes(field)) {
       errors.push(`[SCHEMA DRIFT] Campo "${field}" em ALLOWED_PATIENT_NOTE_FIELDS não existe no catálogo de public.patient_notes.`);
+    }
+  }
+}
+
+const allowedRefundFields = parseExportedArray('src/services/refundService.js', 'ALLOWED_PAYMENT_REFUND_FIELDS');
+if (catalog?.tables?.payment_refunds?.columns) {
+  const dbRefundCols = catalog.tables.payment_refunds.columns;
+  for (const field of allowedRefundFields) {
+    if (!dbRefundCols.includes(field)) {
+      errors.push(`[SCHEMA DRIFT] Campo "${field}" em ALLOWED_PAYMENT_REFUND_FIELDS não existe no catálogo de public.payment_refunds.`);
+    }
+  }
+}
+
+const allowedLedgerFields = parseExportedArray('src/services/refundService.js', 'ALLOWED_PAYMENT_LEDGER_FIELDS');
+if (catalog?.tables?.payment_ledger_entries?.columns) {
+  const dbLedgerCols = catalog.tables.payment_ledger_entries.columns;
+  for (const field of allowedLedgerFields) {
+    if (!dbLedgerCols.includes(field)) {
+      errors.push(`[SCHEMA DRIFT] Campo "${field}" em ALLOWED_PAYMENT_LEDGER_FIELDS não existe no catálogo de public.payment_ledger_entries.`);
     }
   }
 }
@@ -269,6 +311,7 @@ checkFileExists('src/services/__tests__/professionalService.test.js', 'Testes un
 checkFileExists('src/services/__tests__/bookingService.test.js', 'Testes unitários de bookingService');
 checkFileExists('src/services/__tests__/paymentService.test.js', 'Testes unitários de paymentService');
 checkFileExists('src/services/__tests__/patientService.test.js', 'Testes unitários de patientService');
+checkFileExists('src/services/__tests__/refundService.test.js', 'Testes unitários de refundService');
 checkFileExists('src/services/__tests__/schemaValidator.test.js', 'Testes unitários de schemaValidator');
 
 // 5. Verificação de Blindagem de Segurança & RBAC (Onda 1 / ADR 012)

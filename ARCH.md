@@ -79,7 +79,8 @@ src/
 │   ├── professionalService.js # Gestão de profissionais e enriquecimento com Auth
 │   ├── bookingService.js      # Ciclo de vida de agendamentos e transições de status
 │   ├── paymentService.js      # Operações de pagamentos Mercado Pago e reconciliação
-│   └── patientService.js      # Prontuários clínicos, histórico e tarefas do paciente
+│   ├── patientService.js      # Prontuários clínicos, histórico e tarefas do paciente
+│   └── refundService.js       # Unificação de reembolsos (manual fintech, cancelamento paciente, pacotes/eventos)
 └── utils/                     # Funções puras utilitárias
 ```
 

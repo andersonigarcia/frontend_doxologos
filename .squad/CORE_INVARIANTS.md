@@ -12,7 +12,7 @@
 
 ## 🛡️ 2. As 8 Invariantes Invioláveis de Engenharia e Saúde Mental
 1. **SSOT em Serviços Canônicos (`src/services/`):**
-   * Componentes de UI NUNCA chamam o Supabase diretamente para mutações de domínio. Consomem `professionalService.js`, `bookingService.js`, `paymentService.js` ou `patientService.js`.
+   * Componentes de UI NUNCA chamam o Supabase diretamente para mutações de domínio. Consomem `professionalService.js`, `bookingService.js`, `paymentService.js`, `patientService.js` ou `refundService.js`.
 2. **Banco Soberano vs Efeitos Colaterais Assíncronos:**
    * Mutações no PostgreSQL são prioritárias e atômicas. Efeitos colaterais (SMTP, webhooks, Meet) rodam isolados com tratamento defensivo de falha.
 3. **Proteção Contra Schema Drift (Whitelists):**
@@ -36,6 +36,7 @@
 * **Agendamentos (`bookings`):** [`src/services/bookingService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/bookingService.js) (`booking_time` estritamente VARCHAR(5) 'HH:mm', status válidos e disparo resiliente).
 * **Pagamentos (`payments`):** [`src/services/paymentService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/paymentService.js) (SSOT Mercado Pago, whitelist de 39 colunas, idempotência).
 * **Pacientes & Prontuários (`patient_notes`):** [`src/services/patientService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/patientService.js) (SSOT tarefas e notas clínicas).
+* **Reembolsos & Cancelamentos (`payment_refunds`):** [`src/services/refundService.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/services/refundService.js) (SSOT unificado de estornos manuais fintech, cancelamentos de pacientes e pacotes/eventos).
 * **Segurança Backend:** [`supabase/functions/_shared/auth.ts`](file:///c:/Users/ander/source/repos/frontend_doxologos/supabase/functions/_shared/auth.ts) (`getUserRoles`, `requireAdmin`, `hasAnyRole`).
 * **Cache Reativo TanStack Query:** [`src/hooks/queries/`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/hooks/queries/) (invalidação atômica e cache anti-flicker).
 * **Observabilidade Real-User:** [`src/lib/observability/rumMonitoring.js`](file:///c:/Users/ander/source/repos/frontend_doxologos/src/lib/observability/rumMonitoring.js) (Web Vitals e telemetria de APIs).
