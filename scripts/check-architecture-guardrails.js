@@ -151,6 +151,31 @@ if (checkFileExists('src/services/refundService.js', 'Serviço canônico de reem
   );
 }
 
+if (checkFileExists('src/services/nfseService.js', 'Serviço canônico de NFS-e e resiliência fiscal')) {
+  checkFileContains(
+    'src/services/nfseService.js',
+    [
+      'export const ALLOWED_NFSE_FIELDS',
+      'export const VALID_NFSE_STATUSES',
+      'export const VALID_ERROR_CATEGORIES',
+      'export function normalizeNfseStatus',
+      'export function sanitizeNfseDiscriminacao',
+      'export function sanitizeNfsePayload',
+      'export async function listNfseEmissions',
+      'export async function getNfseById',
+      'export async function getNfseMapByBookingIds',
+      'export async function emitSingleNfse',
+      'export async function batchEmitNfse',
+      'export async function retryNfseEmission',
+      'export async function updateAndRetryNfseEmission',
+      'export async function markNfseManualResolved',
+      'export function calculateNfseSummary',
+      'export async function listPendingNfseTransactions'
+    ],
+    'nfseService.js'
+  );
+}
+
 // 2. Prevenção de Schema Drift (Campos Fantasmas & Catálogo de Banco)
 console.log('2️⃣  Validando ausência de Schema Drift e integridade contra o catálogo de banco...');
 
@@ -238,6 +263,16 @@ if (catalog?.tables?.payment_ledger_entries?.columns) {
   }
 }
 
+const allowedNfseFields = parseExportedArray('src/services/nfseService.js', 'ALLOWED_NFSE_FIELDS');
+if (catalog?.tables?.nfse_emissions?.columns) {
+  const dbNfseCols = catalog.tables.nfse_emissions.columns;
+  for (const field of allowedNfseFields) {
+    if (!dbNfseCols.includes(field)) {
+      errors.push(`[SCHEMA DRIFT] Campo "${field}" em ALLOWED_NFSE_FIELDS não existe no catálogo de public.nfse_emissions.`);
+    }
+  }
+}
+
 // Componente ProfileTab não deve tentar mutações diretas
 checkFileNotContains(
   'src/components/admin/professional-hub/ProfileTab.jsx',
@@ -269,6 +304,19 @@ checkFileNotContains(
   'src/components/shared/PatientAcompanhamento.jsx',
   [".from('patient_notes_history')"],
   'PatientAcompanhamento.jsx deve usar patientService.getPatientHomeworkTasks'
+);
+
+// Componentes de faturamento não devem fazer queries diretas a nfse_emissions
+checkFileNotContains(
+  'src/components/admin/NfseResilienceDashboard.jsx',
+  [".from('nfse_emissions')"],
+  'NfseResilienceDashboard.jsx deve usar nfseService.listNfseEmissions e não .from(\'nfse_emissions\')'
+);
+
+checkFileNotContains(
+  'src/pages/FaturamentoMensalPage.jsx',
+  [".from('nfse_emissions')"],
+  'FaturamentoMensalPage.jsx deve usar nfseService.getNfseMapByBookingIds e não .from(\'nfse_emissions\')'
 );
 
 // 3. Verificação de Memória e Documentação

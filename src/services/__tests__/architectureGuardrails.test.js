@@ -67,15 +67,17 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
     expect(content.includes(".from('patient_notes_history')")).toBe(false);
   });
 
-  it('ALLOWED_PAYMENT_FIELDS e ALLOWED_PATIENT_NOTE_FIELDS devem conter apenas colunas existentes no databaseCatalog.json', () => {
+  it('ALLOWED_PAYMENT_FIELDS, ALLOWED_PATIENT_NOTE_FIELDS e ALLOWED_NFSE_FIELDS devem conter apenas colunas existentes no databaseCatalog.json', () => {
     const catalogPath = path.resolve(__dirname, '../../constants/databaseCatalog.json');
     const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
 
     const paymentCols = catalog.tables.payments.columns;
     const patientCols = catalog.tables.patient_notes.columns;
+    const nfseCols = catalog.tables.nfse_emissions.columns;
 
     const { ALLOWED_PAYMENT_FIELDS } = require('../paymentService');
     const { ALLOWED_PATIENT_NOTE_FIELDS } = require('../patientService');
+    const { ALLOWED_NFSE_FIELDS } = require('../nfseService');
 
     for (const field of ALLOWED_PAYMENT_FIELDS) {
       expect(paymentCols).toContain(field);
@@ -84,6 +86,18 @@ describe('Architecture & Pipeline Guardrails (Fase 4)', () => {
     for (const field of ALLOWED_PATIENT_NOTE_FIELDS) {
       expect(patientCols).toContain(field);
     }
+
+    for (const field of ALLOWED_NFSE_FIELDS) {
+      expect(nfseCols).toContain(field);
+    }
+  });
+
+  it('NfseResilienceDashboard.jsx e FaturamentoMensalPage.jsx não devem conter queries diretas a nfse_emissions', () => {
+    const dashPath = path.resolve(__dirname, '../../components/admin/NfseResilienceDashboard.jsx');
+    const fatPath = path.resolve(__dirname, '../../pages/FaturamentoMensalPage.jsx');
+
+    expect(fs.readFileSync(dashPath, 'utf8').includes(".from('nfse_emissions')")).toBe(false);
+    expect(fs.readFileSync(fatPath, 'utf8').includes(".from('nfse_emissions')")).toBe(false);
   });
 
   describe('Onda 1 — Blindagem de Segurança & RBAC Centralizado', () => {

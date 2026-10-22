@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import {
+  getNfseMapByBookingIds,
+  batchEmitNfse,
+  normalizeNfseStatus
+} from '@/services/nfseService';
+import {
     FileText, CheckCircle2, Clock, AlertTriangle, RefreshCw,
     Send, ChevronLeft, Calendar, DollarSign, Loader2, Info
 } from 'lucide-react';
@@ -9,8 +14,11 @@ import { useNavigate } from 'react-router-dom';
 const STATUS_NFSE = {
     issued: { label: 'Emitida', color: 'text-green-600 bg-green-50', icon: CheckCircle2 },
     pending: { label: 'Pendente', color: 'text-yellow-600 bg-yellow-50', icon: Clock },
+    processing: { label: 'Processando', color: 'text-blue-600 bg-blue-50', icon: RefreshCw },
+    error: { label: 'Falha', color: 'text-red-600 bg-red-50', icon: AlertTriangle },
     failed: { label: 'Falha', color: 'text-red-600 bg-red-50', icon: AlertTriangle },
     queued: { label: 'Na fila', color: 'text-blue-600 bg-blue-50', icon: Clock },
+    manual_resolved: { label: 'Resolvida', color: 'text-indigo-600 bg-indigo-50', icon: CheckCircle2 },
 };
 
 function formatCurrency(value) {
@@ -75,16 +83,13 @@ export default function FaturamentoMensalPage() {
             setBookings(bData || []);
 
             if (bData && bData.length > 0) {
-                // Buscar NFSe correspondentes
+                // Buscar NFSe correspondentes via serviço canônico
                 const ids = bData.map(b => b.id);
-                const { data: nfData } = await supabase
-                    .from('nfse_emissions')
-                    .select('booking_id, status, nfse_number, error_message')
-                    .in('booking_id', ids);
-
-                const map = {};
-                (nfData || []).forEach(n => { map[n.booking_id] = n; });
-                setNfseMap(map);
+                const { map, error: nfErr } = await getNfseMapByBookingIds(ids);
+                if (nfErr) {
+                    console.error('Aviso ao carregar mapa de NFS-e:', nfErr);
+                }
+                setNfseMap(map || {});
             } else {
                 setNfseMap({});
             }
@@ -97,29 +102,34 @@ export default function FaturamentoMensalPage() {
 
     useEffect(() => { loadData(); }, [loadData]);
 
-    // Calcular totais
+    // Calcular totais com tratamento para erros e pendências
     const totalFaturado = bookings.reduce((acc, b) => acc + (parseFloat(b.services?.price) || 0), 0);
-    const pendentes = bookings.filter(b => !nfseMap[b.id] || nfseMap[b.id]?.status === 'failed');
-    const emitidas = bookings.filter(b => nfseMap[b.id]?.status === 'issued');
-    const naFila = bookings.filter(b => nfseMap[b.id]?.status === 'pending' || nfseMap[b.id]?.status === 'queued');
+    const pendentes = bookings.filter(b => {
+        const s = nfseMap[b.id]?.status;
+        return !s || s === 'error' || s === 'failed';
+    });
+    const emitidas = bookings.filter(b => {
+        const s = nfseMap[b.id]?.status;
+        return s === 'issued' || s === 'manual_resolved';
+    });
+    const naFila = bookings.filter(b => {
+        const s = nfseMap[b.id]?.status;
+        return s === 'pending' || s === 'processing' || s === 'queued';
+    });
 
     const handleBatchEmit = async () => {
         if (pendentes.length === 0) return;
         setBatchLoading(true);
         setBatchResult(null);
         try {
-            const { data: sessionData } = await supabase.auth.getSession();
-            const token = sessionData?.session?.access_token;
-            if (!token) throw new Error('Sessão expirada');
+            const result = await batchEmitNfse(pendentes.map(b => b.id));
 
-            const { data, error } = await supabase.functions.invoke('batch-emit-nfse', {
-                body: { booking_ids: pendentes.map(b => b.id) },
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            if (!result.success) {
+                throw new Error(result.error);
+            }
 
-            if (error) throw error;
-            setBatchResult(data);
-            // Recarregar dados para refletir o status 'queued'
+            setBatchResult(result.data);
+            // Recarregar dados para refletir o status enfileirado
             await loadData();
         } catch (err) {
             setBatchResult({ error: err.message || 'Erro ao enfileirar NFSe' });
@@ -130,9 +140,10 @@ export default function FaturamentoMensalPage() {
 
     const getNfseStatus = (bookingId) => {
         const nf = nfseMap[bookingId];
-        if (!nf) return { label: 'Pendente', color: 'text-yellow-600 bg-yellow-50', Icon: Clock };
-        const s = STATUS_NFSE[nf.status] || STATUS_NFSE.pending;
-        return { label: s.label, color: s.color, Icon: s.icon };
+        if (!nf) return { label: 'Pendente', color: 'text-yellow-600 bg-yellow-50', Icon: Clock, errorMessage: null };
+        const norm = normalizeNfseStatus(nf.status);
+        const s = STATUS_NFSE[norm] || STATUS_NFSE[nf.status] || STATUS_NFSE.pending;
+        return { label: s.label, color: s.color, Icon: s.icon, errorMessage: nf.error_message };
     };
 
     const MONTHS = [
@@ -303,6 +314,11 @@ export default function FaturamentoMensalPage() {
                                                 <Icon className="w-3.5 h-3.5" />
                                                 {label}
                                             </span>
+                                            {errorMessage && (
+                                                <p className="text-[10px] text-red-600 mt-1 max-w-[140px] truncate mx-auto" title={errorMessage}>
+                                                    {errorMessage}
+                                                </p>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-center text-gray-500 text-xs">
                                             {nf?.nfse_number || '—'}
