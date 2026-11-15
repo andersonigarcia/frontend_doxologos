@@ -10,6 +10,11 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
+import { listBookings } from '@/services/bookingService';
+import { listProfessionals } from '@/services/professionalService';
+import StrategicCockpitModule from '@/components/admin/StrategicCockpitModule';
+import OperationalRetentionModule from '@/components/admin/OperationalRetentionModule';
+import GrowthAnalyticsModule from '@/components/admin/GrowthAnalyticsModule';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area
@@ -30,6 +35,9 @@ export const ManagementDashboardPage = () => {
   const [eventStats, setEventStats] = useState(null);
   const [alerts, setAlerts] = useState(null);
   const [pulseData, setPulseData] = useState(null);
+  const [bookings, setBookings] = useState([]);
+  const [professionals, setProfessionals] = useState([]);
+  const [services, setServices] = useState([]);
   
   const [apiVersion, setApiVersion] = useState('v2');
   const [loadIssues, setLoadIssues] = useState([]); // painéis que falharam (nunca silenciar)
@@ -47,6 +55,20 @@ export const ManagementDashboardPage = () => {
     };
     try {
       let usingFallback = false;
+
+      // 0. Carregar dados base para os módulos Clean Analytics (Cockpit, Retenção e Growth)
+      try {
+        const [bookingsList, professionalsList, servicesRes] = await Promise.all([
+          listBookings().catch(() => []),
+          listProfessionals().catch(() => []),
+          Promise.resolve(supabase.from('services').select('*').order('name', { ascending: true })).catch(() => ({ data: [] }))
+        ]);
+        setBookings(Array.isArray(bookingsList) ? bookingsList : []);
+        setProfessionals(Array.isArray(professionalsList) ? professionalsList : []);
+        setServices(Array.isArray(servicesRes?.data) ? servicesRes.data : []);
+      } catch (baseErr) {
+        console.warn('Aviso ao carregar dados base para Clean Analytics:', baseErr);
+      }
 
       // 1. Fetch Summary
       try {
@@ -255,6 +277,30 @@ export const ManagementDashboardPage = () => {
             <button onClick={loadDashboardData} className="mt-2 text-xs font-semibold underline">Tentar novamente</button>
           </div>
         )}
+
+        {/* 🟢 MÓDULO 8.1: COCKPIT EXECUTIVO & CLEAN ANALYTICS */}
+        <section aria-label="Cockpit Executivo & Clean Analytics">
+          <StrategicCockpitModule
+            bookings={bookings}
+            professionals={professionals}
+            services={services}
+          />
+        </section>
+
+        {/* 🟣 MÓDULO 8.2: RETENÇÃO CLÍNICA & PREVENÇÃO DE ABANDONO (ZERO PII) */}
+        <section aria-label="Retenção Clínica & Prevenção de Abandono">
+          <OperationalRetentionModule
+            bookings={bookings}
+            professionals={professionals}
+          />
+        </section>
+
+        {/* 🟠 MÓDULO 8.3: FUNIL DE AQUISIÇÃO & METAS */}
+        <section aria-label="Funil de Aquisição & Metas">
+          <GrowthAnalyticsModule
+            bookings={bookings}
+          />
+        </section>
 
         {/* 🔴 SEÇÃO 1: PULSO DIÁRIO (O que exige ação AGORA) */}
         <section>

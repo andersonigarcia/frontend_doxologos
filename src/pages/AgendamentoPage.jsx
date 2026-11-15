@@ -44,6 +44,7 @@ const PatientAccountStep = lazy(() => import('@/components/booking/PatientAccoun
 const PaymentSummaryStep = lazy(() => import('@/components/booking/PaymentSummaryStep'));
 
 import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const MIN_PASSWORD_LENGTH = 8;
 const MIN_BOOKING_ADVANCE_HOURS = 4;
@@ -152,8 +153,11 @@ const AgendamentoPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user: authUser, resetPassword } = useAuth();
+  const { settings: systemSettings } = useSystemSettings();
+  const minBookingAdvanceHours = Number(systemSettings?.booking_min_hours_notice ?? MIN_BOOKING_ADVANCE_HOURS);
   const [searchParams] = useSearchParams();
   const serviceParam = searchParams.get('service');
+  const specialtyParam = searchParams.get('specialty');
   const professionalParam = searchParams.get('professional');
   const assessmentParam = searchParams.get('assessment');
   const severityParam = searchParams.get('severity');
@@ -397,10 +401,25 @@ const AgendamentoPage = () => {
   useEffect(() => {
     if (!services || services.length === 0) return;
 
-    if (serviceParam && !deepLinkProcessedRef.current.service) {
-      const matchedService = services.find(
-        (s) => s.id === serviceParam || s.name.toLowerCase().includes(serviceParam.toLowerCase())
+    const queryTarget = serviceParam || specialtyParam;
+    if (queryTarget && !deepLinkProcessedRef.current.service) {
+      const targetLower = queryTarget.toLowerCase();
+      let matchedService = services.find(
+        (s) => String(s.id) === queryTarget || (s.name && s.name.toLowerCase().includes(targetLower))
       );
+
+      // Fallback inteligente por contexto clínico (ex: ?service=Psicoterapia ou ?specialty=casal/enem)
+      if (!matchedService) {
+        const isCouplesOrFamily = targetLower.includes('casal') || targetLower.includes('famil');
+        if (isCouplesOrFamily) {
+          matchedService = services.find((s) => /casal|fam[ií]lia|conjugal/i.test(s.name || ''));
+        }
+        if (!matchedService) {
+          matchedService =
+            services.find((s) => /psicoterapia|individual|consulta|terapia|sess[aã]o/i.test(s.name || '')) ||
+            services[0];
+        }
+      }
 
       if (matchedService) {
         setSelectedService(matchedService.id);
@@ -408,7 +427,7 @@ const AgendamentoPage = () => {
         setStep((prev) => (prev === 1 ? 2 : prev));
       }
     }
-  }, [services, serviceParam]);
+  }, [services, serviceParam, specialtyParam]);
 
   useEffect(() => {
     if (!professionals || professionals.length === 0) return;
@@ -889,7 +908,7 @@ const AgendamentoPage = () => {
 
     // Filtrar horários com antecedência mínima (prevenção visual no calendário)
     const minAdvanceTime = new Date();
-    minAdvanceTime.setHours(minAdvanceTime.getHours() + MIN_BOOKING_ADVANCE_HOURS);
+    minAdvanceTime.setHours(minAdvanceTime.getHours() + minBookingAdvanceHours);
 
     times = times.filter((timeStr) => {
       const slotDateTime = new Date(`${targetDate}T${timeStr}:00`);
@@ -897,7 +916,7 @@ const AgendamentoPage = () => {
     });
 
     return times;
-  }, [selectedDate, selectedProfessional, availability, blockedDates, selectedService, services, bookedSlots]);
+  }, [selectedDate, selectedProfessional, availability, blockedDates, selectedService, services, bookedSlots, minBookingAdvanceHours]);
 
   const availableTimes = useMemo(
     () => getAvailableTimesForDate(selectedDate, bookedSlots),
@@ -1073,12 +1092,12 @@ const AgendamentoPage = () => {
     }
 
     const minimumAdvance = new Date();
-    minimumAdvance.setHours(minimumAdvance.getHours() + MIN_BOOKING_ADVANCE_HOURS);
+    minimumAdvance.setHours(minimumAdvance.getHours() + minBookingAdvanceHours);
     if (selectedDateTime < minimumAdvance) {
       toast({
         variant: 'destructive',
         title: 'Antecedência mínima',
-        description: `Consultas precisam ser agendadas com pelo menos ${MIN_BOOKING_ADVANCE_HOURS} horas de antecedência.`
+        description: `Consultas precisam ser agendadas com pelo menos ${minBookingAdvanceHours} horas de antecedência.`
       });
       setIsSubmitting(false);
       return;

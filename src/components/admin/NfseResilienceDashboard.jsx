@@ -221,6 +221,13 @@ export default function NfseResilienceDashboard() {
       });
       return;
     }
+    if (/^(\d)\1+$/.test(cleanDoc)) {
+      setActionMessage({
+        type: 'error',
+        text: 'CPF/CNPJ inválido: sequência de dígitos repetidos (ex: 111.111.111-11) não é permitida pela Receita Federal.'
+      });
+      return;
+    }
 
     const profId = formData.tomador_id || selectedRecord.tomadorId;
     if (!profId) {
@@ -270,6 +277,13 @@ export default function NfseResilienceDashboard() {
       setActionMessage({
         type: 'error',
         text: `Documento incompleto (${cleanDoc.length} dígitos). Digite 11 dígitos para CPF ou 14 para CNPJ.`
+      });
+      return;
+    }
+    if (/^(\d)\1+$/.test(cleanDoc)) {
+      setActionMessage({
+        type: 'error',
+        text: 'CPF/CNPJ inválido: sequência de dígitos repetidos (ex: 111.111.111-11) não é permitida pela Receita Federal.'
       });
       return;
     }
@@ -337,6 +351,20 @@ export default function NfseResilienceDashboard() {
     if (!selectedRecord) return;
 
     const cleanDoc = formData.tomador_cpf_cnpj.replace(/\D/g, '');
+    if (!cleanDoc || (cleanDoc.length !== 11 && cleanDoc.length !== 14)) {
+      setActionMessage({
+        type: 'error',
+        text: `Documento incompleto (${cleanDoc.length} dígitos). Digite 11 dígitos para CPF ou 14 para CNPJ.`
+      });
+      return;
+    }
+    if (/^(\d)\1+$/.test(cleanDoc)) {
+      setActionMessage({
+        type: 'error',
+        text: 'CPF/CNPJ inválido: sequência de dígitos repetidos (ex: 111.111.111-11) não é permitida pela Receita Federal.'
+      });
+      return;
+    }
     setActionLoading(true);
     setActionMessage(null);
 
@@ -1470,6 +1498,9 @@ export default function NfseResilienceDashboard() {
                         </label>
                         {(() => {
                           const clean = (formData.tomador_cpf_cnpj || '').replace(/\D/g, '');
+                          if ((clean.length === 11 || clean.length === 14) && /^(\d)\1+$/.test(clean)) {
+                            return <span className="text-[11px] font-semibold text-rose-700 bg-rose-50 px-2 py-0.5 rounded">⚠️ Documento inválido</span>;
+                          }
                           if (clean.length === 11) {
                             return <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">✓ 11 dígitos (CPF)</span>;
                           }
@@ -1490,6 +1521,17 @@ export default function NfseResilienceDashboard() {
                         onChange={(e) => setFormData({ ...formData, tomador_cpf_cnpj: formatCpfCnpj(e.target.value) })}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-mono focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                       />
+                      {(() => {
+                        const clean = (formData.tomador_cpf_cnpj || '').replace(/\D/g, '');
+                        if ((clean.length === 11 || clean.length === 14) && /^(\d)\1+$/.test(clean)) {
+                          return (
+                            <p role="alert" className="text-xs text-rose-600 font-semibold mt-1">
+                              Alerta de validação: CPF/CNPJ com dígitos repetidos (ex: 111.111.111-11) é inválido na Receita Federal.
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
 
@@ -1668,7 +1710,7 @@ export default function NfseResilienceDashboard() {
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-200 transition-colors disabled:opacity-50"
                   >
                     {actionLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                    <span>Salvar & Reenviar à Prefeitura</span>
+                    <span>Salvar e Retentar Emissão</span>
                   </button>
                 </div>
               )}

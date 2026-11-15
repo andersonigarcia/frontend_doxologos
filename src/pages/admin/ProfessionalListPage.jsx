@@ -8,7 +8,8 @@ import {
   Search, 
   Eye, 
   AlertCircle,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -26,7 +27,8 @@ const ProfessionalListPage = ({ isEmbedded = false }) => {
   const [filteredProfessionals, setFilteredProfessionals] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [approving, setApproving] = useState(false);
+  const [approvingId, setApprovingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('active'); // active, suspended, cancelled, all
   const [currentTab, setCurrentTab] = useState('ativos');
@@ -64,19 +66,47 @@ const ProfessionalListPage = ({ isEmbedded = false }) => {
 
   const handleApprove = async (appId) => {
     if (!confirm('Tem certeza que deseja aprovar este profissional e enviar o convite?')) return;
-    setApproving(true);
+    setApprovingId(appId);
     try {
       const { data, error } = await supabase.functions.invoke('approve-professional-application', {
         body: { applicationId: appId }
       });
-      if (error) throw error;
+      if (error) {
+        let errorMsg = error.message;
+        if (error.context && typeof error.context.json === 'function') {
+          try {
+            const body = await error.context.json();
+            if (body?.error) errorMsg = body.error;
+          } catch (_) {}
+        }
+        throw new Error(errorMsg);
+      }
       toast({ title: '✅ Profissional aprovado e convite enviado!' });
       fetchProfessionals();
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Erro ao aprovar', description: error.message });
     } finally {
-      setApproving(false);
+      setApprovingId(null);
+    }
+  };
+
+  const handleReject = async (appId) => {
+    if (!confirm('Tem certeza que deseja reprovar esta candidatura?')) return;
+    setRejectingId(appId);
+    try {
+      const { error } = await supabase
+        .from('professional_applications')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', appId);
+      if (error) throw error;
+      toast({ title: 'Candidatura marcada como reprovada.' });
+      fetchProfessionals();
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Erro ao reprovar', description: error.message });
+    } finally {
+      setRejectingId(null);
     }
   };
 
@@ -138,6 +168,15 @@ const ProfessionalListPage = ({ isEmbedded = false }) => {
                 )}
               </TabsTrigger>
             </TabsList>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchProfessionals}
+              className="gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Atualizar
+            </Button>
           </div>
 
           <TabsContent value="ativos" className="m-0 space-y-6">
@@ -266,10 +305,19 @@ const ProfessionalListPage = ({ isEmbedded = false }) => {
                       <Button 
                         onClick={() => handleApprove(app.id)}
                         className="bg-green-600 hover:bg-green-700 text-white"
-                        disabled={approving}
+                        disabled={approvingId === app.id || rejectingId === app.id}
                       >
-                        {approving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        {approvingId === app.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                         Aprovar Perfil
+                      </Button>
+                      <Button 
+                        onClick={() => handleReject(app.id)}
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                        disabled={approvingId === app.id || rejectingId === app.id}
+                      >
+                        {rejectingId === app.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Reprovar
                       </Button>
                     </div>
                   </motion.div>

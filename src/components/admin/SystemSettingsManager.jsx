@@ -40,7 +40,8 @@ export const DEFAULT_SYSTEM_PARAMETERS = {
   mp_estimated_gateway_fee_pct: 2.99,
   nfse_estimated_tax_rate_pct: 6.00,
 
-  // 2. Cancelamentos e Multas
+  // 2. Políticas de Agendamento, Cancelamentos e Multas
+  booking_min_hours_notice: 4,
   cancellation_min_hours_notice: 24,
   cancellation_late_patient_retention_pct: 20,
   reschedule_min_hours_notice: 12,
@@ -94,6 +95,14 @@ export const PARAMETER_METADATA = {
     risk: 'MEDIUM',
     riskLabel: 'Médio',
     unit: '%'
+  },
+  booking_min_hours_notice: {
+    label: 'Antecedência Mínima p/ Novo Agendamento',
+    category: 'Políticas de Horário',
+    flows: 'Tempo mínimo em horas exigido entre o momento da marcação e o início da consulta no fluxo de agendamento.',
+    risk: 'MEDIUM',
+    riskLabel: 'Médio',
+    unit: 'horas'
   },
   cancellation_min_hours_notice: {
     label: 'Antecedência Mínima p/ Cancelamento Integral',
@@ -466,20 +475,39 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
         </div>
       </Card>
 
-      {/* BLOCO 2: CANCELAMENTOS, REAGENDAMENTOS E MULTAS */}
+      {/* BLOCO 2: AGENDAMENTOS, CANCELAMENTOS, REAGENDAMENTOS E MULTAS */}
       <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
         <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
           <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
             <AlertTriangle className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-900 text-sm">2. Cancelamentos, Reagendamentos & Multas</h3>
-            <p className="text-xs text-slate-500">Regras de antecedência mínima e retenção por cancelamento tardio.</p>
+            <h3 className="font-bold text-slate-900 text-sm">2. Políticas de Agendamento, Cancelamentos & Reagendamentos</h3>
+            <p className="text-xs text-slate-500">Regras de antecedência mínima para novos agendamentos, cancelamentos e reagendamentos.</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-          {/* Item 1: Antecedência Mínima p/ Cancelar c/ Crédito */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-2">
+          {/* Item 1: Antecedência Mínima p/ Novo Agendamento */}
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
+            <div>
+              <label className="text-xs font-bold text-slate-800">Antecedência p/ Novo Agendamento</label>
+              <p className="text-[11px] text-slate-500">Prazo mínimo em horas antes do horário da consulta para o paciente agendar.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min="0"
+                max="72"
+                value={draftSettings.booking_min_hours_notice ?? 4}
+                onChange={(e) => handleDraftChange('booking_min_hours_notice', Number(e.target.value))}
+                className="bg-white text-sm font-bold text-slate-900"
+              />
+              <span className="text-xs font-bold text-slate-600">horas</span>
+            </div>
+          </div>
+
+          {/* Item 2: Antecedência Mínima p/ Cancelar c/ Crédito */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
             <div>
               <label className="text-xs font-bold text-slate-800">Antecedência Mínima p/ Reembolso</label>
@@ -498,7 +526,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
             </div>
           </div>
 
-          {/* Item 2: Multa p/ Cancelamento Tardio Paciente */}
+          {/* Item 3: Multa p/ Cancelamento Tardio Paciente */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
             <div>
               <label className="text-xs font-bold text-slate-800">Retenção por Cancelamento Tardio</label>
@@ -517,7 +545,7 @@ export function SystemSettingsManager({ userRole = 'admin' }) {
             </div>
           </div>
 
-          {/* Item 3: Antecedência Mínima p/ Reagendar */}
+          {/* Item 4: Antecedência Mínima p/ Reagendar */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/80 space-y-3">
             <div>
               <label className="text-xs font-bold text-slate-800">Antecedência p/ Reagendamento</label>

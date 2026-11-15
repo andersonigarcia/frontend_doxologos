@@ -289,10 +289,44 @@ const TrabalheConoscoPage = () => {
         logger.error('Failed to send notification email to HR', emailErr);
         // Continue anyway since it's saved in DB
       }
+
+      // 4. Send confirmation email to candidate
+      try {
+        const candidateEmailData = {
+          to: formData.email,
+          subject: 'Candidatura Recebida - Trabalhe Conosco Doxologos',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+              <div style="background-color: #2d8659; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">Doxologos Psicologia</h1>
+                <p style="color: #e6f4ea; margin: 6px 0 0 0; font-size: 14px;">Confirmação de Candidatura</p>
+              </div>
+              <div style="background-color: #ffffff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <h2 style="color: #2d8659; margin-top: 0;">Olá, ${formData.name}!</h2>
+                <p>Recebemos sua candidatura para fazer parte do corpo de profissionais da <strong>Doxologos</strong> com sucesso.</p>
+                <div style="background-color: #f8fafc; border-left: 4px solid #2d8659; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                  <p style="margin: 0 0 8px 0; font-weight: bold; color: #1e293b;">Resumo dos dados cadastrados:</p>
+                  <p style="margin: 4px 0; font-size: 14px;"><strong>Especialidade:</strong> ${formData.specialty}</p>
+                  <p style="margin: 4px 0; font-size: 14px;"><strong>Registro Profissional:</strong> ${formData.crp}</p>
+                  <p style="margin: 4px 0; font-size: 14px;"><strong>Status:</strong> Em avaliação pela equipe de curadoria</p>
+                </div>
+                <p>Nossa equipe de curadoria analisará o seu perfil, histórico e documentação. Assim que a avaliação for concluída, você receberá um e-mail com o retorno e as instruções de ativação da sua conta.</p>
+                <p>Ficamos muito felizes pelo seu interesse em fazer parte da nossa missão.</p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                <p style="font-size: 12px; color: #64748b; margin: 0;">Equipe Doxologos Psicologia • contato@doxologos.com.br</p>
+              </div>
+            </div>
+          `
+        };
+        await emailService.sendEmail(candidateEmailData);
+        logger.success('Job application confirmation email sent to candidate');
+      } catch (candEmailErr) {
+        logger.error('Failed to send confirmation email to candidate', candEmailErr);
+      }
       
       toast({
         title: "✅ Candidatura enviada com sucesso!",
-        description: "Nossa equipe de curadoria analisará seu perfil e entraremos em contato em breve.",
+        description: "Enviamos uma confirmação para seu e-mail. Nossa equipe analisará seu perfil em breve.",
       });
 
       // Reset form

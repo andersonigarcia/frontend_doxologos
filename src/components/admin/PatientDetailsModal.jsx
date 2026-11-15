@@ -95,6 +95,35 @@ export const PatientDetailsModal = ({
     });
     const [isSaving, setIsSaving] = useState(false);
 
+    // ── Timer de Sessão (contabiliza tempo decorrido quando o modal está aberto) ──
+    const [sessionSeconds, setSessionSeconds] = useState(0);
+    const [isTimerRunning, setIsTimerRunning] = useState(true);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setSessionSeconds(0);
+            setIsTimerRunning(true);
+            return;
+        }
+        setIsTimerRunning(true);
+    }, [isOpen, patient?.email]);
+
+    useEffect(() => {
+        if (!isOpen || !isTimerRunning) return;
+        const interval = setInterval(() => {
+            setSessionSeconds(prev => prev + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [isOpen, isTimerRunning]);
+
+    const formatSessionTimer = (totalSec) => {
+        const hrs = Math.floor(totalSec / 3600);
+        const mins = Math.floor((totalSec % 3600) / 60);
+        const secs = totalSec % 60;
+        const pad = (n) => String(n).padStart(2, '0');
+        return hrs > 0 ? `${pad(hrs)}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
+    };
+
     // ── Histórico de sessões ──────────────────────────────────────────────────
     const [history, setHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -233,6 +262,23 @@ export const PatientDetailsModal = ({
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
+                                    {/* Timer de Sessão */}
+                                    <div
+                                        data-testid="session-timer"
+                                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs font-mono text-emerald-400"
+                                        title="Timer de Sessão (clique para pausar/retomar)"
+                                    >
+                                        <Clock className={`w-3.5 h-3.5 ${isTimerRunning ? 'animate-pulse text-emerald-400' : 'text-amber-400'}`} />
+                                        <span className="text-slate-400 font-sans hidden md:inline">Sessão:</span>
+                                        <span className="font-bold tracking-wider">{formatSessionTimer(sessionSeconds)}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsTimerRunning(prev => !prev)}
+                                            className="ml-1 text-[10px] font-sans px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-slate-200 transition-colors"
+                                        >
+                                            {isTimerRunning ? 'Pausar' : 'Retomar'}
+                                        </button>
+                                    </div>
                                     <Button
                                         type="button"
                                         size="sm"

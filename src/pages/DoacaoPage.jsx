@@ -10,7 +10,7 @@ import DoxologosLogo from '../components/brand/DoxologosLogo';
 
 const DoacaoPage = () => {
     const [pixCopied, setPixCopied] = useState(false);
-    const [selectedAmount, setSelectedAmount] = useState(null);
+    const [selectedAmount, setSelectedAmount] = useState(50);
     const [pixPayload, setPixPayload] = useState('');
     const { toast } = useToast();
 
@@ -20,12 +20,12 @@ const DoacaoPage = () => {
     const city = "Belo Horizonte";
 
     const donationOptions = [
-        { amount: 25.01, label: "Medicamentos básicos" },
-        { amount: 50.01, label: "Consulta social" },
-        { amount: 100.01, label: "Material educativo" },
-        { amount: 150.01, label: "Doe uma consulta" },
-        { amount: 200.01, label: "Equipamento médico" },
-        { amount: 500.01, label: "Programa social" }
+        { amount: 30, label: "Apoio básico" },
+        { amount: 50, label: "Consulta social" },
+        { amount: 100, label: "Material educativo" },
+        { amount: 150, label: "Doe uma consulta" },
+        { amount: 200, label: "Equipamento clínico" },
+        { amount: 500, label: "Programa social" }
     ];
 
     // Gerar payload PIX quando o valor for selecionado
@@ -203,26 +203,47 @@ const DoacaoPage = () => {
                         ))}
                     </div>
 
-                    <div className="text-center">
-                        <p className="text-gray-600 mb-4">Ou digite outro valor que desejar</p>
-                        <input
-                            type="number"
-                            placeholder="Digite o valor"
-                            min="1"
-                            step="0.01"
-                            value={selectedAmount || ''}
-                            className="input max-w-xs mx-auto text-center text-xl font-semibold"
-                            onChange={(e) => {
-                                const value = parseFloat(e.target.value);
-                                setSelectedAmount(value > 0 ? value : null);
-                            }}
-                        />
+                    <div className="text-center space-y-6">
+                        <div>
+                            <p className="text-gray-600 mb-4">Ou digite outro valor que desejar</p>
+                            <input
+                                type="number"
+                                placeholder="Digite o valor"
+                                min="1"
+                                step="0.01"
+                                value={selectedAmount || ''}
+                                className="input max-w-xs mx-auto text-center text-xl font-semibold"
+                                onChange={(e) => {
+                                    const value = parseFloat(e.target.value);
+                                    setSelectedAmount(value > 0 ? value : null);
+                                }}
+                            />
+                        </div>
+
+                        <div>
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    if (!selectedAmount || selectedAmount <= 0) {
+                                        setSelectedAmount(50);
+                                    }
+                                    const el = document.getElementById('pix-donation-section');
+                                    if (el && typeof el.scrollIntoView === 'function') {
+                                        el.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                }}
+                                className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 h-auto rounded-full font-bold text-lg shadow-md transition-all"
+                            >
+                                <QrCode className="w-5 h-5 mr-2" />
+                                Apoiar com PIX
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* PIX Section */}
-            <section className="py-16 px-4 bg-gray-50">
+            <section id="pix-donation-section" className="py-16 px-4 bg-gray-50">
                 <div className="max-w-4xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}

@@ -417,6 +417,10 @@ describe('Serviço Canônico de NFS-e (nfseService.js)', () => {
       const resInvalid = await updateTomadorFiscalData({ professionalId: 'prof-1', cpf: '123' });
       expect(resInvalid.success).toBe(false);
       expect(resInvalid.error).toContain('Documento incompleto');
+
+      const resRepeated = await updateTomadorFiscalData({ professionalId: 'prof-1', cpf: '111.111.111-11' });
+      expect(resRepeated.success).toBe(false);
+      expect(resRepeated.error).toContain('sequência de dígitos repetidos');
     });
 
     it('deve formatar e persistir CPF (11 dígitos) limpando máscara e zerando CNPJ', async () => {

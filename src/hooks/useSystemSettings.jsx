@@ -5,6 +5,7 @@ export const DEFAULT_SYSTEM_SETTINGS = {
   platform_default_retention_pct: 40,
   mp_estimated_gateway_fee_pct: 2.99,
   nfse_estimated_tax_rate_pct: 6.00,
+  booking_min_hours_notice: 4,
   cancellation_min_hours_notice: 24,
   cancellation_late_patient_retention_pct: 20,
   reschedule_min_hours_notice: 12,

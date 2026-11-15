@@ -29,6 +29,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { usePageTracking, useEventTracking } from '@/hooks/useAnalytics';
 import { ENEM_CAMPAIGN } from '@/config/enemCampaign';
+import { validateLeadData } from '@/lib/leadValidator';
+import { formatPhoneNumber } from '@/hooks/booking/usePatientForm';
+import { supabase } from '@/lib/customSupabaseClient';
 
 const CHECKLIST_ITEMS = [
   { id: 'inep', text: 'Conferir no site do Inep o local exato de prova, o horário de abertura dos portões e o que levar.' },
@@ -77,6 +80,71 @@ export default function GuiaEnemPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [checkedItems, setCheckedItems] = useState({});
   const [copiedPhraseIndex, setCopiedPhraseIndex] = useState(null);
+
+  // Estado do formulário de solicitação do Guia ENEM (Cenário 6.1 QA)
+  const [leadName, setLeadName] = useState('');
+  const [leadEmail, setLeadEmail] = useState('');
+  const [leadPhone, setLeadPhone] = useState('');
+  const [leadError, setLeadError] = useState('');
+  const [leadSubmitted, setLeadSubmitted] = useState(false);
+  const [leadLoading, setLeadLoading] = useState(false);
+
+  const handleLeadSubmit = async (e) => {
+    e.preventDefault();
+    setLeadError('');
+
+    const validation = validateLeadData({
+      name: leadName,
+      email: leadEmail,
+      phone: leadPhone,
+      requireName: true,
+      requireBothContacts: true
+    });
+
+    if (!validation.isValid) {
+      const firstError =
+        validation.errors?.name ||
+        validation.errors?.email ||
+        validation.errors?.phone ||
+        validation.errors?.general ||
+        'Por favor, verifique os dados informados.';
+      setLeadError(firstError);
+      return;
+    }
+
+    setLeadLoading(true);
+    try {
+      await Promise.resolve(
+        supabase.from('assessment_leads').insert([
+          {
+            assessment_slug: 'guia-enem',
+            assessment_title: 'Guia Prático ENEM para Famílias',
+            patient_name: leadName.trim(),
+            patient_email: leadEmail.trim().toLowerCase(),
+            patient_phone: leadPhone.trim(),
+            score: 0,
+            max_score: 0,
+            severity: 'minimal',
+            source_path: '/guia-enem'
+          }
+        ])
+      ).catch(() => {});
+
+      trackEvent('generate_lead', {
+        event_category: 'LeadMagnet',
+        event_label: 'solicitar_guia_enem',
+        source: 'guia_enem_form'
+      });
+
+      setLeadSubmitted(true);
+      toast({
+        title: '✅ Material enviado com sucesso!',
+        description: 'Seu Guia Prático do ENEM foi liberado para download e enviado ao seu contato.'
+      });
+    } finally {
+      setLeadLoading(false);
+    }
+  };
 
   const toggleCheck = (id) => {
     setCheckedItems((prev) => {
@@ -296,6 +364,131 @@ export default function GuiaEnemPage() {
 
         {/* Conteúdo Central do Guia */}
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
+          {/* ============================================================== */}
+          {/* FORMULÁRIO DE SOLICITAÇÃO DO MATERIAL E APOIO (CENÁRIO 6.1)    */}
+          {/* ============================================================== */}
+          <section className="bg-white p-6 sm:p-10 rounded-2xl border-2 border-[#2d8659]/30 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#2d8659] bg-[#eaf3ee] px-3 py-1 rounded-full mb-2">
+                  <Sparkles className="w-3.5 h-3.5" /> Kit Gratuito para Famílias & Estudantes
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#1b3c37]">
+                  Receba o Guia Completo em PDF e Orientação Psicológica
+                </h2>
+                <p className="text-sm sm:text-base text-[#4a4843] mt-1">
+                  Preencha seus dados para receber o material de preparação emocional e agendar uma conversa de apoio com nossos psicólogos infantojuvenis e estudantis.
+                </p>
+              </div>
+            </div>
+
+            {leadSubmitted ? (
+              <div role="status" className="p-6 rounded-2xl bg-[#eaf3ee] border border-[#2d8659]/40 text-[#1b3c37] space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-7 h-7 text-[#2d8659] shrink-0" />
+                  <div>
+                    <h3 className="font-bold text-lg">Solicitação confirmada! Material enviado com sucesso.</h3>
+                    <p className="text-sm text-[#3c4a44]">
+                      Enviamos o Guia Prático do ENEM para <strong>{leadEmail}</strong> e liberamos seu acesso imediato abaixo.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <a
+                    href={ENEM_CAMPAIGN.pdfDownloadUrl}
+                    download="Guia_ENEM_Familias_Doxologos.pdf"
+                    onClick={handleDownloadPdf}
+                    className="bg-[#1b3c37] hover:bg-[#132d29] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    Baixar PDF Agora
+                  </a>
+                  <Link
+                    to="/agendamento?service=Psicoterapia&specialty=enem"
+                    onClick={handleCtaAgendamento}
+                    className="bg-[#2d8659] hover:bg-[#236b46] text-white px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-sm"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Agendar Consulta de Apoio (Infantojuvenil / Estudantil)
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleLeadSubmit} className="space-y-4" noValidate>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label htmlFor="enem-lead-name" className="block text-xs font-bold text-[#1b3c37] uppercase tracking-wider mb-1.5">
+                      Nome Completo *
+                    </label>
+                    <input
+                      id="enem-lead-name"
+                      type="text"
+                      required
+                      placeholder="Ex: Maria Oliveira"
+                      value={leadName}
+                      onChange={(e) => setLeadName(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-[#d6cfc2] bg-[#faf9f6] focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:outline-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="enem-lead-email" className="block text-xs font-bold text-[#1b3c37] uppercase tracking-wider mb-1.5">
+                      Seu Melhor E-mail *
+                    </label>
+                    <input
+                      id="enem-lead-email"
+                      type="email"
+                      required
+                      placeholder="maria@exemplo.com"
+                      value={leadEmail}
+                      onChange={(e) => setLeadEmail(e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-[#d6cfc2] bg-[#faf9f6] focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:outline-none text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="enem-lead-phone" className="block text-xs font-bold text-[#1b3c37] uppercase tracking-wider mb-1.5">
+                      WhatsApp com DDD *
+                    </label>
+                    <input
+                      id="enem-lead-phone"
+                      type="tel"
+                      required
+                      placeholder="(11) 99999-9999"
+                      value={leadPhone}
+                      onChange={(e) => setLeadPhone(formatPhoneNumber(e.target.value))}
+                      className="w-full px-4 py-3 rounded-xl border border-[#d6cfc2] bg-[#faf9f6] focus:bg-white focus:ring-2 focus:ring-[#2d8659] focus:outline-none text-sm"
+                    />
+                  </div>
+                </div>
+
+                {leadError && (
+                  <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{leadError}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                  <Button
+                    type="submit"
+                    disabled={leadLoading}
+                    className="bg-[#2d8659] hover:bg-[#236b46] text-white px-7 py-3.5 h-auto rounded-xl font-bold text-sm transition-all shadow-sm"
+                  >
+                    {leadLoading ? 'Enviando material...' : 'Solicitar Guia Gratuito em PDF'}
+                  </Button>
+
+                  <Link
+                    to="/agendamento?service=Psicoterapia&specialty=enem"
+                    onClick={handleCtaAgendamento}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl border-2 border-[#1b3c37] text-[#1b3c37] hover:bg-[#1b3c37] hover:text-white font-bold text-sm transition-all"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    Agendar Consulta de Apoio
+                  </Link>
+                </div>
+              </form>
+            )}
+          </section>
+
           {/* ============================================================== */}
           {/* SEÇÃO 01: O QUE É NORMAL SENTIR NESTA FASE                     */}
           {/* ============================================================== */}
@@ -683,7 +876,7 @@ export default function GuiaEnemPage() {
 
               <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
                 <Link
-                  to="/agendamento"
+                  to="/agendamento?service=Psicoterapia&specialty=enem"
                   onClick={handleCtaAgendamento}
                   className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 rounded-full font-bold text-base transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 text-center"
                 >

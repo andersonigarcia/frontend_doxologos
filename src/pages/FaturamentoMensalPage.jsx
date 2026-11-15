@@ -7,9 +7,10 @@ import {
 } from '@/services/nfseService';
 import {
     FileText, CheckCircle2, Clock, AlertTriangle, RefreshCw,
-    Send, ChevronLeft, Calendar, DollarSign, Loader2, Info
+    Send, ChevronLeft, Calendar, DollarSign, Loader2, Info, Download
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
 
 const STATUS_NFSE = {
     issued: { label: 'Emitida', color: 'text-green-600 bg-green-50', icon: CheckCircle2 },
@@ -36,6 +37,7 @@ function getMonthRange(year, month) {
 
 export default function FaturamentoMensalPage() {
     const navigate = useNavigate();
+    const { toast } = useToast();
     const now = new Date();
     const [selectedYear, setSelectedYear] = useState(now.getFullYear());
     const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
@@ -68,12 +70,12 @@ export default function FaturamentoMensalPage() {
         try {
             const { start, end } = getMonthRange(selectedYear, selectedMonth);
 
-            // Buscar bookings confirmados do período
+            // Buscar bookings confirmados/realizados do período
             const { data: bData, error: bErr } = await supabase
                 .from('bookings')
-                .select('id, booking_date, booking_time, patient_name, patient_email, services(name, price)')
+                .select('id, booking_date, booking_time, status, patient_name, patient_email, valor_consulta, valor_repasse_profissional, services(name, price)')
                 .eq('professional_id', professionalId)
-                .eq('status', 'confirmed')
+                .in('status', ['confirmed', 'completed', 'paid'])
                 .gte('booking_date', start)
                 .lte('booking_date', end)
                 .order('booking_date', { ascending: true });
@@ -103,7 +105,8 @@ export default function FaturamentoMensalPage() {
     useEffect(() => { loadData(); }, [loadData]);
 
     // Calcular totais com tratamento para erros e pendências
-    const totalFaturado = bookings.reduce((acc, b) => acc + (parseFloat(b.services?.price) || 0), 0);
+    const totalFaturado = bookings.reduce((acc, b) => acc + (parseFloat(b.valor_consulta ?? b.services?.price) || 0), 0);
+    const totalRepasse = bookings.reduce((acc, b) => acc + (parseFloat(b.valor_repasse_profissional ?? b.valor_consulta ?? b.services?.price) || 0), 0);
     const pendentes = bookings.filter(b => {
         const s = nfseMap[b.id]?.status;
         return !s || s === 'error' || s === 'failed';
@@ -116,6 +119,62 @@ export default function FaturamentoMensalPage() {
         const s = nfseMap[b.id]?.status;
         return s === 'pending' || s === 'processing' || s === 'queued';
     });
+
+    const handleExportCarneLeao = () => {
+        if (bookings.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Sem dados para exportar',
+                description: 'Nenhuma sessão confirmada encontrada no período selecionado.'
+            });
+            return;
+        }
+
+        const headers = [
+            'Data',
+            'Codigo_Receita',
+            'Valor_Pago',
+            'Historico_Descricao',
+            'CPF_Pagador',
+            'CBO_Profissional'
+        ];
+
+        const rows = bookings.map(b => {
+            const rawDate = b.booking_date ? b.booking_date.split('T')[0] : '';
+            const [year, month, day] = rawDate.split('-');
+            const formattedDate = day && month && year ? `${day}/${month}/${year}` : rawDate;
+            const repasseVal = Number(b.valor_repasse_profissional ?? b.valor_consulta ?? b.services?.price ?? 0)
+                .toFixed(2)
+                .replace('.', ',');
+            const patientName = (b.patient_name || 'Paciente').replace(/;/g, ',');
+            const serviceName = (b.services?.name || 'Sessão Psicoterapia').replace(/;/g, ',');
+
+            return [
+                formattedDate,
+                'R01.001.001',
+                repasseVal,
+                `Atendimento clínico (${serviceName}) - ${patientName} (Ref: ${b.id?.slice(0, 8) || 'S/N'})`,
+                '',
+                '2515-10' // CBO Psicólogo Clínico
+            ];
+        });
+
+        const csvContent = '\uFEFF' + [
+            headers.join(';'),
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `carne-leao-psicologia-${selectedYear}-${String(selectedMonth).padStart(2, '0')}.csv`;
+        link.click();
+
+        toast({
+            title: '📄 Arquivo Carnê-Leão gerado!',
+            description: `${rows.length} lançamento(s) exportado(s) em formato CSV compatível com a Receita Federal.`
+        });
+    };
 
     const handleBatchEmit = async () => {
         if (pendentes.length === 0) return;
@@ -155,23 +214,34 @@ export default function FaturamentoMensalPage() {
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8">
             {/* Header */}
-            <div className="mb-6 flex items-center gap-3">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
-                    aria-label="Voltar"
-                >
-                    <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <FileText className="w-7 h-7 text-indigo-600" />
-                        Faturamento Mensal & NFSe
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                        Gerencie a emissão de notas fiscais das suas consultas confirmadas.
-                    </p>
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => navigate(-1)}
+                        className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                        aria-label="Voltar"
+                    >
+                        <ChevronLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                            <FileText className="w-7 h-7 text-indigo-600" />
+                            Faturamento Mensal & NFSe
+                        </h1>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                            Gerencie honorários, repasses líquidos e emissão de notas fiscais das suas consultas confirmadas.
+                        </p>
+                    </div>
                 </div>
+                <button
+                    id="btn-export-carne-leao"
+                    type="button"
+                    onClick={handleExportCarneLeao}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold shadow-sm transition-colors"
+                >
+                    <Download className="w-4 h-4 text-emerald-400" />
+                    Exportar para Carnê-Leão (Receita Federal)
+                </button>
             </div>
 
             {/* Filtros de período */}
@@ -209,9 +279,10 @@ export default function FaturamentoMensalPage() {
             </div>
 
             {/* Cards de totais */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 {[
-                    { label: 'Total Faturado', value: formatCurrency(totalFaturado), Icon: DollarSign, color: 'text-indigo-600 bg-indigo-50' },
+                    { label: 'Total Faturado (Bruto)', value: formatCurrency(totalFaturado), Icon: DollarSign, color: 'text-indigo-600 bg-indigo-50' },
+                    { label: 'Total Honorários / Repasse', value: formatCurrency(totalRepasse), Icon: DollarSign, color: 'text-emerald-600 bg-emerald-50' },
                     { label: 'Consultas', value: bookings.length, Icon: FileText, color: 'text-gray-600 bg-gray-50' },
                     { label: 'NFSe Emitidas', value: emitidas.length, Icon: CheckCircle2, color: 'text-green-600 bg-green-50' },
                     { label: 'Pendentes', value: pendentes.length, Icon: Clock, color: 'text-yellow-600 bg-yellow-50' },
@@ -286,14 +357,15 @@ export default function FaturamentoMensalPage() {
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Data</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Paciente</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Serviço</th>
-                                <th className="px-4 py-3 text-right font-semibold text-gray-600">Valor</th>
+                                <th className="px-4 py-3 text-right font-semibold text-gray-600">Valor Sessão</th>
+                                <th className="px-4 py-3 text-right font-semibold text-gray-600">Repasse Líquido</th>
                                 <th className="px-4 py-3 text-center font-semibold text-gray-600">NFSe</th>
                                 <th className="px-4 py-3 text-center font-semibold text-gray-600">Número</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {bookings.map(b => {
-                                const { label, color, Icon } = getNfseStatus(b.id);
+                                const { label, color, Icon, errorMessage } = getNfseStatus(b.id);
                                 const nf = nfseMap[b.id];
                                 return (
                                     <tr key={b.id} className="hover:bg-gray-50 transition-colors">
@@ -307,7 +379,10 @@ export default function FaturamentoMensalPage() {
                                         </td>
                                         <td className="px-4 py-3 text-gray-600">{b.services?.name || '—'}</td>
                                         <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                                            {formatCurrency(b.services?.price)}
+                                            {formatCurrency(b.valor_consulta ?? b.services?.price)}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-semibold text-emerald-700">
+                                            {formatCurrency(b.valor_repasse_profissional ?? b.valor_consulta ?? b.services?.price)}
                                         </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${color}`}>
@@ -331,6 +406,7 @@ export default function FaturamentoMensalPage() {
                             <tr>
                                 <td colSpan={3} className="px-4 py-3 text-sm font-semibold text-gray-700">Total do período</td>
                                 <td className="px-4 py-3 text-right font-bold text-indigo-700">{formatCurrency(totalFaturado)}</td>
+                                <td className="px-4 py-3 text-right font-bold text-emerald-700">{formatCurrency(totalRepasse)}</td>
                                 <td colSpan={2} />
                             </tr>
                         </tfoot>

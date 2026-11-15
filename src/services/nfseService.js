@@ -644,7 +644,7 @@ export async function listPendingNfseTransactions(options = {}) {
 
         const doc = b.professional?.cnpj || b.professional?.cpf || '';
         const cleanDoc = doc.replace(/\D/g, '');
-        const hasValidDoc = cleanDoc.length === 11 || cleanDoc.length === 14;
+        const hasValidDoc = (cleanDoc.length === 11 || cleanDoc.length === 14) && !/^(\d)\1+$/.test(cleanDoc);
 
         return {
           id: b.id,
@@ -714,6 +714,13 @@ export async function updateTomadorFiscalData(params = {}) {
     return {
       success: false,
       error: `Documento incompleto (${cleanDoc.length} dígitos). Digite 11 dígitos para CPF ou 14 para CNPJ.`
+    };
+  }
+
+  if (/^(\d)\1+$/.test(cleanDoc)) {
+    return {
+      success: false,
+      error: 'Documento inválido: sequência de dígitos repetidos (ex: 111.111.111-11) não é permitida pela Receita Federal.'
     };
   }
 

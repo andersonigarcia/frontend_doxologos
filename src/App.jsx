@@ -345,6 +345,26 @@ function AppContent() {
               <TerapiaAbusoEspiritualPage />
             </PageErrorBoundary>
           } />
+          <Route path="/terapia/conflitos-religiosos" element={
+            <PageErrorBoundary pageName="Terapia para Conflitos Religiosos e Abuso Espiritual">
+              <TerapiaAbusoEspiritualPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/autoestima" element={
+            <PageErrorBoundary pageName="Terapia para Autoestima e Dependência Emocional">
+              <TerapiaDependenciaPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/familiar" element={
+            <PageErrorBoundary pageName="Terapia Familiar e de Casal">
+              <TerapiaCasalPage />
+            </PageErrorBoundary>
+          } />
+          <Route path="/terapia/luto" element={
+            <PageErrorBoundary pageName="Terapia para Luto e Depressão">
+              <TerapiaDepressaoPage />
+            </PageErrorBoundary>
+          } />
           <Route path="/r/:slug" element={
             <PageErrorBoundary pageName="Material do Livro">
               <BookResourcePage />

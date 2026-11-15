@@ -74,7 +74,7 @@ const TerapiaVicioApostasPage = () => {
               Retome o controle da sua vida financeira, familiar e espiritual. Tratamento clínico, ético e sigiloso para a dependência em apostas online.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/agendamento" onClick={handleCtaClick} className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 rounded-full font-bold text-lg transition-colors flex items-center justify-center">
+              <Link to="/agendamento?service=Psicoterapia&specialty=vicio-apostas" onClick={handleCtaClick} className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 rounded-full font-bold text-lg transition-colors flex items-center justify-center">
                 <Calendar className="w-5 h-5 mr-2" />
                 Agendar Consulta Sigilosa
               </Link>
@@ -167,7 +167,7 @@ const TerapiaVicioApostasPage = () => {
               <p className="text-xl text-[#f0ebe1] mb-8">
                 O próximo clique não vai resolver os seus problemas, mas o clique para agendar a sua consulta será o início da sua recuperação.
               </p>
-              <Link to="/agendamento" onClick={handleCtaClick} className="inline-flex bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-8 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 items-center">
+              <Link to="/agendamento?service=Psicoterapia&specialty=vicio-apostas" onClick={handleCtaClick} className="inline-flex bg-yellow-500 hover:bg-yellow-400 text-yellow-950 px-8 py-4 rounded-full font-bold text-lg transition-transform hover:scale-105 items-center">
                 Buscar Ajuda Agora
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Link>

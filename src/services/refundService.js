@@ -94,10 +94,16 @@ export function sanitizeRefundReason(reasonText, fallbackText = 'Solicitação a
     return fallbackText;
   }
 
-  const trimmed = reasonText.trim();
-  if (!trimmed) return fallbackText;
+  // Remover blocos <script>...</script> e quaisquer tags HTML maliciosas (prevenção de XSS)
+  const stripped = reasonText
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
-  const lower = trimmed.toLowerCase();
+  if (!stripped) return fallbackText;
+
+  const lower = stripped.toLowerCase();
   for (const term of CLINICAL_PROHIBITED_TERMS) {
     if (lower.includes(term)) {
       console.warn(`[refundService] Termo clínico sensível interceptado e sanitizado: "${term}"`);
@@ -105,7 +111,7 @@ export function sanitizeRefundReason(reasonText, fallbackText = 'Solicitação a
     }
   }
 
-  return trimmed;
+  return stripped;
 }
 
 /**

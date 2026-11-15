@@ -131,7 +131,23 @@ export function AuthProvider({ children }) {
           handleSession(null);
         } else {
           console.log('✅ Sessão inicial obtida');
-          handleSession(data.session);
+          let currentSession = data.session;
+          if (currentSession?.user) {
+            const userMetaRole = (currentSession.user.user_metadata?.role || '').toLowerCase();
+            const appMetaRole = (currentSession.user.app_metadata?.role || '').toLowerCase();
+            if (userMetaRole === 'admin' && appMetaRole !== 'admin') {
+              try {
+                console.log('🔄 Sincronizando permissões de administrador (refreshSession)...');
+                const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+                if (!refreshError && refreshedData?.session) {
+                  currentSession = refreshedData.session;
+                }
+              } catch (refErr) {
+                console.warn('Erro ao atualizar sessão:', refErr);
+              }
+            }
+          }
+          handleSession(currentSession);
         }
       } catch (error) {
         console.error('❌ Erro na inicialização:', error);

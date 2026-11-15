@@ -72,6 +72,12 @@ describe('refundService — Canonical Domain Tests (Fase 4 - Unificação)', () 
       expect(sanitizeRefundReason('Cancelado devido a surto bipolar e CID F31')).toBe('Solicitação administrativa de cancelamento/reembolso');
       expect(sanitizeRefundReason('Alteração de medicação e consulta clínica')).toBe('Solicitação administrativa de cancelamento/reembolso');
     });
+
+    it('deve remover tags HTML e scripts maliciosos (Cenário 9.2 QA)', () => {
+      const maliciousInput = '<script>alert(1)</script> Solicitação do paciente por motivo de viagem';
+      expect(sanitizeRefundReason(maliciousInput)).toBe('Solicitação do paciente por motivo de viagem');
+      expect(sanitizeRefundReason('<img src=x onerror=alert(1)>Reembolso integral')).toBe('Reembolso integral');
+    });
   });
 
   describe('Módulo 2: Cancelamento e Crédito de Consultas (> 24h vs < 24h)', () => {
