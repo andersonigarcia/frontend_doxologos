@@ -46,7 +46,7 @@ const BookingStepper = ({
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Step Dots */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {steps.map((step) => {
                 const isCompleted = currentStep > step.id;
                 const isCurrent = currentStep === step.id;
@@ -57,30 +57,35 @@ const BookingStepper = ({
                     type="button"
                     onClick={() => step.id <= currentStep && onStepClick?.(step.id)}
                     disabled={step.id > currentStep}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${isCompleted
-                        ? 'bg-[#2d8659] w-2.5 h-2.5'
-                        : isCurrent
-                          ? 'bg-[#2d8659] w-3 h-3 ring-2 ring-[#2d8659]/30'
-                          : 'bg-gray-300'
-                      }`}
-                    aria-label={`Etapa ${step.id}: ${step.label}`}
-                  />
+                    className="min-w-[44px] min-h-[44px] p-2 flex items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
+                    aria-label={`Etapa ${step.id}: ${step.label}${isCompleted ? ' (concluída)' : isCurrent ? ' (etapa atual)' : ''}`}
+                    aria-current={isCurrent ? 'step' : undefined}
+                  >
+                    <span
+                      className={`block rounded-full transition-all duration-300 ${isCompleted
+                          ? 'bg-[#236b47] w-2.5 h-2.5'
+                          : isCurrent
+                            ? 'bg-[#236b47] w-3 h-3 ring-2 ring-[#236b47]/30'
+                            : 'bg-gray-300 w-2 h-2'
+                        }`}
+                    />
+                  </button>
                 );
               })}
             </div>
 
             {/* Current Step Label */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <span className="text-xs font-semibold text-[#2d8659] whitespace-nowrap">
+              <span className="text-xs font-semibold text-[#236b47] whitespace-nowrap">
                 Etapa {currentStep}/{steps.length}
               </span>
-              <span className="text-xs text-gray-600 truncate">
+              <span className="text-xs text-gray-700 truncate">
                 {currentStepLabel}
               </span>
             </div>
 
             {/* Progress Percentage */}
-            <div className="text-xs font-bold text-[#2d8659] whitespace-nowrap">
+            <div className="text-xs font-bold text-[#236b47] whitespace-nowrap">
               {Math.round(progressWidth)}%
             </div>
           </div>
@@ -100,7 +105,7 @@ const BookingStepper = ({
         <div className="relative">
           <div className="absolute top-5 left-0 w-full h-0.5 bg-gray-200 -z-10" />
           <div
-            className="absolute top-5 left-0 h-0.5 bg-[#2d8659] -z-10 transition-all duration-500 ease-out"
+            className="absolute top-5 left-0 h-0.5 bg-[#236b47] -z-10 transition-all duration-500 ease-out"
             style={{ width: `${progressWidth}%` }}
           />
 
@@ -117,13 +122,15 @@ const BookingStepper = ({
                     type="button"
                     onClick={() => isClickable && onStepClick?.(step.id)}
                     disabled={!isClickable}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 relative group ${isCompleted
-                        ? 'bg-[#2d8659] text-white shadow-lg hover:bg-[#236b47] hover:scale-110'
+                    aria-label={`Etapa ${step.id}: ${step.label}${isCompleted ? ' (concluída)' : isCurrent ? ' (etapa atual)' : ''}`}
+                    aria-current={isCurrent ? 'step' : undefined}
+                    className={`w-11 h-11 min-w-[44px] min-h-[44px] rounded-full flex items-center justify-center font-bold transition-all duration-300 relative group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] focus-visible:ring-offset-2 ${isCompleted
+                        ? 'bg-[#236b47] text-white shadow-lg hover:bg-[#1b5e20] hover:scale-110'
                         : isCurrent
-                          ? 'bg-[#2d8659] text-white shadow-lg ring-4 ring-[#2d8659]/30'
+                          ? 'bg-[#236b47] text-white shadow-lg ring-4 ring-[#236b47]/30'
                           : isEnabled
-                            ? 'bg-gray-300 text-gray-600 hover:bg-gray-400 cursor-pointer'
-                            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     title={isClickable ? `Ir para ${step.label}` : 'Complete as etapas anteriores'}
                   >
@@ -135,7 +142,7 @@ const BookingStepper = ({
                     )}
                   </button>
                   <p
-                    className={`mt-3 text-xs text-center md:text-sm transition-colors font-medium ${isCompleted || isCurrent ? 'text-[#2d8659]' : 'text-gray-500'
+                    className={`mt-3 text-xs text-center md:text-sm transition-colors font-medium ${isCompleted || isCurrent ? 'text-[#236b47]' : 'text-gray-700'
                       }`}
                   >
                     {step.label}

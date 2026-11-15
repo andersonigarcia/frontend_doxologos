@@ -115,140 +115,120 @@ export const PatientList = ({
             className={cn('bg-white rounded-xl border border-gray-200 shadow-sm p-6', className)}
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <Users className="w-6 h-6 text-[#2d8659]" />
-                    <h3 className="text-xl font-bold text-gray-900">
-                        Pacientes ({filteredPatients.length})
-                    </h3>
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4 font-sans">
+                <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-xs">
+                        <Users className="w-5 h-5 text-slate-200" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+                            Gestão de Pacientes
+                        </h3>
+                        <p className="text-xs text-slate-500 font-medium">Total de {filteredPatients.length} pacientes cadastrados</p>
+                    </div>
                 </div>
 
-                {/* Busca */}
-                <div className="relative w-64">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar paciente..."
-                        value={searchTerm}
+                {/* Filtros e Busca */}
+                <div className="flex flex-col md:flex-row items-center gap-3 w-full lg:w-auto">
+                    <div className="relative w-full md:w-64">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar nome ou e-mail..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all font-medium text-sm text-slate-900"
+                        />
+                    </div>
+                    
+                    <select
+                        value={`${sortField}-${sortOrder}`}
                         onChange={(e) => {
-                            setSearchTerm(e.target.value);
-                            setCurrentPage(1);
+                            const [field, order] = e.target.value.split('-');
+                            setSortField(field);
+                            setSortOrder(order);
                         }}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                    />
+                        className="w-full md:w-48 px-4 py-2 bg-white border border-slate-200 rounded-xl font-semibold text-sm text-slate-700 focus:ring-2 focus:ring-slate-900 cursor-pointer shadow-xs"
+                    >
+                        <option value="lastBookingDate-desc">Últimas Consultas</option>
+                        <option value="name-asc">Nome (A-Z)</option>
+                        <option value="name-desc">Nome (Z-A)</option>
+                        <option value="totalBookings-desc">Mais Consultas</option>
+                        <option value="totalRepasse-desc">Maior Ganho Gerado</option>
+                    </select>
                 </div>
             </div>
 
-            {/* Tabela */}
-            <div className="overflow-x-auto">
-                <table className="w-full">
-                    <thead>
-                        <tr className="border-b border-gray-200">
-                            <th
-                                className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50"
-                                onClick={() => toggleSort('name')}
+            {/* Lista de Cards */}
+            <div className="flex flex-col gap-4">
+                {paginatedPatients.map((patient, index) => (
+                    <motion.div
+                        key={patient.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 bg-white border border-slate-200/80 rounded-2xl shadow-xs hover:border-slate-300 transition-all gap-4"
+                    >
+                        {/* Info Principal */}
+                        <div className="flex items-center gap-4 flex-1 w-full lg:w-auto">
+                            <div className="w-12 h-12 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-xs">
+                                {patient.name ? patient.name.charAt(0).toUpperCase() : '?'}
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-slate-900 text-lg tracking-tight">{patient.name}</h4>
+                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-500 font-medium">
+                                    {patient.email && (
+                                        <span className="flex items-center gap-1">
+                                            <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                            {patient.email}
+                                        </span>
+                                    )}
+                                    {patient.phone && (
+                                        <span className="flex items-center gap-1">
+                                            <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                            {patient.phone}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Estatísticas Rápidas */}
+                        <div className="flex items-center justify-center gap-6 px-5 py-2.5 bg-slate-50/70 rounded-xl border border-slate-200/80 w-full lg:w-auto">
+                            <div className="text-center">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Sessões</p>
+                                <p className="font-bold text-slate-900 text-lg tabular-nums">{patient.validBookings}</p>
+                            </div>
+                            <div className="w-px h-8 bg-slate-200"></div>
+                            <div className="text-center">
+                                <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-0.5">Honorários Gerados</p>
+                                <p className="font-bold text-emerald-700 text-lg tabular-nums">
+                                    <span className="text-xs mr-0.5">R$</span>
+                                    {(patient.totalRepasse || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Ação */}
+                        <div className="shrink-0 w-full lg:w-auto mt-2 lg:mt-0">
+                            <Button
+                                variant="outline"
+                                onClick={() => onPatientClick && onPatientClick(patient)}
+                                className="w-full lg:w-auto bg-white border-slate-200 text-slate-800 hover:bg-slate-900 hover:text-white rounded-xl font-bold shadow-xs transition-colors h-10 px-4"
                             >
-                                Paciente <SortIcon field="name" />
-                            </th>
-                            <th
-                                className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50"
-                                onClick={() => toggleSort('totalBookings')}
-                            >
-                                Consultas <SortIcon field="totalBookings" />
-                            </th>
-                            <th
-                                className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50"
-                                onClick={() => toggleSort('totalSpent')}
-                            >
-                                Total Gasto <SortIcon field="totalSpent" />
-                            </th>
-                            <th
-                                className="text-left py-3 px-4 font-semibold text-gray-700 cursor-pointer hover:bg-gray-50"
-                                onClick={() => toggleSort('lastBookingDate')}
-                            >
-                                Última Consulta <SortIcon field="lastBookingDate" />
-                            </th>
-                            <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                                Ações
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {paginatedPatients.map((patient, index) => (
-                            <motion.tr
-                                key={patient.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
-                                <td className="py-4 px-4">
-                                    <div>
-                                        <p className="font-medium text-gray-900">{patient.name}</p>
-                                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
-                                            {patient.email && (
-                                                <span className="flex items-center gap-1">
-                                                    <Mail className="w-3 h-3" />
-                                                    {patient.email}
-                                                </span>
-                                            )}
-                                            {patient.phone && (
-                                                <span className="flex items-center gap-1">
-                                                    <Phone className="w-3 h-3" />
-                                                    {patient.phone}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-gray-900">{patient.totalBookings}</span>
-                                        <div className="text-xs text-gray-500">
-                                            <div>✓ {patient.completedBookings} completas</div>
-                                            {patient.pendingBookings > 0 && (
-                                                <div className="text-amber-600">⏳ {patient.pendingBookings} pendentes</div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center gap-1 text-emerald-600 font-semibold">
-                                        <DollarSign className="w-4 h-4" />
-                                        {patient.totalSpent.toLocaleString('pt-BR', {
-                                            minimumFractionDigits: 2,
-                                            maximumFractionDigits: 2
-                                        })}
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center gap-1 text-gray-700">
-                                        <Calendar className="w-4 h-4" />
-                                        {patient.lastBookingDate ?
-                                            new Date(patient.lastBookingDate).toLocaleDateString('pt-BR') :
-                                            '-'
-                                        }
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => onPatientClick && onPatientClick(patient)}
-                                        className="text-[#2d8659] border-[#2d8659] hover:bg-[#2d8659] hover:text-white"
-                                    >
-                                        Ver Detalhes
-                                    </Button>
-                                </td>
-                            </motion.tr>
-                        ))}
-                    </tbody>
-                </table>
+                                Ver Prontuário
+                            </Button>
+                        </div>
+                    </motion.div>
+                ))}
             </div>
 
             {/* Paginação */}
             {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-6 pt-4 border-t border-gray-200 gap-4">
                     <p className="text-sm text-gray-600">
                         Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, sortedPatients.length)} de {sortedPatients.length} pacientes
                     </p>

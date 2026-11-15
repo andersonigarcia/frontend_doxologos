@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { CalendarX, Clock, Calendar as CalendarIcon, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { CalendarX, Clock, Calendar as CalendarIcon, Save, Sparkles, AlertCircle, RefreshCw, Layers, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DayScheduleCard } from './DayScheduleCard';
 import { LoadingButton } from '@/components/LoadingOverlay';
 import { BlockedDatesModal } from './BlockedDatesModal';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 export const AvailabilityManager = ({
     userRole,
@@ -26,6 +27,10 @@ export const AvailabilityManager = ({
     professionalBlockedDates
 }) => {
     const [isBlockedDatesModalOpen, setIsBlockedDatesModalOpen] = useState(false);
+    const [isReplicateModalOpen, setIsReplicateModalOpen] = useState(false);
+    const [initialStateSnapshot, setInitialStateSnapshot] = useState(JSON.stringify(professionalAvailability));
+    const [isDirty, setIsDirty] = useState(false);
+    const isAwaitingFetchRef = useRef(true);
 
     const dayKeys = [
         { key: 'monday', label: 'Segunda-feira' },
@@ -37,6 +42,38 @@ export const AvailabilityManager = ({
         { key: 'sunday', label: 'Domingo' }
     ];
 
+    // Quando troca de profissional, mês ou ano: marca que os dados da API ainda estão sendo buscados
+    useEffect(() => {
+        isAwaitingFetchRef.current = true;
+        setIsDirty(false);
+    }, [selectedAvailProfessional, selectedMonth, selectedYear]);
+
+    // Sempre que professionalAvailability atualiza:
+    // - Se estávamos aguardando o carregamento da API (troca de seleção), atualiza o snapshot inicial do profissional e mantém o balão oculto.
+    // - Se NÃO estávamos aguardando (edição do usuário nos horários), compara com o snapshot para exibir/ocultar o balão.
+    useEffect(() => {
+        const currentString = JSON.stringify(professionalAvailability);
+        if (isAwaitingFetchRef.current) {
+            setInitialStateSnapshot(currentString);
+            setIsDirty(false);
+            isAwaitingFetchRef.current = false;
+        } else {
+            setIsDirty(currentString !== initialStateSnapshot);
+        }
+    }, [professionalAvailability, initialStateSnapshot]);
+
+    // Alerta antes de fechar a aba se houver alterações não salvas
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
+
     const handleAddSlot = (dayKey, time) => {
         setProfessionalAvailability(prev => ({
             ...prev,
@@ -47,7 +84,6 @@ export const AvailabilityManager = ({
     const handleAddMultipleSlots = (dayKey, times) => {
         setProfessionalAvailability(prev => {
             const currentSlots = prev[dayKey] || [];
-            // Merge current slots with new times, ensuring uniqueness
             const uniqueSlots = [...new Set([...currentSlots, ...times])].sort();
             return {
                 ...prev,
@@ -69,11 +105,8 @@ export const AvailabilityManager = ({
 
         setProfessionalAvailability(prev => {
             const next = { ...prev };
-            const isWeekend = sourceDayKey === 'saturday' || sourceDayKey === 'sunday';
-
             dayKeys.forEach(({ key }) => {
                 if (key === sourceDayKey) return;
-
                 next[key] = [...sourceSlots];
             });
             return next;
@@ -87,42 +120,83 @@ export const AvailabilityManager = ({
         }));
     };
 
-    return (
-        <div className="bg-white rounded-xl shadow-lg p-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <h2 className="text-2xl font-bold flex items-center">
-                    <Clock className="w-6 h-6 mr-2 text-[#2d8659]" />
-                    Gestão de Disponibilidade
-                </h2>
+    const handleResetChanges = () => {
+        try {
+            setProfessionalAvailability(JSON.parse(initialStateSnapshot));
+            setIsDirty(false);
+        } catch (e) {
+            console.error('Erro ao restaurar rascunho:', e);
+        }
+    };
 
-                <div className="flex gap-2 w-full md:w-auto">
-                    <Button
-                        variant="outline"
-                        onClick={() => setIsBlockedDatesModalOpen(true)}
-                        className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-                    >
-                        <CalendarX className="w-4 h-4 mr-2" />
-                        Bloqueios e Exceções
+    const onSaveClick = async (replicate = false) => {
+        if (handleSaveAvailability) {
+            await handleSaveAvailability({ replicateMonths: replicate });
+            setInitialStateSnapshot(JSON.stringify(professionalAvailability));
+            setIsDirty(false);
+        }
+    };
+
+    const monthNames = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    // Calcula quais os próximos 3 meses para a mensagem de confirmação
+    const m1 = selectedMonth;
+    const m2 = (selectedMonth % 12) + 1;
+    const m3 = ((selectedMonth + 1) % 12) + 1;
+
+    return (
+        <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6 relative">
+            {/* Header da Seção */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4 pb-4">
+                <div>
+                    <h2 className="text-xl font-bold flex items-center text-slate-900">
+                        <Clock className="w-6 h-6 mr-2 text-slate-800" />
+                        Disponibilidade de Agenda
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Configure seu padrão de horários para a semana e gerencie exceções.
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3 bg-gray-50 p-1.5 rounded-full border border-gray-100">
+                    <Button variant="ghost" size="icon" onClick={() => {
+                        if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
+                        else { setSelectedMonth(m => m - 1); }
+                    }} className="rounded-full h-8 w-8 hover:bg-white hover:shadow-sm">
+                        <ChevronLeft className="w-4 h-4 text-gray-600" />
                     </Button>
-                    <LoadingButton
-                        isLoading={isLoadingSave}
-                        loadingText="Salvando..."
-                        onClick={handleSaveAvailability}
-                        className="bg-[#2d8659] hover:bg-[#236b47] text-white h-10 px-6 shadow-sm flex items-center justify-center gap-2"
-                    >
-                        <Save className="w-4 h-4" />
-                        Salvar Disponibilidade
-                    </LoadingButton>
+                    <div className="w-36 text-center">
+                        <span className="text-sm font-bold text-gray-700 capitalize">{monthNames[selectedMonth]} {selectedYear}</span>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => {
+                        if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
+                        else { setSelectedMonth(m => m + 1); }
+                    }} className="rounded-full h-8 w-8 hover:bg-white hover:shadow-sm">
+                        <ChevronRight className="w-4 h-4 text-gray-600" />
+                    </Button>
                 </div>
             </div>
 
+            {/* Ações Globais (Abaixo do Header) */}
+            <div className="flex justify-end mb-6">
+                <Button
+                    variant="outline"
+                    onClick={() => setIsReplicateModalOpen(true)}
+                    className="rounded-xl border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium bg-indigo-50/50"
+                >
+                    <Layers className="w-4 h-4 mr-2 text-indigo-500" />
+                    Replicar para Trimestre
+                </Button>
+            </div>
+
+            {/* Filtro de Profissional (para Admins) */}
             {userRole === 'admin' && (
-                <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-                    <label className="block text-sm font-medium mb-1 text-gray-700">Profissional</label>
+                <div className="mb-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 text-gray-700">Selecione o Profissional</label>
                     <select
                         value={selectedAvailProfessional}
                         onChange={e => setSelectedAvailProfessional(e.target.value)}
-                        className="w-full input bg-white"
+                        className="w-full input bg-white rounded-xl font-semibold"
                     >
                         <option value="">Selecione um profissional</option>
                         {professionals.map(p => (
@@ -132,37 +206,7 @@ export const AvailabilityManager = ({
                 </div>
             )}
 
-            <div className="flex flex-col md:flex-row gap-4 mb-8">
-                <div className="flex-1">
-                    <label className="block text-sm font-medium mb-1 flex items-center gap-2">
-                        <CalendarIcon className="w-4 h-4 text-gray-500" /> Mês
-                    </label>
-                    <select
-                        value={selectedMonth}
-                        onChange={e => setSelectedMonth(Number(e.target.value))}
-                        className="w-full input"
-                    >
-                        {Array.from({ length: 12 }, (_, i) => (
-                            <option key={i + 1} value={i + 1}>
-                                {new Date(0, i).toLocaleString('pt-BR', { month: 'long' }).charAt(0).toUpperCase() + new Date(0, i).toLocaleString('pt-BR', { month: 'long' }).slice(1)}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="flex-1">
-                    <label className="block text-sm font-medium mb-1">Ano</label>
-                    <select
-                        value={selectedYear}
-                        onChange={e => setSelectedYear(Number(e.target.value))}
-                        className="w-full input"
-                    >
-                        {[2024, 2025, 2026].map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
+            {/* Grid dos Cards de Cada Dia da Semana */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
                 {dayKeys.map(({ key, label }) => (
                     <DayScheduleCard
@@ -179,46 +223,63 @@ export const AvailabilityManager = ({
                 ))}
             </div>
 
-            {professionalBlockedDates && professionalBlockedDates.length > 0 && (
-                <div className="mt-8 border-t pt-6">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center text-gray-800">
-                        <CalendarX className="w-5 h-5 mr-2 text-red-600" />
-                        Bloqueios Agendados
-                    </h3>
+            {/* Seção de Bloqueios de Férias e Exceções */}
+            <div className="mt-8 border-t pt-8">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div>
+                        <h3 className="text-lg font-bold flex items-center text-gray-800">
+                            <CalendarX className="w-5 h-5 mr-2 text-rose-600" />
+                            Férias e Exceções
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Adicione dias inteiros ou horários específicos em que você não fará atendimentos.
+                        </p>
+                    </div>
+                    
+                    <Button
+                        onClick={() => setIsBlockedDatesModalOpen(true)}
+                        className="bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 rounded-xl font-semibold shrink-0 shadow-sm"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Adicionar Bloqueio
+                    </Button>
+                </div>
+
+                {professionalBlockedDates && professionalBlockedDates.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                         {professionalBlockedDates.map((block) => (
-                            <div key={block.id} className="bg-red-50 border border-red-100 rounded-lg p-4 transition-all hover:border-red-200 hover:shadow-sm group">
+                            <div key={block.id} className="bg-rose-50 border border-rose-100 rounded-xl p-4 transition-all hover:border-rose-200 hover:shadow-sm group">
                                 <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <CalendarIcon className="w-4 h-4 text-red-500" />
-                                            <span className="font-semibold text-red-900">
+                                            <CalendarIcon className="w-4 h-4 text-rose-500" />
+                                            <span className="font-bold text-rose-900 text-sm">
                                                 {new Date(block.blocked_date).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                             </span>
                                         </div>
 
                                         {block.start_time && block.end_time ? (
-                                            <div className="flex items-center gap-2 text-sm text-red-700 mb-2">
+                                            <div className="flex items-center gap-2 text-xs text-rose-700 mb-2 font-medium">
                                                 <Clock className="w-3 h-3" />
                                                 <span>{block.start_time} - {block.end_time}</span>
                                             </div>
                                         ) : (
                                             <div className="mb-2">
-                                                <span className="text-xs font-medium bg-red-200 text-red-800 px-2 py-0.5 rounded-full">
-                                                    Dia Inteiro
+                                                <span className="text-xs font-semibold bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full">
+                                                    Dia Inteiro Bloqueado
                                                 </span>
                                             </div>
                                         )}
 
                                         {block.reason && (
-                                            <p className="text-sm text-red-600 bg-red-100/50 p-2 rounded italic">
-                                                {block.reason}
+                                            <p className="text-xs text-rose-700 bg-rose-100/50 p-2 rounded-lg italic">
+                                                "{block.reason}"
                                             </p>
                                         )}
                                     </div>
                                     <button
                                         onClick={() => handleDeleteBlockedDate(block.id)}
-                                        className="text-red-400 hover:text-red-700 p-1 rounded-md hover:bg-red-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                        className="text-rose-400 hover:text-rose-700 p-1 rounded-md hover:bg-rose-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
                                         title="Remover bloqueio"
                                     >
                                         <CalendarX className="w-4 h-4" />
@@ -227,9 +288,91 @@ export const AvailabilityManager = ({
                             </div>
                         ))}
                     </div>
+                ) : (
+                    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                        <div className="bg-rose-100 p-3 rounded-full mb-3">
+                            <CalendarX className="w-6 h-6 text-rose-500" />
+                        </div>
+                        <p className="text-gray-900 font-semibold mb-1">Nenhum bloqueio programado</p>
+                        <p className="text-gray-500 text-sm max-w-sm">Os dias configurados na sua grade normal de horários estarão totalmente disponíveis para agendamentos.</p>
+                    </div>
+                )}
+            </div>
+
+            {/* STICKY SAVE BAR (Barra Flutuante de Salvamento de Alterações) */}
+            {isDirty && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3.5 rounded-2xl shadow-2xl border border-slate-800 flex items-center justify-between gap-6 animate-in slide-in-from-bottom-5 duration-300 w-[90%] max-w-2xl">
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                        <div>
+                            <p className="text-sm font-bold">Você possui alterações não salvas na agenda!</p>
+                            <p className="text-xs text-slate-400">Clique em salvar para atualizar os horários visíveis para os pacientes.</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            type="button"
+                            onClick={handleResetChanges}
+                            className="px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors"
+                        >
+                            Descartar
+                        </button>
+
+                        <LoadingButton
+                            isLoading={isLoadingSave}
+                            loadingText="Salvando..."
+                            onClick={() => onSaveClick(false)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold px-4 py-2 shadow-md shadow-emerald-900/40"
+                        >
+                            Salvar Agora
+                        </LoadingButton>
+                    </div>
                 </div>
             )}
 
+            {/* Modal de Confirmação da Replicação para 3 Meses */}
+            <Dialog open={isReplicateModalOpen} onOpenChange={setIsReplicateModalOpen}>
+                <DialogContent className="max-w-md bg-white rounded-3xl p-6">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-900">
+                            <Layers className="w-6 h-6 text-indigo-600" /> Replicar Agenda para 3 Meses
+                        </DialogTitle>
+                        <DialogDescription className="text-sm text-gray-600 mt-2">
+                            Essa opção aplica automaticamente a sua grade de horários atual nos <strong>3 meses subsequentes</strong> de forma rápida:
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="my-4 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 text-xs text-indigo-900 space-y-2">
+                        <p className="font-bold">Meses que serão atualizados:</p>
+                        <ul className="list-disc list-inside space-y-1 font-semibold">
+                            <li>{monthNames[m1]} / {selectedYear} (Mês Atual)</li>
+                            <li>{monthNames[m2]} / {selectedYear}</li>
+                            <li>{monthNames[m3]} / {selectedYear}</li>
+                        </ul>
+                        <p className="text-[11px] text-indigo-700 italic mt-2">
+                          *Isso garante que os pacientes consigam agendar consultas nos próximos meses sem você precisar trocar o mês no menu.*
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setIsReplicateModalOpen(false)} className="rounded-xl">
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={async () => {
+                                setIsReplicateModalOpen(false);
+                                await onSaveClick(true);
+                            }}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold"
+                        >
+                            Confirmar & Replicar 🚀
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Bloqueios e Exceções */}
             <BlockedDatesModal
                 open={isBlockedDatesModalOpen}
                 onClose={() => setIsBlockedDatesModalOpen(false)}

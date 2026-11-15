@@ -1,8 +1,8 @@
 # 📚 Documentação - Doxologos Psicologia
 
 > **Sistema de Gestão de Clínica de Psicologia**  
-> **Versão**: 2.1  
-> **Última Atualização**: 30 de Dezembro de 2025
+> **Versão**: 3.2  
+> **Última Atualização**: Agosto de 2026
 
 ---
 
@@ -10,13 +10,15 @@
 
 Sistema completo para gestão de clínica de psicologia com:
 
-- ✅ Agendamento online
-- ✅ Pagamentos (PIX, Cartão, Boleto)
-- ✅ Integração Zoom
-- ✅ Sistema de emails
-- ✅ Área do paciente
-- ✅ Painel administrativo
-- ✅ Eventos e workshops
+- ✅ Agendamento online 24/7 com tolerância dinâmica de pendências
+- ✅ Pagamentos (PIX inline mobile-first, Cartão Direto sem redirect, Boleto, Créditos Financeiros)
+- ✅ Gestão de disponibilidade dos psicólogos com replicação trimestral (v3.1)
+- ✅ Otimização de conversão mobile e formulários nativos iOS/Android (v3.1)
+- ✅ Painel administrativo com Data Table de alta densidade e DRE/Ledger reconciliado (v3.2)
+- ✅ Integração Zoom OAuth Server-to-Server
+- ✅ Sistema de emails transacionais SMTP Hostinger
+- ✅ Área do paciente e painel administrativo do profissional
+- ✅ Eventos, workshops e blog integrado (Substack)
 
 ---
 
@@ -49,12 +51,16 @@ Sistema completo para gestão de clínica de psicologia com:
   - OAuth Server-to-Server
   - Salas automáticas por agendamento
 
-#### Core Features
+#### Core Features & Estratégia
+- 🧠 [**Critérios Psicométricos & Autoavaliações (GAD-7)**](02-FEATURES/ASSESSMENTS_CRITERIA.md) - Escala Likert, cortes clínicos, conformidade CFP/LGPD e arquitetura
+- 🚀 [**Diretriz Estratégica de Crescimento (+50%)**](02-FEATURES/GROWTH_STRATEGY_50PCT.md) - Alavancas de produto, MRR, quiz de triagem e retenção
 - 📅 [**Sistema de Agendamentos**](02-FEATURES/BOOKING.md) - Criar, reagendar, cancelar
+
 - 🎫 [**Sistema de Eventos**](02-FEATURES/EVENTS.md) - Workshops e eventos pagos
 - 🔐 [**Autenticação**](02-FEATURES/AUTH.md) - Login, registro, recuperação de senha
 - 📄 [**Sistema de Documentos**](02-FEATURES/DOCUMENTS.md) - Upload e gestão de documentos
 - 💼 [**Trabalhe Conosco**](02-FEATURES/CAREERS.md) - Sistema de candidaturas
+- 📰 [**Blog (Substack)**](02-FEATURES/BLOG.md) - Sincronização e exibição de artigos
 
 ### 🚀 03. Deploy
 
@@ -90,6 +96,7 @@ Sistema completo para gestão de clínica de psicologia com:
 - ♿ [**Acessibilidade**](06-DESIGN/ACCESSIBILITY.md) - WCAG 2.1, melhorias A11y
 - 🔍 [**SEO**](06-DESIGN/SEO.md) - Otimização para motores de busca
 - 📊 [**Analytics**](06-DESIGN/ANALYTICS.md) - Google Analytics 4
+- 🎯 [**UX de Conversão**](06-DESIGN/UX_CONVERSION.md) - Melhorias de interface e marketing
 
 ### 📦 07. Arquivo
 
@@ -143,6 +150,8 @@ Acesse: http://localhost:3000
 - Vite 4.5.14
 - React Router DOM
 - TailwindCSS
+- Framer Motion (animações)
+- Lucide React (ícones)
 - Mercado Pago SDK v2
 
 **Backend:**
@@ -160,13 +169,61 @@ Acesse: http://localhost:3000
 ```
 frontend_doxologos/
 ├── src/
-│   ├── components/       # Componentes React
+│   ├── components/
+│   │   ├── home/           # Componentes da página inicial
+│   │   │   ├── HomeHeader.jsx
+│   │   │   ├── HeroSection.jsx
+│   │   │   ├── BlogPreviewSection.jsx  # 🆕 v2.2
+│   │   │   ├── FaqSection.jsx
+│   │   │   ├── ContactSection.jsx
+│   │   │   ├── ProfessionalsCarousel.jsx
+│   │   │   ├── TestimonialsSection.jsx
+│   │   │   ├── StickyBottomCTA.jsx
+│   │   │   └── AnxietyGuideModal.jsx
+│   │   ├── booking/        # Componentes de agendamento
+│   │   ├── auth/           # Componentes de autenticação
+│   │   ├── ui/             # Design system (shadcn/ui)
+│   │   └── shared/         # Componentes reutilizáveis
 │   ├── pages/           # Páginas/rotas
-│   ├── lib/             # Services (Supabase, MP, Zoom, Email)
+│   │   ├── HomePage.jsx
+│   │   ├── BlogPage.jsx         # 🆕 v2.2
+│   │   ├── ArticlePage.jsx      # 🆕 v2.2
+│   │   ├── AgendamentoPage.jsx
+│   │   ├── CheckoutPage.jsx
+│   │   └── ... (demais páginas)
+│   ├── lib/             # Services e utiliários
 │   ├── hooks/           # Custom hooks
-│   └── styles/          # CSS/Tailwind
+│   └── contexts/        # React Contexts (Auth, etc)
 ├── supabase/
 │   └── functions/       # Edge Functions (Deno)
+│       ├── sync-substack-manual/   # 🆕 v2.2 - Sincroniza RSS Substack
+│       ├── mp-create-payment/
+│       ├── mp-process-card-payment/
+│       ├── mp-webhook/
+│       ├── mp-check-payment/
+│       ├── mp-reconcile-payment/
+│       ├── mp-create-preference/
+│       ├── send-email/
+│       ├── send-pending-payment-reminders/
+│       ├── create-zoom-meeting/
+│       ├── zoom-create-meeting/
+│       ├── zoom-delete-meeting/
+│       ├── zoom-update-meeting/
+│       ├── event-generate-payment/
+│       ├── event-send-reminders/
+│       ├── event-cleanup-expired/
+│       ├── event-get-meeting/
+│       ├── admin-create-user/
+│       ├── admin-delete-user/
+│       ├── admin-list-users/
+│       ├── admin-update-user/
+│       ├── financial-credit-manager/
+│       ├── manual-refund/
+│       ├── manual-refund-notify/
+│       ├── manual-refund-overview/
+│       ├── manual-refund-proof/
+│       ├── patient-cancel-booking/
+│       └── patient-notes-manager/
 ├── database/
 │   └── migrations/      # SQL migrations
 ├── docs/                # 📚 Documentação (VOCÊ ESTÁ AQUI)
@@ -196,6 +253,7 @@ frontend_doxologos/
 - ✅ Lembretes automáticos (24h antes)
 - ✅ Link do Zoom no email
 - ✅ Inscrição em eventos/workshops
+- ✅ Blog e artigos gratuitos (Substack integrado)
 
 ### Para Profissionais
 
@@ -213,6 +271,7 @@ frontend_doxologos/
 - ✅ Controle de preços
 - ✅ Logs e monitoramento
 - ✅ Analytics (Google Analytics 4)
+- ✅ Sincronização de artigos do Blog (Substack)
 
 ---
 
@@ -222,6 +281,8 @@ frontend_doxologos/
 - **Site**: https://novo.doxologos.com.br
 - **Admin**: https://novo.doxologos.com.br/admin
 - **Área do Paciente**: https://novo.doxologos.com.br/area-do-paciente
+- **Blog**: https://novo.doxologos.com.br/artigos
+- **Substack**: https://doxologosoficial.substack.com
 
 ### Dashboards
 - **Supabase**: https://supabase.com/dashboard/project/ppwjtvzrhvjinsutrjwk
@@ -269,6 +330,17 @@ Proprietary - Doxologos Psicologia © 2025
 ---
 
 ## 🎉 Changelog
+
+### v2.2 (Jul 2026)
+- ✅ Integração com Blog (Substack) via Edge Function
+- ✅ `BlogPreviewSection` e banner de Newsletter na HomePage
+- ✅ Melhorias de UX e marketing de conversão na HomePage
+- ✅ Simplificação do cabeçalho (menu focado em conversão)
+- ✅ FAQ com CTAs, deduplicação e suporte a JSX
+- ✅ Seção de Contato redesenhada (WhatsApp + alerta CVV)
+- ✅ Rodapé reorganizado por persona + link Instagram
+- ✅ Coesão de marca: logotipo padronizado em 10 páginas
+- ✅ Correção de roteamento de links âncora no rodapé
 
 ### v2.1 (30/12/2025)
 - ✅ Reorganização completa da documentação

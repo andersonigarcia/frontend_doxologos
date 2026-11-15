@@ -40,7 +40,16 @@ export function PaymentFormModal({
         status: 'pending'
     });
 
-    const { totalAmount, bookings, totalBookings, loading: calculatingAmount } = usePendingPaymentAmount(
+    const {
+        totalAmount,
+        grossAmount = 0,
+        aiDeductionsTotal = 0,
+        aiDeductionsCount = 0,
+        aiDeductions = [],
+        bookings,
+        totalBookings,
+        loading: calculatingAmount
+    } = usePendingPaymentAmount(
         formData.professional_id,
         formData.period_start,
         formData.period_end,
@@ -144,6 +153,14 @@ export function PaymentFormModal({
 
             const { data: { user } } = await supabase.auth.getUser();
 
+            const aiNotesTag = aiDeductionsTotal > 0
+                ? `\n\n[Extrato de Repasse: Honorários Brutos R$ ${grossAmount.toFixed(2)} | Dedução IA (${aiDeductionsCount} uso(s)): -R$ ${aiDeductionsTotal.toFixed(2)} | Repasse Líquido: R$ ${totalAmount.toFixed(2)}]`
+                : '';
+
+            const finalNotes = formData.notes
+                ? (formData.notes.includes('[Extrato de Repasse:') ? formData.notes : `${formData.notes}${aiNotesTag}`)
+                : (aiNotesTag ? aiNotesTag.trim() : null);
+
             const paymentData = {
                 professional_id: formData.professional_id,
                 period_start: formData.period_start,
@@ -153,7 +170,7 @@ export function PaymentFormModal({
                 payment_method: formData.payment_method || null,
                 payment_date: formData.payment_date || null,
                 payment_proof_url: formData.payment_proof_url || null,
-                notes: formData.notes || null,
+                notes: finalNotes,
                 status: formData.status,
                 created_by: user?.id,
                 paid_by: formData.status === 'paid' ? user?.id : null
@@ -220,6 +237,19 @@ export function PaymentFormModal({
                 }
             }
 
+            // Atualizar status no ledger de IA para 'deducted' quando incluído no fechamento
+            if (aiDeductions && aiDeductions.length > 0) {
+                const aiIds = aiDeductions.map(d => d.id);
+                try {
+                    await supabase
+                        .from('ai_usage_ledger')
+                        .update({ billing_status: 'deducted' })
+                        .in('id', aiIds);
+                } catch (aiLedgerErr) {
+                    console.warn('[PaymentFormModal] Falha ao atualizar status de deduções no ledger de IA:', aiLedgerErr);
+                }
+            }
+
             toast({
                 title: payment ? 'Pagamento atualizado' : 'Pagamento criado',
                 description: `Pagamento ${payment ? 'atualizado' : 'criado'} com sucesso`
@@ -251,7 +281,7 @@ export function PaymentFormModal({
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <DollarSign className="w-5 h-5 text-[#2d8659]" />
+                        <DollarSign className="w-5 h-5 text-slate-800" />
                         {payment ? 'Editar Pagamento' : 'Novo Pagamento'}
                     </DialogTitle>
                 </DialogHeader>
@@ -265,7 +295,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.professional_id}
                             onChange={(e) => setFormData(prev => ({ ...prev, professional_id: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                             required
                             disabled={!!payment}
                         >
@@ -288,7 +318,7 @@ export function PaymentFormModal({
                                 type="date"
                                 value={formData.period_start}
                                 onChange={(e) => setFormData(prev => ({ ...prev, period_start: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                                 required
                                 disabled={!!payment}
                             />
@@ -301,26 +331,62 @@ export function PaymentFormModal({
                                 type="date"
                                 value={formData.period_end}
                                 onChange={(e) => setFormData(prev => ({ ...prev, period_end: e.target.value }))}
-                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                                 required
                                 disabled={!!payment}
                             />
                         </div>
                     </div>
 
-                    {/* Valor Calculado */}
+                    {/* Discriminativo Financeiro do Repasse & IA */}
                     {formData.professional_id && formData.period_start && formData.period_end && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-center justify-between">
+                        <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
                                 <div>
-                                    <p className="text-sm font-medium text-blue-900">Valor Calculado</p>
-                                    <p className="text-xs text-blue-600 mt-1">
-                                        {totalBookings} consulta(s) no período
+                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Demonstrativo do Repasse</p>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                        {totalBookings} consulta(s) elegíveis no período
                                     </p>
                                 </div>
-                                <p className="text-2xl font-bold text-blue-900">
+                                <span className="text-[11px] font-semibold bg-white border border-slate-200 px-2.5 py-0.5 rounded-full text-slate-700">
+                                    Regime de Caixa
+                                </span>
+                            </div>
+
+                            <div className="space-y-1.5 text-xs">
+                                <div className="flex justify-between text-slate-700">
+                                    <span>(+) Honorários Brutos das Consultas:</span>
+                                    <span className="font-semibold tabular-nums">
+                                        {calculatingAmount ? '...' : formatCurrency(grossAmount)}
+                                    </span>
+                                </div>
+
+                                {aiDeductionsCount > 0 ? (
+                                    <div className="flex justify-between items-center text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200/80">
+                                        <div>
+                                            <span className="font-medium block">(-) Assistente de Prontuários IA ({aiDeductionsCount} uso(s)):</span>
+                                            <span className="text-[10px] text-amber-700 font-normal">Add-on retido integralmente pela plataforma</span>
+                                        </div>
+                                        <span className="font-bold text-amber-900 tabular-nums">
+                                            -{formatCurrency(aiDeductionsTotal)}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div className="flex justify-between text-slate-400 text-[11px]">
+                                        <span>(-) Deduções de IA:</span>
+                                        <span>Nenhum uso pago no período</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-900">(=) Repasse Líquido ao Profissional:</p>
+                                    <p className="text-[10px] text-slate-500">Valor exato a ser transferido</p>
+                                </div>
+                                <p className="text-xl sm:text-2xl font-extrabold text-emerald-700 tabular-nums">
                                     {calculatingAmount ? (
-                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
                                     ) : (
                                         formatCurrency(totalAmount)
                                     )}
@@ -337,7 +403,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.payment_method}
                             onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                         >
                             <option value="">Selecione</option>
                             <option value="pix">PIX</option>
@@ -356,7 +422,7 @@ export function PaymentFormModal({
                             type="date"
                             value={formData.payment_date}
                             onChange={(e) => setFormData(prev => ({ ...prev, payment_date: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                         />
                     </div>
 
@@ -368,7 +434,7 @@ export function PaymentFormModal({
                         {!formData.payment_proof_url ? (
                             <div className="flex items-center gap-4">
                                 <label className="flex-1 cursor-pointer">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-[#2d8659] transition-colors">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-2xl p-4 hover:border-slate-900 transition-colors">
                                         <div className="flex items-center justify-center gap-2 text-gray-600">
                                             <Upload className="w-5 h-5" />
                                             <span className="text-sm">
@@ -386,14 +452,14 @@ export function PaymentFormModal({
                                 </label>
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 bg-gray-50 border rounded-lg p-2">
+                            <div className="flex items-center gap-2 bg-gray-50 border rounded-2xl p-2">
                                 <div className="flex-1 overflow-hidden">
                                     {formData.payment_proof_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                                         <div className="relative group">
                                             <img
                                                 src={formData.payment_proof_url}
                                                 alt="Comprovante"
-                                                className="h-20 w-auto object-contain rounded border cursor-pointer hover:opacity-90"
+                                                className="h-20 w-auto object-contain rounded border cursor-pointer hover:opacity-90" loading="lazy"
                                                 onClick={() => window.open(formData.payment_proof_url, '_blank')}
                                             />
                                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
@@ -434,7 +500,7 @@ export function PaymentFormModal({
                             value={formData.notes}
                             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                             rows={3}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                             placeholder="Adicione observações sobre este pagamento..."
                         />
                     </div>
@@ -447,7 +513,7 @@ export function PaymentFormModal({
                         <select
                             value={formData.status}
                             onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-slate-900/10 focus:border-slate-900"
                         >
                             <option value="pending">Pendente</option>
                             <option value="paid">Pago</option>
@@ -466,7 +532,7 @@ export function PaymentFormModal({
                         </Button>
                         <Button
                             type="submit"
-                            className="bg-[#2d8659] hover:bg-[#236b47]"
+                            className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold"
                             disabled={loading || calculatingAmount}
                         >
                             {loading ? (

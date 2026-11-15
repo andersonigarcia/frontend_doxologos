@@ -40,7 +40,8 @@ const AdminUsuariosPage = () => {
   const [editFormData, setEditFormData] = useState({
     email: '',
     full_name: '',
-    role: 'patient'
+    role: 'patient',
+    whatsapp: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -97,7 +98,7 @@ const AdminUsuariosPage = () => {
 
       // 3. Combinar dados
       const usersWithDetails = authUsers.map(authUser => {
-        const professionalData = profsData?.find(p => p.id === authUser.id);
+        const professionalData = profsData?.find(p => p.user_id === authUser.id || p.id === authUser.id);
         return {
           id: authUser.id,
           email: authUser.email,
@@ -146,11 +147,17 @@ const AdminUsuariosPage = () => {
   }, [users, searchTerm, filterRole]);
 
   const handleEditClick = (userData) => {
+    if (userData.role === 'professional') {
+      window.location.href = `/admin/professionals/${userData.id}`;
+      return;
+    }
+
     setSelectedUser(userData);
     setEditFormData({
       email: userData.email,
       full_name: userData.full_name,
-      role: userData.role
+      role: userData.role,
+      whatsapp: ''
     });
     setEditDialogOpen(true);
   };
@@ -196,7 +203,7 @@ const AdminUsuariosPage = () => {
 
       // 2. Se for profissional, atualizar tabela professionals
       if (editFormData.role === 'professional') {
-        const professionalExists = professionals.find(p => p.id === selectedUser.id);
+        const professionalExists = professionals.find(p => p.user_id === selectedUser.id || p.id === selectedUser.id);
         
         if (professionalExists) {
           // Atualizar
@@ -204,19 +211,21 @@ const AdminUsuariosPage = () => {
             .from('professionals')
             .update({
               name: editFormData.full_name,
-              email: editFormData.email
+              whatsapp: editFormData.whatsapp || null,
+              phone: editFormData.whatsapp || null
             })
-            .eq('id', selectedUser.id);
+            .eq('id', professionalExists.id);
           
           if (profError) throw profError;
         } else {
-          // Inserir novo
+          // Inserir novo profissional associado ao usuário
           const { error: profError } = await supabase
             .from('professionals')
             .insert([{
-              id: selectedUser.id,
+              user_id: selectedUser.id,
               name: editFormData.full_name,
-              email: editFormData.email,
+              whatsapp: editFormData.whatsapp || null,
+              phone: editFormData.whatsapp || null,
               specialty: 'Psicologia Clínica'
             }]);
           
@@ -229,7 +238,7 @@ const AdminUsuariosPage = () => {
         const { error: deleteError } = await supabase
           .from('professionals')
           .delete()
-          .eq('id', selectedUser.id);
+          .or(`user_id.eq.${selectedUser.id},id.eq.${selectedUser.id}`);
         
         if (deleteError) console.warn('Aviso ao remover profissional:', deleteError);
       }
@@ -595,6 +604,21 @@ const AdminUsuariosPage = () => {
                 <option value="admin">Administrador</option>
               </select>
             </div>
+
+            {editFormData.role === 'professional' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  WhatsApp do Profissional (com DDD)
+                </label>
+                <input
+                  type="text"
+                  placeholder="5531999999999"
+                  value={editFormData.whatsapp}
+                  onChange={(e) => setEditFormData({ ...editFormData, whatsapp: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+            )}
 
             <DialogFooter>
               <Button

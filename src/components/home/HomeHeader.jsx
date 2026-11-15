@@ -1,58 +1,152 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Calendar, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import UserBadge from '@/components/UserBadge';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
+import { getAllAssessments } from '@/data/assessments';
+import analytics from '@/lib/analytics';
+import { ENEM_CAMPAIGN } from '@/config/enemCampaign';
 
 const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMenuOpen, onToggleMenu }) => {
+  const [bannerDismissed, setBannerDismissed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('doxologos_enem_banner_dismissed') === 'true';
+  });
+
+  const handleDismissBanner = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBannerDismissed(true);
+    try {
+      localStorage.setItem('doxologos_enem_banner_dismissed', 'true');
+    } catch (err) {}
+  };
+  const assessmentsCount = getAllAssessments().length;
   const navigationItems = [
-    { href: '#inicio', label: 'Início' },
-    ...(activeEventsCount > 0 ? [{ href: '#eventos', label: 'Eventos' }] : []),
-    { href: '#profissionais', label: 'Profissionais' },
-    { href: '#depoimentos', label: 'Depoimentos' },
-    { href: '#contato', label: 'Contato' },
+    { href: '/#inicio', label: 'Início' },
+    ...(activeEventsCount > 0 ? [{ href: '/#eventos', label: 'Eventos' }] : []),
+    { href: '/#profissionais', label: 'Profissionais' },
+    { href: '/#depoimentos', label: 'Depoimentos' },
+    { href: '/#contato', label: 'Contato' },
   ];
 
+  const ferramentasNavItem = { to: '/ferramentas', label: 'Autoavaliações' };
+  const blogNavItem = { to: '/artigos', label: 'Blog' };
+
+
   return (
-    <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
-      <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
+    <header className="fixed top-0 w-full bg-[#f8f6f0]/95 backdrop-blur-md border-b border-[#e4ded5] shadow-xs z-50">
+      {/* Top Announcement Bar - Especial ENEM */}
+      {ENEM_CAMPAIGN.active && !bannerDismissed && (
+        <div className="bg-[#1b3c37] text-white text-xs sm:text-sm py-2 px-3 border-b border-[#2d8659]/30">
+          <div className="container mx-auto flex items-center justify-between gap-2">
+            <Link
+              to={ENEM_CAMPAIGN.route}
+              className="flex-1 flex items-center justify-center gap-2 hover:opacity-95 transition-opacity text-center overflow-hidden"
+              onClick={() => {
+                try {
+                  analytics.trackEvent('cta_click', {
+                    event_category: 'Campaign',
+                    event_label: 'enem_top_banner',
+                    page_section: 'header_banner'
+                  });
+                } catch (e) {}
+              }}
+            >
+              <span className="bg-[#2d8659] text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider hidden sm:inline-block">
+                Especial ENEM
+              </span>
+              <span className="font-medium text-[#f0ebe1] text-xs sm:text-sm truncate">
+                📘 Guia para Famílias: Como apoiar seu filho sem aumentar a pressão
+              </span>
+              <span className="text-[#a9d6c3] font-bold text-xs shrink-0 flex items-center gap-1">
+                Acessar Guia →
+              </span>
+            </Link>
+            <button
+              onClick={handleDismissBanner}
+              aria-label="Fechar aviso do ENEM"
+              className="text-[#a9d6c3] hover:text-white p-1 rounded-sm transition-colors shrink-0"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+      <nav className="container mx-auto px-4 py-3.5" role="navigation" aria-label="Navegação principal">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
-            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
-            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+            <DoxologosLogo className="h-9 md:h-10 w-auto" />
           </Link>
 
           <div className="hidden md:flex items-center space-x-8">
-            {navigationItems.map((item) => (
-              <a key={item.href} href={item.href} className="text-gray-700 hover:text-[#2d8659] transition-colors">
-                {item.label}
-              </a>
+            {navigationItems
+              .filter((item) => !['Início', 'Depoimentos', 'Contato'].includes(item.label))
+              .map((item) => (
+                <a key={item.href} href={item.href} className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm">
+                  {item.label}
+                </a>
             ))}
+            <Link
+              to={ferramentasNavItem.to}
+              className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm inline-flex items-center gap-1.5"
+            >
+              <span>{ferramentasNavItem.label}</span>
+              <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-1.5 py-0.5 rounded-full font-bold">{assessmentsCount} Testes</span>
+            </Link>
+
+            <Link
+              to={blogNavItem.to}
+              className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm"
+            >
+              {blogNavItem.label}
+            </Link>
+
+            {ENEM_CAMPAIGN.active && (
+              <Link
+                to={ENEM_CAMPAIGN.route}
+                className="text-[#1b3c37] hover:text-[#2d8659] transition-colors font-semibold text-sm inline-flex items-center gap-1.5"
+              >
+                <span>Guia ENEM</span>
+                <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-1.5 py-0.5 rounded-full font-bold">Novo</span>
+              </Link>
+            )}
+
             {!user && (
-              <>
-                <Link to="/area-do-paciente" className="text-gray-700 hover:text-[#2d8659] transition-colors">
-                  Área do Paciente
-                </Link>
-                <Link to="/admin" className="text-gray-600 hover:text-[#2d8659] transition-colors text-sm">
-                  Sou Profissional
-                </Link>
-              </>
+              <Link to="/area-do-paciente" className="text-[#262624] hover:text-[#1b3c37] transition-colors font-medium text-sm">
+                Área do Paciente
+              </Link>
             )}
             {user ? (
               <>
-                <div className="h-6 w-px bg-gray-300" />
+                <div className="h-6 w-px bg-[#e4ded5]" />
                 <UserBadge user={user} userRole={userRole} onLogout={onLogout} layout="row" showLogoutButton />
               </>
             ) : (
-              <Link to="/agendamento">
-                <Button className="bg-[#2d8659] hover:bg-[#236b47]">Encontre seu psicólogo</Button>
+              <Link
+                to="/agendamento"
+                onClick={() => {
+                  try {
+                    analytics.trackEvent('cta_click', {
+                      event_category: 'Conversion',
+                      event_label: 'agendar_consulta',
+                      page_section: 'header_desktop'
+                    });
+                  } catch (e) {}
+                }}
+              >
+                <Button className="bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] flex items-center gap-2 shadow-sm font-medium">
+                  <Calendar className="w-4 h-4" />
+                  Agendar Consulta
+                </Button>
               </Link>
             )}
           </div>
 
           <button
-            className="md:hidden"
+            className="md:hidden p-2 rounded-lg text-[#1b3c37] hover:bg-[#e4ded5]/50"
             onClick={onToggleMenu}
             aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
             aria-expanded={mobileMenuOpen}
@@ -66,28 +160,43 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="md:hidden mt-4 pb-4 space-y-4"
+            className="md:hidden mt-4 pb-4 space-y-4 border-t border-[#e4ded5] pt-4"
             id="mobile-menu"
             role="menu"
             aria-labelledby="mobile-menu-button"
           >
             {navigationItems.map((item) => (
-              <a key={item.href} href={item.href} className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
+              <a key={item.href} href={item.href} className="block text-[#262624] hover:text-[#1b3c37] font-medium" role="menuitem">
                 {item.label}
               </a>
             ))}
+            <Link to={ferramentasNavItem.to} className="block text-[#262624] hover:text-[#1b3c37] font-medium flex items-center justify-between" role="menuitem">
+              <span>{ferramentasNavItem.label}</span>
+              <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-2 py-0.5 rounded-full font-bold">{assessmentsCount} Testes Gratuitos</span>
+            </Link>
+
+            <Link to={blogNavItem.to} className="block text-[#262624] hover:text-[#1b3c37] font-medium" role="menuitem">
+              {blogNavItem.label}
+            </Link>
+
+            {ENEM_CAMPAIGN.active && (
+              <Link
+                to={ENEM_CAMPAIGN.route}
+                className="block text-[#1b3c37] hover:text-[#2d8659] font-semibold flex items-center justify-between"
+                role="menuitem"
+              >
+                <span>Guia ENEM (Famílias)</span>
+                <span className="text-[10px] bg-emerald-100 text-[#2d8659] px-2 py-0.5 rounded-full font-bold">Novo</span>
+              </Link>
+            )}
+
             {!user && (
-              <>
-                <Link to="/area-do-paciente" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
-                  Área do Paciente
-                </Link>
-                <Link to="/admin" className="block text-gray-700 hover:text-[#2d8659]" role="menuitem">
-                  Sou Profissional
-                </Link>
-              </>
+              <Link to="/area-do-paciente" className="block text-[#262624] hover:text-[#1b3c37] font-medium" role="menuitem">
+                Área do Paciente
+              </Link>
             )}
             {user ? (
-              <div className="border-t border-gray-200 pt-4">
+              <div className="border-t border-[#e4ded5] pt-4">
                 <UserBadge
                   user={user}
                   userRole={userRole}
@@ -98,8 +207,23 @@ const HomeHeader = ({ activeEventsCount = 0, user, userRole, onLogout, mobileMen
                 />
               </div>
             ) : (
-              <Link to="/agendamento">
-                <Button className="w-full bg-[#2d8659] hover:bg-[#236b47]">Agendar Consulta</Button>
+              <Link
+                to="/agendamento"
+                className="block pt-2"
+                onClick={() => {
+                  try {
+                    analytics.trackEvent('cta_click', {
+                      event_category: 'Conversion',
+                      event_label: 'agendar_consulta',
+                      page_section: 'header_mobile'
+                    });
+                  } catch (e) {}
+                }}
+              >
+                <Button className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] flex items-center justify-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Agendar Consulta
+                </Button>
               </Link>
             )}
           </motion.div>

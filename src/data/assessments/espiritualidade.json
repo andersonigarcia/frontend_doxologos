@@ -1,0 +1,186 @@
+{
+  "id": "espiritualidade",
+  "slug": "teste-culpa-perfeccionismo-espiritual",
+  "aliases": [
+    "espiritualidade",
+    "culpa-perfeccionismo",
+    "teste-espiritualidade",
+    "saude-espiritual",
+    "teste-culpa-espiritual",
+    "escrupulosidade"
+  ],
+  "title": "Inventário de Culpa, Perfeccionismo e Saúde Espiritual",
+  "subtitle": "Avalie se a sua vivência de fé é fonte de paz e descanso ou de autocobrança, ansiedade e culpa",
+  "category": "Fé & Saúde Emocional",
+  "icon": "Sparkles",
+  "badge": "Exclusivo Doxologos",
+  "estimatedTime": "3 a 4 min",
+  "scientificBasis": "Inspirado na literatura de Escrupulosidade (PIOS), Perfeccionismo Multidimensional (FMPS) e Psicologia da Religião",
+  "disclaimer": "Esta autoavaliação tem caráter informativo e de reflexão integrativa. Ela não substitui uma avaliação psicológica ou pastoral.",
+  "timeframePrompt": "Considerando sua vida recente, com que frequência você se identifica com cada uma das seguintes afirmações?",
+  "maxScore": 36,
+  "options": [
+    { "label": "Raramente ou Nunca", "value": 0, "helper": "Quase nunca sinto isso" },
+    { "label": "Às vezes", "value": 1, "helper": "Ocorre esporadicamente" },
+    { "label": "Frequentemente", "value": 2, "helper": "Parte constante da rotina" },
+    { "label": "Quase sempre", "value": 3, "helper": "Intenso e diário" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Culpa Tóxica & Medo Irracional",
+      "text": "Sinto-me frequentemente culpado(a) ou com receio constante de estar 'desagradando a Deus', mesmo em situações corriqueiras da rotina."
+    },
+    {
+      "id": 2,
+      "dimension": "Dificuldade de Autoperdão",
+      "text": "Tenho grande dificuldade para perdoar a mim mesmo(a) por falhas passadas, ruminando os mesmos erros repetidamente."
+    },
+    {
+      "id": 3,
+      "dimension": "Perfeccionismo Religioso",
+      "text": "Cobro de mim mesmo(a) uma perfeição espiritual inatingível, sentindo que minhas orações, devoção ou atitudes nunca são 'suficientes'."
+    },
+    {
+      "id": 4,
+      "dimension": "Medo de Punição",
+      "text": "Quando algo dá errado na minha vida ou cometo um pequeno deslize, meu primeiro pensamento automático é de que estou sendo punido(a) por Deus."
+    },
+    {
+      "id": 5,
+      "dimension": "Culpa por Descansar",
+      "text": "Sinto desconforto ou culpa ao tirar momentos de lazer e descanso, com a sensação constante de que 'deveria estar produzindo ou orando mais'."
+    },
+    {
+      "id": 6,
+      "dimension": "Comparação & Inferioridade Espiritual",
+      "text": "Costumo comparar minha fé e maturidade com a de outras pessoas, sentindo-me quase sempre inferior ou espiritualmente inadequado(a)."
+    },
+    {
+      "id": 7,
+      "dimension": "Imagem Distorcida de Deus",
+      "text": "Percebo Deus emocionalmente mais como um juiz severo e exigente do que como um Pai acolhedor, gracioso e cheio de amor."
+    },
+    {
+      "id": 8,
+      "dimension": "Estigma da Fragilidade Emocional",
+      "text": "Acho que sentir tristeza, cansaço ou ansiedade é sinal de 'falta de fé' ou fraqueza espiritual, tentando reprimir minhas emoções."
+    },
+    {
+      "id": 9,
+      "dimension": "Ansiedade Ritualística",
+      "text": "Sinto necessidade de repetir orações ou rituais mentais por medo de não ter orado com 'pureza suficiente' ou sinceridade plena."
+    },
+    {
+      "id": 10,
+      "dimension": "Vergonha & Retraimento",
+      "text": "O sentimento de indignidade e vergonha às vezes me faz querer me afastar de Deus e das pessoas em vez de buscar acolhimento."
+    },
+    {
+      "id": 11,
+      "dimension": "Negação dos Limites Humanos",
+      "text": "Tenho dificuldade de aceitar meus limites biológicos, cansaço e vulnerabilidades como parte natural da criação humana."
+    },
+    {
+      "id": 12,
+      "dimension": "Mérito vs. Graça",
+      "text": "Sinto, lá no fundo, que preciso 'conquistar' ou merecer o amor e a aceitação divina por meio de um esforço exaustivo e sem trégua."
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Paz Interior e nos Relacionamentos",
+    "prompt": "Em que grau esse padrão de autocobrança ou culpa tem roubado sua alegria de viver, sua paz interior ou impactado sua convivência?",
+    "options": [
+      { "label": "Nenhum impacto (sinto paz e leveza constante)", "value": 0 },
+      { "label": "Impacto leve (momentos ocasionais de aperto no peito)", "value": 1 },
+      { "label": "Impacto moderado (desgaste emocional frequente e sensação de fardo)", "value": 2 },
+      { "label": "Impacto severo (angústia constante, paralisia e perda da alegria de viver)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 9,
+      "severity": "minimal",
+      "label": "Fé Saudável, Graça e Paz Interior",
+      "tag": "Espiritualidade Saudável",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua vivência espiritual está fundamentada na graça, no amor e na autocompaixão, sem padrões disfuncionais de culpa crônica ou perfeccionismo moral.",
+      "clinicalInsight": "Você consegue acolher sua humanidade e reconhecer seus limites sem se punir emocionalmente. Sua fé atua como um recurso de resiliência e amparo protetor para a saúde mental.",
+      "recommendations": [
+        "Continue nutrindo sua espiritualidade através de práticas de gratidão, comunhão e descanso regular.",
+        "Seja um canal de acolhimento para outras pessoas que enfrentam sofrimento sob o peso de culpas tóxicas.",
+        "Mantenha rotinas de autocuidado integrado (corpo, mente e espírito)."
+      ],
+      "spiritualBridge": "'Onde está o Espírito do Senhor, aí há liberdade.' (2 Coríntios 3:17). A verdadeira espiritualidade liberta do fardo do medo e floresce no amor e na paz.",
+      "ctaText": "Conhecer a Abordagem Doxologos",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 10,
+      "max": 18,
+      "severity": "mild",
+      "label": "Autocobrança & Culpa Esporádica",
+      "tag": "Atenção & Alinhamento",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta alguns traços de perfeccionismo ou culpa que, em momentos de sobrecarga ou frustração, tendem a gerar peso emocional desnecessário.",
+      "clinicalInsight": "A linha entre o desejo legítimo de fazer o bem e a autocobrança excessiva é sutil. Quando erramos, o cérebro pode ativar sentimentos de vergonha em vez de aprendizado.",
+      "recommendations": [
+        "Pratique o autoperdão: aceite que cometer falhas não anula seu valor nem o amor incondicional de Deus por você.",
+        "Identifique momentos em que o 'eu deveria' está substituindo a leveza e a alegria das pequenas coisas.",
+        "Converse com um psicólogo cristão para resgatar o descanso da graça no seu cotidiano."
+      ],
+      "spiritualBridge": "'Porque Deus amou o mundo de tal maneira...' A graça não é um prêmio pelo nosso desempenho perfeito, mas um presente acolhedor que sustenta nossas fraquezas.",
+      "ctaText": "Agendar Sessão com Psicólogo",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 19,
+      "max": 27,
+      "severity": "moderate",
+      "label": "Perfeccionismo Religioso & Sobrecarga Moral",
+      "tag": "Sobrecarga Emocional Significativa",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação indica que a fé tem sido vivenciada com alto nível de tensão, medo de rejeição, ruminação de erros e sobrecarga psíquica.",
+      "clinicalInsight": "O perfeccionismo moral muitas vezes funciona como uma armadura de defesa para não se sentir vulnerável ou rejeitado(a). Isso gera esgotamento mental e impede a vivência genuína da paz e da esperança.",
+      "recommendations": [
+        "Inicie acompanhamento psicoterapêutico para trabalhar a desconstrução de crenças de desvalor, medo de punição e vergonha tóxica.",
+        "Permita-se descansar sem justificar o descanso como produtividade.",
+        "Busque um ambiente de acolhimento seguro onde você possa expressar suas dúvidas e vulnerabilidades sem medo de julgamentos."
+      ],
+      "spiritualBridge": "'No amor não há medo; pelo contrário, o perfeito amor expulsa o medo.' (1 João 4:18). Deus não quer o seu esgotamento, mas a sua restauração.",
+      "ctaText": "Agendar Psicoterapia Integrativa",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 28,
+      "max": 36,
+      "severity": "severe",
+      "label": "Escrupulosidade & Angústia Espiritual Severa",
+      "tag": "Sofrimento Psíquico / Alerta Vermelho",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado reflete um estado profundo de angústia, culpa paralisante e ansiedade moral obsessiva (escrupulosidade), gerando grande sofrimento diário.",
+      "clinicalInsight": "A escrupulosidade clínica é uma manifestação de ansiedade e hipervigilância que sequestra a experiência religiosa, transformando-a em um tribunal interior constante. O tratamento psicológico com profissionais capacitados que respeitam a fé traz alívio transformador.",
+      "recommendations": [
+        "Agende com prioridade uma consulta com psicólogo clínico especializado em saúde emocional e fé.",
+        "Lembre-se: sentimentos intensos de condenação são sintomas de sobrecarga emocional e não a realidade do amor de Deus por você.",
+        "Compartilhe sua dor com mentores ou amigos acolhedores e evite isolar-se com pensamentos condenatórios."
+      ],
+      "spiritualBridge": "'Agora, pois, nenhuma condenação há para os que estão em Cristo Jesus.' (Romanos 8:1). Há um caminho seguro de libertação desse peso e renovação da sua mente.",
+      "ctaText": "Agendar Acolhimento Especializado",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

@@ -16,9 +16,10 @@ const bookingFixtures = {
   ],
   services: [{ id: 'svc-1', name: 'Terapia Individual' }],
   availability: [
-    { professional_id: 'prof-1', day_of_week: 'monday', available_times: ['09:00', '10:00'] },
-    { professional_id: 'prof-2', day_of_week: 'tuesday', available_times: ['11:00'] }
+    { professional_id: 'prof-1', day_of_week: 'monday', available_times: ['09:00', '10:00'], month: new Date().getMonth() + 1, year: new Date().getFullYear() },
+    { professional_id: 'prof-2', day_of_week: 'tuesday', available_times: ['11:00'], month: new Date().getMonth() + 1, year: new Date().getFullYear() }
   ],
+
   blockedDates: [{ id: 'blk-1', date: '2025-12-24' }],
   reviews: [
     {
@@ -87,7 +88,11 @@ describe('useBookingData', () => {
 
     expect(result.current.services).toEqual(bookingFixtures.services);
     expect(result.current.blockedDates[0].date).toBe('2025-12-24');
-    expect(result.current.availability['prof-1'].monday).toContain('09:00');
+    const prof1Monday = Array.isArray(result.current.availability['prof-1']?.monday)
+      ? result.current.availability['prof-1'].monday[0].times
+      : result.current.availability['prof-1']?.monday;
+    expect(prof1Monday).toContain('09:00');
+
     expect(result.current.testimonials[0].bookings.patient_name).toBe('Joao');
     expect(toast).not.toHaveBeenCalled();
 

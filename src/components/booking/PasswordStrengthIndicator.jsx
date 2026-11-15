@@ -103,19 +103,19 @@ const PasswordStrengthIndicator = ({ password, isExistingPatient = false }) => {
         },
         yellow: {
             bg: 'bg-yellow-500',
-            text: 'text-yellow-700',
+            text: 'text-yellow-800',
             border: 'border-yellow-200',
             bgLight: 'bg-yellow-50',
         },
         lime: {
             bg: 'bg-lime-500',
-            text: 'text-lime-700',
+            text: 'text-lime-800',
             border: 'border-lime-200',
             bgLight: 'bg-lime-50',
         },
         green: {
             bg: 'bg-green-500',
-            text: 'text-green-700',
+            text: 'text-green-800',
             border: 'border-green-200',
             bgLight: 'bg-green-50',
         },
@@ -129,11 +129,21 @@ const PasswordStrengthIndicator = ({ password, isExistingPatient = false }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             className={`mt-3 p-3 rounded-lg border ${colors.border} ${colors.bgLight}`}
+            role="status"
+            aria-live="polite"
         >
             {/* Barra de força */}
             <div className="flex items-center gap-2 mb-2">
                 <div className="flex-1">
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                        className="h-2 bg-gray-200 rounded-full overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={strength}
+                        aria-valuemin={0}
+                        aria-valuemax={5}
+                        aria-valuetext={label}
+                        aria-label="Força da senha"
+                    >
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{ width: `${(strength / 5) * 100}%` }}
@@ -143,17 +153,17 @@ const PasswordStrengthIndicator = ({ password, isExistingPatient = false }) => {
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    {Icon && <Icon className={`w-4 h-4 ${colors.text}`} />}
-                    <span className={`text-xs font-medium ${colors.text}`}>{label}</span>
+                    {Icon && <Icon className={`w-4 h-4 ${colors.text}`} aria-hidden="true" />}
+                    <span className={`text-xs font-semibold ${colors.text}`}>{label}</span>
                 </div>
             </div>
 
             {/* Sugestões */}
             {suggestions.length > 0 && (
-                <div className="text-xs text-gray-600 space-y-1">
+                <div className="text-xs text-gray-700 space-y-1">
                     {suggestions.map((suggestion, index) => (
                         <div key={index} className="flex items-start gap-1">
-                            <span className="text-gray-400 mt-0.5">•</span>
+                            <span className="text-gray-500 mt-0.5" aria-hidden="true">•</span>
                             <span>{suggestion}</span>
                         </div>
                     ))}

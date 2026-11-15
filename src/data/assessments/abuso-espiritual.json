@@ -1,0 +1,178 @@
+{
+  "id": "abuso-espiritual",
+  "slug": "teste-abuso-espiritual-violencia-eclesiastica",
+  "aliases": [
+    "abuso-espiritual",
+    "violencia-eclesiastica",
+    "trauma-religioso",
+    "manipulacao-religiosa",
+    "teste-abuso-espiritual",
+    "teste-violencia-eclesiastica",
+    "igreja-toxica",
+    "ferida-eclesiastica"
+  ],
+  "title": "Inventário de Rastreio de Violência Eclesiástica e Abuso Espiritual",
+  "subtitle": "Avaliação de manipulação psicológica, autoritarismo religioso e impacto na fé e saúde mental",
+  "category": "Fé & Saúde Emocional",
+  "icon": "ShieldAlert",
+  "badge": "Acolhimento & Discernimento",
+  "estimatedTime": "3 a 4 min",
+  "scientificBasis": "Pesquisas em Trauma Religioso e Abuso Espiritual (Oakley & Kinmond, Spiritual Abuse Questionnaire - SAQ; Ward, 2011)",
+  "disclaimer": "Esta autoavaliação possui finalidade exclusivamente educativa e de conscientização. Ela ajuda a identificar dinâmicas de controle psicológico em ambientes religiosos e não substitui avaliação psicológica ou acolhimento clínico especializado.",
+  "timeframePrompt": "Pensando na sua experiência recente ou passada em sua comunidade religiosa, igreja ou sob determinada liderança espiritual, com que frequência você vivencia(ou) as seguintes situações?",
+  "maxScore": 30,
+  "options": [
+    { "label": "Nunca", "value": 0, "helper": "Nunca vivenciei" },
+    { "label": "Raramente", "value": 1, "helper": "Situações pontuais" },
+    { "label": "Frequentemente", "value": 2, "helper": "Bastante recorrente" },
+    { "label": "Quase sempre", "value": 3, "helper": "Intenso ou constante" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Autoritarismo & Inquestionabilidade",
+      "text": "Discordar da liderança ou fazer perguntas sinceras é tratado como sinal de rebeldia, falta de submissão ou 'ataque espiritual'?"
+    },
+    {
+      "id": 2,
+      "dimension": "Coerção Moral & Culpa Manipulativa",
+      "text": "Textos bíblicos são utilizados fora de contexto para forçar você a obedecer, doar dinheiro além de suas condições ou aceitar ordens pessoais da liderança?"
+    },
+    {
+      "id": 3,
+      "dimension": "Controle de Decisões Pessoais",
+      "text": "A liderança tenta controlar ou interferir em decisões íntimas da sua vida (como escolhas de namoro/casamento, carreira profissional, amizades ou estudos)?"
+    },
+    {
+      "id": 4,
+      "dimension": "Ameaças Espirituais & Medo da Maldição",
+      "text": "Você já ouviu insinuações ou ameaças diretas de que, se sair daquela igreja ou discordar do pastor/líder, você e sua família ficarão 'descobertos' espiritualmente ou serão amaldiçoados?"
+    },
+    {
+      "id": 5,
+      "dimension": "Isolamento de Redes de Apoio",
+      "text": "Existe pressão para que você se afaste de familiares, amigos ou pessoas que não frequentam a mesma denominação ou que criticam a liderança?"
+    },
+    {
+      "id": 6,
+      "dimension": "Sobrecarga & Exploração de Voluntariado",
+      "text": "Você se sente exausto(a) e sobrecarregado(a) por cobranças excessivas de trabalho voluntário na igreja, sentindo que 'nunca faz o suficiente para Deus' se tirar um tempo para descansar?"
+    },
+    {
+      "id": 7,
+      "dimension": "Humilhação e Exposição Pública",
+      "text": "Você já presenciou ou foi alvo de fofocas eclesiásticas, exposição pública de erros ou confissões íntimas usadas no púlpito para envergonhar membros?"
+    },
+    {
+      "id": 8,
+      "dimension": "Gaslighting Eclesiástico & Duplo Padrão",
+      "text": "Quando a liderança comete um erro grave ou é confrontada, a responsabilidade é invertida e você é acusado(a) de ser 'muito sensível', 'estar em pecado' ou 'ter o coração amargo'?"
+    },
+    {
+      "id": 9,
+      "dimension": "Sintomas Somáticos & Ansiedade nos Cultos",
+      "text": "Você sente aperto no peito, taquicardia, nós no estômago ou crises de ansiedade antes ou durante os cultos e reuniões da igreja?"
+    },
+    {
+      "id": 10,
+      "dimension": "Distorção da Imagem de Deus",
+      "text": "Sua vivência na igreja fez com que você enxergasse Deus como um feitor punitivo, exigente e impossível de agradar, roubando a paz, a alegria da salvação e o descanso na graça?"
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Saúde Emocional e na Vida de Fé",
+    "prompt": "Qual o grau de sofrimento, trauma emocional ou crise de fé que essa vivência eclesiástica tem gerado em você?",
+    "options": [
+      { "label": "Nenhum impacto (ambiente acolhedor, saudável e seguro)", "value": 0 },
+      { "label": "Impacto leve (desconfortos ocasionais que consigo administrar)", "value": 1 },
+      { "label": "Impacto moderado (angústia frequente, desânimo com a igreja e conflito interior)", "value": 2 },
+      { "label": "Impacto severo (trauma profundo, pânico, isolamento social ou vontade de abandonar a fé)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 5,
+      "severity": "minimal",
+      "label": "Ambiente Saudável / Risco Mínimo de Abuso",
+      "tag": "Comunidade Saudável & Acolhedora",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua pontuação indica que você está inserido(a) em uma comunidade espiritual respeitosa, onde há liberdade de pensamento, acolhimento e respeito aos seus limites.",
+      "clinicalInsight": "Ambientes de fé saudáveis estimulam o crescimento pessoal, valorizam o diálogo transparente e não utilizam o sagrado como ferramenta de poder ou coerção.",
+      "recommendations": [
+        "Continue nutrindo sua fé em relacionamentos baseados na graça e no amor mútuo.",
+        "Mantenha sempre um pensamento crítico saudável e fundamentado nas Escrituras.",
+        "Apoie pessoas que possam estar passando por feridas e traumas eclesiásticos."
+      ],
+      "spiritualBridge": "'Onde está o Espírito do Senhor, aí há liberdade.' (2 Coríntios 3:17). A verdadeira espiritualidade cristã liberta, cura e promove dignidade.",
+      "ctaText": "Conhecer Nossos Psicólogos",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 6,
+      "max": 12,
+      "severity": "mild",
+      "label": "Sinais Iniciais de Toxicidade / Alerta Eclesiástico",
+      "tag": "Sinal Amarelo / Rigidez Excessiva",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você tem presenciado ou sentido as primeiras pressões de controle, exigências desmedidas de voluntariado ou dificuldade de diálogo com a liderança.",
+      "clinicalInsight": "Comunidades religiosas com liderança centralizadora costumam escalar sutilmente o nível de exigência e culpa. Aprender a colocar limites saudáveis é fundamental.",
+      "recommendations": [
+        "Aprenda a dizer 'não' a escalas e tarefas que comprometam sua saúde mental e familiar.",
+        "Não tenha medo de conversar com pessoas de fora da comunidade para manter uma perspectiva equilibrada.",
+        "Diferencie o que é exigência de homens do que é o amor e a graça de Deus."
+      ],
+      "spiritualBridge": "'Foi para a liberdade que Cristo nos libertou. Portanto, permanecei firmes e não vos sujeiteis outra vez a um jugo de escravidão.' (Gálatas 5:1).",
+      "ctaText": "Agendar Orientação Psicológica",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 13,
+      "max": 20,
+      "severity": "moderate",
+      "label": "Padrão Evidente de Violência Eclesiástica e Manipulação",
+      "tag": "Abuso Espiritual Presente / Alerta",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação revela a presença consistente de autoritarismo, ameaças de 'perda de cobertura', controle moral e inversão de culpa (gaslighting).",
+      "clinicalInsight": "O abuso espiritual ataca o núcleo mais sagrado da pessoa: sua consciência e relação com Deus. É comum sentir confusão mental, medo irracional de punição divina e exaustão emocional profunda. A psicoterapia cristã com embasamento científico ajuda a separar a fé do trauma humano.",
+      "recommendations": [
+        "Busque psicoterapia com um profissional especializado que compreenda e respeite a sua fé sem validar dinâmicas abusivas.",
+        "Considere se afastar temporariamente ou definitivamente do ambiente tóxico para restaurar sua saúde mental.",
+        "Lembre-se: sair de um sistema abusivo não significa abandonar a Deus."
+      ],
+      "spiritualBridge": "'Ai dos pastores que apascentam a si mesmos... com rigor e com dureza as tendes dominado. Assim elas se espalharam por não haver pastor.' (Ezequiel 34:2, 4-5). Deus se compadece da sua dor e condena a opressão.",
+      "ctaText": "Conversar com Psicólogo Especialista",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 21,
+      "max": 30,
+      "severity": "severe",
+      "label": "Abuso Espiritual Severo / Trauma Religioso Crítico",
+      "tag": "Trauma Eclesiástico Grave / Acolhimento Urgente",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado indica que você sofreu ou está sofrendo violência psicológica eclesiástica grave, com profundo impacto traumático, crises de ansiedade, culpa tóxica e sensação de traição da confiança.",
+      "clinicalInsight": "Quadros severos de trauma religioso frequentemente desencadeiam sintomas semelhantes ao Transtorno de Estresse Pós-Traumático (TEPT): flashbacks de humilhações, hipervigilância, isolamento social e colapso de identidade. Você precisa de um espaço seguro, confidencial e acolhedor para processar o luto e reconstruir sua autonomia.",
+      "recommendations": [
+        "Inicie acompanhamento psicoterapêutico prioritário para tratamento de trauma e restauração da autoimagem.",
+        "Corte o contato com lideranças ou grupos que continuam exercendo manipulação, ameaças ou cobranças abusivas.",
+        "Dê tempo a si mesmo(a): curar feridas da alma requer acolhimento, paciência e validação dos seus sentimentos."
+      ],
+      "spiritualBridge": "'Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei. Tomai sobre vós o meu jugo... porque o meu jugo é suave e o meu fardo é leve.' (Mateus 11:28-30). Jesus nunca impôs o fardo que colocaram sobre você.",
+      "ctaText": "Agendar Acolhimento Prioritário",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

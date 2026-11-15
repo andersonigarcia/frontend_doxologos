@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Heart,
   ArrowLeft,
@@ -24,16 +24,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { createBooking, createChildBookings } from '@/services/bookingService';
 import { useBookingTracking, useFormTracking } from '@/hooks/useAnalytics';
 import { BookingEmailManager } from '@/lib/bookingEmailManager';
 import { useComponentErrorTracking } from '@/hooks/useErrorTracking';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { zoomService } from '@/lib/zoomService';
 import { secureLog } from '@/lib/secureLogger';
 import analytics from '@/lib/analytics';
 import { useBookingData } from '@/hooks/booking/useBookingData';
 import { usePatientForm, formatPhoneNumber, validateEmail } from '@/hooks/booking/usePatientForm';
+import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 import BookingStepper from '@/components/booking/BookingStepper';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 // Lazy load heavy components for better performance
 const ProfessionalStep = lazy(() => import('@/components/booking/ProfessionalStep'));
@@ -42,9 +44,11 @@ const PatientAccountStep = lazy(() => import('@/components/booking/PatientAccoun
 const PaymentSummaryStep = lazy(() => import('@/components/booking/PaymentSummaryStep'));
 
 import { useBookedSlots } from '@/hooks/booking/useBookedSlots';
+import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const MIN_PASSWORD_LENGTH = 8;
-const generateGoogleMeetLink = () => 'https://meet.google.com/new';
+const MIN_BOOKING_ADVANCE_HOURS = 4;
+// Removido o generateGoogleMeetLink, pois gerava salas aleatórias inválidas. Passamos a usar o link pessoal do profissional.
 
 // Skeleton Loader for lazy-loaded components
 const StepLoader = () => (
@@ -70,84 +74,9 @@ const StepLoader = () => (
   </div>
 );
 
-// Personalized Greeting Component
-const PersonalizedGreeting = ({ userName }) => {
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return { text: 'Bom dia', emoji: '☀️', color: 'from-yellow-50 to-orange-50', border: 'border-yellow-200' };
-    if (hour < 18) return { text: 'Boa tarde', emoji: '🌤️', color: 'from-blue-50 to-cyan-50', border: 'border-blue-200' };
-    return { text: 'Boa noite', emoji: '🌙', color: 'from-indigo-50 to-purple-50', border: 'border-indigo-200' };
-  };
 
-  const greeting = getGreeting();
 
-  return (
-    <div className={`bg-gradient-to-r ${greeting.color} border ${greeting.border} rounded-lg p-4 mb-6`}>
-      <p className="text-lg font-semibold text-gray-900">
-        {greeting.emoji} {greeting.text}{userName ? `, ${userName}` : ''}!
-      </p>
-      <p className="text-sm text-gray-700">
-        Vamos encontrar o melhor horário para sua consulta.
-      </p>
-    </div>
-  );
-};
 
-// Progress Celebration Component
-const ProgressCelebration = ({ step }) => {
-  const messages = {
-    2: { emoji: '👏', text: 'Ótimo começo!', detail: 'Você está a apenas 3 passos de garantir sua consulta!' },
-    3: { emoji: '🎯', text: 'Quase lá!', detail: 'Falta pouco para concluir seu agendamento!' },
-    4: { emoji: '🎉', text: 'Excelente!', detail: 'Último passo para confirmar sua consulta!' },
-  };
-
-  const message = messages[step];
-  if (!message) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0 }}
-      className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4 mb-6"
-    >
-      <div className="flex items-center gap-3">
-        <span className="text-3xl">{message.emoji}</span>
-        <div>
-          <p className="font-bold text-green-900">{message.text}</p>
-          <p className="text-sm text-green-700">{message.detail}</p>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-// Welcome Message for First-Time Users
-const WelcomeMessage = ({ isFirstBooking }) => {
-  if (!isFirstBooking) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6"
-    >
-      <div className="flex items-start gap-3">
-        <span className="text-2xl">👋</span>
-        <div>
-          <h4 className="font-bold text-blue-900 mb-1">Bem-vindo à Doxologos!</h4>
-          <p className="text-sm text-blue-800">
-            Estamos felizes em ter você aqui. Vamos tornar seu primeiro agendamento super fácil!
-          </p>
-          <div className="mt-2 flex items-center gap-2 text-xs text-blue-700">
-            <CheckCircle className="w-4 h-4" />
-            <span>Processo 100% online e seguro</span>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
 
 // Live Activity Notification (Social Proof)
 const LiveActivity = ({ currentStep }) => {
@@ -187,6 +116,8 @@ const LiveActivity = ({ currentStep }) => {
       initial={{ opacity: 0, x: -100 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -100 }}
+      role="status"
+      aria-live="polite"
       className="fixed bottom-32 left-4 md:bottom-6 md:left-6 bg-white shadow-2xl rounded-lg p-3 max-w-xs z-30 border border-gray-200"
     >
       <div className="flex items-center gap-3">
@@ -212,7 +143,7 @@ const MEETING_OPTIONS = [
     description: 'Link enviado pelo time da Doxologos ou pelo profissional.',
     highlights: [
       'Ideal se você já utiliza o Google Workspace',
-      'Link compartilhado por email e WhatsApp após confirmação',
+      'Link compartilhado por e-mail e disponível na Área do Paciente',
       'Funciona direto no navegador e aplicativos Google'
     ]
   }
@@ -222,23 +153,79 @@ const AgendamentoPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user: authUser, resetPassword } = useAuth();
+  const { settings: systemSettings } = useSystemSettings();
+  const minBookingAdvanceHours = Number(systemSettings?.booking_min_hours_notice ?? MIN_BOOKING_ADVANCE_HOURS);
+  const [searchParams] = useSearchParams();
+  const serviceParam = searchParams.get('service');
+  const specialtyParam = searchParams.get('specialty');
+  const professionalParam = searchParams.get('professional');
+  const assessmentParam = searchParams.get('assessment');
+  const severityParam = searchParams.get('severity');
+  const nameParam = searchParams.get('name');
+  const emailParam = searchParams.get('email');
+  const phoneParam = searchParams.get('phone');
   const [step, setStep] = useState(1);
   const [selectedProfessional, setSelectedProfessional] = useState('');
   const [selectedService, setSelectedService] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedSlots, setSelectedSlots] = useState([]);
   const [meetingPlatform, setMeetingPlatform] = useState('google_meet');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [supportsMeetingPlatform, setSupportsMeetingPlatform] = useState(false);
 
+  // Manipuladores de Agendamento Múltiplo / Pacotes
+  const handleToggleSlot = (slot) => {
+    if (!slot?.date || !slot?.time) return;
+    setSelectedSlots((prev) => {
+      const exists = prev.some((s) => s.date === slot.date && s.time === slot.time);
+      if (exists) {
+        const next = prev.filter((s) => !(s.date === slot.date && s.time === slot.time));
+        if (next.length === 0) {
+          setSelectedTime('');
+        } else {
+          const last = next[next.length - 1];
+          setSelectedDate(last.date);
+          setSelectedTime(last.time);
+        }
+        return next;
+      } else {
+        setSelectedDate(slot.date);
+        setSelectedTime(slot.time);
+        return [...prev, slot];
+      }
+    });
+  };
+
+  const handleRemoveSlot = (index) => {
+    setSelectedSlots((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (next.length === 0) {
+        setSelectedTime('');
+      } else {
+        const last = next[next.length - 1];
+        setSelectedDate(last.date);
+        setSelectedTime(last.time);
+      }
+      return next;
+    });
+  };
+
+  const handleClearSlots = () => {
+    setSelectedSlots([]);
+    setSelectedTime('');
+  };
+
+
   // Engagement features state
   const [isFirstBooking, setIsFirstBooking] = useState(true);
   const [userName, setUserName] = useState('');
 
-  const { bookedSlots, isLoadingSlots } = useBookedSlots({
+  const { bookedSlots, bookedSlotsByDate, isLoadingSlots } = useBookedSlots({
     professionalId: selectedProfessional,
     date: selectedDate,
+    currentMonth,
     toast,
   });
 
@@ -265,6 +252,9 @@ const AgendamentoPage = () => {
     setShowConfirmPassword,
     toggleExistingPatient,
     handlePasswordResetRequest,
+    trigger,
+    setValue,
+    getValues,
     // Novos estados de validação de email
     isCheckingEmail,
     emailExists,
@@ -272,7 +262,7 @@ const AgendamentoPage = () => {
   } = usePatientForm({ authUser, resetPassword, toast });
   const formErrors = patientFormState?.errors || {};
 
-  const whatsappSupportNumber = '5531971982947';
+  const whatsappSupportNumber = '5511917287583';
   const servicePriceRange = useMemo(() => {
     if (!services || services.length === 0) return null;
     const parsedPrices = services
@@ -289,7 +279,11 @@ const AgendamentoPage = () => {
     return services.find((service) => service.id === selectedService) || null;
   }, [selectedService, services]);
 
-  const hasScheduleSelection = Boolean(selectedService && selectedProfessional && selectedDate && selectedTime);
+  const hasScheduleSelection = Boolean(
+    selectedService &&
+    selectedProfessional &&
+    (selectedSlots.length > 0 || (selectedDate && selectedTime))
+  );
 
   const whatsappSupportMessage = 'Olá! Estou no agendamento e tenho uma dúvida.';
   const whatsappSupportLink = `https://wa.me/${whatsappSupportNumber}?text=${encodeURIComponent(whatsappSupportMessage)}`;
@@ -358,9 +352,135 @@ const AgendamentoPage = () => {
   }, []);
 
   // Analytics and Error Tracking Hooks
-  const { trackBookingStart, trackBookingStep, trackBookingComplete, trackBookingAbandon } = useBookingTracking();
+  const { trackBookingStart, trackBookingStep, trackBookingCompleted, trackBookingAbandonment } = useBookingTracking();
   const { trackFormStart, trackFormSubmit, trackFormError } = useFormTracking('booking');
   const { trackComponentError, trackAsyncError } = useComponentErrorTracking('AgendamentoPage');
+
+  // Disparar início do funil no carregamento da página com delay (400ms)
+  // garantindo que o page_view (Etapa 2, disparado em ~120ms) seja registrado no GA4
+  // estritamente ANTES do booking_start (Etapa 3) na sequência cronológica do funil
+  const bookingStartTrackedRef = useRef(false);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!bookingStartTrackedRef.current) {
+        bookingStartTrackedRef.current = true;
+        try {
+          trackBookingStart();
+        } catch (err) {
+          console.warn('Erro ao disparar trackBookingStart:', err);
+        }
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [trackBookingStart]);
+
+  // Rastreamento reativo de cada etapa do agendamento (Virtual Pageviews + Eventos Canônicos de Etapa)
+  const lastTrackedStepRef = useRef(null);
+  useEffect(() => {
+    if (lastTrackedStepRef.current === step) return;
+    lastTrackedStepRef.current = step;
+
+    try {
+      trackBookingStep(step, {
+        step_name: step === 1 ? 'service_step' :
+                   step === 2 ? 'professional_step' :
+                   step === 3 ? 'datetime_step' :
+                   step === 4 ? 'patient_data_step' : 'payment_summary',
+        professionalId: selectedProfessional,
+        serviceId: selectedService,
+      });
+    } catch (trackErr) {
+      console.warn('Erro no rastreamento da etapa de agendamento:', trackErr);
+    }
+  }, [step, selectedProfessional, selectedService, trackBookingStep]);
+
+  // Auto-seleção e avanço via Deep-Link Inteligente (Alavanca 1 CRO)
+  const deepLinkProcessedRef = useRef({ service: false, professional: false });
+
+  useEffect(() => {
+    if (!services || services.length === 0) return;
+
+    const queryTarget = serviceParam || specialtyParam;
+    if (queryTarget && !deepLinkProcessedRef.current.service) {
+      const targetLower = queryTarget.toLowerCase();
+      let matchedService = services.find(
+        (s) => String(s.id) === queryTarget || (s.name && s.name.toLowerCase().includes(targetLower))
+      );
+
+      // Fallback inteligente por contexto clínico (ex: ?service=Psicoterapia ou ?specialty=casal/enem)
+      if (!matchedService) {
+        const isCouplesOrFamily = targetLower.includes('casal') || targetLower.includes('famil');
+        if (isCouplesOrFamily) {
+          matchedService = services.find((s) => /casal|fam[ií]lia|conjugal/i.test(s.name || ''));
+        }
+        if (!matchedService) {
+          matchedService =
+            services.find((s) => /psicoterapia|individual|consulta|terapia|sess[aã]o/i.test(s.name || '')) ||
+            services[0];
+        }
+      }
+
+      if (matchedService) {
+        setSelectedService(matchedService.id);
+        deepLinkProcessedRef.current.service = true;
+        setStep((prev) => (prev === 1 ? 2 : prev));
+      }
+    }
+  }, [services, serviceParam, specialtyParam]);
+
+  useEffect(() => {
+    if (!professionals || professionals.length === 0) return;
+
+    if (professionalParam && !deepLinkProcessedRef.current.professional) {
+      const matchedProf = professionals.find(
+        (p) => p.id === professionalParam || p.name.toLowerCase().includes(professionalParam.toLowerCase())
+      );
+
+      if (matchedProf) {
+        setSelectedProfessional(matchedProf.id);
+        deepLinkProcessedRef.current.professional = true;
+        setStep((prev) => (prev <= 2 ? 3 : prev));
+      }
+    }
+  }, [professionals, professionalParam]);
+
+  // Preenchimento de dados do lead no formulário caso tenham vindo da autoavaliação
+  const patientDataPrefilledRef = useRef(false);
+  useEffect(() => {
+    if (patientDataPrefilledRef.current) return;
+
+    let prefilled = false;
+    if (nameParam && !getValues('name')) {
+      setValue('name', decodeURIComponent(nameParam), { shouldDirty: true });
+      prefilled = true;
+    }
+    if (emailParam && !getValues('email')) {
+      setValue('email', decodeURIComponent(emailParam), { shouldDirty: true, shouldValidate: true });
+      prefilled = true;
+    }
+    if (phoneParam && !getValues('phone')) {
+      const formatted = formatPhoneNumber(decodeURIComponent(phoneParam));
+      setValue('phone', formatted, { shouldDirty: true });
+      prefilled = true;
+    }
+
+    if (prefilled) {
+      patientDataPrefilledRef.current = true;
+    }
+  }, [nameParam, emailParam, phoneParam, setValue, getValues]);
+
+  // Rastreamento de chegada via teste psicológico
+  useEffect(() => {
+    if (assessmentParam) {
+      analytics.trackEvent('booking_assessment_referral', {
+        event_category: 'booking',
+        assessment: assessmentParam,
+        severity: severityParam || 'unknown',
+        service_id: serviceParam || '',
+      });
+    }
+  }, [assessmentParam, severityParam, serviceParam]);
 
   // Prefetch availability data for next step to improve performance
   useEffect(() => {
@@ -373,10 +493,10 @@ const AgendamentoPage = () => {
             .select('*')
             .eq('professional_id', selectedProfessional);
 
-          console.log('✅ Prefetched availability data');
+          secureLog.success('Prefetched availability data');
         } catch (error) {
           // Silent fail - not critical
-          console.log('Prefetch failed (non-critical)');
+          secureLog.debug('Prefetch failed (non-critical)');
         }
       }
     };
@@ -398,7 +518,7 @@ const AgendamentoPage = () => {
           setIsFirstBooking(!data || data.length === 0);
           setUserName(authUser.user_metadata?.full_name?.split(' ')[0] || '');
         } catch (error) {
-          console.log('Error checking booking history:', error);
+          secureLog.warn('Error checking booking history:', error);
         }
       }
     };
@@ -418,55 +538,127 @@ const AgendamentoPage = () => {
   };
 
   const handleProceedToSummary = async () => {
-    // Se for paciente existente, validar senha antes de prosseguir
-    if (!authUser && isExistingPatient) {
-      if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
-        setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+    // Se o usuário não estiver autenticado, validar campos essenciais
+    if (!authUser) {
+      if (!patientData.email || patientData.email.trim() === '') {
         toast({
           variant: 'destructive',
-          title: 'Senha muito curta',
-          description: `Informe uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+          title: 'E-mail obrigatório',
+          description: 'Por favor, informe seu e-mail para receber as instruções e confirmação da consulta.'
         });
         return;
       }
 
-      // Tentar autenticar para validar a senha
-      try {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: patientData.email,
-          password: patientData.password
+      if (emailError) {
+        toast({
+          variant: 'destructive',
+          title: 'E-mail inválido',
+          description: typeof emailError === 'string' ? emailError : 'Por favor, insira um endereço de e-mail válido.'
         });
+        return;
+      }
 
-        if (signInError) {
-          console.error('Erro ao validar senha do paciente existente:', signInError);
-          setPasswordError('Senha incorreta. Verifique sua senha ou utilize a opção de recuperação.');
+      if (!isExistingPatient) {
+        if (!patientData.name || patientData.name.trim() === '') {
           toast({
             variant: 'destructive',
-            title: 'Senha incorreta',
-            description: 'A senha informada não está correta. Tente novamente ou clique em "Esqueci minha senha".'
+            title: 'Nome completo obrigatório',
+            description: 'Por favor, preencha seu nome completo para identificação no atendimento.'
           });
           return;
         }
 
-        // Senha validada com sucesso
-        setPasswordError('');
-        toast({
-          title: 'Senha validada!',
-          description: 'Suas credenciais foram confirmadas. Prosseguindo para o resumo.'
-        });
-      } catch (error) {
-        console.error('Erro ao validar senha:', error);
-        setPasswordError('Erro ao validar senha. Tente novamente.');
-        toast({
-          variant: 'destructive',
-          title: 'Erro na validação',
-          description: 'Não foi possível validar sua senha. Tente novamente.'
-        });
-        return;
+        if (!patientData.phone || patientData.phone.trim() === '') {
+          toast({
+            variant: 'destructive',
+            title: 'Telefone/WhatsApp obrigatório',
+            description: 'Por favor, informe seu número para receber lembretes e o link da sessão.'
+          });
+          return;
+        }
+
+        if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+          setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+          toast({
+            variant: 'destructive',
+            title: 'Senha muito curta',
+            description: `Crie uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres para acessar a área do paciente.`
+          });
+          return;
+        }
+
+        if (patientData.confirmPassword && patientData.password !== patientData.confirmPassword) {
+          setPasswordError('As senhas precisam ser iguais.');
+          toast({
+            variant: 'destructive',
+            title: 'Senhas não conferem',
+            description: 'As senhas digitadas estão diferentes. Por favor, confira os caracteres ou use o botão de visualização.'
+          });
+          return;
+        }
+      }
+
+      // Se for paciente existente, validar senha antes de prosseguir
+      if (isExistingPatient) {
+        if (!patientData.password || patientData.password.length < MIN_PASSWORD_LENGTH) {
+          setPasswordError(`A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+          toast({
+            variant: 'destructive',
+            title: 'Senha muito curta',
+            description: `Informe uma senha com pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`
+          });
+          return;
+        }
+
+        // Tentar autenticar para validar a senha
+        try {
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: patientData.email,
+            password: patientData.password
+          });
+
+          if (signInError) {
+            console.error('Erro ao validar senha do paciente existente:', signInError);
+            setPasswordError('Senha incorreta. Verifique sua senha ou utilize a opção de recuperação.');
+            toast({
+              variant: 'destructive',
+              title: 'Senha incorreta',
+              description: 'A senha informada não está correta. Tente novamente ou clique em "Esqueci minha senha".'
+            });
+            return;
+          }
+
+          // Senha validada com sucesso
+          setPasswordError('');
+          toast({
+            title: 'Senha validada!',
+            description: 'Suas credenciais foram confirmadas. Prosseguindo para o resumo.'
+          });
+        } catch (error) {
+          console.error('Erro ao validar senha:', error);
+          setPasswordError('Não conseguimos confirmar sua senha. Se preferir, use "Esqueci minha senha" para criar um novo acesso.');
+          toast({
+            variant: 'destructive',
+            title: 'Verifique seus dados de acesso',
+            description: 'Não foi possível confirmar suas credenciais. Você pode tentar novamente ou redefinir sua senha com segurança.'
+          });
+          return;
+        }
       }
     }
 
+    if (!hasScheduleSelection) {
+      toast({
+        variant: 'destructive',
+        title: 'Horário não selecionado',
+        description: 'Por favor, selecione um profissional, data e horário antes de avançar.'
+      });
+      return;
+    }
+
     // Se chegou aqui, pode prosseguir
+    // Registrar step 5: usuário chegou ao resumo de pagamento
+    trackBookingStep(5, { step_name: 'payment_summary' });
     setStep(5);
   };
 
@@ -495,8 +687,13 @@ const AgendamentoPage = () => {
       return false;
     }
 
-    if (!authUser && (!patientData.name || !patientData.email || !patientData.phone || emailError)) {
-      return false;
+    if (!authUser) {
+      if (!patientData.email || emailError) {
+        return false;
+      }
+      if (!isExistingPatient && (!patientData.name || !patientData.phone)) {
+        return false;
+      }
     }
 
     if (authUser) {
@@ -531,21 +728,22 @@ const AgendamentoPage = () => {
     patientData.phone,
   ]);
 
-  const canSubmitBooking = useMemo(
-    () => canProceedToSummary && Boolean(patientData.acceptTerms),
-    [canProceedToSummary, patientData.acceptTerms]
-  );
+  const canSubmitBooking = useMemo(() => {
+    const termsOk = isFeatureEnabled('CRO_IMPLICIT_TERMS') || Boolean(patientData.acceptTerms);
+    return canProceedToSummary && termsOk;
+  }, [canProceedToSummary, patientData.acceptTerms]);
 
   const submitButtonTitle = useMemo(() => {
-    if (!authUser && (!patientData.name || !patientData.email || !patientData.phone)) {
-      return 'Preencha todos os campos obrigatórios';
+    if (!authUser) {
+      if (emailError) return 'Digite um email válido';
+      if (!patientData.email) return 'Preencha seu email';
+
+      if (!isExistingPatient && (!patientData.name || !patientData.phone)) {
+        return 'Preencha todos os campos obrigatórios';
+      }
     }
 
-    if (!authUser && emailError) {
-      return 'Digite um email válido';
-    }
-
-    if (!patientData.acceptTerms) {
+    if (!isFeatureEnabled('CRO_IMPLICIT_TERMS') && !patientData.acceptTerms) {
       return 'Aceite os termos e condições';
     }
 
@@ -558,7 +756,7 @@ const AgendamentoPage = () => {
     }
 
     if (!patientData.password) {
-      return 'Informe uma senha para acessar a área do paciente';
+      return isExistingPatient ? 'Informe sua senha de acesso' : 'Crie uma senha para acessar a área do paciente';
     }
 
     if (patientData.password.length < MIN_PASSWORD_LENGTH) {
@@ -609,10 +807,10 @@ const AgendamentoPage = () => {
     return null;
   };
 
-  const getAvailableTimesForDate = () => {
-    if (!selectedDate || !selectedProfessional || !availability[selectedProfessional]) return [];
+  const getAvailableTimesForDate = useCallback((targetDate = selectedDate, targetBookedSlots = bookedSlots) => {
+    if (!targetDate || !selectedProfessional || !availability[selectedProfessional]) return [];
 
-    const date = new Date(selectedDate + 'T00:00:00');
+    const date = new Date(targetDate + 'T00:00:00');
     const dayOfWeek = date.getUTCDay();
     const selectedMonth = date.getUTCMonth() + 1; // 1-12
     const selectedYear = date.getUTCFullYear();
@@ -643,15 +841,15 @@ const AgendamentoPage = () => {
       );
       if (matchingEntry && Array.isArray(matchingEntry.times)) {
         times = matchingEntry.times;
+      } else if (dayAvailability.length > 0 && typeof dayAvailability[0] === 'string') {
+        times = dayAvailability;
       }
     }
-    // Fallback for old structure (direct array) - for backward compatibility during migration
-    else if (Array.isArray(dayAvailability)) {
-      times = dayAvailability;
-    }
+
+    if (times.length === 0) return [];
 
     // Aplicar bloqueios de data
-    const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === selectedDate);
+    const professionalBlockedDates = blockedDates.filter(d => d.professional_id === selectedProfessional && d.blocked_date === targetDate);
     if (professionalBlockedDates.length > 0) {
       professionalBlockedDates.forEach(block => {
         if (!block.start_time || !block.end_time) { // Dia todo
@@ -661,6 +859,8 @@ const AgendamentoPage = () => {
         }
       });
     }
+
+    if (times.length === 0) return [];
 
     // Filtrar horários baseado na duração do serviço
     if (selectedService) {
@@ -674,13 +874,7 @@ const AgendamentoPage = () => {
           return hours * 60 + minutes;
         };
 
-        // Função para adicionar minutos a um horário
-        const addMinutesToTime = (timeStr, minutes) => {
-          const totalMinutes = timeToMinutes(timeStr) + minutes;
-          const hours = Math.floor(totalMinutes / 60);
-          const mins = totalMinutes % 60;
-          return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-        };
+        const currentBooked = targetBookedSlots || [];
 
         // Filtrar horários que têm espaço suficiente para o serviço
         times = times.filter(time => {
@@ -688,31 +882,21 @@ const AgendamentoPage = () => {
           const endMinutes = startMinutes + serviceDurationMinutes;
 
           // Verificar se há conflito com agendamentos existentes
-          // Um conflito ocorre se qualquer horário reservado está no intervalo [start, end)
-          const hasConflict = bookedSlots.some(bookedTime => {
+          const hasConflict = currentBooked.some(bookedTime => {
             const bookedMinutes = timeToMinutes(bookedTime);
-            // O horário reservado conflita se está dentro do período do novo serviço
             return bookedMinutes >= startMinutes && bookedMinutes < endMinutes;
           });
 
           if (hasConflict) return false;
 
-          // Verificar se o término do serviço não ultrapassa horários disponíveis
-          // que já estão ocupados
           const sortedTimes = [...times].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
           const currentIndex = sortedTimes.indexOf(time);
 
-          // Para cada slot de tempo entre o início e o fim do serviço,
-          // verificar se está ocupado
           for (let i = currentIndex + 1; i < sortedTimes.length; i++) {
             const nextTime = sortedTimes[i];
             const nextMinutes = timeToMinutes(nextTime);
-
-            // Se o próximo slot está depois do fim do serviço, não há problema
             if (nextMinutes >= endMinutes) break;
-
-            // Se o próximo slot está ocupado e dentro do período do serviço, há conflito
-            if (bookedSlots.includes(nextTime)) {
+            if (currentBooked.includes(nextTime)) {
               return false;
             }
           }
@@ -722,13 +906,60 @@ const AgendamentoPage = () => {
       }
     }
 
+    // Filtrar horários com antecedência mínima (prevenção visual no calendário)
+    const minAdvanceTime = new Date();
+    minAdvanceTime.setHours(minAdvanceTime.getHours() + minBookingAdvanceHours);
+
+    times = times.filter((timeStr) => {
+      const slotDateTime = new Date(`${targetDate}T${timeStr}:00`);
+      return slotDateTime >= minAdvanceTime;
+    });
+
     return times;
-  };
+  }, [selectedDate, selectedProfessional, availability, blockedDates, selectedService, services, bookedSlots, minBookingAdvanceHours]);
 
   const availableTimes = useMemo(
-    () => getAvailableTimesForDate(),
-    [selectedDate, selectedProfessional, availability, selectedService, services, bookedSlots, blockedDates]
+    () => getAvailableTimesForDate(selectedDate, bookedSlots),
+    [selectedDate, bookedSlots, getAvailableTimesForDate]
   );
+
+  // Mapear vagas disponíveis para todos os dias do mês visível
+  const availableSlotsCountByDate = useMemo(() => {
+    if (!selectedProfessional || !currentMonth || !availability[selectedProfessional]) return {};
+
+    const map = {};
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const daysCount = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let d = 1; d <= daysCount; d++) {
+      const dateObj = new Date(year, month, d);
+      if (dateObj < today) continue;
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayBookedSlots = bookedSlotsByDate?.[dateStr] || [];
+      const times = getAvailableTimesForDate(dateStr, dayBookedSlots);
+      if (times.length > 0) {
+        map[dateStr] = times.length;
+      }
+    }
+    return map;
+  }, [selectedProfessional, currentMonth, availability, bookedSlotsByDate, getAvailableTimesForDate]);
+
+  // Auto-selecionar a primeira data com horários livres no mês ao chegar no Step 3
+  useEffect(() => {
+    if (step === 3 && selectedProfessional) {
+      const availableDates = Object.keys(availableSlotsCountByDate).sort();
+      if (availableDates.length > 0) {
+        // Se ainda não escolheu ou se a data atual não tem mais vagas livres
+        if (!selectedDate || !availableSlotsCountByDate[selectedDate]) {
+          setSelectedDate(availableDates[0]);
+          setSelectedTime('');
+        }
+      }
+    }
+  }, [step, selectedProfessional, selectedDate, availableSlotsCountByDate]);
 
   // Funções do calendário
   const getDaysInMonth = (date) => {
@@ -758,7 +989,26 @@ const AgendamentoPage = () => {
     if (!date) return true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    if (date < today) return true;
+
+    if (!selectedProfessional) return false;
+
+    // Verificar se o dia inteiro está bloqueado para o profissional
+    if (blockedDates.length > 0) {
+      const dateStr = formatDateToString(date);
+      const isFullDayBlocked = blockedDates.some(
+        (b) =>
+          b.professional_id === selectedProfessional &&
+          b.blocked_date === dateStr &&
+          !b.start_time &&
+          !b.end_time
+      );
+      if (isFullDayBlocked) return true;
+    }
+
+    const dateStr = formatDateToString(date);
+    // Desabilita dias que não possuem horários livres
+    return !availableSlotsCountByDate[dateStr];
   };
 
   const formatDateToString = (date) => {
@@ -787,8 +1037,8 @@ const AgendamentoPage = () => {
 
 
   const handleBooking = async () => {
-    console.log('🚀 [handleBooking] INÍCIO - Iniciando processo de agendamento');
-    console.log('🚀 [handleBooking] Dados do formulário:', {
+    secureLog.info('[handleBooking] INÍCIO - Iniciando processo de agendamento');
+    secureLog.info('[handleBooking] Dados do formulário:', {
       selectedDate,
       selectedTime,
       selectedService,
@@ -805,8 +1055,8 @@ const AgendamentoPage = () => {
     setIsSubmitting(true);
     setPasswordError('');
 
-    // Validar aceitação dos termos
-    if (!patientData.acceptTerms) {
+    // Validar aceitação dos termos (bypass quando CRO_IMPLICIT_TERMS estiver ativo)
+    if (!isFeatureEnabled('CRO_IMPLICIT_TERMS') && !patientData.acceptTerms) {
       toast({
         variant: 'destructive',
         title: 'Aceite os termos',
@@ -816,15 +1066,19 @@ const AgendamentoPage = () => {
       return;
     }
 
-    if (!selectedDate || !selectedTime) {
+    const effectiveDate = selectedDate || (selectedSlots.length > 0 ? selectedSlots[0].date : '');
+    const effectiveTime = selectedTime || (selectedSlots.length > 0 ? selectedSlots[0].time : '');
+
+    if (!effectiveDate || !effectiveTime) {
       toast({
         variant: 'destructive',
         title: 'Escolha data e horário',
-        description: 'Selecione um dia e horário disponíveis para continuar.'
+        description: 'Selecione pelo menos um dia e horário disponíveis para continuar.'
       });
       setIsSubmitting(false);
       return;
     }
+
 
     const selectedDateTime = new Date(`${selectedDate}T${selectedTime}:00`);
     if (Number.isNaN(selectedDateTime.getTime())) {
@@ -838,12 +1092,12 @@ const AgendamentoPage = () => {
     }
 
     const minimumAdvance = new Date();
-    minimumAdvance.setHours(minimumAdvance.getHours() + 24);
+    minimumAdvance.setHours(minimumAdvance.getHours() + minBookingAdvanceHours);
     if (selectedDateTime < minimumAdvance) {
       toast({
         variant: 'destructive',
         title: 'Antecedência mínima',
-        description: 'Consultas precisam ser agendadas com pelo menos 24 horas de antecedência.'
+        description: `Consultas precisam ser agendadas com pelo menos ${minBookingAdvanceHours} horas de antecedência.`
       });
       setIsSubmitting(false);
       return;
@@ -861,26 +1115,27 @@ const AgendamentoPage = () => {
           return;
         }
 
-        if (!isExistingPatient && patientData.password !== patientData.confirmPassword) {
+        if (!isExistingPatient && patientData.confirmPassword && patientData.password !== patientData.confirmPassword) {
           setPasswordError('As senhas precisam ser iguais.');
           toast({
             variant: 'destructive',
             title: 'Senhas não conferem',
-            description: 'Digite a mesma senha nos dois campos para continuar.'
+            description: 'As senhas digitadas estão diferentes. Por favor, confira os caracteres ou use o botão de visualização.'
           });
           return;
         }
       }
 
       let userId;
+      let dynamicAuthMetadata = {};
 
-      console.log('👤 [handleBooking] Verificando autenticação...');
+      secureLog.info('[handleBooking] Verificando autenticação...');
 
       if (authUser) {
         userId = authUser.id;
-        console.log('✅ [handleBooking] Usuário autenticado:', userId);
+        secureLog.success('[handleBooking] Usuário autenticado:', userId);
       } else if (isExistingPatient) {
-        console.log('👤 [handleBooking] Paciente existente - tentando login com senha informada...');
+        secureLog.info('[handleBooking] Paciente existente - tentando login com senha informada...');
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email: patientData.email,
           password: patientData.password
@@ -898,13 +1153,14 @@ const AgendamentoPage = () => {
         }
 
         userId = signInData.user?.id;
+        dynamicAuthMetadata = signInData.user?.user_metadata || {};
         setIsExistingPatient(true);
         toast({
           title: 'Login confirmado!',
           description: 'Reconhecemos seu cadastro e vamos prosseguir com o agendamento.'
         });
       } else {
-        console.log('👤 [handleBooking] Usuário não autenticado - criando conta com senha informada...');
+        secureLog.info('[handleBooking] Usuário não autenticado - criando conta com senha informada...');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: patientData.email,
           password: patientData.password,
@@ -920,7 +1176,7 @@ const AgendamentoPage = () => {
 
         if (signUpError) {
           if (signUpError.message?.includes('already registered') || signUpError.message?.includes('already exists')) {
-            console.log('⚠️ [handleBooking] Email já cadastrado - tentando login automático...');
+            secureLog.warn('[handleBooking] Email já cadastrado - tentando login automático...');
             const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
               email: patientData.email,
               password: patientData.password
@@ -939,6 +1195,7 @@ const AgendamentoPage = () => {
             }
 
             userId = signInData.user?.id;
+            dynamicAuthMetadata = signInData.user?.user_metadata || {};
             toast({
               title: 'Bem-vindo de volta!',
               description: 'Localizamos seu cadastro e fizemos login para continuar.'
@@ -954,6 +1211,7 @@ const AgendamentoPage = () => {
           }
         } else {
           userId = signUpData.user?.id || signUpData.session?.user?.id;
+          dynamicAuthMetadata = signUpData.user?.user_metadata || signUpData.session?.user?.user_metadata || {};
           toast({
             title: 'Cadastro criado!',
             description: 'Enviamos um email para confirmar seu acesso à Área do Paciente.'
@@ -961,7 +1219,7 @@ const AgendamentoPage = () => {
 
           try {
             if (!signUpData.session) {
-              console.log('🔐 [handleBooking] Criando sessão pós-cadastro para garantir acesso imediato...');
+              secureLog.info('[handleBooking] Criando sessão pós-cadastro para garantir acesso imediato...');
               const { data: autoSignInData, error: autoSignInError } = await supabase.auth.signInWithPassword({
                 email: patientData.email,
                 password: patientData.password
@@ -973,7 +1231,8 @@ const AgendamentoPage = () => {
                 const sessionUserId = autoSignInData.session?.user?.id || autoSignInData.user?.id;
                 if (sessionUserId) {
                   userId = sessionUserId;
-                  console.log('✅ [handleBooking] Sessão autenticada após cadastro:', sessionUserId);
+                  dynamicAuthMetadata = autoSignInData.session?.user?.user_metadata || autoSignInData.user?.user_metadata || dynamicAuthMetadata;
+                  secureLog.success('[handleBooking] Sessão autenticada após cadastro:', sessionUserId);
                 }
               }
             }
@@ -984,19 +1243,30 @@ const AgendamentoPage = () => {
       }
 
       if (!userId) {
-        console.log('⚠️ [handleBooking] userId não disponível imediatamente - tentando recuperar via RPC...');
+        secureLog.info('[handleBooking] userId não disponível imediatamente - tentando recuperar via RPC...');
         try {
           const { data: rpcUserId } = await supabase.rpc('get_user_id_by_email', { user_email: patientData.email });
           if (rpcUserId) {
             userId = rpcUserId;
-            console.log('✅ user_id recuperado via RPC:', userId);
+            secureLog.success('user_id recuperado via RPC:', userId);
           }
         } catch (rpcError) {
           console.warn('Não foi possível recuperar user_id via RPC:', rpcError);
         }
       }
 
-      console.log('💰 [handleBooking] Buscando detalhes do serviço...');
+      if (!userId) {
+        console.error('❌ [handleBooking] user_id não disponível para associar ao agendamento.');
+        toast({
+          variant: 'destructive',
+          title: 'Sessão não identificada',
+          description: 'Não foi possível autenticar sua conta. Por favor, confirme seus dados ou faça login para prosseguir.'
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      secureLog.info('[handleBooking] Buscando detalhes do serviço...');
 
       // 3. Get service details to capture current price
       const serviceDetails = services.find(s => s.id === selectedService);
@@ -1009,21 +1279,23 @@ const AgendamentoPage = () => {
         ? valorRepasseProfissionalRaw
         : valorConsulta;
 
-      console.log('💰 [handleBooking] Serviço encontrado:', {
+      secureLog.info('[handleBooking] Serviço encontrado:', {
         serviceName: serviceDetails?.name,
         price: valorConsulta,
         professionalPayout: valorRepasseProfissional,
         platformFee: Math.max(valorConsulta - valorRepasseProfissional, 0)
       });
 
-      console.log('📝 [handleBooking] Preparando dados do agendamento...');
+      secureLog.info('[handleBooking] Preparando dados do agendamento...');
 
-      const authMetadata = authUser?.user_metadata || {};
-      const normalizedPatientEmail = (patientData.email || authUser?.email || '').trim();
+      const authMetadata = Object.keys(authUser?.user_metadata || {}).length > 0 ? authUser.user_metadata : dynamicAuthMetadata || {};
+      const normalizedPatientEmail = (patientData.email || authUser?.email || authMetadata.email || '').trim();
       const normalizedPatientName = (patientData.name || authMetadata.full_name || authMetadata.name || '').trim();
       const safePatientName = normalizedPatientName || (authUser?.email ? authUser.email.split('@')[0] : 'Paciente Doxologos');
       const rawPatientPhone = (patientData.phone || authMetadata.phone || authMetadata.phone_number || '').trim();
       const safePatientPhone = rawPatientPhone ? formatPhoneNumber(rawPatientPhone) : '';
+      const safePatientCpf = (patientData.cpf || authMetadata.cpf || '').trim();
+
 
       if (!normalizedPatientEmail || !validateEmail(normalizedPatientEmail)) {
         console.error('❌ [handleBooking] Email do paciente ausente ou inválido. Abortando fluxo para evitar erros no envio de email.');
@@ -1055,84 +1327,26 @@ const AgendamentoPage = () => {
       }
 
       if (meetingPlatform === 'google_meet') {
-        const generatedMeetLink = generateGoogleMeetLink();
-        bookingData.meeting_link = generatedMeetLink;
+        const personalLink = professionalDetails?.personal_meet_link || null;
+        bookingData.meeting_link = personalLink;
         bookingData.meeting_password = null;
         bookingData.meeting_id = null;
-        bookingData.meeting_start_url = generatedMeetLink;
-        console.log('🎥 Link Google Meet gerado para o agendamento:', generatedMeetLink);
+        bookingData.meeting_start_url = personalLink;
+        secureLog.info('Link Google Meet do profissional utilizado:', personalLink || 'Nenhum link cadastrado');
       }
 
-      // Adicionar user_id se disponível
-      if (userId) {
-        bookingData.user_id = userId;
-      }
+      // Adicionar user_id (obrigatório na tabela bookings)
+      bookingData.user_id = userId;
 
-      console.log('✅ [handleBooking] bookingData preparado:', {
+      secureLog.info('[handleBooking] bookingData preparado:', {
         ...bookingData,
         user_id: bookingData.user_id ? '***' : null
       });
-      console.log('🎯 [handleBooking] Estratégia da sala virtual selecionada:', meetingPlatform, 'suporte coluna:', supportsMeetingPlatform);
-
-      // 4.5. Criar sala do Zoom ANTES de inserir o agendamento (apenas para Zoom)
-      let zoomMeetingData = null;
-      if (meetingPlatform === 'zoom') {
-        try {
-          console.log('🎥 Criando sala do Zoom...', {
-            booking_date: selectedDate,
-            booking_time: selectedTime,
-            patient_name: safePatientName,
-            service_name: serviceDetails?.name,
-            professional_name: professionalDetails?.name
-          });
-
-          zoomMeetingData = await zoomService.createBookingMeeting({
-            booking_date: selectedDate,
-            booking_time: selectedTime,
-            patient_name: safePatientName,
-            service_name: serviceDetails?.name || 'Consulta',
-            professional_name: professionalDetails?.name || 'Profissional',
-            professional_email: professionalDetails?.email,
-            duration: 60
-          });
-
-          if (zoomMeetingData) {
-            secureLog.success('Sala do Zoom criada com sucesso!');
-            secureLog.info('Link:', zoomMeetingData.meeting_link);
-            // Adicionar dados do Zoom ao booking
-            bookingData.meeting_link = zoomMeetingData.meeting_link;
-            bookingData.meeting_password = zoomMeetingData.meeting_password || null;
-            bookingData.meeting_id = zoomMeetingData.meeting_id;
-            bookingData.meeting_start_url = zoomMeetingData.start_url;
-          } else {
-            console.warn('⚠️ createBookingMeeting retornou null - Zoom não configurado ou erro na criação');
-            toast({
-              title: 'Vamos finalizar o link da sala',
-              description: 'Não conseguimos gerar a sala do Zoom agora. Nossa equipe enviará o link completo por email assim que estiver pronto.',
-              variant: 'default'
-            });
-          }
-        } catch (zoomError) {
-          console.error('❌ Erro ao criar sala do Zoom:', zoomError);
-          console.error('❌ Detalhes do erro:', {
-            name: zoomError.name,
-            message: zoomError.message,
-            stack: zoomError.stack
-          });
-
-          // Mostrar aviso ao usuário mas não bloquear o fluxo
-          toast({
-            title: 'Link do encontro em validação',
-            description: 'Ainda não geramos a sala do Zoom. Você receberá o link confirmado por email em breve.',
-            variant: 'default'
-          });
-        }
-      } else {
-        console.log('ℹ️ Paciente preferiu Google Meet. Pular criação automática do Zoom.');
-      }
+      // 4.5. O link do Google Meet é informado manualmente pelo profissional no painel
+      //      e salvo em bookingData.meeting_link antes da inserção.
 
       // 5. Criar o agendamento
-      console.log('💾 Dados do agendamento antes de inserir no banco:', {
+      secureLog.info('Dados do agendamento antes de inserir no banco:', {
         ...bookingData,
         has_meeting_link: !!bookingData.meeting_link,
         has_meeting_password: !!bookingData.meeting_password,
@@ -1140,37 +1354,91 @@ const AgendamentoPage = () => {
         has_meeting_start_url: !!bookingData.meeting_start_url
       });
 
+      // 5. Se houver mais de 1 slot no carrinho, criar registro em public.packages e agendamentos filhos
+      if (selectedSlots.length > 1) {
+        secureLog.info('Criando pacote para', selectedSlots.length, 'sessões...');
+        const servicePrice = parseFloat(serviceDetails?.price || 150);
+        const totalSessions = selectedSlots.length;
+        const grossAmount = servicePrice * totalSessions;
+        const repasseTotal = (servicePrice * 0.60) * totalSessions;
+        const platformFeeTotal = (servicePrice * 0.40) * totalSessions;
+
+        const { data: pkgRecord, error: pkgError } = await supabase.from('packages').insert([{
+          patient_name: safePatientName,
+          patient_email: normalizedPatientEmail,
+          patient_phone: safePatientPhone,
+          patient_cpf: safePatientCpf,
+          professional_id: selectedProfessional,
+          total_sessions: totalSessions,
+          gross_amount: grossAmount,
+          professional_repasse_total: repasseTotal,
+          platform_fee_total: platformFeeTotal,
+          status: 'pending'
+        }]).select().single();
+
+        if (pkgError) {
+          console.error('❌ Erro ao criar pacote:', pkgError);
+        } else if (pkgRecord) {
+          secureLog.success('Pacote criado com sucesso:', pkgRecord.id);
+
+          // Criar agendamentos filhos vinculados ao package_id
+          const childBookings = selectedSlots.map(slot => ({
+            ...bookingData,
+            booking_date: slot.date,
+            booking_time: slot.time,
+            package_id: pkgRecord.id
+          }));
+
+          await createChildBookings(childBookings);
+
+          // Registrar etapa de funil: booking criado para pacote
+          try {
+            analytics.trackEvent('booking_created', {
+              event_category: 'Booking Flow',
+              booking_id: pkgRecord.id,
+              package_id: pkgRecord.id,
+              professional_id: selectedProfessional,
+              service_id: selectedService,
+              session_count: totalSessions,
+              value: grossAmount
+            });
+            analytics.trackFunnelStep('booking', 4, {
+              step_name: 'booking_created',
+              booking_id: pkgRecord.id,
+              value: grossAmount
+            });
+          } catch (trackingError) {
+            console.warn('⚠️ [handleBooking] Erro no tracking de pacote (não crítico):', trackingError);
+          }
+
+          setIsSubmitting(false);
+          navigate(`/checkout?package_id=${pkgRecord.id}`, {
+            state: {
+              packageId: pkgRecord.id,
+              totalAmount: grossAmount,
+              professionalName: professionalDetails?.name,
+              serviceName: serviceDetails?.name,
+              sessionCount: totalSessions,
+              patientName: safePatientName,
+              patientEmail: normalizedPatientEmail
+            }
+          });
+          return;
+        }
+      }
+
       let insertPayload = { ...bookingData };
       let bookingInsertData = null;
       let bookingError = null;
 
-      const attemptInsert = async (payload) => supabase.from('bookings').insert([payload]).select().single();
 
-      let insertResult = await attemptInsert(insertPayload);
-      bookingInsertData = insertResult.data;
-      bookingError = insertResult.error;
-
-      if (!bookingError && insertPayload.meeting_platform && supportsMeetingPlatform === false) {
-        setSupportsMeetingPlatform(true);
+      try {
+        bookingInsertData = await createBooking(insertPayload);
+      } catch (err) {
+        bookingError = err;
       }
 
-      if (
-        insertPayload.meeting_platform &&
-        bookingError &&
-        bookingError.message &&
-        bookingError.message.toLowerCase().includes('meeting_platform')
-      ) {
-        console.warn('⚠️ Coluna meeting_platform indisponível no banco. Reenviando sem essa informação.');
-        const { meeting_platform, ...fallbackPayload } = insertPayload;
-        insertResult = await attemptInsert(fallbackPayload);
-        bookingInsertData = insertResult.data;
-        bookingError = insertResult.error;
-        if (!bookingError) {
-          setSupportsMeetingPlatform(false);
-        }
-      }
-
-      console.log('💾 Resultado do insert:', {
+      secureLog.info('Resultado do insert:', {
         success: !bookingError,
         data: bookingInsertData,
         error: bookingError,
@@ -1182,8 +1450,8 @@ const AgendamentoPage = () => {
         console.error('Erro ao criar agendamento:', bookingError);
         toast({
           variant: 'destructive',
-          title: 'Não conseguimos concluir o agendamento',
-          description: 'Revise os dados e tente mais uma vez. Se o erro continuar, chame nossa equipe para concluir manualmente.'
+          title: 'Não foi possível reservar este horário agora',
+          description: 'Pode ter ocorrido uma oscilação momentânea. Seus dados estão preservados; tente novamente ou fale com nossa equipe de apoio.'
         });
         return;
       }
@@ -1192,7 +1460,7 @@ const AgendamentoPage = () => {
 
       // 5.5. Enviar email de confirmação do agendamento
       try {
-        console.log('📧 Preparando envio de email de confirmação...');
+        secureLog.info('Preparando envio de email de confirmação...');
         const emailManager = new BookingEmailManager();
 
         const bookingDetails = {
@@ -1205,21 +1473,61 @@ const AgendamentoPage = () => {
           appointment_date: selectedDate,
           appointment_time: selectedTime,
           status: 'pending',
-          meeting_link: zoomMeetingData?.meeting_link,
-          meeting_password: zoomMeetingData?.meeting_password,
-          meeting_platform: bookingInsertData?.meeting_platform || (supportsMeetingPlatform ? bookingData.meeting_platform : undefined)
+          meeting_link: bookingInsertData?.meeting_link,
+          meeting_password: bookingInsertData?.meeting_password,
+          meeting_platform: 'google_meet'
         };
 
-        console.log('📧 Enviando email para:', normalizedPatientEmail);
+        secureLog.info('Enviando email para o paciente (endereço redactado por LGPD)');
         await emailManager.sendBookingConfirmation(bookingDetails);
-        console.log('✅ Email de confirmação enviado com sucesso!');
+
+        secureLog.info('Enviando email de confirmação para o profissional...');
+        await emailManager.sendProfessionalConfirmation({
+          ...bookingDetails,
+          professional_id: selectedProfessional,
+          user_id: professionalDetails?.user_id,
+          professional_email: professionalDetails?.email
+        });
+
+        // Se for agendamento para o mesmo dia (<= 4h), disparar notificação urgente para o profissional e cópia para o backoffice
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (selectedDate === todayStr) {
+          secureLog.info('Enviando notificação URGENTE para profissional e backoffice...');
+          await emailManager.sendUrgentProfessionalNotification({
+            ...bookingDetails,
+            professional_id: selectedProfessional,
+            user_id: professionalDetails?.user_id,
+            professional_email: professionalDetails?.email
+          });
+        }
+
+        secureLog.success('Email de confirmação e alertas enviados com sucesso!');
       } catch (emailError) {
         // Não bloquear o fluxo se o email falhar
         console.error('⚠️ Erro ao enviar email (não crítico):', emailError);
       }
 
       // 6. Redirecionar para checkout
-      console.log('✅ [handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
+      secureLog.success('[handleBooking] Agendamento criado com sucesso! Redirecionando para checkout...');
+
+      // Registrar etapa de funil: booking criado (aguardando pagamento no checkout)
+      try {
+        analytics.trackEvent('booking_created', {
+          event_category: 'Booking Flow',
+          booking_id: bookingId,
+          professional_id: selectedProfessional,
+          service_id: selectedService,
+          value: valorConsulta
+        });
+        analytics.trackFunnelStep('booking', 4, {
+          step_name: 'booking_created',
+          booking_id: bookingId,
+          value: valorConsulta
+        });
+      } catch (trackingError) {
+        // Não bloquear o fluxo se o tracking falhar
+        console.warn('⚠️ [handleBooking] Erro no tracking (não crítico):', trackingError);
+      }
 
       // Redirecionar para página de checkout
       navigate(`/checkout?booking_id=${bookingId}`);
@@ -1248,7 +1556,14 @@ const AgendamentoPage = () => {
             selectedProfessional={selectedProfessional}
             onSelectService={handleServiceSelect}
             onSelectProfessional={handleProfessionalSelect}
-            onNext={() => setStep(2)}
+            onNext={() => {
+              if (!bookingStartTrackedRef.current) {
+                bookingStartTrackedRef.current = true;
+                try { trackBookingStart(); } catch (e) { /* ignore */ }
+              }
+              trackBookingStep(2, { step_name: 'professional_selected', professionalId: selectedProfessional, serviceId: selectedService });
+              setStep(2);
+            }}
             availability={availability}
             displayMode="service-only"
           />
@@ -1264,7 +1579,7 @@ const AgendamentoPage = () => {
             onSelectService={handleServiceSelect}
             onSelectProfessional={handleProfessionalSelect}
             onBack={() => setStep(1)}
-            onNext={() => setStep(3)}
+            onNext={() => { trackBookingStep(3, { step_name: 'datetime_step', professionalId: selectedProfessional, serviceId: selectedService }); setStep(3); }}
             availability={availability}
             displayMode="professional-only"
           />
@@ -1279,6 +1594,10 @@ const AgendamentoPage = () => {
             selectedTime={selectedTime}
             onSelectDate={handleDateSelect}
             onSelectTime={setSelectedTime}
+            selectedSlots={selectedSlots}
+            onToggleSlot={handleToggleSlot}
+            onRemoveSlot={handleRemoveSlot}
+            onClearSlots={handleClearSlots}
             currentMonth={currentMonth}
             onPrevMonth={prevMonth}
             onNextMonth={nextMonth}
@@ -1287,13 +1606,26 @@ const AgendamentoPage = () => {
             getDaysInMonth={getDaysInMonth}
             formatDateToString={formatDateToString}
             availableTimes={availableTimes}
+            availableSlotsCountByDate={availableSlotsCountByDate}
             bookedSlots={bookedSlots}
             isLoadingTimes={isLoadingSlots}
             topTestimonials={topTestimonials}
             onBack={() => setStep(2)}
-            onNext={() => setStep(4)}
+            onNext={() => {
+              if (!hasScheduleSelection) {
+                toast({
+                  variant: 'destructive',
+                  title: 'Horário não selecionado',
+                  description: 'Por favor, selecione uma data e horário antes de avançar.'
+                });
+                return;
+              }
+              trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService });
+              setStep(4);
+            }}
           />
         );
+
       case 4:
         return (
           <>
@@ -1320,17 +1652,44 @@ const AgendamentoPage = () => {
               emailExists={emailExists}
               emailCheckError={emailCheckError}
             />
-            <div className="flex flex-col sm:flex-row gap-4 mt-6">
-              <Button onClick={() => setStep(3)} variant="outline">
+            {/* Botões Desktop */}
+            <div className="hidden sm:flex flex-row gap-4 mt-6">
+              <Button
+                onClick={() => setStep(3)}
+                variant="outline"
+                aria-label="Voltar para a escolha de data e horário"
+                className="min-h-[44px] px-6 text-gray-700 hover:text-gray-900"
+              >
                 Voltar
               </Button>
               <Button
                 onClick={handleProceedToSummary}
-                disabled={!canProceedToSummary}
-                className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Continuar para a revisão do agendamento e pagamento"
+                className="bg-[#2d8659] hover:bg-[#236b47] text-white active:scale-95 min-h-[44px] px-8 font-semibold shadow-md"
               >
-                Continuar
+                Continuar para Pagamento
               </Button>
+            </div>
+
+            {/* Sticky Mobile CTA para Etapa 4 - Acima da dobra mobile */}
+            <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:hidden">
+              <div className="container max-w-4xl mx-auto flex items-center gap-3">
+                <Button
+                  onClick={() => setStep(3)}
+                  variant="outline"
+                  aria-label="Voltar para a escolha de data e horário"
+                  className="min-h-[44px] px-4 text-gray-700"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  onClick={handleProceedToSummary}
+                  aria-label="Continuar para o resumo do agendamento"
+                  className="flex-1 bg-[#2d8659] hover:bg-[#236b47] text-white min-h-[48px] font-bold shadow-lg shadow-[#2d8659]/20 transition-all text-base"
+                >
+                  Continuar para Pagamento
+                </Button>
+              </div>
             </div>
           </>
         );
@@ -1342,6 +1701,7 @@ const AgendamentoPage = () => {
             serviceDetails={selectedServiceDetails}
             selectedDate={selectedDate}
             selectedTime={selectedTime}
+            selectedSlots={selectedSlots}
             meetingPlatform={meetingPlatform}
             paymentSecurityHighlights={paymentSecurityHighlights}
             acceptTermsField={register('acceptTerms')}
@@ -1390,7 +1750,7 @@ const AgendamentoPage = () => {
                   <ul className="text-sm text-yellow-800 space-y-1">
                     <li>• Você será redirecionado para o pagamento</li>
                     <li>• Após confirmação, receberá email com detalhes</li>
-                    <li>• Link da consulta será enviado por email e WhatsApp</li>
+                    <li>• Link da consulta será enviado por email e fica disponível na Área do Paciente</li>
                     <li>• Lembre-se: a sessão começa pontualmente no horário marcado</li>
                   </ul>
                 </div>
@@ -1427,21 +1787,29 @@ const AgendamentoPage = () => {
     const professionalLabel = selectedProfessional
       ? professionalList.find((professional) => professional.id === selectedProfessional)?.name
       : null;
-    const dateLabel = selectedDate
-      ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'UTC',
-      })
-      : null;
+
+    const dateLabel = selectedSlots.length > 1
+      ? `${selectedSlots.length} Sessões`
+      : selectedDate
+        ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
+          day: 'numeric',
+          month: 'short',
+          timeZone: 'UTC',
+        })
+        : null;
+
+    const timeLabel = selectedSlots.length > 1
+      ? 'Pacote'
+      : (selectedTime || null);
 
     return {
       serviceLabel,
       professionalLabel,
       dateLabel,
-      timeLabel: selectedTime || null,
+      timeLabel,
     };
-  }, [selectedDate, selectedProfessional, selectedService, selectedTime, services, professionals]);
+  }, [selectedDate, selectedProfessional, selectedService, selectedTime, selectedSlots, services, professionals]);
+
 
   const handleStepClick = (clickedStep) => {
     if (clickedStep <= step) {
@@ -1467,28 +1835,71 @@ const AgendamentoPage = () => {
   return (
     <>
       <Helmet>
-        <title>Agendamento - Doxologos Clínica Online</title>
-        <meta name="description" content="Agende sua consulta online com nossos profissionais qualificados." />
+        {/* Title ≤60 chars — keyword: agendamento psicólogo online */}
+        <title>Agende sua Consulta de Psicologia Online | Doxologos</title>
+        {/* Meta description ≤155 chars com CTA natural */}
+        <meta
+          name="description"
+          content="Escolha seu psicólogo, selecione o horário ideal e agende sua consulta online com segurança. Processo simples e acolhedor. Comece agora."
+        />
+        <link rel="canonical" href="https://doxologos.com.br/agendamento" />
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:site_name" content="Doxologos" />
+        <meta property="og:title" content="Agende sua Consulta de Psicologia Online | Doxologos" />
+        <meta property="og:description" content="Escolha seu psicólogo, selecione o horário ideal e agende sua consulta online com segurança. Processo simples e acolhedor." />
+        <meta property="og:url" content="https://doxologos.com.br/agendamento" />
+        <meta property="og:image" content="https://doxologos.com.br/og-image.jpg" />
+        <meta property="og:image:alt" content="Agendamento de consulta psicológica online — Doxologos" />
+        {/* Twitter / X Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Agende sua Consulta Online | Doxologos" />
+        <meta name="twitter:description" content="Escolha seu psicólogo e horário ideal para sua consulta online. Processo acolhedor e seguro." />
+        <meta name="twitter:image" content="https://doxologos.com.br/og-image.jpg" />
+        {/* Schema: Service */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'Service',
+            name: 'Consulta Psicológica Online',
+            description: 'Atendimento psicológico individual online com profissionais habilitados pelo CRP, com abordagem integrativa e acolhedora.',
+            provider: {
+              '@type': 'MedicalBusiness',
+              '@id': 'https://doxologos.com.br/#organization',
+              name: 'Doxologos'
+            },
+            areaServed: { '@type': 'Country', name: 'Brasil' },
+            availableChannel: {
+              '@type': 'ServiceChannel',
+              serviceUrl: 'https://doxologos.com.br/agendamento',
+              serviceType: 'Online'
+            },
+            url: 'https://doxologos.com.br/agendamento'
+          })}
+        </script>
       </Helmet>
       <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
         <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-              <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
-              <span className="text-2xl font-bold gradient-text">Doxologos</span>
+            <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+              <DoxologosLogo className="h-9 md:h-10 w-auto" />
             </Link>
             <div className="flex items-center space-x-4">
-              <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
+              <Link
+                to="/"
+                aria-label="Voltar para a página inicial do site"
+                className="text-gray-700 hover:text-[#2d8659] transition-colors min-h-[44px] inline-flex items-center px-3 py-2 rounded-lg font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2d8659]"
+              >
                 ← Voltar ao Site
               </Link>
             </div>
           </div>
         </nav>
       </header>
-      <div className="min-h-screen bg-gray-50 py-12 pt-24">
+      <div className="min-h-screen bg-gray-50 pt-20 sm:pt-24 pb-36 sm:pb-16">
         <div className="container mx-auto px-4 max-w-4xl">
-          {/* Personalized Greeting */}
-          <PersonalizedGreeting userName={userName} />
+
 
           {step <= progressSteps.length && (
             <BookingStepper
@@ -1500,11 +1911,38 @@ const AgendamentoPage = () => {
             />
           )}
 
-          {/* Welcome Message for First-Time Users */}
-          {step === 1 && <WelcomeMessage isFirstBooking={isFirstBooking} />}
+          {/* Banner Contextual Inteligente para Origem em Testes Psicométricos */}
+          {assessmentParam && step < 5 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 rounded-xl p-4 md:p-5 shadow-sm text-gray-800"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 text-[#2d8659]">
+                  <Sparkles className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="font-semibold text-emerald-950 text-sm md:text-base">
+                      Cuidado recomendado com base na sua autoavaliação
+                    </span>
+                    {severityParam && severityParam !== 'unknown' && severityParam !== 'undefined' && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-200/80 text-emerald-900 capitalize">
+                        {severityParam.replace('-', ' ')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs md:text-sm text-emerald-800 leading-relaxed">
+                    Pré-selecionamos a modalidade clínica mais indicada para o seu resultado. Escolha abaixo o psicólogo especialista para seu acolhimento.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
 
-          {/* Progress Celebration */}
-          <ProgressCelebration step={step} />
+
+
 
           {/* Conteúdo da etapa atual */}
           <Suspense fallback={<StepLoader />}>
@@ -1567,23 +2005,33 @@ const AgendamentoPage = () => {
 
             {/* Continue Button */}
             <Button
-              onClick={() => {
+              onClick={async () => {
                 if (step === 1 && selectedService) {
+                  if (!bookingStartTrackedRef.current) {
+                    bookingStartTrackedRef.current = true;
+                    try { trackBookingStart(); } catch (e) { /* ignore */ }
+                  }
+                  trackBookingStep(2, { step_name: 'professional_selected', professionalId: selectedProfessional, serviceId: selectedService });
                   setStep(2);
                 } else if (step === 2 && selectedProfessional) {
+                  trackBookingStep(3, { step_name: 'datetime_step', professionalId: selectedProfessional, serviceId: selectedService });
                   setStep(3);
-                } else if (step === 3 && selectedDate && selectedTime) {
+                } else if (step === 3 && (selectedSlots.length > 0 || (selectedDate && selectedTime))) {
+                  trackBookingStep(4, { step_name: 'patient_data_step', professionalId: selectedProfessional, serviceId: selectedService });
                   setStep(4);
+                } else if (step === 4) {
+                  await handleProceedToSummary();
                 }
               }}
               disabled={(
                 (step === 1 && !selectedService) ||
                 (step === 2 && !selectedProfessional) ||
-                (step === 3 && (!selectedDate || !selectedTime))
+                (step === 3 && selectedSlots.length === 0 && (!selectedDate || !selectedTime))
               )}
-              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 text-base font-semibold"
+              aria-label={step === 4 ? 'Avançar para o resumo de pagamento' : 'Continuar para a próxima etapa'}
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed h-12 min-h-[48px] text-base font-semibold shadow-md flex items-center justify-center gap-1 active:scale-95"
             >
-              Continuar <ChevronRight className="w-5 h-5 ml-1" />
+              {step === 4 ? 'Avançar para Pagamento' : 'Continuar'} <ChevronRight className="w-5 h-5 ml-1" />
             </Button>
           </div>
         </motion.div>

@@ -57,52 +57,33 @@ const PatientAccountStep = ({
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Confirmação e Dados Pessoais</h2>
-        <p className="text-gray-600 text-lg">Revise os detalhes e preencha seus dados para finalizar</p>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 sm:p-8">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3">Quem nós teremos a alegria de acolher?</h2>
+        <p className="text-gray-600 text-sm sm:text-base">Fique tranquilo(a): seus dados e conversas são protegidos por sigilo ético absoluto.</p>
       </div>
 
       {!authUser && (
         <div className="space-y-4">
-          <div className="relative">
-            <label className="block text-sm font-medium mb-2">Nome completo*</label>
-            <div className="relative">
-              <input
-                type="text"
-                {...register('name', {
-                  setValueAs: (value) => (value ?? '').trim(),
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
-                placeholder="Seu nome completo"
-              />
-              {/* Checkmark de validação */}
-              {patientData.name && !errors.name && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                </motion.div>
-              )}
-            </div>
-            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
-          </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Email*</label>
+            <label htmlFor="patient-email" className="block text-sm font-medium mb-2 text-gray-800">Email*</label>
             <div className="relative">
               <input
+                id="patient-email"
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                aria-required="true"
+                aria-invalid={Boolean(emailError)}
                 {...register('email', {
                   setValueAs: (value) => (value ?? '').trim(),
                 })}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-300'
+                className={`w-full px-4 py-3 border rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent ${emailError ? 'border-red-500' : emailExists === true ? 'border-green-500' : emailExists === false ? 'border-blue-500' : 'border-gray-200'
                   }`}
                 placeholder="seu@email.com"
               />
               {isCheckingEmail && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
                   <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
                 </div>
               )}
@@ -113,9 +94,10 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-gray-600 mt-2"
+                className="flex items-center gap-2 text-sm text-gray-700 mt-2"
+                role="status"
               >
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin text-gray-600" aria-hidden="true" />
                 <span>Verificando email...</span>
               </motion.div>
             )}
@@ -124,10 +106,11 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-green-600 mt-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200"
+                className="flex items-center gap-2 text-sm text-[#1b5e20] mt-2 bg-green-50 px-3 py-2 rounded-2xl border border-green-200"
+                role="status"
               >
-                <CheckCircle className="w-4 h-4" />
-                <span className="font-medium">✓ Email encontrado - Bem-vindo de volta!</span>
+                <CheckCircle className="w-4 h-4 text-[#1b5e20]" aria-hidden="true" />
+                <span className="font-medium">✓ Que bom ter você de volta! Reconhecemos seu e-mail.</span>
               </motion.div>
             )}
 
@@ -135,292 +118,305 @@ const PatientAccountStep = ({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 text-sm text-blue-600 mt-2 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200"
+                className="flex items-center gap-2 text-sm text-blue-800 mt-2 bg-blue-50 px-3 py-2 rounded-2xl border border-blue-200"
+                role="status"
               >
-                <Sparkles className="w-4 h-4" />
-                <span className="font-medium">✓ Novo por aqui? Vamos criar sua conta!</span>
+                <Sparkles className="w-4 h-4 text-blue-700" aria-hidden="true" />
+                <span className="font-medium">✓ Seja muito bem-vindo(a)! Criaremos seu espaço seguro.</span>
               </motion.div>
             )}
 
             {emailCheckError && (
-              <p className="text-amber-600 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+              <p className="text-amber-800 text-sm mt-2 bg-amber-50 px-3 py-2 rounded-2xl border border-amber-200" role="alert">
                 {emailCheckError}
               </p>
             )}
 
-            {emailError && <p className="text-red-500 text-sm mt-1">{emailError}</p>}
+            {emailError && <p className="text-red-600 text-sm mt-1" role="alert">{emailError}</p>}
           </div>
-          <div className="relative">
-            <label className="block text-sm font-medium mb-2">Telefone*</label>
-            <div className="relative">
-              <input
-                type="tel"
-                {...register('phone', {
-                  onChange: (event) => {
-                    const formatted = formatPhoneNumber(event.target.value);
-                    event.target.value = formatted;
-                  },
-                })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
-                placeholder="(00) 00000-0000"
-                maxLength={15}
-              />
-              {/* Checkmark de validação */}
-              {patientData.phone && !errors.phone && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                </motion.div>
-              )}
-            </div>
-            {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
-          </div>
+
+          <AnimatePresence>
+            {!isExistingPatient && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="space-y-4 overflow-hidden"
+              >
+                <div className="relative">
+                  <label htmlFor="patient-name" className="block text-sm font-medium mb-2 text-gray-800">Seu nome completo*</label>
+                  <div className="relative">
+                    <input
+                      id="patient-name"
+                      type="text"
+                      autoComplete="name"
+                      aria-required="true"
+                      aria-invalid={Boolean(errors.name)}
+                      {...register('name', {
+                        setValueAs: (value) => (value ?? '').trim(),
+                      })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                      placeholder="Como você prefere ser chamado(a)?"
+                    />
+                    {/* Checkmark de validação */}
+                    {patientData.name && !errors.name && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        aria-hidden="true"
+                      >
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      </motion.div>
+                    )}
+                  </div>
+                  {errors.name && <p className="text-red-600 text-sm mt-1" role="alert">{errors.name.message}</p>}
+                </div>
+
+                <div className="relative">
+                  <label htmlFor="patient-phone" className="block text-sm font-medium mb-2 text-gray-800">WhatsApp para contato*</label>
+                  <div className="relative">
+                    <input
+                      id="patient-phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
+                      aria-required="true"
+                      aria-invalid={Boolean(errors.phone)}
+                      {...register('phone', {
+                        onChange: (event) => {
+                          const formatted = formatPhoneNumber(event.target.value);
+                          event.target.value = formatted;
+                        },
+                      })}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-2xl bg-gray-50/50 focus:bg-white transition-colors focus:ring-2 focus:ring-[#2d8659] focus:border-transparent pr-10"
+                      placeholder="(00) 00000-0000 (para lembretes da consulta)"
+                      maxLength={15}
+                    />
+                    {/* Checkmark de validação */}
+                    {patientData.phone && !errors.phone && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2"
+                        aria-hidden="true"
+                      >
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      </motion.div>
+                    )}
+                  </div>
+                  {errors.phone && <p className="text-red-600 text-sm mt-1" role="alert">{errors.phone.message}</p>}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       )}
 
       {!authUser ? (
-        <motion.div
-          className="mt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Card Visual com Gradiente */}
-          <div className={`relative rounded-2xl p-6 border-2 transition-all duration-300 ${isExistingPatient
-            ? 'bg-gradient-to-br from-green-50 via-emerald-50 to-green-50 border-green-200'
-            : 'bg-gradient-to-br from-blue-50 via-sky-50 to-blue-50 border-blue-200'
-            }`}>
-            {/* Header do Card com Ícone */}
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-start gap-4">
-                {/* Ícone Grande */}
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 ${isExistingPatient
-                  ? 'bg-green-500 shadow-lg shadow-green-200'
-                  : 'bg-blue-500 shadow-lg shadow-blue-200'
-                  }`}>
-                  {isExistingPatient ? (
-                    <UserCheck className="w-7 h-7 text-white" />
-                  ) : (
-                    <UserPlus className="w-7 h-7 text-white" />
+        <AnimatePresence>
+          <motion.div
+            key={isExistingPatient ? 'existing-patient-card' : 'new-patient-card'}
+            className="mt-8 overflow-hidden"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+              {/* Card Simplificado */}
+              <div className={`relative rounded-2xl p-4 md:p-5 border transition-all duration-300 ${isExistingPatient
+                ? 'bg-green-50 border-green-200'
+                : 'bg-blue-50 border-blue-200'
+                }`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isExistingPatient
+                      ? 'bg-green-100 text-[#1b5e20]'
+                      : 'bg-blue-100 text-blue-800'
+                      }`}>
+                      {isExistingPatient ? <UserCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${isExistingPatient ? 'text-green-950' : 'text-blue-950'}`}>
+                        {isExistingPatient ? 'Que bom ter você de volta!' : 'Criando seu cantinho de cuidado'}
+                      </h3>
+                      <p className={`text-xs ${isExistingPatient ? 'text-[#1b5e20]' : 'text-blue-800'}`}>
+                        {isExistingPatient ? 'Acessar seu histórico' : 'Crie sua senha de acesso'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={onToggleExistingPatient}
+                    className={`text-xs font-semibold px-3 py-2 min-h-[44px] inline-flex items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${isExistingPatient
+                      ? 'text-[#1b5e20] hover:bg-green-200/50'
+                      : 'text-blue-800 hover:bg-blue-200/50'
+                      }`}
+                  >
+                    {isExistingPatient ? 'Trocar e-mail' : 'Já é nosso(a) paciente? Entrar'}
+                  </button>
+                </div>
+
+                {/* Descrição */}
+                <p className="text-sm text-gray-700 mb-6 leading-relaxed">
+                  {isExistingPatient
+                    ? 'Digite sua senha para manter suas consultas organizadas no mesmo lugar.'
+                    : `Defina uma senha segura com pelo menos ${minPasswordLength} caracteres para acompanhar suas consultas e acessar sua sala virtual.`}
+                </p>
+
+                {/* Campos de Senha */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Campo de Senha */}
+                  <div className="relative">
+                    <label htmlFor="patient-password" className="block text-sm font-medium mb-2 text-gray-800">
+                      {isExistingPatient ? 'Sua senha de acesso*' : 'Crie uma senha de acesso*'}
+                    </label>
+                    <input
+                      id="patient-password"
+                      type={showPassword ? 'text' : 'password'}
+                      aria-required="true"
+                      aria-invalid={Boolean(passwordError || errors.password)}
+                      {...register('password')}
+                      className={`w-full px-4 py-3 border rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
+                        ? 'border-green-200 focus:ring-green-500'
+                        : 'border-blue-200 focus:ring-blue-500'
+                        }`}
+                      placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
+                      autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
+                    />
+                    <button
+                      type="button"
+                      onClick={onToggleShowPassword}
+                      className="absolute right-2 top-8 min-w-[44px] min-h-[44px] p-2 flex items-center justify-center text-gray-600 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] rounded-lg transition-colors"
+                      aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+
+                  {/* Indicador de Força de Senha - Apenas para Novos */}
+                  <AnimatePresence>
+                    {!isExistingPatient && (
+                      <PasswordStrengthIndicator
+                        password={patientData.password || ''}
+                        isExistingPatient={isExistingPatient}
+                      />
+                    )}
+                  </AnimatePresence>
+
+                  {/* Campo de Confirmar Senha - Apenas para Novos */}
+                  {!isExistingPatient && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                      className="relative"
+                    >
+                      <label htmlFor="patient-confirm-password" className="block text-sm font-medium mb-2 text-gray-800">
+                        Confirmar senha <span className="text-xs text-gray-500 font-normal">(opcional)</span>
+                      </label>
+                      <input
+                        id="patient-confirm-password"
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        aria-required="false"
+                        aria-invalid={Boolean(errors.confirmPassword)}
+                        {...register('confirmPassword')}
+                        className="w-full px-4 py-3 border border-blue-200 rounded-2xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
+                        placeholder="Repita ou confira no olho ao lado"
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={onToggleShowConfirmPassword}
+                        className="absolute right-2 top-8 min-w-[44px] min-h-[44px] p-2 flex items-center justify-center text-gray-600 hover:text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] rounded-lg transition-colors"
+                        aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </motion.div>
                   )}
                 </div>
 
-                {/* Título e Subtítulo */}
-                <div>
-                  <h3 className={`text-xl font-bold mb-1 transition-colors duration-300 ${isExistingPatient ? 'text-green-900' : 'text-blue-900'
-                    }`}>
-                    {isExistingPatient ? 'Bem-vindo de volta!' : 'Novo por aqui?'}
-                  </h3>
-                  <p className={`text-sm transition-colors duration-300 ${isExistingPatient ? 'text-green-700' : 'text-blue-700'
-                    }`}>
-                    {isExistingPatient
-                      ? 'Encontramos seu cadastro'
-                      : 'Vamos criar sua conta'}
-                  </p>
+                {/* Footer com Links e Dicas */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <p className="text-sm text-gray-700">
+                      {isExistingPatient
+                        ? 'Caso não lembre sua senha, solicite um link de redefinição.'
+                        : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={onPasswordResetRequest}
+                        className={`text-sm font-semibold min-h-[44px] inline-flex items-center px-2 py-1 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${isExistingPatient
+                          ? 'text-[#1b5e20] hover:text-[#132d29]'
+                          : 'text-blue-800 hover:text-blue-900'
+                          } disabled:text-gray-400 disabled:hover:text-gray-400`}
+                        disabled={!patientData.email || !!emailError}
+                      >
+                        Esqueci minha senha
+                      </button>
+                      <Link
+                        to="/recuperar-senha"
+                        className={`text-sm font-semibold min-h-[44px] inline-flex items-center px-2 py-1 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${isExistingPatient
+                          ? 'text-[#1b5e20] hover:text-[#132d29]'
+                          : 'text-blue-800 hover:text-blue-900'
+                          }`}
+                      >
+                        Recuperar agora
+                      </Link>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Botão de Override - Discreto mas Visível */}
-              <button
-                type="button"
-                onClick={onToggleExistingPatient}
-                className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 ${isExistingPatient
-                  ? 'text-green-700 hover:bg-green-100 border border-green-300'
-                  : 'text-blue-700 hover:bg-blue-100 border border-blue-300'
-                  }`}
-              >
-                {isExistingPatient ? 'Sou novo' : 'Já tenho conta'}
-              </button>
-            </div>
-
-            {/* Descrição */}
-            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-              {isExistingPatient
-                ? 'Informe sua senha atual para vincular este agendamento à sua conta.'
-                : `Defina uma senha com pelo menos ${minPasswordLength} caracteres para acessar a Área do Paciente.`}
-            </p>
-
-            {/* Campos de Senha */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              {/* Campo de Senha */}
-              <div className="relative">
-                <label className="block text-sm font-medium mb-2 text-gray-700">
-                  {isExistingPatient ? 'Senha do paciente*' : 'Crie uma senha*'}
-                </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  {...register('password')}
-                  className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:border-transparent pr-12 transition-all ${isExistingPatient
-                    ? 'border-green-200 focus:ring-green-500 focus:border-green-500'
-                    : 'border-blue-200 focus:ring-blue-500 focus:border-blue-500'
-                    }`}
-                  placeholder={isExistingPatient ? 'Sua senha atual' : `Mínimo ${minPasswordLength} caracteres`}
-                  autoComplete={isExistingPatient ? 'current-password' : 'new-password'}
-                />
-                <button
-                  type="button"
-                  onClick={onToggleShowPassword}
-                  className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
-                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-
-              {/* Indicador de Força de Senha - Apenas para Novos */}
-              <AnimatePresence>
-                {!isExistingPatient && (
-                  <PasswordStrengthIndicator
-                    password={patientData.password || ''}
-                    isExistingPatient={isExistingPatient}
-                  />
+                {/* Erros */}
+                {(passwordError || errors.password) && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-600 text-sm mt-4 bg-red-50 px-4 py-2 rounded-2xl border border-red-200"
+                  >
+                    {passwordError || errors.password?.message}
+                  </motion.p>
                 )}
-              </AnimatePresence>
-
-              {/* Campo de Confirmar Senha - Apenas para Novos */}
-              {!isExistingPatient && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="relative"
-                >
-                  <label className="block text-sm font-medium mb-2 text-gray-700">
-                    Confirme a senha*
-                  </label>
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    {...register('confirmPassword')}
-                    className="w-full px-4 py-3 border-2 border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-12 transition-all"
-                    placeholder="Repita a senha"
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={onToggleShowConfirmPassword}
-                    className="absolute right-3 top-[38px] text-gray-500 hover:text-gray-700 transition-colors"
-                    aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                {!isExistingPatient && errors.confirmPassword && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-600 text-sm mt-2 bg-red-50 px-4 py-2 rounded-2xl border border-red-200"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Footer com Links e Dicas */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <p className="text-sm text-gray-600">
-                  {isExistingPatient
-                    ? 'Caso não lembre sua senha, solicite um link de redefinição.'
-                    : 'Use esta senha para acompanhar consultas e reagendar quando precisar.'}
-                </p>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={onPasswordResetRequest}
-                    className={`text-sm font-medium transition-colors ${isExistingPatient
-                      ? 'text-green-600 hover:text-green-700'
-                      : 'text-blue-600 hover:text-blue-700'
-                      } disabled:text-gray-400 disabled:hover:text-gray-400`}
-                    disabled={!patientData.email || !!emailError}
-                  >
-                    Esqueci minha senha
-                  </button>
-                  <Link
-                    to="/recuperar-senha"
-                    className={`text-sm font-medium transition-colors ${isExistingPatient
-                      ? 'text-green-600 hover:text-green-700'
-                      : 'text-blue-600 hover:text-blue-700'
-                      }`}
-                  >
-                    Recuperar agora
-                  </Link>
-                </div>
+                    {errors.confirmPassword.message}
+                  </motion.p>
+                )}
               </div>
-            </div>
-
-            {/* Erros */}
-            {(passwordError || errors.password) && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-600 text-sm mt-4 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
-              >
-                {passwordError || errors.password?.message}
-              </motion.p>
-            )}
-            {!isExistingPatient && errors.confirmPassword && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-red-600 text-sm mt-2 bg-red-50 px-4 py-2 rounded-lg border border-red-200"
-              >
-                {errors.confirmPassword.message}
-              </motion.p>
-            )}
-          </div>
-        </motion.div>
+            </motion.div>
+        </AnimatePresence>
       ) : (
-        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-2xl text-sm text-green-800">
           Você está acessando como <span className="font-semibold">{authUser?.email}</span>. Usaremos seu cadastro atual para concluir o agendamento.
         </div>
       )}
 
-      <div className="mt-8">
-        <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-          <Video className="w-5 h-5 text-[#2d8659]" />
-          Como prefere acessar a consulta?
-        </h3>
-        <p className="text-sm text-gray-600 mt-1">
-          A Doxologos utiliza o Google Meet para as consultas online.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2 mt-4">
-          {meetingOptions.map((option) => {
-            const Icon = option.icon || Video;
-            const isActive = meetingPlatform === option.id;
-            return (
-              <button
-                type="button"
-                key={option.id}
-                onClick={() => onSelectMeetingPlatform?.(option.id)}
-                aria-pressed={isActive}
-                className={`w-full text-left border rounded-xl p-5 transition-all ${isActive
-                  ? 'border-[#2d8659] bg-[#2d8659]/10 shadow-md'
-                  : 'border-gray-200 bg-white hover:border-[#2d8659]/60 hover:bg-[#2d8659]/5'
-                  }`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isActive ? 'bg-[#2d8659] text-white' : 'bg-gray-100 text-[#2d8659]'
-                    }`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-900 text-lg">{option.label}</p>
-                    <p className="text-sm text-gray-600">{option.description}</p>
-                  </div>
-                </div>
-                <ul className="space-y-1 text-sm text-gray-600 pl-1">
-                  {(option.highlights || []).map((highlight) => (
-                    <li key={highlight} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-[#2d8659] mt-0.5 flex-shrink-0" />
-                      <span>{highlight}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div
-                  className={`mt-4 inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${isActive ? 'text-[#2d8659]' : 'text-gray-400'
-                    }`}
-                >
-                  {isActive ? 'Selecionado' : 'Selecionar'}
-                </div>
-              </button>
-            );
-          })}
+      {/* Banner Informativo da Sala Online - Compacto e Mobile-Friendly */}
+      <div className="mt-6 p-4 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-[#2d8659]/10 text-[#2d8659] flex items-center justify-center flex-shrink-0">
+          <Video className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-gray-900">
+              Atendimento Online via Google Meet
+            </p>
+            <span className="text-[11px] font-semibold bg-[#2d8659]/15 text-[#236b47] px-2 py-0.5 rounded-full">
+              100% no navegador
+            </span>
+          </div>
+          <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">
+            Sessão individual, segura e sigilosa. O link exclusivo de acesso será enviado para seu e-mail e fica disponível na Área do Paciente.
+          </p>
         </div>
       </div>
     </motion.div>

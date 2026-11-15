@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('[MP Card] Body recebido:', JSON.stringify(body));
 
-    const { token, amount, installments, description, payer, booking_id, inscricao_id } = body;
+    const { token, amount, wallet_used, user_id, installments, description, payer, booking_id, inscricao_id, package_id, payment_method_id, issuer_id, device_id } = body;
 
     if (!token || !amount) {
       return new Response(
@@ -29,7 +29,10 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
     const SERVICE_ROLE = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN') || '';
+    const environment = Deno.env.get('MP_ENVIRONMENT') || 'production';
+    const MP_ACCESS_TOKEN = (environment === 'test'
+      ? Deno.env.get('MP_ACCESS_TOKEN_TEST')
+      : Deno.env.get('MP_ACCESS_TOKEN')) || '';
 
     if (!MP_ACCESS_TOKEN) {
       return new Response(
@@ -53,8 +56,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    let walletUsedAmount = Number(wallet_used) || 0;
+    if (walletUsedAmount > 0) {
+      if (walletUsedAmount > transactionAmount) {
+        walletUsedAmount = transactionAmount;
+      }
+      transactionAmount -= walletUsedAmount;
+    }
+
     // Mercado Pago exige valor mínimo de R$ 0,50 para cartão
-    if (transactionAmount < 0.50) {
+    if (transactionAmount < 0.50 && transactionAmount > 0) {
       console.warn('[MP Card] Valor muito baixo, ajustando para R$ 0,50');
       transactionAmount = 0.50;
     }
@@ -64,31 +75,109 @@ Deno.serve(async (req) => {
 
     console.log('[MP Card] Valor processado:', transactionAmount);
 
+    const externalRef = package_id
+      ? `PACOTE_${package_id}`
+      : booking_id
+        ? booking_id
+        : inscricao_id
+          ? `EVENTO_${inscricao_id}`
+          : '';
+
+    // Estruturar dados do pagador para validação anti-fraude do Mercado Pago
+    const payerNameParts = (payer?.name || '').trim().split(/\s+/);
+    const firstName = payer?.first_name || payerNameParts[0] || 'Cliente';
+    const lastName = payer?.last_name || (payerNameParts.length > 1 ? payerNameParts.slice(1).join(' ') : 'Doxologos');
+
+    let phoneObj = undefined;
+    if (payer?.phone) {
+      if (typeof payer.phone === 'object') {
+        phoneObj = payer.phone;
+      } else if (typeof payer.phone === 'string') {
+        const cleanedPhone = payer.phone.replace(/\D/g, '');
+        if (cleanedPhone.length >= 10) {
+          phoneObj = {
+            area_code: cleanedPhone.substring(0, 2),
+            number: cleanedPhone.substring(2)
+          };
+        }
+      }
+    }
+
+    const payerPayload: any = {
+      email: payer?.email || 'contato@doxologos.com.br',
+      first_name: firstName,
+      last_name: lastName,
+      identification: payer?.identification || {}
+    };
+
+    if (phoneObj) {
+      payerPayload.phone = phoneObj;
+    }
+
     // Criar pagamento no Mercado Pago
-    const paymentPayload = {
+    const paymentPayload: any = {
       token: token,
       transaction_amount: transactionAmount,
       installments: Number(installments) || 1,
       description: description || 'Consulta Doxologos',
-      payment_method_id: 'master', // será detectado automaticamente pelo token
-      payer: {
-        email: payer?.email || 'contato@doxologos.com.br',
-        identification: payer?.identification || {}
-      },
-      external_reference: booking_id || inscricao_id,
+      // payment_method_id: bandeira real do cartão detectada pelo SDK do MP no frontend
+      // (visa, master, elo, hipercard, amex, etc.). Não pode ser hardcoded — o MP rejeita se não
+      // corresponder ao cartão tokenizado.
+      payment_method_id: payment_method_id || 'master',
+      payer: payerPayload,
+      external_reference: externalRef,
       statement_descriptor: 'DOXOLOGOS',
       notification_url: `${SUPABASE_URL}/functions/v1/mp-webhook`
     };
 
+    if (issuer_id) {
+      paymentPayload.issuer_id = Number(issuer_id);
+      console.log('[MP Card] ✅ Issuer ID repassado pelo cliente:', paymentPayload.issuer_id);
+    } else if (payment_method_id && payment_method_id.toLowerCase() === 'elo') {
+      // Fallback de segurança para Elo: se o issuer_id não veio no payload do cliente,
+      // consulta a API do MP para evitar a rejeição imediata com erro "124: the issuer_id is required"
+      try {
+        const issuerUrl = `https://api.mercadopago.com/v1/payment_methods/card_issuers?payment_method_id=${payment_method_id}`;
+        const issuerRes = await fetch(issuerUrl, {
+          headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+        });
+        if (issuerRes.ok) {
+          const issuers = await issuerRes.json();
+          if (Array.isArray(issuers) && issuers.length > 0 && issuers[0]?.id) {
+            paymentPayload.issuer_id = Number(issuers[0].id);
+            console.log(`[MP Card] ✅ Issuer ID obtido via API de segurança para ${payment_method_id}:`, paymentPayload.issuer_id);
+          }
+        }
+      } catch (e) {
+        console.warn('[MP Card] ⚠️ Falha ao buscar fallback de issuer_id:', e);
+      }
+    }
+
     console.log('[MP Card] Criando pagamento no MP:', JSON.stringify(paymentPayload, null, 2));
+
+    // Idempotency key determinística por tentativa: permite novas tentativas se o cartão for recusado
+    const idempotencyRef = package_id || booking_id || inscricao_id;
+    const attemptStamp = body.attempt_id || Date.now();
+    const idempotencyKey = `${idempotencyRef}-card-${attemptStamp}`;
+
+    const mpHeaders: Record<string, string> = {
+      'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+      'Content-Type': 'application/json',
+      'X-Idempotency-Key': idempotencyKey
+    };
+
+    // Telemetria oficial anti-fraude: repassar identificador de sessão do dispositivo
+    const deviceSessionId = device_id || req.headers.get('x-meli-session-id') || req.headers.get('device-id');
+    if (deviceSessionId) {
+      mpHeaders['X-Meli-Session-Id'] = deviceSessionId;
+      console.log('[MP Card] Telemetria de dispositivo X-Meli-Session-Id vinculada:', deviceSessionId);
+    } else {
+      console.warn('[MP Card] ⚠️ Device ID não fornecido na requisição');
+    }
 
     const mpRes = await fetch('https://api.mercadopago.com/v1/payments', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
-        'X-Idempotency-Key': `${booking_id || inscricao_id}-${Date.now()}`
-      },
+      headers: mpHeaders,
       body: JSON.stringify(paymentPayload)
     });
 
@@ -104,15 +193,47 @@ Deno.serve(async (req) => {
     const mpJson = await mpRes.json();
     console.log('[MP Card] Pagamento criado:', mpJson.id, 'Status:', mpJson.status);
 
-    // Salvar pagamento no banco
+    // Deduct wallet balance immediately
+    if (walletUsedAmount > 0 && user_id) {
+        console.log(`[MP Card] Deducting ${walletUsedAmount} from wallet for user ${user_id}`);
+        const SUPABASE_SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || SERVICE_ROLE;
+        
+        const updateWalletRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/process_wallet_transaction`, {
+            method: 'POST',
+            headers: {
+                'apikey': SUPABASE_SERVICE_ROLE,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                p_patient_id: user_id,
+                p_amount: -walletUsedAmount,
+                p_type: 'debit_payment',
+                p_description: 'Pagamento parcial via carteira (Cartão)',
+                p_booking_id: booking_id
+            })
+        });
+
+        if (!updateWalletRes.ok) {
+            const errTx = await updateWalletRes.text();
+            console.error('[MP Card] Erro ao deduzir da carteira:', errTx);
+            return new Response(
+                JSON.stringify({ error: 'Erro ao processar saldo da carteira', details: errTx }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    }
+
+    // Salvar pagamento no banco com colunas reais de public.payments
     const paymentRecord: any = {
       mp_payment_id: String(mpJson.id),
       status: mpJson.status,
       status_detail: mpJson.status_detail,
-      transaction_amount: mpJson.transaction_amount,
-      currency_id: mpJson.currency_id,
-      payment_method_id: mpJson.payment_method_id,
-      payment_type_id: mpJson.payment_type_id,
+      amount: mpJson.transaction_amount || transactionAmount,
+      wallet_balance_used: walletUsedAmount,
+      currency: mpJson.currency_id || 'BRL',
+      payment_method: mpJson.payment_method_id,
+      payment_type: mpJson.payment_type_id,
       date_created: mpJson.date_created,
       date_approved: mpJson.date_approved,
       payer_email: mpJson.payer?.email,
@@ -120,13 +241,15 @@ Deno.serve(async (req) => {
       raw_payload: mpJson
     };
 
-    if (booking_id) {
+    if (package_id) {
+      paymentRecord.package_id = package_id;
+    } else if (booking_id) {
       paymentRecord.booking_id = booking_id;
     } else if (inscricao_id) {
       paymentRecord.inscricao_id = inscricao_id;
     }
 
-    await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
+    const savePaymentRes = await fetch(`${SUPABASE_URL}/rest/v1/payments`, {
       method: 'POST',
       headers: {
         'apikey': SERVICE_ROLE,
@@ -137,27 +260,122 @@ Deno.serve(async (req) => {
       body: JSON.stringify(paymentRecord)
     });
 
+    if (!savePaymentRes.ok) {
+      const saveErr = await savePaymentRes.text();
+      console.error('[MP Card] ⚠️ Erro ao persistir pagamento em public.payments:', saveErr);
+    } else {
+      console.log('[MP Card] ✅ Pagamento salvo com sucesso em public.payments');
+    }
+
+    // ====================================================================
     // Atualizar booking ou inscrição
-    if (booking_id && mpJson.status === 'approved') {
-      await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
+    // ✅ FIX: Sempre salvar marketplace_payment_id e payment_status para que
+    //         o webhook possa vincular e confirmar o pagamento quando chegar,
+    //         independente do status inicial (approved, authorized, in_process)
+    // ====================================================================
+
+    const isApprovedNow = mpJson.status === 'approved' || mpJson.status === 'authorized';
+
+    if (booking_id) {
+      console.log(`[MP Card] 🔄 Atualizando booking ${booking_id} - Status MP: ${mpJson.status} (aprovado agora: ${isApprovedNow})`);
+
+      const bookingUpdate: any = {
+        marketplace_payment_id: String(mpJson.id), // ✅ SEMPRE salvar para webhook vincular
+        payment_status: mpJson.status,             // ✅ Refletir status atual do MP
+        updated_at: new Date().toISOString()
+      };
+
+      // ✅ Confirmar imediatamente apenas se já aprovado
+      if (isApprovedNow) {
+        bookingUpdate.status = 'confirmed';
+        console.log(`[MP Card] ✅ Aprovado imediatamente - booking será confirmado agora`);
+      } else {
+        // Status in_process: booking fica em awaiting_payment para indicar
+        // que o pagamento foi enviado e aguarda confirmação assíncrona da operadora
+        const useAwaitingStatus = (Deno.env.get('AWAITING_PAYMENT_STATUS') || 'false').toLowerCase() === 'true';
+        if (useAwaitingStatus) {
+          bookingUpdate.status = 'awaiting_payment';
+          console.log(`[MP Card] ⏳ Status '${mpJson.status}' - booking marcado como 'awaiting_payment'`);
+        } else {
+          console.log(`[MP Card] ⏳ Status '${mpJson.status}' - aguardando webhook para confirmação final`);
+        }
+      }
+
+      const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${booking_id}`, {
         method: 'PATCH',
         headers: {
           'apikey': SERVICE_ROLE,
           'Authorization': `Bearer ${SERVICE_ROLE}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
         },
-        body: JSON.stringify({ payment_status: 'paid' })
+        body: JSON.stringify(bookingUpdate)
       });
-    } else if (inscricao_id && mpJson.status === 'approved') {
-      await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricao_id}`, {
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error(`[MP Card] ❌ Erro ao atualizar booking: ${errorText}`);
+      } else {
+        const updated = await updateResponse.json();
+        console.log(`[MP Card] ✅ Booking atualizado com sucesso:`, updated);
+
+        // ── Post-Payment Orchestrator (aprovação síncrona) ─────────────────
+        // Quando MP aprova imediatamente (sem aguardar webhook), dispara
+        // emails de confirmação agora. Fire-and-forget.
+        if (isApprovedNow) {
+          const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'true').toLowerCase() !== 'false';
+          if (orchestratorEnabled) {
+            const orchUrl = `${SUPABASE_URL}/functions/v1/post-payment-orchestrator`;
+            fetch(orchUrl, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${SERVICE_ROLE}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ booking_id })
+            }).then(r => {
+              console.log(`[MP Card] ✅ Orchestrator invocado (booking ${booking_id}), status: ${r.status}`);
+            }).catch(e => {
+              console.error(`[MP Card] ⚠️ Orchestrator falhou (non-fatal):`, e);
+            });
+          }
+        }
+      }
+
+    } else if (inscricao_id) {
+      console.log(`[MP Card] 🔄 Atualizando inscrição ${inscricao_id} - Status MP: ${mpJson.status} (aprovado agora: ${isApprovedNow})`);
+
+      const inscricaoUpdate: any = {
+        marketplace_payment_id: String(mpJson.id), // ✅ SEMPRE salvar para webhook vincular
+        payment_status: mpJson.status,
+        updated_at: new Date().toISOString()
+      };
+
+      if (isApprovedNow) {
+        inscricaoUpdate.status = 'confirmado';
+        console.log(`[MP Card] ✅ Aprovado imediatamente - inscrição será confirmada agora`);
+      } else {
+        console.log(`[MP Card] ⏳ Status '${mpJson.status}' - aguardando webhook para confirmação final`);
+      }
+
+      const updateResponse = await fetch(`${SUPABASE_URL}/rest/v1/inscricoes_eventos?id=eq.${inscricao_id}`, {
         method: 'PATCH',
         headers: {
           'apikey': SERVICE_ROLE,
           'Authorization': `Bearer ${SERVICE_ROLE}`,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
         },
-        body: JSON.stringify({ payment_status: 'paid' })
+        body: JSON.stringify(inscricaoUpdate)
       });
+
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error(`[MP Card] ❌ Erro ao atualizar inscrição: ${errorText}`);
+      } else {
+        const updated = await updateResponse.json();
+        console.log(`[MP Card] ✅ Inscrição atualizada com sucesso:`, updated);
+      }
     }
 
     return new Response(

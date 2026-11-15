@@ -5,6 +5,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key',
 };
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 Deno.serve(async (req) => {
   console.log('[MP] === FUNÇÃO INICIADA ===');
   console.log('[MP] Method:', req.method);
@@ -17,12 +19,41 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+    const SERVICE_ROLE = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+    // ==========================================
+    // M-07: RATE LIMITING (Backend Protection)
+    // ==========================================
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    if (SUPABASE_URL && SERVICE_ROLE && clientIp !== 'unknown') {
+      const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+      
+      const { data: rlData, error: rlError } = await supabase.rpc('check_rate_limit', {
+        p_action: 'mp_create_preference',
+        p_key: clientIp,
+        p_max_hits: 15,
+        p_window_seconds: 60
+      });
+
+      if (rlError) {
+        console.error('[MP] Rate limit check error:', rlError);
+      } else if (rlData && !rlData.allowed) {
+        console.warn(`[MP] 🛑 Rate limit exceeded for IP: ${clientIp}`);
+        return new Response(
+          JSON.stringify({ error: 'Muitas requisições. Tente novamente em alguns minutos.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     console.log('[MP] Parseando body...');
     const body = await req.json();
     console.log('[MP] Body recebido:', JSON.stringify(body));
 
-    const { booking_id, inscricao_id, amount, description, payer, payment_methods } = body;
+    const { booking_id, inscricao_id, amount, description, payer, payment_methods, wallet_used } = body;
     console.log('[MP] payment_methods extraído:', payment_methods);
+    console.log('[MP] wallet_used:', wallet_used);
 
     if (!booking_id && !inscricao_id) {
       return new Response(
@@ -31,8 +62,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
-    const SERVICE_ROLE = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const MP_ACCESS_TOKEN = Deno.env.get('MP_ACCESS_TOKEN') || '';
     const FRONTEND_URL = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
 
@@ -76,6 +105,8 @@ Deno.serve(async (req) => {
         name: booking.patient_name,
         email: booking.patient_email
       };
+      // Store user_id for wallet deduction
+      payerData.user_id = booking.user_id;
     }
     // Se for inscrição de evento, buscar dados da inscrição
     else if (inscricao_id) {
@@ -105,6 +136,15 @@ Deno.serve(async (req) => {
         name: inscricao.patient_name,
         email: inscricao.patient_email
       };
+    }
+
+    // Subtrair wallet_used do finalAmount
+    let walletUsedAmount = Number(wallet_used) || 0;
+    if (walletUsedAmount > 0) {
+      if (walletUsedAmount > finalAmount) {
+        walletUsedAmount = finalAmount;
+      }
+      finalAmount -= walletUsedAmount;
     }
 
     // Simplificado: sempre garantir que payment_methods tem a estrutura correta
@@ -241,6 +281,7 @@ Deno.serve(async (req) => {
       mp_preference_id: mpJson.id,
       status: 'pending',
       transaction_amount: finalAmount,
+      wallet_balance_used: walletUsedAmount,
       currency_id: 'BRL',
       payer_email: payerData.email,
       payment_url: mpJson.init_point,
@@ -248,6 +289,32 @@ Deno.serve(async (req) => {
       qr_code_base64: mpJson.qr_code_base64,
       raw_payload: mpJson
     };
+
+    // Deduct wallet balance immediately using RPC
+    if (walletUsedAmount > 0 && payerData.user_id) {
+        console.log(`[MP] Deducting ${walletUsedAmount} from wallet for user ${payerData.user_id}`);
+        
+        // We use the supabase client directly for the RPC
+        const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
+            auth: { persistSession: false, autoRefreshToken: false },
+        });
+
+        const { error: walletError } = await supabase.rpc('process_wallet_transaction', {
+            p_patient_id: payerData.user_id,
+            p_amount: -walletUsedAmount,
+            p_type: 'debit_payment',
+            p_description: 'Pagamento parcial via carteira',
+            p_booking_id: booking_id
+        });
+
+        if (walletError) {
+            console.error('[MP] Erro ao deduzir da carteira:', walletError);
+            return new Response(
+                JSON.stringify({ error: 'Erro ao processar saldo da carteira', details: walletError.message }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+    }
 
     // Adicionar booking_id ou inscricao_id dependendo do tipo
     if (booking_id) {

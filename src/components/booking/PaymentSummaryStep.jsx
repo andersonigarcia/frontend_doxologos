@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Calendar, Check, CheckCircle, Clock, CreditCard, MessageCircle, Shield, User, Zap } from 'lucide-react';
+import { isFeatureEnabled } from '@/lib/paymentFeatureFlags';
 
 const PaymentSummaryStep = ({
   professionals = [],
@@ -9,6 +10,7 @@ const PaymentSummaryStep = ({
   serviceDetails,
   selectedDate,
   selectedTime,
+  selectedSlots = [],
   meetingPlatform,
   paymentSecurityHighlights = [],
   acceptTermsField = {},
@@ -20,6 +22,13 @@ const PaymentSummaryStep = ({
   canSubmit,
   submitButtonTitle,
 }) => {
+  const isImplicitTerms = isFeatureEnabled('CRO_IMPLICIT_TERMS');
+  const effectiveCanSubmit = isImplicitTerms ? true : canSubmit;
+
+  const isPackage = selectedSlots.length > 1;
+  const unitPrice = parseFloat(serviceDetails?.price || 150);
+  const totalPrice = isPackage ? selectedSlots.length * unitPrice : unitPrice;
+
   const professional = professionals.find((prof) => prof.id === selectedProfessional);
   const formattedDate = selectedDate
     ? new Date(`${selectedDate}T00:00:00`).toLocaleDateString('pt-BR', {
@@ -46,170 +55,209 @@ const PaymentSummaryStep = ({
     parseFloat(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg p-8">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3 flex items-center justify-center gap-3">
-          <Shield className="w-8 h-8 text-[#2d8659]" />
-          Confirme seu agendamento
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-8">
+      <div className="text-center mb-6 sm:mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 flex items-center justify-center gap-3">
+          Tudo pronto para o seu encontro de cuidado
         </h2>
-        <p className="text-gray-600 text-lg">Verifique os dados abaixo antes de seguir para o pagamento seguro</p>
+        <p className="text-gray-600 text-sm sm:text-base">Confira os detalhes abaixo antes de reservar o seu horário</p>
       </div>
 
-      <div className="bg-gradient-to-br from-[#2d8659]/5 to-blue-50 p-8 rounded-xl border border-[#2d8659]/20">
-        <h3 className="font-bold text-xl mb-6 flex items-center text-[#2d8659]">
-          <CheckCircle className="w-6 h-6 mr-2" />
-          Resumo do Agendamento
-        </h3>
-        <div className="grid md:grid-cols-2 gap-6">
+      {/* Container Estilo Ticket */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+        {/* Top Header */}
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-[#2d8659]" />
+            <h3 className="font-bold text-gray-900">
+              {isPackage ? `Resumo do Pacote (${selectedSlots.length} Sessões)` : 'Resumo do Agendamento'}
+            </h3>
+          </div>
+          {isPackage && (
+            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-xs rounded-full">
+              Pacote Promocional
+            </span>
+          )}
+        </div>
+        
+        {/* Detalhes do Agendamento */}
+        <div className="p-6 grid sm:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[#2d8659] rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-start gap-3">
+              <User className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-600">Profissional</p>
-                <p className="font-bold text-gray-900">{professional?.name || 'Selecione um profissional'}</p>
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Profissional</p>
+                <p className="font-semibold text-gray-900">{professional?.name || 'Selecione um profissional'}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-start gap-3">
+              <CreditCard className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-gray-600">Serviço</p>
-                <p className="font-bold text-gray-900">{serviceDetails?.name || 'Selecione o serviço'}</p>
-                {serviceDuration && <p className="text-sm text-gray-600">Duração: {serviceDuration}</p>}
-                {meetingPlatform && (
-                  <p className="text-sm text-gray-600">
-                    Plataforma: Google Meet
-                  </p>
-                )}
+                <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Serviço</p>
+                <p className="font-semibold text-gray-900">
+                  {serviceDetails?.name || 'Selecione o serviço'}
+                  {isPackage && <span className="text-emerald-700 font-bold block text-sm mt-0.5">({selectedSlots.length} Consultas)</span>}
+                </p>
+                {serviceDuration && <p className="text-sm text-gray-700 mt-1">Duração por sessão: {serviceDuration}</p>}
               </div>
             </div>
           </div>
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Data</p>
-                <p className="font-bold text-gray-900">{formattedDate}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Horário</p>
-                <p className="font-bold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200 mt-6 pt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-green-600" />
-              <span className="text-sm text-gray-600">Pagamento seguro</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600 mb-1">Valor total:</p>
-              <p className="text-3xl font-bold text-[#2d8659]">R$ {formatPrice(serviceDetails?.price)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-start gap-3">
-            <Zap className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="font-semibold text-blue-900 mb-1">Próximos passos</h4>
-              <p className="text-sm text-blue-800">
-                Após o pagamento, você receberá por email e WhatsApp o link da sala Google Meet. A sessão começa pontualmente no horário escolhido.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#2d8659]">Pagamento 100% seguro</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {paymentSecurityHighlights.map((highlight) => {
-              const Icon = highlight.icon || Shield;
-              return (
-                <div key={highlight.title} className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#2d8659]/10 flex items-center justify-center text-[#2d8659]">
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900">{highlight.title}</h4>
-                    <p className="text-sm text-gray-600 leading-relaxed">{highlight.description}</p>
+            {isPackage ? (
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-[#2d8659] shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-1">Sessões Agendadas ({selectedSlots.length})</p>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {selectedSlots.map((slot, index) => (
+                      <div key={`${slot.date}-${slot.time}`} className="text-xs font-bold text-gray-800 bg-emerald-50 px-2.5 py-1.5 rounded border border-emerald-200 flex items-center justify-between gap-2">
+                        <span>Sessão {index + 1}:</span>
+                        <span className="text-emerald-950 font-bold">
+                          {new Date(`${slot.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })} às {slot.time}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Data</p>
+                    <p className="font-semibold text-gray-900">{formattedDate}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-0.5">Horário</p>
+                    <p className="font-semibold text-gray-900">{selectedTime || 'Escolha um horário'}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-col gap-1 mt-6">
-        <div className="flex items-start gap-2">
-          <input type="checkbox" id="acceptTerms" className="mt-1" {...acceptTermsField} />
-          <label htmlFor="acceptTerms" className="text-sm text-gray-600">
-            Li e aceito os{' '}
-            <a href="/termos-e-condicoes" target="_blank" rel="noreferrer" className="text-[#2d8659] hover:underline font-medium">
-              termos e condições
-            </a>{' '}
-            *
-          </label>
+        {/* Linha Tracejada Estilo Ticket */}
+        <div className="relative flex items-center justify-center h-4">
+           <div className="absolute left-[-10px] w-5 h-5 rounded-full bg-white border-r border-gray-200 z-10"></div>
+           <div className="w-full border-t-2 border-dashed border-gray-200"></div>
+           <div className="absolute right-[-10px] w-5 h-5 rounded-full bg-white border-l border-gray-200 z-10"></div>
         </div>
-        {acceptTermsError && <p className="text-red-500 text-sm">{acceptTermsError}</p>}
+
+        {/* Valor Total */}
+        <div className="p-6 bg-gray-50 flex items-center justify-between">
+           <div>
+             <span className="text-gray-700 font-medium block">Valor total a pagar:</span>
+             {isPackage && <span className="text-xs text-gray-600">({selectedSlots.length}x de R$ {formatPrice(unitPrice)})</span>}
+           </div>
+           <span className="text-3xl font-bold text-[#1b5e20]">R$ {formatPrice(totalPrice)}</span>
+        </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 mt-6">
-        <Button onClick={onBack} variant="outline">
-          Voltar
-        </Button>
-        <motion.div
-          whileHover={!isSubmitting && canSubmit ? { scale: 1.02, y: -1 } : {}}
-          whileTap={!isSubmitting && canSubmit ? { scale: 0.98 } : {}}
-          className="flex-1"
-        >
+      <div className="mb-6 p-4 bg-blue-50/70 rounded-2xl border border-blue-200 flex items-start gap-3" role="note">
+        <Zap className="w-5 h-5 text-blue-700 mt-0.5 shrink-0" />
+        <p className="text-sm text-blue-900 leading-relaxed font-medium">
+          {isPackage
+            ? 'Após a confirmação, suas salas no Google Meet estarão prontas. O atendimento é 100% individual, confidencial e seguro.'
+            : 'Após a confirmação, sua sala no Google Meet estará pronta. O atendimento é 100% individual, confidencial e seguro.'}
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-6">
+        <div className="flex items-center gap-2 text-gray-700">
+          <Shield className="w-4 h-4 text-green-700" />
+          <span className="text-xs font-semibold uppercase tracking-wider">Pagamento Seguro</span>
+        </div>
+        {paymentSecurityHighlights.slice(0, 2).map((highlight) => {
+          const Icon = highlight.icon || Shield;
+          return (
+            <div key={highlight.title} className="flex items-center gap-2 text-gray-700">
+              <Icon className="w-4 h-4 text-gray-600" />
+              <span className="text-xs font-medium">{highlight.title}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {!isImplicitTerms && (
+        <div className="flex flex-col gap-1 mb-6 bg-gray-50/70 p-4 rounded-2xl border border-gray-200">
+          <div className="flex items-center gap-3 min-h-[44px]">
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              aria-describedby={acceptTermsError ? "acceptTermsError" : undefined}
+              aria-invalid={!!acceptTermsError}
+              className="w-5 h-5 text-[#2d8659] border-gray-300 rounded focus:ring-2 focus:ring-[#2d8659] focus:ring-offset-2 cursor-pointer"
+              {...acceptTermsField}
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-800 font-medium cursor-pointer select-none">
+              Estou ciente do sigilo profissional absoluto e concordo com os{' '}
+              <a
+                href="/termos-e-condicoes"
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-700 hover:text-blue-900 underline font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 rounded"
+                aria-label="Termos de Cuidado e Atendimento (abre em uma nova aba)"
+              >
+                Termos de Cuidado e Atendimento
+              </a>
+            </label>
+          </div>
+          {acceptTermsError && (
+            <p id="acceptTermsError" role="alert" className="text-red-700 text-sm ml-8 mt-1 font-medium">
+              {acceptTermsError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Botões de Ação - Sticky no Mobile para garantir CTA sempre visível acima da dobra */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-2xl z-40 sm:static sm:bg-transparent sm:p-0 sm:border-0 sm:shadow-none sm:z-auto">
+        <div className="container max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-3">
           <Button
-            onClick={onSubmit}
-            disabled={!canSubmit || isSubmitting}
-            className={`w-full bg-[#2d8659] hover:bg-[#236b47] transition-all duration-300 flex items-center justify-center min-h-[50px] ${isSubmitting ? 'cursor-not-allowed opacity-75' : ''
-              }`}
-            title={submitButtonTitle}
+            onClick={onBack}
+            variant="outline"
+            aria-label="Voltar para a etapa anterior"
+            className="hidden sm:inline-flex rounded-full min-h-[44px] px-6 text-gray-700 hover:text-gray-900"
           >
-            {isSubmitting ? (
-              <>
-                <motion.div
-                  className="w-5 h-5 border-2 border-white border-t-transparent rounded-full mr-2"
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                />
-                Processando...
-              </>
-            ) : (
-              'Ir para Pagamento'
-            )}
+            Voltar
           </Button>
-        </motion.div>
-        <Button
-          type="button"
-          onClick={onSupport}
-          variant="outline"
-          className="sm:w-auto flex items-center gap-2 border-[#2d8659] text-[#2d8659] hover:bg-[#2d8659]/5"
-        >
-          <MessageCircle className="w-5 h-5" />
-          Tirar dúvidas no WhatsApp
-        </Button>
+          <motion.div
+            whileHover={!isSubmitting && effectiveCanSubmit ? { scale: 1.02, y: -1 } : {}}
+            whileTap={!isSubmitting && effectiveCanSubmit ? { scale: 0.98 } : {}}
+            className="w-full flex-1"
+          >
+            <Button
+              onClick={onSubmit}
+              disabled={isSubmitting || !effectiveCanSubmit}
+              aria-label={
+                isSubmitting
+                  ? 'Preparando seu horário com carinho...'
+                  : submitButtonTitle || (isPackage ? `Garantir Meu Horário de Cuidado por R$ ${formatPrice(totalPrice)}` : 'Garantir Meu Horário de Cuidado')
+              }
+              className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white py-3.5 sm:py-6 rounded-full font-bold shadow-lg shadow-[#2d8659]/20 hover:shadow-xl hover:shadow-[#2d8659]/30 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed min-h-[48px]"
+            >
+              {isSubmitting
+                ? 'Preparando seu horário...'
+                : submitButtonTitle || (isPackage ? `Garantir Meu Horário de Cuidado (R$ ${formatPrice(totalPrice)})` : 'Garantir Meu Horário de Cuidado')}
+            </Button>
+          </motion.div>
+          {onSupport && (
+            <Button
+              onClick={onSupport}
+              variant="outline"
+              aria-label="Fale conosco no WhatsApp para tirar dúvidas"
+              className="hidden sm:inline-flex rounded-full border-green-700 text-[#1b5e20] hover:bg-green-50 min-h-[44px]"
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Precisa de ajuda? Fale conosco no WhatsApp
+            </Button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

@@ -1,24 +1,35 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { createClient } from '@supabase/supabase-js';
 
 // Configurações do Supabase - REQUER variáveis de ambiente
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const isTestEnv = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'test';
+
+const supabaseUrl = isTestEnv
+  ? 'https://tests.supabase.local'
+  : (import.meta.env.VITE_SUPABASE_URL || (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL) || 'https://ppwjtvzrhvjinsutrjwk.supabase.co');
+
+const supabaseAnonKey = isTestEnv
+  ? 'mock-anon-key-for-tests'
+  : (import.meta.env.VITE_SUPABASE_ANON_KEY || (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) || '');
+
+
 
 // Validação de configuração obrigatória
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || (supabaseUrl !== 'https://tests.supabase.local' && !supabaseAnonKey)) {
   const errorMsg = '❌ ERRO: Variáveis de ambiente do Supabase não configuradas. Configure VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY';
   console.error(errorMsg);
   throw new Error(errorMsg);
 }
 
 // Log das configurações (apenas em desenvolvimento)
-if (import.meta.env.DEV) {
+if (import.meta.env?.DEV) {
+
   console.log('🔗 Supabase Config:', {
     url: supabaseUrl,
     hasAnonKey: !!supabaseAnonKey,
-    keyPrefix: supabaseAnonKey.substring(0, 20) + '...'
+    keyPrefix: supabaseAnonKey ? supabaseAnonKey.substring(0, 20) + '...' : ''
   });
 }
+
 
 // Cliente Supabase com configurações de segurança aprimoradas
 const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -41,6 +52,17 @@ class SupabaseClientWrapper {
   constructor() {
     this.client = supabaseClient;
     this.setupErrorHandling();
+
+    return new Proxy(this, {
+      get: (target, prop) => {
+        if (prop in target) {
+          const val = target[prop];
+          return typeof val === 'function' ? val.bind(target) : val;
+        }
+        const clientVal = target.client[prop];
+        return typeof clientVal === 'function' ? clientVal.bind(target.client) : clientVal;
+      }
+    });
   }
 
   setupErrorHandling() {
@@ -69,6 +91,9 @@ class SupabaseClientWrapper {
   get storage() { return this.client.storage; }
   get functions() { return this.client.functions; }
   get channel() { return this.client.channel.bind(this.client); }
+  get removeChannel() { return this.client.removeChannel ? this.client.removeChannel.bind(this.client) : () => {}; }
+  get removeAllChannels() { return this.client.removeAllChannels ? this.client.removeAllChannels.bind(this.client) : () => {}; }
+  get getChannels() { return this.client.getChannels ? this.client.getChannels.bind(this.client) : () => []; }
 
   isJWTError(error) {
     if (!error) return false;

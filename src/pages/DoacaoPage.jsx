@@ -6,19 +6,27 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { useToast } from '../components/ui/use-toast';
 import { QRCodeSVG } from 'qrcode.react';
+import DoxologosLogo from '../components/brand/DoxologosLogo';
 
 const DoacaoPage = () => {
     const [pixCopied, setPixCopied] = useState(false);
-    const [selectedAmount, setSelectedAmount] = useState(null);
+    const [selectedAmount, setSelectedAmount] = useState(50);
     const [pixPayload, setPixPayload] = useState('');
     const { toast } = useToast();
 
-    // PIX da clínica (substitua pela chave real)
-    const pixKey = "02369210613";
+    // PIX da clínica (chave CNPJ oficial)
+    const pixKey = "35035127000120";
     const recipientName = "Doxologos Clinica";
     const city = "Belo Horizonte";
 
-    const predefinedAmounts = [25, 50, 100, 200, 500];
+    const donationOptions = [
+        { amount: 30, label: "Apoio básico" },
+        { amount: 50, label: "Consulta social" },
+        { amount: 100, label: "Material educativo" },
+        { amount: 150, label: "Doe uma consulta" },
+        { amount: 200, label: "Equipamento clínico" },
+        { amount: 500, label: "Programa social" }
+    ];
 
     // Gerar payload PIX quando o valor for selecionado
     useEffect(() => {
@@ -40,7 +48,7 @@ const DoacaoPage = () => {
         const merchantName = name.substring(0, 25).padEnd(25);
         const merchantCity = city.substring(0, 15).padEnd(15);
         const txid = `DOA${Date.now()}`.substring(0, 25);
-        
+
         // Formato básico - EM PRODUÇÃO USE UMA BIBLIOTECA COMPLETA
         return `00020126${String(key.length + 14).padStart(2, '0')}0014BR.GOV.BCB.PIX01${String(key.length).padStart(2, '0')}${key}52040000530398654${String(amount.toFixed(2).length + 2).padStart(2, '0')}${amount.toFixed(2)}5802BR59${merchantName}60${merchantCity}62${String(txid.length + 8).padStart(2, '0')}05${String(txid.length).padStart(2, '0')}${txid}6304`;
     };
@@ -50,7 +58,7 @@ const DoacaoPage = () => {
             icon: <Users className="w-8 h-8 text-[#2d8659]" />,
             title: "Atendimento Gratuito",
             description: "Sua doação permite que oferecemos consultas gratuitas para famílias em situação de vulnerabilidade.",
-            impact: "R$ 50 = 1 consulta completa"
+            impact: "R$ 150,01 = 1 consulta completa"
         },
         {
             icon: <Target className="w-8 h-8 text-[#2d8659]" />,
@@ -102,9 +110,8 @@ const DoacaoPage = () => {
             <header className="fixed top-0 w-full bg-white/95 backdrop-blur-sm shadow-sm z-50">
                 <nav className="container mx-auto px-4 py-4" role="navigation" aria-label="Navegação principal">
                     <div className="flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Voltar à página inicial">
-                            <Heart className="w-8 h-8 text-[#2d8659]" aria-hidden="true" />
-                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                            <DoxologosLogo className="h-9 md:h-10 w-auto" />
                         </Link>
                         <div className="flex items-center space-x-4">
                             <Link to="/" className="text-gray-700 hover:text-[#2d8659] transition-colors">
@@ -137,7 +144,7 @@ const DoacaoPage = () => {
                             </p>
                         </div>
                         <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed">
-                            Cada contribuição nos permite oferecer atendimento gratuito de qualidade, 
+                            Cada contribuição nos permite oferecer atendimento gratuito de qualidade,
                             investir em equipamentos modernos e expandir nossos programas sociais.
                         </p>
                         <div className="flex items-center justify-center gap-8 text-sm text-gray-500">
@@ -160,7 +167,7 @@ const DoacaoPage = () => {
 
             {/* Valores Sugeridos */}
             <section className="py-16 px-4" role="main" aria-labelledby="donation-section">
-                <div className="max-w-4xl mx-auto">
+                <div className="max-w-5xl xl:max-w-6xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -171,56 +178,72 @@ const DoacaoPage = () => {
                         <p className="text-gray-600">Qualquer valor faz a diferença na vida de alguém</p>
                     </motion.div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
-                            <span id="amount-selection" className="sr-only">Selecione o valor da doação</span>
-                        {predefinedAmounts.map((amount, index) => (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 mb-8" role="radiogroup" aria-labelledby="amount-selection">
+                        <span id="amount-selection" className="sr-only">Selecione o valor da doação</span>
+                        {donationOptions.map((option, index) => (
                             <motion.button
-                                key={amount}
+                                key={option.amount}
                                 initial={{ opacity: 0, y: 20 }}
                                 whileInView={{ opacity: 1, y: 0 }}
                                 viewport={{ once: true }}
-                                transition={{ delay: index * 0.1 }}
-                                onClick={() => setSelectedAmount(amount)}
-                                className={`p-6 rounded-xl border-2 transition-all duration-300 ${
-                                    selectedAmount === amount
-                                        ? 'border-[#2d8659] bg-[#2d8659]/5 shadow-lg'
-                                        : 'border-gray-200 hover:border-[#2d8659]/50 hover:shadow-md'
-                                }`}
+                                transition={{ delay: index * 0.05 }}
+                                onClick={() => setSelectedAmount(option.amount)}
+                                className={`px-2.5 py-4 sm:px-3 sm:py-5 lg:px-2 lg:py-4 xl:px-4 xl:py-5 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center text-center ${selectedAmount === option.amount
+                                    ? 'border-[#2d8659] bg-[#2d8659]/5 shadow-lg ring-2 ring-[#2d8659]/20'
+                                    : 'border-gray-200 hover:border-[#2d8659]/50 hover:shadow-md bg-white'
+                                    }`}
                             >
-                                <div className="text-2xl font-bold text-[#2d8659] mb-2">
-                                    {formatCurrency(amount)}
+                                <div className="text-base sm:text-lg lg:text-base xl:text-xl font-bold text-[#2d8659] mb-1.5 whitespace-nowrap tracking-tight">
+                                    {formatCurrency(option.amount)}
                                 </div>
-                                <div className="text-sm text-gray-600">
-                                    {amount === 25 && "Medicamentos básicos"}
-                                    {amount === 50 && "Uma consulta"}
-                                    {amount === 100 && "Material educativo"}
-                                    {amount === 200 && "Equipamento médico"}
-                                    {amount === 500 && "Programa social"}
+                                <div className="text-xs sm:text-sm text-gray-600 font-medium leading-tight">
+                                    {option.label}
                                 </div>
                             </motion.button>
                         ))}
                     </div>
 
-                    <div className="text-center">
-                        <p className="text-gray-600 mb-4">Ou digite outro valor que desejar</p>
-                        <input
-                            type="number"
-                            placeholder="Digite o valor"
-                            min="1"
-                            step="0.01"
-                            value={selectedAmount || ''}
-                            className="input max-w-xs mx-auto text-center text-xl font-semibold"
-                            onChange={(e) => {
-                                const value = parseFloat(e.target.value);
-                                setSelectedAmount(value > 0 ? value : null);
-                            }}
-                        />
+                    <div className="text-center space-y-6">
+                        <div>
+                            <p className="text-gray-600 mb-4">Ou digite outro valor que desejar</p>
+                            <input
+                                type="number"
+                                placeholder="Digite o valor"
+                                min="1"
+                                step="0.01"
+                                value={selectedAmount || ''}
+                                className="input max-w-xs mx-auto text-center text-xl font-semibold"
+                                onChange={(e) => {
+                                    const value = parseFloat(e.target.value);
+                                    setSelectedAmount(value > 0 ? value : null);
+                                }}
+                            />
+                        </div>
+
+                        <div>
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    if (!selectedAmount || selectedAmount <= 0) {
+                                        setSelectedAmount(50);
+                                    }
+                                    const el = document.getElementById('pix-donation-section');
+                                    if (el && typeof el.scrollIntoView === 'function') {
+                                        el.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                }}
+                                className="bg-[#2d8659] hover:bg-[#236b46] text-white px-8 py-4 h-auto rounded-full font-bold text-lg shadow-md transition-all"
+                            >
+                                <QrCode className="w-5 h-5 mr-2" />
+                                Apoiar com PIX
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </section>
 
             {/* PIX Section */}
-            <section className="py-16 px-4 bg-gray-50">
+            <section id="pix-donation-section" className="py-16 px-4 bg-gray-50">
                 <div className="max-w-4xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
@@ -240,7 +263,7 @@ const DoacaoPage = () => {
                             <div className="bg-white p-4 rounded-lg border-2 border-dashed border-gray-300 mb-4">
                                 {pixPayload && selectedAmount ? (
                                     <div className="w-64 h-64 mx-auto flex items-center justify-center bg-white p-4">
-                                        <QRCodeSVG 
+                                        <QRCodeSVG
                                             value={pixPayload}
                                             size={240}
                                             level="M"
@@ -296,7 +319,7 @@ const DoacaoPage = () => {
                                     </Button>
                                 </div>
                             </div>
-                            
+
                             {selectedAmount && (
                                 <div className="bg-[#2d8659]/10 p-4 rounded-lg">
                                     <p className="text-sm text-gray-600 mb-2">Valor selecionado:</p>
@@ -408,9 +431,9 @@ const DoacaoPage = () => {
                             Sua generosidade é o combustível que move nossa missão de levar saúde mental de qualidade para todos.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                            <Button 
+                            <Button
                                 onClick={copyPixKey}
-                                size="lg" 
+                                size="lg"
                                 className="bg-white text-[#2d8659] hover:bg-gray-100 font-semibold px-8 py-3"
                             >
                                 {pixCopied ? 'PIX Copiado!' : 'Copiar Chave PIX'}

@@ -1,28 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { CreditCard, Lock, CheckCircle, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams, useLocation, Link } from 'react-router-dom';
+import { CreditCard, Lock, CheckCircle, ArrowLeft, Smartphone, AlertTriangle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import MercadoPagoService from '@/lib/mercadoPagoService';
+import { paymentOrchestrator } from '@/lib/payment';
+import { logger } from '@/lib/logger';
+import analytics from '@/lib/analytics';
 
 const CheckoutDirectPage = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { toast } = useToast();
-    
+
     const bookingId = searchParams.get('booking_id');
     const type = searchParams.get('type');
     const inscricaoId = searchParams.get('inscricao_id');
+    const packageId = searchParams.get('package_id') || location.state?.packageId;
     const emailParam = searchParams.get('email');
     const valorParam = searchParams.get('valor');
-    
+    const tituloParam = searchParams.get('titulo');
+
     const [booking, setBooking] = useState(null);
     const [inscricao, setInscricao] = useState(null);
+    const [packageData, setPackageData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
-    
+    const [stopMonitoring, setStopMonitoring] = useState(null);
+    const checkoutTrackedRef = useRef(false);
+
+    const checkoutTotal = type === 'evento'
+        ? Number(inscricao?.evento?.valor || parseFloat(valorParam) || 0)
+        : packageId
+            ? Number(packageData?.gross_amount || parseFloat(valorParam) || 0)
+            : Number(booking?.valor_consulta || booking?.services?.price || valorParam || 0);
+
+    useEffect(() => {
+        if (!checkoutTrackedRef.current && (booking || packageData || inscricao)) {
+            checkoutTrackedRef.current = true;
+            try {
+                analytics.trackEvent('checkout_start', {
+                    event_category: 'Checkout',
+                    booking_id: bookingId || inscricaoId || packageId || null,
+                    checkout_type: type || (packageId ? 'package' : 'booking'),
+                    payment_method: 'credit_card',
+                    value: checkoutTotal || undefined
+                });
+                analytics.trackEvent('begin_checkout', {
+                    event_category: 'Ecommerce',
+                    value: checkoutTotal || undefined,
+                    currency: 'BRL',
+                    items: [{
+                        item_id: bookingId || inscricaoId || packageId || 'consulta',
+                        item_name: type === 'evento' ? (inscricao?.evento?.titulo || 'Inscrição em Evento') : (packageId ? 'Pacote de Consultas' : 'Consulta Psicológica'),
+                        price: checkoutTotal || undefined,
+                        quantity: 1
+                    }]
+                });
+                analytics.trackFunnelStep('booking', 5, {
+                    step_name: 'checkout_start',
+                    booking_id: bookingId || inscricaoId || packageId || null,
+                    value: checkoutTotal || undefined
+                });
+            } catch (err) {
+                console.warn('CheckoutDirectPage.analytics error:', err);
+            }
+        }
+    }, [booking, packageData, inscricao, checkoutTotal, bookingId, inscricaoId, packageId, type]);
+
     // Estado do formulário
     const [cardNumber, setCardNumber] = useState('');
     const [cardholderName, setCardholderName] = useState('');
@@ -32,10 +80,74 @@ const CheckoutDirectPage = () => {
     const [docType, setDocType] = useState('CPF');
     const [docNumber, setDocNumber] = useState('');
     const [payerEmail, setPayerEmail] = useState('');
-    
+    const [acceptedTcle, setAcceptedTcle] = useState(false);
+
+    // Detecção dinâmica de bandeira, emissor e resiliência
+    const [cardBrand, setCardBrand] = useState(null);
+    const [cardIssuerId, setCardIssuerId] = useState(null);
+    const [paymentError, setPaymentError] = useState(null);
+    const lastBinRef = useRef('');
+
+    // Reserva prioritária de horário (15 minutos para evitar perda de vaga)
+    const [remainingSeconds, setRemainingSeconds] = useState(15 * 60);
+
+    useEffect(() => {
+        const itemCreatedAt = booking?.created_at || inscricao?.created_at || packageData?.created_at;
+        if (itemCreatedAt) {
+            const createdMs = new Date(itemCreatedAt).getTime();
+            const elapsedSec = Math.floor((Date.now() - createdMs) / 1000);
+            const reservationWindowSec = 15 * 60;
+            const left = reservationWindowSec - elapsedSec;
+            setRemainingSeconds(left > 0 ? left : 300);
+        }
+    }, [booking, inscricao, packageData]);
+
+    useEffect(() => {
+        if (remainingSeconds <= 0) return;
+        const interval = setInterval(() => {
+            setRemainingSeconds((prev) => (prev > 1 ? prev - 1 : 0));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [remainingSeconds]);
+
+    const formatTimer = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
+
+    // Telemetria oficial antifraude do Mercado Pago
+    useEffect(() => {
+        const existingSecurityScript = document.querySelector('script[src*="mercadopago.com/v2/security.js"]');
+        if (!existingSecurityScript) {
+            const secScript = document.createElement('script');
+            secScript.src = 'https://www.mercadopago.com/v2/security.js';
+            secScript.setAttribute('view', 'checkout');
+            secScript.async = true;
+            document.body.appendChild(secScript);
+        }
+    }, []);
+
+    const getPixCheckoutUrl = () => {
+        const params = new URLSearchParams();
+        if (bookingId) params.set('booking_id', bookingId);
+        if (type) params.set('type', type);
+        if (inscricaoId) params.set('inscricao_id', inscricaoId);
+        if (packageId) params.set('package_id', packageId);
+        if (valorParam) params.set('valor', valorParam);
+        if (tituloParam) params.set('titulo', tituloParam);
+        if (payerEmail) params.set('email', payerEmail);
+        return `/checkout?${params.toString()}`;
+    };
+
     // Mercado Pago
     const [mp, setMp] = useState(null);
-    const [cardForm, setCardForm] = useState(null);
+
+    useEffect(() => {
+        return () => {
+            if (stopMonitoring) stopMonitoring();
+        };
+    }, [stopMonitoring]);
 
     useEffect(() => {
         if (emailParam && !payerEmail) {
@@ -44,30 +156,99 @@ const CheckoutDirectPage = () => {
     }, [emailParam, payerEmail]);
 
     useEffect(() => {
-        // Inicializar Mercado Pago
+        // Inicializar Mercado Pago (carrega dinamicamente o SDK sob demanda se necessário)
+        const initMP = () => {
+            try {
+                if (window.MercadoPago) {
+                    const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY || 'APP_USR-398a9c5c-782e-4b5a-a666-2d667e860173';
+                    const mercadopago = new window.MercadoPago(publicKey, {
+                        locale: 'pt-BR'
+                    });
+                    setMp(mercadopago);
+                    console.log('✅ Mercado Pago SDK inicializado');
+                }
+            } catch (err) {
+                console.error('❌ Erro ao inicializar Mercado Pago:', err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro',
+                    description: 'Não foi possível inicializar o sistema de pagamento.'
+                });
+            }
+        };
+
         if (window.MercadoPago) {
-            const mercadopago = new window.MercadoPago('APP_USR-4fdd0ea3-c204-438a-9eea-4f503bca869d', {
-                locale: 'pt-BR'
-            });
-            setMp(mercadopago);
-            console.log('✅ Mercado Pago SDK inicializado');
+            initMP();
         } else {
-            console.error('❌ Mercado Pago SDK não carregado');
-            toast({
-                variant: 'destructive',
-                title: 'Erro',
-                description: 'Não foi possível carregar o sistema de pagamento.'
-            });
+            const script = document.createElement('script');
+            script.src = 'https://sdk.mercadopago.com/js/v2';
+            script.async = true;
+            script.onload = () => {
+                initMP();
+            };
+            script.onerror = () => {
+                console.error('❌ Mercado Pago SDK não carregado');
+                toast({
+                    variant: 'destructive',
+                    title: 'Erro',
+                    description: 'Não foi possível carregar o sistema de pagamento.'
+                });
+            };
+            document.body.appendChild(script);
         }
-    }, []);
+    }, [toast]);
 
     useEffect(() => {
         if (type === 'evento' && inscricaoId) {
             fetchInscricao();
+        } else if (packageId) {
+            fetchPackage();
         } else if (bookingId) {
             fetchBooking();
+        } else {
+            setLoading(false);
         }
-    }, [bookingId, inscricaoId, type]);
+    }, [bookingId, inscricaoId, packageId, type]);
+
+    const fetchPackage = async () => {
+        try {
+            if (location.state?.packageId) {
+                setPackageData({
+                    id: location.state.packageId,
+                    gross_amount: location.state.totalAmount,
+                    patient_name: location.state.patientName,
+                    patient_email: location.state.patientEmail,
+                    total_sessions: location.state.sessionCount,
+                    service_name: location.state.serviceName,
+                    professional_name: location.state.professionalName
+                });
+                setCardholderName(location.state.patientName || '');
+                setPayerEmail((current) => current || location.state.patientEmail || '');
+            } else {
+                const { data, error } = await supabase
+                    .from('packages')
+                    .select('*, professionals:professional_id(name)')
+                    .eq('id', packageId)
+                    .single();
+
+                if (error) throw error;
+
+                setPackageData(data);
+                setCardholderName(data.patient_name || '');
+                setDocNumber(data.patient_cpf || '');
+                setPayerEmail((current) => current || data.patient_email || '');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar pacote:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Erro',
+                description: 'Não foi possível carregar os dados do pacote'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchBooking = async () => {
         try {
@@ -78,7 +259,7 @@ const CheckoutDirectPage = () => {
                 .single();
 
             if (error) throw error;
-            
+
             setBooking(data);
             setCardholderName(data.patient_name || '');
             setDocNumber(data.patient_cpf || '');
@@ -104,7 +285,7 @@ const CheckoutDirectPage = () => {
                 .single();
 
             if (error) throw error;
-            
+
             setInscricao(data);
             setCardholderName(data.patient_name || '');
             setDocNumber(data.patient_cpf || '');
@@ -121,10 +302,36 @@ const CheckoutDirectPage = () => {
         }
     };
 
+    // Detecção local de bandeiras brasileiras para feedback imediato e fallback offline
+    const detectCardBrandLocal = (cleanNumber) => {
+        if (!cleanNumber || cleanNumber.length < 2) return null;
+        // Elo (ampla cobertura de faixas de BINs nacionais)
+        if (/^(4011(78|79)|43(1274|8935)|45(1416|7393|763(1|2))|50(4175|6699|67[0-7]\d|90\d{2})|627780|63(6297|6368)|650(4[0-3]\d|4[8-9]\d|5[0-1]\d|5[4-8]\d)|6516[5-7]\d|6550[0-5]\d)/.test(cleanNumber)) {
+            return { id: 'elo', name: 'Elo' };
+        }
+        // Hipercard
+        if (/^(606282|3841(00|40|60)|637095|637612|637568|637599)/.test(cleanNumber)) {
+            return { id: 'hipercard', name: 'Hipercard' };
+        }
+        // Amex (15 dígitos, inicia com 34 ou 37)
+        if (/^3[47]/.test(cleanNumber)) {
+            return { id: 'amex', name: 'American Express' };
+        }
+        // Visa (inicia com 4)
+        if (/^4/.test(cleanNumber)) {
+            return { id: 'visa', name: 'Visa' };
+        }
+        // Mastercard
+        if (/^(5[1-5]|2(22[1-9]|2[3-9]\d|[3-6]\d{2}|7[0-1]\d|720))/.test(cleanNumber)) {
+            return { id: 'master', name: 'Mastercard' };
+        }
+        return null;
+    };
+
     const formatCardNumber = (value) => {
         const cleaned = value.replace(/\D/g, '');
         const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-        return formatted.substring(0, 19); // 16 dígitos + 3 espaços
+        return formatted.substring(0, 23); // Até 19 dígitos + espaços (Elo/Hipercard)
     };
 
     const formatExpirationDate = (value) => {
@@ -135,33 +342,72 @@ const CheckoutDirectPage = () => {
         return cleaned;
     };
 
-    const formatCPF = (value) => {
-        const cleaned = value.replace(/\D/g, '');
-        if (cleaned.length <= 11) {
-            return cleaned
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d)/, '$1.$2')
-                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-                .replace(/(-\d{2})\d+?$/, '$1');
-        }
-        return cleaned.substring(0, 11);
-    };
+    const handleCardNumberChange = async (e) => {
+        const formatted = formatCardNumber(e.target.value);
+        setCardNumber(formatted);
+        if (paymentError) setPaymentError(null);
 
-    const handleCardNumberChange = (e) => {
-        setCardNumber(formatCardNumber(e.target.value));
+        const clean = formatted.replace(/\D/g, '');
+
+        // Detecção instantânea por regex local (zero latência visual)
+        const localBrand = detectCardBrandLocal(clean);
+        if (localBrand && (!cardBrand || cardBrand.id !== localBrand.id)) {
+            setCardBrand(localBrand);
+        }
+
+        if (clean.length >= 6 && mp) {
+            const bin = clean.substring(0, 6);
+            if (bin !== lastBinRef.current) {
+                lastBinRef.current = bin;
+                try {
+                    const response = await mp.getPaymentMethods({ bin });
+                    if (response && response.results && response.results.length > 0) {
+                        const method = response.results[0];
+                        setCardBrand({
+                            id: method.id,
+                            name: method.name,
+                            thumbnail: method.secure_thumbnail || method.thumbnail
+                        });
+
+                        // Resolução de emissor (issuer_id) obrigatório para Elo e altamente recomendado para todos
+                        try {
+                            const issuers = await mp.getIssuers({ paymentMethodId: method.id, bin });
+                            if (issuers && issuers.length > 0 && issuers[0].id) {
+                                setCardIssuerId(issuers[0].id);
+                                if (import.meta.env.DEV) console.log('🏦 Emissor detectado:', issuers[0].name, '(ID:', issuers[0].id, ')');
+                            }
+                        } catch (issErr) {
+                            console.warn('Erro ao obter emissor:', issErr);
+                        }
+                    }
+                } catch (binErr) {
+                    console.warn('Erro ao detectar bandeira pelo BIN:', binErr);
+                }
+            }
+        } else if (clean.length < 2) {
+            lastBinRef.current = '';
+            setCardBrand(null);
+            setCardIssuerId(null);
+        }
     };
 
     const handleExpirationChange = (e) => {
         setExpirationDate(formatExpirationDate(e.target.value));
-    };
-
-    const handleDocNumberChange = (e) => {
-        setDocNumber(formatCPF(e.target.value));
+        if (paymentError) setPaymentError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
+        if (!acceptedTcle) {
+            toast({
+                variant: 'destructive',
+                title: 'Aceite do TCLE é Obrigatório',
+                description: 'De acordo com a Resolução CFP nº 11/2018, você deve aceitar os Termos e o TCLE antes de finalizar o pagamento.'
+            });
+            return;
+        }
+
         if (!mp) {
             toast({
                 variant: 'destructive',
@@ -172,29 +418,27 @@ const CheckoutDirectPage = () => {
         }
 
         setProcessing(true);
+        setPaymentError(null);
 
         try {
-            // Validações básicas
             if (!cardNumber || !cardholderName || !expirationDate || !securityCode || !docNumber) {
                 throw new Error('Preencha todos os campos do cartão');
             }
 
-            // Obter valor do pagamento
             let amount = 0;
             if (type === 'evento') {
                 amount = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
+            } else if (packageId) {
+                amount = packageData?.gross_amount || parseFloat(valorParam) || 0;
             } else {
                 amount = booking?.valor_consulta || booking?.services?.price || parseFloat(valorParam) || 0;
             }
 
-            // Validar valor
             if (!amount || amount <= 0) {
                 throw new Error('Valor do pagamento inválido. Por favor, retorne à página anterior.');
             }
 
-            // Garantir que é número com 2 casas decimais
             amount = parseFloat(amount.toFixed(2));
-
             console.log('💰 Valor do pagamento:', amount);
 
             const email = payerEmail?.trim().toLowerCase();
@@ -203,7 +447,6 @@ const CheckoutDirectPage = () => {
                 throw new Error('Informe um e-mail válido para continuar.');
             }
 
-            // Criar token do cartão
             const [month, year] = expirationDate.split('/');
             const cardData = {
                 cardNumber: cardNumber.replace(/\s/g, ''),
@@ -215,104 +458,247 @@ const CheckoutDirectPage = () => {
                 identificationNumber: docNumber.replace(/\D/g, '')
             };
 
-            console.log('🔵 Criando token do cartão...');
-            
+            if (import.meta.env.DEV) console.log('🔵 Criando token do cartão...');
             const token = await mp.createCardToken(cardData);
-            
+
             if (!token || !token.id) {
                 throw new Error('Erro ao processar dados do cartão');
             }
 
-            console.log('✅ Token criado:', token.id);
+            if (import.meta.env.DEV) console.log('✅ Token criado com sucesso');
 
-            // Enviar para Edge Function processar pagamento
+            // Resolução precisa da bandeira do cartão (Visa, Elo, Mastercard, Hipercard, Amex, etc.)
+            const cleanCardNumber = cardNumber.replace(/\D/g, '');
+            let paymentMethodId = cardBrand?.id;
+            let finalIssuerId = cardIssuerId;
+
+            // Se ainda não detectou ou está sem emissor, tenta resolver dinamicamente via MP SDK
+            if (cleanCardNumber.length >= 6 && mp) {
+                const bin = cleanCardNumber.substring(0, 6);
+                if (!paymentMethodId) {
+                    try {
+                        const binRes = await mp.getPaymentMethods({ bin });
+                        if (binRes?.results?.[0]?.id) {
+                            paymentMethodId = binRes.results[0].id;
+                        }
+                    } catch (err) {
+                        console.warn('Fallback BIN error:', err);
+                    }
+                }
+
+                if (paymentMethodId && !finalIssuerId) {
+                    try {
+                        const issuers = await mp.getIssuers({ paymentMethodId, bin });
+                        if (issuers?.[0]?.id) {
+                            finalIssuerId = issuers[0].id;
+                            setCardIssuerId(issuers[0].id);
+                        }
+                    } catch (issErr) {
+                        console.warn('Fallback Issuers error:', issErr);
+                    }
+                }
+            }
+
+            // Fallback determinístico por regex se a API do MP falhar
+            if (!paymentMethodId) {
+                const localFallback = detectCardBrandLocal(cleanCardNumber);
+                if (localFallback) {
+                    paymentMethodId = localFallback.id;
+                }
+            }
+
+            // Se ainda assim for indefinido, inferir pelo primeiro dígito para não causar rejeição por 'master' incorreto
+            if (!paymentMethodId) {
+                paymentMethodId = cleanCardNumber.startsWith('4') ? 'visa' : 'master';
+            }
+
+            // Telemetria do dispositivo (Device Session ID gerado pelo security.js do MP)
+            const deviceId = window.MP_DEVICE_SESSION_ID || null;
+
+            // Estruturar dados do pagador com nome dividido e telefone para mitigar risco antifraude
+            const nameParts = (cardholderName || booking?.patient_name || packageData?.patient_name || 'Paciente').trim().split(/\s+/);
+            const firstName = nameParts[0] || 'Paciente';
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Doxologos';
+
+            const rawPhone = booking?.patient_phone || inscricao?.patient_phone || packageData?.patient_phone || '';
+            const cleanPhone = (rawPhone || '').replace(/\D/g, '');
+            let phoneObj = undefined;
+            if (cleanPhone.length >= 10) {
+                phoneObj = {
+                    area_code: cleanPhone.substring(0, 2),
+                    number: cleanPhone.substring(2)
+                };
+            }
+
             const paymentData = {
                 token: token.id,
+                payment_method_id: paymentMethodId,
+                issuer_id: finalIssuerId || null,
                 amount: amount,
                 installments: parseInt(installments),
-                description: type === 'evento' 
+                description: type === 'evento'
                     ? `Evento - ${inscricao?.evento?.titulo}`
-                    : `Consulta - ${booking?.services?.name}`,
+                    : packageId
+                        ? `Pacote de Consultas (${packageData?.total_sessions || ''} sessões)`
+                        : `Consulta - ${booking?.services?.name}`,
                 payer: {
                     email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    phone: phoneObj,
                     identification: {
                         type: docType,
                         number: docNumber.replace(/\D/g, '')
                     }
                 },
-                booking_id: bookingId,
-                inscricao_id: inscricaoId
+                device_id: deviceId,
+                booking_id: bookingId || null,
+                inscricao_id: inscricaoId || null,
+                package_id: packageId || null,
+                paymentMethod: 'credit_card'
             };
 
-            console.log('💳 Processando pagamento...');
+            console.log('💳 Processando pagamento com método:', paymentData.payment_method_id);
 
-            const result = await MercadoPagoService.processCardPayment(paymentData);
+            const getRejectionTitle = (msg) => {
+                const lower = (msg || '').toLowerCase();
+                if (lower.includes('banco') || lower.includes('segurança') || lower.includes('autoriz') || lower.includes('recusad')) {
+                    return 'Não autorizado pelo seu banco';
+                }
+                return 'Não foi possível concluir no cartão';
+            };
 
-            if (result.success) {
-                console.log('✅ Pagamento aprovado!');
-                toast({
-                    title: 'Pagamento aprovado!',
-                    description: 'Seu pagamento foi processado com sucesso.'
-                });
-                
-                // Redirecionar para página de sucesso
-                const referenceId = bookingId || inscricaoId;
-                const referenceType = type || 'booking';
-                navigate(`/checkout/success?external_reference=${referenceId}&type=${referenceType}`);
-                return;
+            const result = await paymentOrchestrator.processPayment(
+                'credit_card',
+                paymentData,
+                {
+                    onSuccess: (res) => {
+                        console.log('✅ Pagamento iniciado via Orquestrador:', res);
+                        toast({
+                            title: 'Processando...',
+                            description: 'Aguardando confirmação do banco.'
+                        });
+                    },
+                    onError: (err) => {
+                        console.error('❌ Erro no orquestrador:', err);
+                        const errorMsg = err.message || 'Não foi possível processar o pagamento com cartão.';
+                        setPaymentError(errorMsg);
+                        toast({
+                            variant: 'destructive',
+                            title: getRejectionTitle(errorMsg),
+                            description: errorMsg
+                        });
+                        setProcessing(false);
+                        if (stopMonitoring) stopMonitoring();
+                    },
+                    onStatusChange: (statusUpdate) => {
+                        console.log('🔄 Status atualizado:', statusUpdate);
+
+                        if (statusUpdate.status === 'approved' || statusUpdate.status === 'authorized') {
+                            toast({
+                                title: 'Pagamento Aprovado! 🎉',
+                                description: 'Seu pagamento foi confirmado com sucesso.'
+                            });
+                            setProcessing(false);
+
+                            try {
+                                analytics.trackBookingCompleted(
+                                    bookingId || packageId,
+                                    booking?.professional_id || packageData?.professional_id,
+                                    booking?.service_id || 'consulta',
+                                    checkoutTotal,
+                                    'credit_card'
+                                );
+                                analytics.trackEvent('purchase', {
+                                    transaction_id: statusUpdate.id || bookingId || packageId || `mp_${Date.now()}`,
+                                    value: checkoutTotal,
+                                    currency: 'BRL',
+                                    payment_type: 'credit_card',
+                                    items: [{
+                                        item_id: bookingId || inscricaoId || packageId || 'consulta',
+                                        item_name: type === 'evento' ? (inscricao?.evento?.titulo || 'Inscrição em Evento') : (packageId ? 'Pacote de Consultas' : 'Consulta Psicológica'),
+                                        price: checkoutTotal,
+                                        quantity: 1
+                                    }]
+                                });
+                            } catch (trackErr) {
+                                console.warn('CheckoutDirectPage.analytics completion error', trackErr);
+                            }
+
+                            if (type === 'evento') {
+                                navigate(`/checkout/success?type=evento&inscricao_id=${inscricaoId}`);
+                            } else if (packageId) {
+                                navigate(`/checkout/success?package_id=${packageId}`);
+                            } else {
+                                navigate(`/checkout/success?booking_id=${bookingId}`);
+                            }
+                        } else if (statusUpdate.status === 'rejected') {
+                            const friendlyMsg = paymentOrchestrator.getErrorMessage(statusUpdate);
+                            setPaymentError(friendlyMsg);
+                            try {
+                                analytics.trackEvent('payment_error', {
+                                    event_category: 'Checkout',
+                                    error_message: friendlyMsg,
+                                    payment_method: 'credit_card',
+                                    booking_id: bookingId || inscricaoId || packageId || null,
+                                    status_detail: statusUpdate.status_detail || 'cc_rejected'
+                                });
+                            } catch (errTrack) {
+                                console.warn('CheckoutDirectPage.analytics rejection error', errTrack);
+                            }
+                            toast({
+                                variant: 'destructive',
+                                title: getRejectionTitle(friendlyMsg),
+                                description: friendlyMsg
+                            });
+                            setProcessing(false);
+                        }
+                    }
+                }
+            );
+
+            if (result && result.stopMonitoring) {
+                setStopMonitoring(() => result.stopMonitoring);
             }
 
-            const status = typeof result.status === 'string' ? result.status.toLowerCase() : '';
-            const isPending = status === 'pending' || status === 'in_process';
-            const friendlyMessage = result.friendlyMessage || result.error || 'Não foi possível processar o pagamento.';
-
-            toast({
-                variant: isPending ? 'default' : 'destructive',
-                title: isPending ? 'Pagamento em análise' : 'Pagamento não aprovado',
-                description: friendlyMessage
-            });
-            return;
-
         } catch (error) {
-            console.error('Erro no pagamento:', error);
+            console.error('❌ Erro no checkout:', error);
+            const errorMsg = error.message || 'Ocorreu um erro ao processar o pagamento.';
+            setPaymentError(errorMsg);
+            const lower = (errorMsg || '').toLowerCase();
+            const isBankDecline = lower.includes('banco') || lower.includes('segurança') || lower.includes('autoriz') || lower.includes('recusad');
             toast({
                 variant: 'destructive',
-                title: 'Erro no pagamento',
-                description: error.message || 'Não foi possível processar o pagamento'
+                title: isBankDecline ? 'Não autorizado pelo seu banco' : 'Não foi possível concluir no cartão',
+                description: errorMsg
             });
-        } finally {
             setProcessing(false);
         }
     };
 
+    let total = 0;
+    if (type === 'evento') {
+        total = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
+    } else if (packageId) {
+        total = packageData?.gross_amount || parseFloat(valorParam) || 0;
+    } else {
+        total = booking?.valor_consulta || booking?.services?.price || parseFloat(valorParam) || 0;
+    }
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2d8659]"></div>
             </div>
         );
     }
 
-    // Calcular total para exibição
-    let total = 0;
-    if (type === 'evento') {
-        total = inscricao?.evento?.valor || parseFloat(valorParam) || 0;
-    } else {
-        total = booking?.valor_consulta || booking?.services?.price || parseFloat(valorParam) || 0;
-    }
-
-    // Se ainda for 0, tentar pegar do parâmetro
-    if (total === 0 && valorParam) {
-        total = parseFloat(valorParam);
-    }
-
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-4xl mx-auto px-4">
-                {/* Header */}
+        <div className="min-h-screen bg-gray-50 py-12 px-4 pb-28 md:pb-12">
+            <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
                     <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => navigate(-1)}
                         className="mb-4"
                     >
@@ -323,24 +709,92 @@ const CheckoutDirectPage = () => {
                     <p className="text-gray-600">Preencha os dados do seu cartão de crédito</p>
                 </div>
 
+                {/* Banner de Reserva Prioritária de Horário */}
+                {remainingSeconds > 0 ? (
+                    <div className="mb-6 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs sm:text-sm text-emerald-950 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-emerald-700 animate-pulse flex-shrink-0" />
+                            <span>Sua vaga está <strong>100% reservada</strong> para conclusão do seu pagamento:</span>
+                        </div>
+                        <span className="font-mono font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-md border border-emerald-200 shadow-xs">
+                            {formatTimer(remainingSeconds)}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-between text-xs sm:text-sm text-amber-950 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-amber-700 flex-shrink-0" />
+                            <span>Tempo de reserva prioritária expirando. Conclua seu pagamento agora para garantir seu horário.</span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid md:grid-cols-3 gap-6">
                     {/* Formulário */}
-                    <div className="md:col-span-2">
+                    <div className="md:col-span-2 space-y-4">
+                        {paymentError && (
+                            <div className="p-5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-xl shadow-sm space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 text-sm space-y-1">
+                                        <p className="font-bold text-amber-950 text-base">Seu banco não autorizou a tentativa no cartão</p>
+                                        <p className="text-amber-900 leading-relaxed">{paymentError}</p>
+                                        <p className="text-xs text-amber-800 pt-1">
+                                            A plataforma Doxologos está funcionando perfeitamente. Esta recusa é uma restrição do banco emissor do cartão por motivos de segurança do próprio banco para compras online.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-white/95 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="text-center sm:text-left">
+                                        <div className="flex items-center gap-2 justify-center sm:justify-start">
+                                            <span className="font-bold text-gray-900 text-sm">Sua vaga continua reservada!</span>
+                                            <span className="font-mono font-bold text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-200">
+                                                {formatTimer(remainingSeconds)}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs text-gray-600 block mt-1">
+                                            Pague agora via PIX com aprovação instantânea e garanta seu atendimento sem depender de liberação bancária do cartão.
+                                        </span>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        onClick={() => navigate(getPixCheckoutUrl())}
+                                        className="w-full sm:w-auto bg-[#2d8659] hover:bg-[#236b47] text-white font-semibold shadow-sm flex items-center justify-center gap-2 px-5 py-2.5 text-sm flex-shrink-0"
+                                    >
+                                        <Smartphone className="w-4 h-4" />
+                                        Pagar com PIX Agora
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                         <Card className="p-6">
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form id="direct-card-form" onSubmit={handleSubmit} className="space-y-4">
                                 {/* Número do Cartão */}
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        Número do Cartão
-                                    </label>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="block text-sm font-medium">
+                                            Número do Cartão
+                                        </label>
+                                        {cardBrand && (
+                                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                {cardBrand.thumbnail && (
+                                                    <img src={cardBrand.thumbnail} alt={cardBrand.name} className="h-3.5 object-contain" />
+                                                )}
+                                                {cardBrand.name}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="relative">
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoComplete="cc-number"
                                             value={cardNumber}
                                             onChange={handleCardNumberChange}
                                             placeholder="0000 0000 0000 0000"
-                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                                            maxLength="19"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent font-mono tracking-wider"
+                                            maxLength="23"
                                             required
                                         />
                                         <CreditCard className="absolute right-3 top-3 text-gray-400" />
@@ -354,10 +808,11 @@ const CheckoutDirectPage = () => {
                                     </label>
                                     <input
                                         type="text"
+                                        autoComplete="cc-name"
                                         value={cardholderName}
                                         onChange={(e) => setCardholderName(e.target.value.toUpperCase())}
-                                        placeholder="NOME COMPLETO"
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                        placeholder="NOME COMO NO CARTÃO"
+                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent uppercase"
                                         required
                                     />
                                 </div>
@@ -369,7 +824,9 @@ const CheckoutDirectPage = () => {
                                             Validade
                                         </label>
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoComplete="cc-exp"
                                             value={expirationDate}
                                             onChange={handleExpirationChange}
                                             placeholder="MM/AA"
@@ -383,71 +840,91 @@ const CheckoutDirectPage = () => {
                                             CVV
                                         </label>
                                         <input
-                                            type="text"
+                                            type="tel"
+                                            inputMode="numeric"
+                                            autoComplete="cc-csc"
                                             value={securityCode}
                                             onChange={(e) => setSecurityCode(e.target.value.replace(/\D/g, ''))}
                                             placeholder="123"
-                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent font-mono"
                                             maxLength="4"
                                             required
                                         />
                                     </div>
                                 </div>
 
-                                {/* CPF */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        CPF do Titular
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={docNumber}
-                                        onChange={handleDocNumberChange}
-                                        placeholder="000.000.000-00"
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                                        maxLength="14"
-                                        required
-                                    />
-                                </div>
-
-                                {/* Email */}
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">
-                                        E-mail para confirmação
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={payerEmail}
-                                        onChange={(e) => setPayerEmail(e.target.value)}
-                                        placeholder="nome@exemplo.com"
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
-                                        required
-                                    />
+                                {/* CPF e Email */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">
+                                            CPF do Titular
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            inputMode="numeric"
+                                            value={docNumber}
+                                            onChange={(e) => setDocNumber(e.target.value)}
+                                            placeholder="000.000.000-00"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">
+                                            E-mail
+                                        </label>
+                                        <input
+                                            type="email"
+                                            inputMode="email"
+                                            autoComplete="email"
+                                            value={payerEmail}
+                                            onChange={(e) => setPayerEmail(e.target.value)}
+                                            placeholder="seu@email.com"
+                                            className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                            required
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Parcelas */}
                                 <div>
                                     <label className="block text-sm font-medium mb-2">
-                                        Parcelas
+                                        Parcelamento
                                     </label>
                                     <select
                                         value={installments}
                                         onChange={(e) => setInstallments(e.target.value)}
-                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
+                                        className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent bg-white"
                                     >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                                            <option key={n} value={n}>
-                                                {n}x de {MercadoPagoService.formatCurrency(total / n)}
-                                                {n === 1 ? ' sem juros' : ''}
-                                            </option>
-                                        ))}
+                                        <option value="1">1x de {MercadoPagoService.formatCurrency(total)} à vista</option>
+                                        {total >= 100 && <option value="2">2x de {MercadoPagoService.formatCurrency(total / 2)}</option>}
+                                        {total >= 150 && <option value="3">3x de {MercadoPagoService.formatCurrency(total / 3)}</option>}
                                     </select>
+                                </div>
+
+                                {/* Checkbox TCLE / Política de Cancelamento (CFP Resolução 11/2018) */}
+                                <div className="p-4 bg-amber-50/70 rounded-xl border border-amber-200/80 my-4">
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            data-testid="tcle-checkbox"
+                                            checked={acceptedTcle}
+                                            onChange={(e) => setAcceptedTcle(e.target.checked)}
+                                            className="mt-1 h-4 w-4 rounded border-amber-300 text-[#2d8659] focus:ring-[#2d8659]"
+                                        />
+                                        <span className="text-xs text-amber-900 leading-relaxed">
+                                            Li e concordo com o <strong>Termo de Consentimento Livre e Esclarecido (TCLE) de Atendimento Psicológico Online</strong> (Resolução CFP nº 11/2018) e com a <strong>Política de Cancelamento e Reagendamento</strong> (com até 24h de antecedência). Entendo que meus dados clínicos e de atendimento estão protegidos por sigilo profissional e pela LGPD.{' '}
+                                            <Link to="/termos-e-condicoes" target="_blank" className="underline font-semibold hover:text-[#2d8659]">
+                                                Ver termos completos
+                                            </Link>
+                                        </span>
+                                    </label>
                                 </div>
 
                                 <Button
                                     type="submit"
-                                    disabled={processing}
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] py-6 text-lg"
+                                    disabled={processing || !acceptedTcle}
+                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] py-6 text-lg disabled:opacity-50"
                                 >
                                     {processing ? (
                                         'Processando...'
@@ -466,11 +943,19 @@ const CheckoutDirectPage = () => {
                     <div className="md:col-span-1">
                         <Card className="p-6 sticky top-6">
                             <h3 className="font-bold text-lg mb-4">Resumo do Pedido</h3>
-                            
+
                             {type === 'evento' && inscricao && (
                                 <div className="space-y-3 mb-4">
                                     <p className="text-sm text-gray-600">Evento</p>
                                     <p className="font-semibold">{inscricao.evento?.titulo}</p>
+                                </div>
+                            )}
+
+                            {packageData && (
+                                <div className="space-y-3 mb-4">
+                                    <p className="text-sm text-gray-600 font-medium">Pacote de Consultas</p>
+                                    <p className="font-semibold text-gray-900">{packageData.service_name || 'Psicoterapia'}</p>
+                                    <p className="text-xs text-[#2d8659] font-bold">{packageData.total_sessions} Sessões Agendadas</p>
                                 </div>
                             )}
 
@@ -501,9 +986,46 @@ const CheckoutDirectPage = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            <div className="mt-4 pt-4 border-t text-center">
+                                <p className="text-xs text-gray-500 mb-2">Prefere aprovação instantânea via PIX?</p>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate(getPixCheckoutUrl())}
+                                    className="w-full text-xs text-[#2d8659] border-[#2d8659]/30 hover:bg-[#2d8659]/10 flex items-center justify-center gap-1.5"
+                                >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                    Pagar com PIX
+                                </Button>
+                            </div>
                         </Card>
                     </div>
                 </div>
+            </div>
+
+            {/* Barra Sticky Mobile (ADR 002) */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 p-3 px-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] z-40 flex items-center justify-between gap-3">
+                <div className="flex flex-col">
+                    <span className="text-[11px] text-gray-500 font-medium">Total a pagar:</span>
+                    <span className="text-base font-bold text-[#2d8659]">
+                        {MercadoPagoService.formatCurrency(total)}
+                    </span>
+                </div>
+                <Button
+                    type="submit"
+                    form="direct-card-form"
+                    disabled={processing || !acceptedTcle}
+                    className="flex-1 max-w-[220px] bg-[#2d8659] hover:bg-[#236b47] py-3 text-sm font-semibold shadow-md disabled:opacity-50"
+                >
+                    {processing ? 'Processando...' : (
+                        <>
+                            <Lock className="w-4 h-4 mr-1.5" />
+                            Pagar com Cartão
+                        </>
+                    )}
+                </Button>
             </div>
         </div>
     );

@@ -1,7 +1,19 @@
-# 💳 Sistema de Pagamentos
+# 💳 Sistema de Pagamentos (v3.2)
 
 > **Status**: ✅ Implementado e em Produção  
-> **Última Atualização**: 28 de Janeiro de 2025
+> **Última Atualização**: Agosto de 2026
+
+---
+
+## 📋 Novas Regras & Atualizações (v3.2)
+
+- ⚡ **Expiração Dinâmica de PIX no Mercado Pago (`date_of_expiration`):** O parâmetro `date_of_expiration` enviado à API do Mercado Pago (`mp-create-payment`) é sincronizado dinamicamente com a tolerância da consulta (15m, 30m ou 60m), expirando a chave PIX no app do banco e eliminando estornos manuais.
+- 📲 **PIX Mobile-First (`CheckoutPage.jsx`):** Botão "Copiar Código PIX Copia e Cola" em destaque primário de 100% da largura em celulares, com QR Code recolhível em menu explicativo.
+- 📊 **Padronização de Status e Reconciliação do Ledger:**
+  - Status agregados para faturamento: `['pending', 'pending_payment', 'awaiting_payment']` vs `['confirmed', 'paid']`.
+  - **Faltas Injustificadas (`no_show_unjustified`):** Tratadas no DRE e Ledger como receita realizada e repasse devido ao psicólogo (pois o profissional esteve disponível).
+- 🔒 **Detecção de Pagamento Duplicado (`PAYMENT_DUPLICATE_MODAL`):** Validação idempotente previa antes de autorizar nova transação no Mercado Pago.
+- 🎟️ **Créditos Financeiros Automáticos:** Cancelamentos realizados com antecedência superior a 24h geram saldo de crédito interno atrelado ao perfil do paciente.
 
 ---
 

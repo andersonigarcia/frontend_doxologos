@@ -1,14 +1,20 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import analytics from '../lib/analytics';
-
+// Removed unused Supabase dependency for analytics
 // Hook para tracking de páginas
 export const usePageTracking = (pageName, pageTitle) => {
   const location = useLocation();
 
   useEffect(() => {
-    const title = pageTitle || document.title;
-    analytics.trackPageView(pageName || location.pathname, title);
+    // Delay de 120ms para permitir que o React Helmet conclua a mutação do document.title no DOM
+    const timer = setTimeout(() => {
+      const title = pageTitle || document.title;
+      const finalPath = pageName || location.pathname;
+      analytics.trackPageView(finalPath, title);
+    }, 120);
+
+    return () => clearTimeout(timer);
   }, [location.pathname, pageName, pageTitle]);
 };
 
@@ -96,14 +102,28 @@ export const useFormTracking = (formName) => {
 export const useBookingTracking = () => {
   const trackEvent = useEventTracking();
 
+  // Disparado quando o usuário abre a página de agendamento (step inicial)
+  const trackBookingStart = useCallback(() => {
+    // booking_start (Etapa 3 do funil GA4) primeiro: não pode depender do evento auxiliar funnel_step
+    trackEvent('booking_start', {
+      event_category: 'Booking Flow',
+      event_label: 'Step 1 - Início'
+    });
+    try {
+      analytics.trackFunnelStep('booking', 1, { step_name: 'page_open' });
+    } catch (err) {
+      console.warn('trackFunnelStep error (non-critical):', err);
+    }
+  }, [trackEvent]);
+
   const trackBookingStep = useCallback((step, data = {}) => {
-    analytics.trackBookingStep(step, data.professionalId, data.serviceId);
+    analytics.trackBookingStep(step, data.professionalId, data.serviceId, data);
     analytics.trackFunnelStep('booking', step, data);
   }, []);
 
   const trackBookingCompleted = useCallback((bookingData) => {
-    const { id, professionalId, serviceId, amount } = bookingData;
-    analytics.trackBookingCompleted(id, professionalId, serviceId, amount);
+    const { id, professionalId, serviceId, amount, paymentMethod } = bookingData;
+    analytics.trackBookingCompleted(id, professionalId, serviceId, amount, paymentMethod);
   }, []);
 
   const trackBookingAbandonment = useCallback((step, reason) => {
@@ -115,6 +135,7 @@ export const useBookingTracking = () => {
   }, [trackEvent]);
 
   return {
+    trackBookingStart,
     trackBookingStep,
     trackBookingCompleted,
     trackBookingAbandonment
@@ -234,9 +255,18 @@ export const useEngagementTracking = () => {
     });
   }, [trackEvent]);
 
+  const trackElementView = useCallback((elementName, data = {}) => {
+    trackEvent('element_view', {
+      event_category: 'Engagement',
+      event_label: elementName,
+      ...data
+    });
+  }, [trackEvent]);
+
   return {
     trackScrollDepth,
-    trackTimeOnPage
+    trackTimeOnPage,
+    trackElementView
   };
 };
 

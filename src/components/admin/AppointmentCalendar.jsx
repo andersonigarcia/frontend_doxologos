@@ -143,23 +143,23 @@ export const AppointmentCalendar = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className={cn('bg-white rounded-xl border border-gray-200 shadow-sm p-6', className)}
+            className={cn('bg-white rounded-xl border border-slate-200/80 shadow-xs p-6', className)}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-[#2d8659]" />
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <CalendarIcon className="w-5 h-5 text-slate-800" />
+                    <h3 className="text-lg font-bold text-slate-900">
                         {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
                     </h3>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={goToToday}
-                        className="text-sm"
+                        className="text-xs font-semibold h-8"
                     >
                         Hoje
                     </Button>
@@ -167,6 +167,7 @@ export const AppointmentCalendar = ({
                         variant="outline"
                         size="sm"
                         onClick={goToPreviousMonth}
+                        className="h-8 w-8 p-0"
                     >
                         <ChevronLeft className="w-4 h-4" />
                     </Button>
@@ -174,6 +175,7 @@ export const AppointmentCalendar = ({
                         variant="outline"
                         size="sm"
                         onClick={goToNextMonth}
+                        className="h-8 w-8 p-0"
                     >
                         <ChevronRight className="w-4 h-4" />
                     </Button>
@@ -185,7 +187,7 @@ export const AppointmentCalendar = ({
                 {weekDays.map(day => (
                     <div
                         key={day}
-                        className="text-center text-sm font-semibold text-gray-600 py-2"
+                        className="text-center text-xs font-bold text-slate-500 py-1 uppercase tracking-wider"
                     >
                         {day}
                     </div>
@@ -215,17 +217,17 @@ export const AppointmentCalendar = ({
                                 'relative aspect-square p-2 rounded-lg transition-all',
                                 'flex flex-col items-center justify-center',
                                 dayInfo.isCurrentMonth
-                                    ? 'bg-white hover:bg-gray-50 border border-gray-200'
-                                    : 'bg-gray-50 text-gray-400 cursor-default',
-                                isToday && 'ring-2 ring-[#2d8659] ring-offset-2',
+                                    ? 'bg-white hover:bg-slate-50 border border-slate-200'
+                                    : 'bg-slate-50 text-slate-400 cursor-default',
+                                isToday && 'ring-2 ring-slate-900 ring-offset-2',
                                 isPast && dayInfo.isCurrentMonth && 'opacity-60'
                             )}
                             disabled={!dayInfo.isCurrentMonth}
                         >
                             {/* Número do dia */}
                             <span className={cn(
-                                'text-sm font-medium',
-                                isToday ? 'text-[#2d8659] font-bold' : 'text-gray-900'
+                                'text-xs font-semibold tabular-nums',
+                                isToday ? 'text-slate-900 font-extrabold' : 'text-slate-700'
                             )}>
                                 {dayInfo.date.getDate()}
                             </span>

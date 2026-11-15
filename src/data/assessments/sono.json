@@ -1,0 +1,191 @@
+{
+  "id": "sono-isi",
+  "slug": "teste-qualidade-sono-insonia",
+  "aliases": [
+    "sono-isi",
+    "sono",
+    "insonia",
+    "teste-sono",
+    "teste-insonia",
+    "qualidade-sono",
+    "escala-sono"
+  ],
+  "title": "Índice de Qualidade do Sono e Insônia (ISI)",
+  "subtitle": "Avaliação de padrões de insônia, despertar noturno e cansaço diurno",
+  "category": "Sono & Restauração",
+  "icon": "Moon",
+  "badge": "Mais Buscado",
+  "estimatedTime": "2 a 3 min",
+  "scientificBasis": "Baseado no Insomnia Severity Index (ISI - Morin et al., 2001) e diretrizes da AASM",
+  "disclaimer": "Esta autoavaliação tem caráter informativo e educativo. Ela não substitui uma consulta médica ou avaliação do sono por especialista.",
+  "timeframePrompt": "Considerando as últimas 2 semanas, responda sobre a qualidade das suas noites de sono:",
+  "maxScore": 28,
+  "options": [
+    { "label": "Nenhuma / Nada", "value": 0, "helper": "0 de 4" },
+    { "label": "Leve / Pouco", "value": 1, "helper": "1 de 4" },
+    { "label": "Moderada", "value": 2, "helper": "2 de 4" },
+    { "label": "Grave / Muito", "value": 3, "helper": "3 de 4" },
+    { "label": "Muito Grave / Extrema", "value": 4, "helper": "4 de 4" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Início do Sono",
+      "text": "Dificuldade para pegar no sono (demorar mais de 30 minutos para adormecer após se deitar)."
+    },
+    {
+      "id": 2,
+      "dimension": "Manutenção do Sono",
+      "text": "Dificuldade para manter o sono (acordar várias vezes durante a noite e ter dificuldade para voltar a dormir)."
+    },
+    {
+      "id": 3,
+      "dimension": "Despertar Precoce",
+      "text": "Problema de acordar muito cedo pela manhã (antes do despertador ou do horário desejado) sem conseguir dormir mais."
+    },
+    {
+      "id": 4,
+      "dimension": "Insatisfação com o Sono",
+      "text": "Qual o seu grau de insatisfação ou insucesso com o seu padrão atual de sono?",
+      "options": [
+        { "label": "Muito satisfeito(a)", "value": 0 },
+        { "label": "Satisfeito(a)", "value": 1 },
+        { "label": "Neutro / Razoável", "value": 2 },
+        { "label": "Insatisfeito(a)", "value": 3 },
+        { "label": "Muito insatisfeito(a)", "value": 4 }
+      ]
+    },
+    {
+      "id": 5,
+      "dimension": "Interferência no Funcionamento Diurno",
+      "text": "Em que grau você considera que seu problema de sono atrapalha seu funcionamento diário (fadiga, concentração, humor, memória)?",
+      "options": [
+        { "label": "Não atrapalha em nada", "value": 0 },
+        { "label": "Atrapalha um pouco", "value": 1 },
+        { "label": "Atrapalha moderadamente", "value": 2 },
+        { "label": "Atrapalha muito", "value": 3 },
+        { "label": "Atrapalha extremamente", "value": 4 }
+      ]
+    },
+    {
+      "id": 6,
+      "dimension": "Percepção Social",
+      "text": "O quanto as pessoas ao seu redor notam que a falta de sono afeta seu humor, energia ou qualidade de vida?",
+      "options": [
+        { "label": "Não notam nada", "value": 0 },
+        { "label": "Notam apenas um pouco", "value": 1 },
+        { "label": "Notam moderadamente", "value": 2 },
+        { "label": "Notam bastante", "value": 3 },
+        { "label": "Notam intensamente", "value": 4 }
+      ]
+    },
+    {
+      "id": 7,
+      "dimension": "Angústia & Preocupação",
+      "text": "Qual o seu nível de preocupação ou angústia em relação aos seus problemas atuais de sono?",
+      "options": [
+        { "label": "Nenhuma preocupação", "value": 0 },
+        { "label": "Pouca preocupação", "value": 1 },
+        { "label": "Preocupação moderada", "value": 2 },
+        { "label": "Muita preocupação", "value": 3 },
+        { "label": "Preocupação extrema", "value": 4 }
+      ]
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Saúde e Disposição",
+    "prompt": "Qual o impacto geral que essas noites mal dormidas têm causado na sua saúde física, clareza mental e ânimo no trabalho?",
+    "options": [
+      { "label": "Nenhum impacto (acordo disposto)", "value": 0 },
+      { "label": "Impacto leve (pequena sonolência após o almoço)", "value": 1 },
+      { "label": "Impacto moderado (cansaço constante e mente enevoada)", "value": 2 },
+      { "label": "Impacto severo (exaustão física, irritabilidade e prejuízo produtivo)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 7,
+      "severity": "minimal",
+      "label": "Sono Saudável & Restaurador",
+      "tag": "Faixa Saudável",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua pontuação aponta para ausência de insônia clinicamente significativa. Seu sono cumpre sua função biológica e restauradora.",
+      "clinicalInsight": "Você mantém uma boa arquitetura do sono. O segredo para sustentar noites tranquilas é manter rotinas estáveis de horário para deitar e levantar.",
+      "recommendations": [
+        "Mantenha seu quarto escuro, silencioso e com temperatura agradável.",
+        "Evite telas e luz azul pelo menos 45 minutos antes de deitar.",
+        "Dedique os últimos minutos do dia para oração, leitura tranquila e desaceleração mental."
+      ],
+      "spiritualBridge": "'Em paz me deito e logo pego no sono, pois só tu, Senhor, me fazes viver em segurança.' (Salmo 4:8). O sono é uma bênção de Deus para a restauração das nossas forças.",
+      "ctaText": "Conhecer Nossos Especialistas",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 8,
+      "max": 14,
+      "severity": "mild",
+      "label": "Insônia Leve / Subclínica",
+      "tag": "Atenção & Higiene do Sono",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta noites esporádicas de agitação, demora para adormecer ou despertares noturnos que começam a gerar cansaço no dia seguinte.",
+      "clinicalInsight": "Sintomas leves de insônia costumam estar associados a picos de estresse, uso excessivo de telas à noite ou consumo tardio de cafeína. Ajustes comportamentais de Higiene do Sono são muito eficazes.",
+      "recommendations": [
+        "Evite cafeína, café e pré-treinos após as 14h.",
+        "Crie um ritual noturno previsível (banho morno, chá relaxante, pouca luz).",
+        "Se não conseguir dormir em 20 minutos, levante-se e faça uma atividade calma com pouca luz até sentir sono."
+      ],
+      "spiritualBridge": "Despeje sobre Ele a sua ansiedade antes de se deitar. Entregar o controle das preocupações a Deus acalma o sistema nervoso e prepara a mente para o descanso.",
+      "ctaText": "Agendar Orientação com Psicólogo",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 15,
+      "max": 21,
+      "severity": "moderate",
+      "label": "Insônia Clínica Moderada",
+      "tag": "Indicação Terapêutica (TCC-I)",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação atingiu o ponto de corte clínico de insônia (score $\\ge$ 15), indicando prejuízo claro na disposição, no humor e na produtividade diurna.",
+      "clinicalInsight": "A insônia crônica gera um ciclo vicioso: o medo de não dormir à noite alimenta a ansiedade diurna, que por sua vez impede o sono. O tratamento padrão-ouro mundial é a Terapia Cognitivo-Comportamental para Insônia (TCC-I), que reprograma as crenças e hábitos do sono.",
+      "recommendations": [
+        "Inicie acompanhamento com psicólogo especialista em TCC-I para recondicionar seu relógio biológico.",
+        "Evite tentar 'compensar' o sono durante o dia com longos cochilos, pois isso rouba a pressão de sono da noite.",
+        "Trabalhe pensamentos catastróficos noturnos em sessão de terapia."
+      ],
+      "spiritualBridge": "'Aos seus amados ele dá o sono.' (Salmo 127:2). Cuidar do seu sono com métodos científicos e acolhimento é um passo essencial para restaurar sua saúde integral.",
+      "ctaText": "Agendar Sessão de TCC para Insônia",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 22,
+      "max": 28,
+      "severity": "severe",
+      "label": "Insônia Clínica Severa / Grave",
+      "tag": "Atenção Prioritária / Alerta Vermelho",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado indica um quadro grave de privação de sono crônica, com alto impacto na saúde cardiovascular, no sistema imunológico e no equilíbrio emocional.",
+      "clinicalInsight": "A privação grave e contínua de sono amplifica a vulnerabilidade à depressão e crises de ansiedade. Uma abordagem integrada (Psicologia especializada + Avaliação Médica/Psiquiátrica) é altamente recomendada com prioridade.",
+      "recommendations": [
+        "Agende com urgência uma avaliação psicológica e médica para investigar causas da insônia e receber suporte.",
+        "Evite automedicação com remédios para dormir sem prescrição médica especializada.",
+        "Busque desacelerar o ritmo de compromissos para proteger sua saúde neurológica e psíquica."
+      ],
+      "spiritualBridge": "Deus conhece sua dor nas noites silenciosas e insones. Você não está sozinho(a) e há caminhos eficazes para recuperar a paz das suas noites de descanso.",
+      "ctaText": "Agendar Atendimento Prioritário",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

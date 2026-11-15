@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import analytics from '@/lib/analytics';
 
 /**
  * Sticky Bottom CTA Bar - Mobile-First Component
@@ -72,10 +73,22 @@ const StickyBottomCTA = ({
                     <div className="relative container mx-auto px-4 py-3">
                         <div className="flex items-center gap-3">
                             {/* CTA Principal - Full width em mobile */}
-                            <Link to={ctaLink} className="flex-1">
+                            <Link
+                                to={ctaLink}
+                                className="flex-1"
+                                onClick={() => {
+                                    try {
+                                        analytics.trackEvent('cta_click', {
+                                            event_category: 'Conversion',
+                                            event_label: 'agendar_consulta',
+                                            page_section: 'sticky_bottom'
+                                        });
+                                    } catch (e) {}
+                                }}
+                            >
                                 <Button
                                     size="lg"
-                                    className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-semibold shadow-md
+                                    className="w-full bg-[#1b3c37] hover:bg-[#132d29] text-[#f0ebe1] font-semibold shadow-md
                     h-14 text-base sm:text-lg
                     active:scale-95 transition-transform
                     touch-manipulation" // Otimização touch

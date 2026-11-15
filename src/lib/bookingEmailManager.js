@@ -43,7 +43,7 @@ class BookingEmailManager {
 
       // Adiciona cópia para Doxologos se solicitado
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -54,6 +54,85 @@ class BookingEmailManager {
       return result;
     } catch (error) {
       logger.error('❌ Erro ao enviar confirmação', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 1.1 Email de Confirmação para o Profissional
+   * Enviado quando uma nova consulta é agendada
+   */
+  async sendProfessionalConfirmation(bookingData) {
+    try {
+      const professionalEmail = (bookingData.professional_email || bookingData.professional?.email || '').trim();
+      const professionalId = bookingData.professional_id || bookingData.professional?.id;
+      const userId = bookingData.user_id || bookingData.professional?.user_id;
+
+      if (!professionalEmail && !professionalId && !userId) {
+        logger.error('❌ Identificação do profissional ausente para confirmação de agendamento', { bookingId: bookingData.id });
+        return { success: false, error: 'missing_professional_email' };
+      }
+
+      const html = this.templates.newBookingForProfessional({
+        patient_name: bookingData.patient_name,
+        patient_email: bookingData.patient_email,
+        patient_phone: bookingData.patient_phone,
+        service_name: bookingData.service_name || bookingData.service?.name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        meeting_link: bookingData.meeting_link,
+        meeting_password: bookingData.meeting_password
+      });
+
+      const emailConfig = {
+        to: professionalEmail || null,
+        professional_id: professionalId,
+        user_id: userId,
+        subject: `📅 Nova Consulta Agendada: ${bookingData.patient_name} - Doxologos`,
+        html,
+        type: 'professional_booking_confirmation'
+      };
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de confirmação enviado ao profissional', { to: professionalEmail || `prof_id:${professionalId}` });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar confirmação ao profissional', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 1.2 Resumo Diário para o Profissional (24h)
+   * Enviado com a lista de consultas do dia seguinte
+   */
+  async sendProfessionalDailySummary(professionalEmail, professionalName, bookings) {
+    try {
+      if (!professionalEmail || !bookings || bookings.length === 0) {
+        return { success: false, error: 'invalid_data' };
+      }
+
+      const html = this.templates.professionalDailySummary(professionalName, bookings);
+
+      const emailConfig = {
+        to: professionalEmail,
+        subject: `📅 Sua Agenda para Amanhã - Doxologos`,
+        html,
+        type: 'professional_daily_summary'
+      };
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Resumo diário de agenda enviado ao profissional', { to: professionalEmail });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar resumo diário ao profissional', error);
       return { success: false, error: error.message };
     }
   }
@@ -81,7 +160,7 @@ class BookingEmailManager {
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -89,6 +168,16 @@ class BookingEmailManager {
       if (result.success) {
         logger.success('📧 Email de pagamento aprovado enviado', { to: bookingData.patient_email });
       }
+
+      // Notificar o profissional caso ainda não tenha sido
+      if (bookingData.professional_email || bookingData.professional_id || bookingData.professional?.id || bookingData.user_id) {
+        try {
+          await this.sendProfessionalConfirmation(bookingData);
+        } catch (profNotifErr) {
+          logger.warn('⚠️ Falha não-crítica ao notificar profissional sobre pagamento aprovado:', profNotifErr);
+        }
+      }
+
       return result;
     } catch (error) {
       logger.error('❌ Erro ao enviar pagamento aprovado', error);
@@ -122,7 +211,7 @@ class BookingEmailManager {
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -162,7 +251,7 @@ class BookingEmailManager {
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -199,7 +288,7 @@ class BookingEmailManager {
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -236,7 +325,7 @@ class BookingEmailManager {
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -257,10 +346,12 @@ class BookingEmailManager {
    */
   async sendProfessionalReminder2Hours(bookingData, sendCopy = false) {
     try {
-      const professionalEmail = bookingData.professional_email || bookingData.professional?.email;
+      const professionalEmail = (bookingData.professional_email || bookingData.professional?.email || '').trim();
+      const professionalId = bookingData.professional_id || bookingData.professional?.id;
+      const userId = bookingData.user_id || bookingData.professional?.user_id;
 
-      if (!professionalEmail) {
-        logger.error('❌ Email do profissional ausente para lembrete 2h', { bookingId: bookingData.id });
+      if (!professionalEmail && !professionalId && !userId) {
+        logger.error('❌ Identificação do profissional ausente para lembrete 2h', { bookingId: bookingData.id });
         return { success: false, error: 'missing_professional_email' };
       }
 
@@ -276,20 +367,22 @@ class BookingEmailManager {
       });
 
       const emailConfig = {
-        to: professionalEmail,
+        to: professionalEmail || null,
+        professional_id: professionalId,
+        user_id: userId,
         subject: `⏰ LEMBRETE: Consulta em 2 horas - ${bookingData.patient_name} - Doxologos`,
         html,
         type: 'professional_reminder_2h'
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
 
       if (result.success) {
-        logger.success('📧 Email de lembrete 2h enviado para profissional', { to: professionalEmail });
+        logger.success('📧 Email de lembrete 2h enviado para profissional', { to: professionalEmail || `prof_id:${professionalId}` });
       }
       return result;
     } catch (error) {
@@ -317,7 +410,7 @@ class BookingEmailManager {
       };
 
       if (sendCopy) {
-        emailConfig.cc = 'doxologos@doxologos.com.br';
+        emailConfig.cc = this.emailService.backofficeEmail;
       }
 
       const result = await this.emailService.sendEmail(emailConfig);
@@ -328,6 +421,122 @@ class BookingEmailManager {
       return result;
     } catch (error) {
       logger.error('❌ Erro ao enviar agradecimento', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 8.1 Email de Upsell (Pacote Mensal)
+   * Enviado 2h após a conclusão da consulta (via Edge Function)
+   */
+  async sendUpsellPackageOffer(bookingData, sendCopy = false) {
+    try {
+      const html = this.templates.upsellPackageOffer({
+        patient_name: bookingData.patient_name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+      });
+
+      const emailConfig = {
+        to: bookingData.patient_email,
+        subject: '🎁 Uma oferta especial para o seu acompanhamento - Doxologos',
+        html,
+        type: 'upsell_package_offer'
+      };
+
+      if (sendCopy) {
+        emailConfig.cc = this.emailService.backofficeEmail;
+      }
+
+      const result = await this.emailService.sendEmail(emailConfig);
+
+      if (result.success) {
+        logger.success('📧 Email de upsell de pacote enviado', { to: bookingData.patient_email });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar upsell de pacote', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 9. Email URGENTE para o Profissional (Agendamento para HOJE <= 4h)
+   */
+  async sendUrgentProfessionalNotification(bookingData) {
+    try {
+      const professionalEmail = (bookingData.professional_email || bookingData.professional?.email || '').trim();
+      const professionalId = bookingData.professional_id || bookingData.professional?.id;
+      const userId = bookingData.user_id || bookingData.professional?.user_id;
+
+      if (!professionalEmail && !professionalId && !userId) {
+        logger.error('❌ Identificação do profissional ausente para aviso urgente', { bookingId: bookingData.id });
+        return { success: false, error: 'missing_professional_email' };
+      }
+
+      const html = this.templates.urgentProfessionalNotification({
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        patient_name: bookingData.patient_name,
+        service_name: bookingData.service_name || bookingData.service?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        meeting_link: bookingData.meeting_link
+      });
+
+      const emailConfig = {
+        to: professionalEmail || null,
+        professional_id: professionalId,
+        user_id: userId,
+        cc: this.emailService.backofficeEmail, // Sempre com cópia ao Backoffice
+        subject: `🚨 [URGENTE] Consulta Agendada para HOJE às ${bookingData.appointment_time || bookingData.booking_time}`,
+        html,
+        type: 'urgent_professional_notification'
+      };
+
+      const result = await this.emailService.sendEmail(emailConfig);
+      if (result.success) {
+        logger.success('📧 Email urgente enviado para profissional e backoffice', { to: professionalEmail || `prof_id:${professionalId}` });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar email urgente para profissional', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * 10. Email de Resgate de Slot Expirado (Timeout PIX 15 min)
+   */
+  async sendExpiredSlotRecovery(bookingData) {
+    try {
+      const recipientEmail = (bookingData.patient_email || '').trim();
+      if (!recipientEmail) {
+        return { success: false, error: 'missing_patient_email' };
+      }
+
+      const html = this.templates.expiredSlotRecovery({
+        patient_name: bookingData.patient_name,
+        service_name: bookingData.service_name || bookingData.service?.name,
+        professional_name: bookingData.professional_name || bookingData.professional?.name,
+        appointment_date: bookingData.appointment_date || bookingData.booking_date,
+        appointment_time: bookingData.appointment_time || bookingData.booking_time,
+        booking_url: `${window.location.origin}/agendamento`
+      });
+
+      const emailConfig = {
+        to: recipientEmail,
+        cc: this.emailService.backofficeEmail, // Cópia ao Backoffice para suporte proativo
+        subject: '⏰ Seu tempo de pagamento expirou - Escolha um novo horário | Doxologos',
+        html,
+        type: 'expired_slot_recovery'
+      };
+
+      const result = await this.emailService.sendEmail(emailConfig);
+      if (result.success) {
+        logger.success('📧 Email de resgate de slot expirado enviado', { to: recipientEmail });
+      }
+      return result;
+    } catch (error) {
+      logger.error('❌ Erro ao enviar email de resgate de slot expirado', error);
       return { success: false, error: error.message };
     }
   }

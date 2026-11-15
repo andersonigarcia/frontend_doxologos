@@ -11,6 +11,7 @@ import { Calendar, Clock, Users, User, Mail, Smartphone, ArrowLeft, Check, Alert
 import emailService from '@/lib/emailService';
 import emailTemplates from '@/lib/emailTemplates'; // NOVO: Templates para eventos
 import { logger } from '@/lib/logger.js';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 const EventoDetalhePage = () => {
     const { slug } = useParams();
@@ -23,7 +24,7 @@ const EventoDetalhePage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isUserRegistered, setIsUserRegistered] = useState(false);
-    
+
     const [step, setStep] = useState(1);
     const [patientData, setPatientData] = useState({ name: '', email: '', phone: '', password: '', acceptTerms: false });
     const [emailError, setEmailError] = useState('');
@@ -69,8 +70,8 @@ const EventoDetalhePage = () => {
             return;
         }
 
-    const trimmedEmail = email.trim();
-    const normalizedEmail = trimmedEmail.toLowerCase();
+        const trimmedEmail = email.trim();
+        const normalizedEmail = trimmedEmail.toLowerCase();
 
         try {
             const { data: userId, error } = await supabase.rpc('get_user_id_by_email', {
@@ -114,7 +115,7 @@ const EventoDetalhePage = () => {
         const fetchEvent = async () => {
             setLoading(true);
             logger.info('EventoDetalhePage.fetchEvent:start', buildLogContext({ slug }));
-            
+
             const { data, error } = await supabase
                 .from('eventos')
                 .select('*')
@@ -133,7 +134,7 @@ const EventoDetalhePage = () => {
                         .select('name, specialty, image_url')
                         .eq('id', data.professional_id)
                         .single();
-                    
+
                     data.professional = professionalData;
                 }
 
@@ -161,7 +162,7 @@ const EventoDetalhePage = () => {
         if (user && event) {
             // Não preencher automaticamente - deixar campos vazios para o cliente digitar
             // setPatientData({ name: user.user_metadata?.name || '', email: user.email, phone: '' });
-            
+
             const checkRegistration = async () => {
                 const { data, error } = await supabase
                     .from('inscricoes_eventos')
@@ -169,7 +170,7 @@ const EventoDetalhePage = () => {
                     .eq('evento_id', event.id)
                     .eq('user_id', user.id)
                     .single();
-                
+
                 if (data) {
                     setIsUserRegistered(true);
                 }
@@ -177,7 +178,7 @@ const EventoDetalhePage = () => {
             checkRegistration();
         }
     }, [user, event]);
-    
+
     const handleRegistration = async () => {
         setIsProcessing(true);
         logger.info('EventoDetalhePage.handleRegistration:start', buildLogContext({
@@ -187,20 +188,20 @@ const EventoDetalhePage = () => {
 
         const trimmedEmail = patientData.email.trim();
         const normalizedEmail = trimmedEmail.toLowerCase();
-        
+
         // Validar campos obrigatórios
         if (!patientData.name.trim()) {
             toast({ variant: "destructive", title: "Nome obrigatório", description: "Por favor, informe seu nome completo." });
             setIsProcessing(false);
             return;
         }
-        
+
         if (!trimmedEmail) {
             toast({ variant: "destructive", title: "Email obrigatório", description: "Por favor, informe seu email." });
             setIsProcessing(false);
             return;
         }
-        
+
         // Validar formato do email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(trimmedEmail)) {
@@ -255,7 +256,7 @@ const EventoDetalhePage = () => {
             }
 
             const emailExists = !!existingUserId;
-            
+
             if (emailExists) {
                 // Email já existe - tentar fazer login
                 const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
@@ -269,18 +270,18 @@ const EventoDetalhePage = () => {
                     if (!userId && existingUserId) {
                         userId = existingUserId;
                     }
-                    toast({ 
-                        title: "Login realizado!", 
+                    toast({
+                        title: "Login realizado!",
                         description: "Continuando com sua inscrição no evento..."
                     });
                 } else {
                     // Senha incorreta
-                    toast({ 
+                    toast({
                         variant: "destructive",
-                        title: "Credenciais inválidas", 
+                        title: "Credenciais inválidas",
                         description: "Este email já possui cadastro. A senha informada está incorreta.",
                         action: (
-                            <a 
+                            <a
                                 href={`/recuperar-senha?email=${encodeURIComponent(patientData.email)}`}
                                 className="text-sm underline"
                             >
@@ -306,10 +307,10 @@ const EventoDetalhePage = () => {
                 });
 
                 if (authError) {
-                    toast({ 
-                        variant: "destructive", 
-                        title: "Erro ao criar conta", 
-                        description: authError.message 
+                    toast({
+                        variant: "destructive",
+                        title: "Erro ao criar conta",
+                        description: authError.message
                     });
                     setIsProcessing(false);
                     return;
@@ -327,80 +328,105 @@ const EventoDetalhePage = () => {
                     logger.error('EventoDetalhePage.handleRegistration:auto-sign-in-error', autoSignInError, buildLogContext({ userId }));
                 }
 
-                toast({ 
-                    title: "🎉 Bem-vindo!", 
+                toast({
+                    title: "🎉 Bem-vindo!",
                     description: "Criamos sua conta e você já está inscrito! Enviamos um email com os detalhes do evento."
                 });
             }
 
             // ========================================
-            // VALIDAÇÃO DE VAGAS DISPONÍVEIS
+            // REGISTRAR INSCRIÇÃO NO EVENTO (RESERVA ATÔMICA)
             // ========================================
-            if (event.vagas_disponiveis && event.vagas_disponiveis > 0) {
-                const { count: vagasOcupadas, error: countError } = await supabase
-                    .from('inscricoes_eventos')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('evento_id', event.id)
-                    .eq('status', 'confirmed');
+            let inscricao;
 
-                if (countError) {
-                    logger.error('EventoDetalhePage.handleRegistration:vagas-count-error', countError, buildLogContext({ eventId: event.id }));
-                }
+            const { data: rpcResult, error: rpcError } = await supabase.rpc('reserve_event_spot', {
+                p_evento_id: event.id,
+                p_user_id: userId,
+                p_patient_name: patientData.name.trim(),
+                p_patient_email: trimmedEmail,
+                p_patient_phone: patientData.phone.trim() || null
+            });
 
-                if (vagasOcupadas >= event.vagas_disponiveis) {
-                    toast({ 
-                        variant: "destructive", 
-                        title: "Evento esgotado! 😢", 
-                        description: "Todas as vagas foram preenchidas. Entre em contato para lista de espera."
+            if (!rpcError && rpcResult) {
+                if (!rpcResult.success) {
+                    toast({
+                        variant: "destructive",
+                        title: "Não foi possível concluir a inscrição",
+                        description: rpcResult.error || "Todas as vagas foram preenchidas."
                     });
                     setIsProcessing(false);
                     return;
                 }
 
-                logger.info('EventoDetalhePage.handleRegistration:vagas', buildLogContext({
-                    vagasRestantes: event.vagas_disponiveis - vagasOcupadas,
-                    totalVagas: event.vagas_disponiveis
-                }));
-            }
+                // Buscar o registro da inscrição criada/existente
+                const { data: fetchedInscricao } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('*')
+                    .eq('id', rpcResult.inscricao_id)
+                    .single();
 
-            // ========================================
-            // REGISTRAR INSCRIÇÃO NO EVENTO
-            // ========================================
-            const statusInicial = event.valor === 0 ? 'confirmed' : 'pending';
-            const paymentStatusInicial = event.valor === 0 ? null : 'pending';
-
-            const { data: inscricaoData, error } = await supabase.from('inscricoes_eventos').insert([
-                { 
-                    evento_id: event.id, 
-                    user_id: userId, 
-                    patient_name: patientData.name.trim(), 
-                    patient_email: trimmedEmail,
-                    status: statusInicial, // 'confirmed' (gratuito) ou 'pending' (pago)
-                    payment_status: paymentStatusInicial, // null (gratuito) ou 'pending' (pago)
-                    valor_pago: event.valor || 0
+                inscricao = fetchedInscricao;
+            } else {
+                // Fallback para inserção padrão caso a RPC ainda não esteja implantada
+                if (rpcError) {
+                    logger.warn('EventoDetalhePage.handleRegistration:rpc-reserve-fallback', buildLogContext({ message: rpcError.message }));
                 }
-            ]).select();
 
-            if (error) {
-                toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
-                setIsProcessing(false);
-                return;
+                if (event.vagas_disponiveis && event.vagas_disponiveis > 0) {
+                    const { count: vagasOcupadas } = await supabase
+                        .from('inscricoes_eventos')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('evento_id', event.id)
+                        .in('status', ['confirmed', 'pending']);
+
+                    if (vagasOcupadas >= event.vagas_disponiveis) {
+                        toast({
+                            variant: "destructive",
+                            title: "Evento esgotado! 😢",
+                            description: "Todas as vagas foram preenchidas."
+                        });
+                        setIsProcessing(false);
+                        return;
+                    }
+                }
+
+                const statusInicial = event.valor === 0 ? 'confirmed' : 'pending';
+                const paymentStatusInicial = event.valor === 0 ? null : 'pending';
+
+                const { data: inscricaoData, error } = await supabase.from('inscricoes_eventos').insert([
+                    {
+                        evento_id: event.id,
+                        user_id: userId,
+                        patient_name: patientData.name.trim(),
+                        patient_email: trimmedEmail,
+                        status: statusInicial,
+                        payment_status: paymentStatusInicial,
+                        valor_pago: event.valor || 0
+                    }
+                ]).select();
+
+                if (error) {
+                    toast({ variant: "destructive", title: "Erro na inscrição", description: error.message });
+                    setIsProcessing(false);
+                    return;
+                }
+
+                inscricao = inscricaoData[0];
             }
 
-            const inscricao = inscricaoData[0];
             logger.success('EventoDetalhePage.handleRegistration:inscricao-created', buildLogContext({ inscricaoId: inscricao.id }));
 
             // ========================================
             // ENVIAR EMAIL BASEADO NO TIPO DE EVENTO
             // ========================================
-            
-            if (event.valor === 0) {
+
+            if (parseFloat(event.valor) === 0 || event.valor === null) {
                 // ========================================
-                // EVENTO GRATUITO: Enviar link Zoom imediatamente
+                // EVENTO GRATUITO: Enviar link de acesso imediatamente
                 // ========================================
                 try {
                     const emailHtml = emailTemplates.eventoGratuitoConfirmado(inscricao, event);
-                    
+
                     await emailService.sendEmail({
                         to: trimmedEmail,
                         subject: `✅ Inscrição Confirmada - ${event.titulo}`,
@@ -411,9 +437,9 @@ const EventoDetalhePage = () => {
                     // Marcar email como enviado
                     await supabase
                         .from('inscricoes_eventos')
-                        .update({ 
-                            zoom_link_sent: true, 
-                            zoom_link_sent_at: new Date().toISOString() 
+                        .update({
+                            zoom_link_sent: true,
+                            zoom_link_sent_at: new Date().toISOString()
                         })
                         .eq('id', inscricao.id);
 
@@ -421,92 +447,38 @@ const EventoDetalhePage = () => {
                 } catch (emailError) {
                     logger.error('EventoDetalhePage.handleRegistration:email-gratuito-error', emailError, buildLogContext({ inscricaoId: inscricao.id }));
                 }
-            } else {
-                // ========================================
-                // EVENTO PAGO: Gerar PIX e enviar QR Code
-                // ========================================
-                try {
-                    logger.info('EventoDetalhePage.handleRegistration:pix-start', buildLogContext({ inscricaoId: inscricao.id }));
 
-                    const pixPayload = {
-                        inscricao_id: inscricao.id,
-                        amount: Number(event.valor),
-                        description: `Inscrição - ${event.titulo}`,
-                        payment_method_id: 'pix',
-                        payer: {
-                            name: patientData.name.trim(),
-                            email: trimmedEmail,
-                            phone: patientData.phone ? patientData.phone.replace(/\D/g, '') : undefined
-                        }
-                    };
-
-                    const { data: pixData, error: pixError } = await supabase.functions.invoke('mp-create-payment', {
-                        body: pixPayload
-                    });
-
-                    if (pixError || !pixData?.success) {
-                        const message = pixError?.message || pixData?.error || 'Erro ao gerar pagamento PIX';
-                        throw new Error(message);
-                    }
-
-                    logger.success('EventoDetalhePage.handleRegistration:pix-created', buildLogContext({
-                        inscricaoId: inscricao.id,
-                        paymentId: pixData.payment_id
-                    }));
-
-                    await supabase
-                        .from('inscricoes_eventos')
-                        .update({ payment_id: pixData.payment_id })
-                        .eq('id', inscricao.id);
-
-                    const emailHtml = emailTemplates.eventoPagoAguardandoPagamento(inscricao, event, {
-                        qr_code_base64: pixData.qr_code_base64,
-                        qr_code: pixData.qr_code
-                    });
-
-                    await emailService.sendEmail({
-                        to: trimmedEmail,
-                        subject: `💳 Pagamento Pendente - ${event.titulo}`,
-                        html: emailHtml,
-                        type: 'eventPayment'
-                    });
-
-                    logger.success('EventoDetalhePage.handleRegistration:pix-email-sent', buildLogContext({ inscricaoId: inscricao.id }));
-                } catch (pixOrEmailError) {
-                    logger.error('EventoDetalhePage.handleRegistration:pix-error', pixOrEmailError, buildLogContext({ inscricaoId: inscricao.id }));
-                    toast({
-                        variant: "destructive",
-                        title: "Erro ao gerar pagamento",
-                        description: "Sua inscrição foi registrada, mas houve erro no pagamento. Entre em contato."
-                    });
-                }
-            }
-
-            // ========================================
-            // FINALIZAÇÃO E FEEDBACK
-            // ========================================
-            if (event.valor > 0) {
-                // Evento pago: mostrar confirmação de pagamento pendente
-                setStep(3);
-                toast({ 
-                    title: "📧 Inscrição registrada!", 
-                    description: "Enviamos um email com o QR Code PIX. Após o pagamento, você receberá o link da sala Zoom."
-                });
-            } else {
                 // Evento gratuito: confirmar imediatamente
                 setStep(3);
-                toast({ 
-                    title: "✅ Inscrição confirmada!", 
-                    description: "Enviamos um email com o link da sala Zoom e instruções de acesso."
+                toast({
+                    title: "✅ Inscrição confirmada!",
+                    description: "Enviamos um email com o link da sala Google Meet e instruções de acesso."
                 });
+
+            } else {
+                // ========================================
+                // EVENTO PAGO: Redirecionar para Checkout Unificado IMEDIATAMENTE
+                // ========================================
+                logger.info('EventoDetalhePage.handleRegistration:redirecting-to-checkout', buildLogContext({
+                    inscricaoId: inscricao.id,
+                    valor: event.valor,
+                    eventId: event.id
+                }));
+
+                // NÃO mostrar tela de confirmação - redirecionar IMEDIATAMENTE
+                // Redireciona para página de checkout com parâmetros corretos
+                navigate(`/checkout?type=evento&inscricao_id=${inscricao.id}&valor=${event.valor}&titulo=${encodeURIComponent(event.titulo)}`);
+
+                // Retornar para evitar qualquer código adicional
+                return;
             }
 
         } catch (error) {
             logger.error('EventoDetalhePage.handleRegistration:error', error, buildLogContext());
-            toast({ 
-                variant: "destructive", 
-                title: "Erro ao processar inscrição", 
-                description: error.message 
+            toast({
+                variant: "destructive",
+                title: "Erro ao processar inscrição",
+                description: error.message
             });
         } finally {
             setIsProcessing(false);
@@ -524,16 +496,16 @@ const EventoDetalhePage = () => {
     const renderContent = () => {
         if (step === 3) { // Confirmação
             const isEventoPago = event.valor > 0;
-            
+
             return (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-6">
                     <Check className="w-16 h-16 mx-auto text-green-500 bg-green-100 rounded-full p-3 mb-4" />
-                    
+
                     <div>
                         <h2 className="text-3xl font-bold mb-4">
                             {isEventoPago ? '📧 Inscrição Registrada!' : '✅ Inscrição Confirmada!'}
                         </h2>
-                        
+
                         {isEventoPago ? (
                             <div className="space-y-3 text-gray-600">
                                 <p className="text-lg">Enviamos um <strong>email com as informações para pagamento</strong>.</p>
@@ -543,7 +515,7 @@ const EventoDetalhePage = () => {
                                         <li>Acesse a <strong>Área do Paciente</strong> no site</li>
                                         <li>Escolha o evento e realize o pagamento </li>
                                         <li>Aguarde a confirmação automática (até 5 minutos)</li>
-                                        <li>O <strong>link da sala Zoom</strong> será disponibilizado na Área do Paciente</li>
+                                        <li>O <strong>link da sala Google Meet</strong> será disponibilizado na Área do Paciente</li>
                                     </ol>
                                 </div>
                                 <p className="text-sm text-gray-500 mt-4">
@@ -556,7 +528,7 @@ const EventoDetalhePage = () => {
                                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left">
                                     <p className="text-sm font-semibold text-green-800 mb-2">📧 Email enviado com:</p>
                                     <ul className="text-sm space-y-1 list-disc list-inside text-green-900">
-                                        <li><strong>Link da sala Zoom</strong></li>
+                                        <li><strong>Link da sala Google Meet</strong></li>
                                         <li>Senha de acesso</li>
                                         <li>Instruções para primeiro acesso</li>
                                         <li>Checklist de preparação</li>
@@ -568,7 +540,7 @@ const EventoDetalhePage = () => {
                             </div>
                         )}
                     </div>
-                    
+
                     <div className="pt-4">
                         <Link to="/">
                             <Button className="bg-[#2d8659] hover:bg-[#236b47]">
@@ -579,7 +551,7 @@ const EventoDetalhePage = () => {
                 </motion.div>
             );
         }
-        
+
         // Formulário de Inscrição Express (único formulário)
         return (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -588,12 +560,12 @@ const EventoDetalhePage = () => {
                     <div>
                         <label className="block text-sm font-medium mb-1">Nome Completo *</label>
                         <div className="flex items-center gap-2 p-3 border rounded-lg focus-within:border-[#2d8659] transition-colors">
-                            <User className="w-5 h-5 text-gray-500"/>
+                            <User className="w-5 h-5 text-gray-500" />
                             <input
                                 type="text"
                                 placeholder="Digite seu nome completo"
                                 value={patientData.name}
-                                onChange={(e) => setPatientData({...patientData, name: e.target.value})}
+                                onChange={(e) => setPatientData({ ...patientData, name: e.target.value })}
                                 className="flex-1 outline-none bg-transparent"
                                 required
                             />
@@ -601,16 +573,15 @@ const EventoDetalhePage = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Email *</label>
-                        <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${
-                            emailError ? 'border-red-500' : 'focus-within:border-[#2d8659]'
-                        }`}>
-                            <Mail className={`w-5 h-5 ${emailError ? 'text-red-500' : 'text-gray-500'}`}/>
+                        <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${emailError ? 'border-red-500' : 'focus-within:border-[#2d8659]'
+                            }`}>
+                            <Mail className={`w-5 h-5 ${emailError ? 'text-red-500' : 'text-gray-500'}`} />
                             <input
                                 type="email"
                                 placeholder="seu@email.com"
                                 value={patientData.email}
                                 onChange={(e) => {
-                                    setPatientData({...patientData, email: e.target.value});
+                                    setPatientData({ ...patientData, email: e.target.value });
                                     validateEmail(e.target.value);
                                 }}
                                 onBlur={(e) => validateEmail(e.target.value)}
@@ -627,8 +598,8 @@ const EventoDetalhePage = () => {
                                     ✓ Detectamos que você já tem conta
                                 </p>
                                 <p className="text-xs text-blue-600">
-                                    Digite sua senha para continuar. 
-                                    <a 
+                                    Digite sua senha para continuar.
+                                    <a
                                         href={`/recuperar-senha?email=${encodeURIComponent(patientData.email)}`}
                                         target="_blank"
                                         className="ml-1 underline hover:text-blue-800"
@@ -652,12 +623,12 @@ const EventoDetalhePage = () => {
                     <div>
                         <label className="block text-sm font-medium mb-1">Telefone (opcional)</label>
                         <div className="flex items-center gap-2 p-3 border rounded-lg focus-within:border-[#2d8659] transition-colors">
-                            <Smartphone className="w-5 h-5 text-gray-500"/>
+                            <Smartphone className="w-5 h-5 text-gray-500" />
                             <input
                                 type="tel"
                                 placeholder="(00) 00000-0000"
                                 value={patientData.phone}
-                                onChange={(e) => setPatientData({...patientData, phone: formatPhone(e.target.value)})}
+                                onChange={(e) => setPatientData({ ...patientData, phone: formatPhone(e.target.value) })}
                                 className="flex-1 outline-none bg-transparent"
                                 maxLength={15}
                             />
@@ -665,7 +636,7 @@ const EventoDetalhePage = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">
-                            Senha * 
+                            Senha *
                             {emailStatus === 'existing' && (
                                 <span className="text-blue-600 text-xs ml-2">(Use sua senha cadastrada)</span>
                             )}
@@ -673,15 +644,14 @@ const EventoDetalhePage = () => {
                                 <span className="text-green-600 text-xs ml-2">(Crie uma senha segura)</span>
                             )}
                         </label>
-                        <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${
-                            patientData.password && patientData.password.length < 6 ? 'border-red-500' : 'focus-within:border-[#2d8659]'
-                        }`}>
-                            <Lock className={`w-5 h-5 ${patientData.password && patientData.password.length < 6 ? 'text-red-500' : 'text-gray-500'}`}/>
+                        <div className={`flex items-center gap-2 p-3 border rounded-lg transition-colors ${patientData.password && patientData.password.length < 6 ? 'border-red-500' : 'focus-within:border-[#2d8659]'
+                            }`}>
+                            <Lock className={`w-5 h-5 ${patientData.password && patientData.password.length < 6 ? 'text-red-500' : 'text-gray-500'}`} />
                             <input
                                 type="password"
                                 placeholder={emailStatus === 'existing' ? 'Digite sua senha' : 'Mínimo 6 caracteres'}
                                 value={patientData.password}
-                                onChange={(e) => setPatientData({...patientData, password: e.target.value})}
+                                onChange={(e) => setPatientData({ ...patientData, password: e.target.value })}
                                 className="flex-1 outline-none bg-transparent"
                                 required
                             />
@@ -695,7 +665,7 @@ const EventoDetalhePage = () => {
                             type="checkbox"
                             id="acceptTerms"
                             checked={patientData.acceptTerms}
-                            onChange={(e) => setPatientData({...patientData, acceptTerms: e.target.checked})}
+                            onChange={(e) => setPatientData({ ...patientData, acceptTerms: e.target.checked })}
                             className="mt-1"
                         />
                         <label htmlFor="acceptTerms" className="text-sm text-gray-600">
@@ -709,12 +679,12 @@ const EventoDetalhePage = () => {
                 </div>
                 <div className="mt-8">
                     {isUserRegistered ? (
-                         <div className="text-center p-4 bg-blue-100 text-blue-800 rounded-lg flex items-center justify-center gap-2"><Check className="w-5 h-5"/> Você já está inscrito neste evento.</div>
+                        <div className="text-center p-4 bg-blue-100 text-blue-800 rounded-lg flex items-center justify-center gap-2"><Check className="w-5 h-5" /> Você já está inscrito neste evento.</div>
                     ) : isSoldOut || isPastDeadline ? (
-                        <div className="text-center p-4 bg-red-100 text-red-800 rounded-lg flex items-center justify-center gap-2"><AlertTriangle className="w-5 h-5"/> Inscrições encerradas.</div>
+                        <div className="text-center p-4 bg-red-100 text-red-800 rounded-lg flex items-center justify-center gap-2"><AlertTriangle className="w-5 h-5" /> Inscrições encerradas.</div>
                     ) : (
-                        <Button 
-                            onClick={handleRegistration} 
+                        <Button
+                            onClick={handleRegistration}
                             disabled={isProcessing}
                             className="w-full bg-[#2d8659] hover:bg-[#236b47] text-lg py-6"
                         >
@@ -744,9 +714,8 @@ const EventoDetalhePage = () => {
             <div className="min-h-screen bg-gray-50">
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2">
-                            <Heart className="w-8 h-8 text-[#2d8659]" />
-                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                            <DoxologosLogo className="h-9 md:h-10 w-auto" />
                         </Link>
                         <Link to="/">
                             <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
@@ -788,7 +757,9 @@ const EventoDetalhePage = () => {
             <div className="min-h-screen bg-gray-50">
                 <header className="bg-white shadow-sm sticky top-0 z-20">
                     <nav className="container mx-auto px-4 py-4 flex items-center justify-between">
-                        <Link to="/" className="flex items-center space-x-2"><Heart className="w-8 h-8 text-[#2d8659]" /><span className="text-2xl font-bold gradient-text">Doxologos</span></Link>
+                        <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+                            <DoxologosLogo className="h-9 md:h-10 w-auto" />
+                        </Link>
                         <Link to="/"><Button variant="outline" className="border-[#2d8659] text-[#2d8659]"><ArrowLeft className="w-4 h-4 mr-2" /> Voltar</Button></Link>
                     </nav>
                 </header>
@@ -834,10 +805,10 @@ const EventoDetalhePage = () => {
                                         <div className="mt-10 pt-8 border-t">
                                             <h3 className="text-2xl font-bold mb-4">Ministrado por</h3>
                                             <div className="flex items-center gap-4">
-                                                <img 
-                                                    className="w-20 h-20 rounded-full object-cover" 
-                                                    alt={`Foto de ${event.professional.name}`} 
-                                                    src={event.professional.image_url || "https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5?w=400&h=400&fit=crop&crop=face"} 
+                                                <img
+                                                    className="w-20 h-20 rounded-full object-cover" loading="lazy"
+                                                    alt={`Foto de ${event.professional.name}`}
+                                                    src={event.professional.image_url || "https://images.unsplash.com/photo-1560439450-6b5a38bc9dd5?w=400&h=400&fit=crop&crop=face"}
                                                 />
                                                 <div>
                                                     <h4 className="text-xl font-bold">{event.professional.name}</h4>

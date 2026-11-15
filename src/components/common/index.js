@@ -19,3 +19,7 @@ export {
     SkeletonStatsGrid,
     SkeletonChart
 } from './SkeletonLoaders';
+export { default as WhatsAppReminderButton } from './WhatsAppReminderButton';
+export { default as LgpdCookieBanner } from './LgpdCookieBanner';
+
+

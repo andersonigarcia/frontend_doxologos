@@ -1,20 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { requireAdmin, AuthError } from '../_shared/auth.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-  return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Token de autorização não fornecido.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 },
-      )
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
@@ -29,19 +22,8 @@ Deno.serve(async (req) => {
       },
     })
 
-    const accessToken = authHeader.replace('Bearer ', '')
-    const { data: { user: currentUser }, error: currentUserError } = await supabaseAdmin.auth.getUser(accessToken)
-
-    if (currentUserError || !currentUser) {
-  throw new Error('Usuário não autenticado.')
-    }
-
-    if (currentUser.user_metadata?.role !== 'admin') {
-      return new Response(
-        JSON.stringify({ error: 'Acesso negado. Apenas administradores podem criar usuários.' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 403 },
-      )
-    }
+    // Validar autenticação e RBAC (ADR 005 / ADR 012)
+    const { user: currentUser } = await requireAdmin(req, supabaseAdmin)
 
     const body = await req.json()
     const email = String(body?.email ?? '').trim()

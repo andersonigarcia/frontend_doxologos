@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { XCircle, AlertCircle, RefreshCw, Home, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getPaymentByMpId } from '@/services/paymentService';
 import analytics from '@/lib/analytics';
 import { logger } from '@/lib/logger';
 import MercadoPagoService from '@/lib/mercadoPagoService';
@@ -24,12 +25,7 @@ const CheckoutFailurePage = () => {
         const fetchData = async () => {
             try {
                 if (paymentId) {
-                    const { data: paymentData } = await supabase
-                        .from('payments')
-                        .select('*')
-                        .eq('mp_payment_id', paymentId)
-                        .single();
-                    
+                    const paymentData = await getPaymentByMpId(paymentId);
                     if (paymentData) {
                         setPayment(paymentData);
                     }
@@ -243,12 +239,12 @@ const CheckoutFailurePage = () => {
                             <p>
                                 Precisa de ajuda? Entre em contato conosco pelo WhatsApp:{' '}
                                 <a 
-                                    href="https://wa.me/5511999999999" 
+                                    href="https://wa.me/5511917287583" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     className="text-[#2d8659] hover:underline font-semibold"
                                 >
-                                    (11) 99999-9999
+                                    (11) 91728-7583
                                 </a>
                             </p>
                         </div>

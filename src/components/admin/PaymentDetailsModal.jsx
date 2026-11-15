@@ -34,7 +34,7 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
             <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-[#2d8659]" />
+                        <FileText className="w-5 h-5 text-slate-800" />
                         Detalhes do Pagamento
                     </DialogTitle>
                 </DialogHeader>
@@ -58,7 +58,7 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
                         </div>
                         <div>
                             <p className="text-sm text-gray-600">Valor Total</p>
-                            <p className="text-2xl font-bold text-[#2d8659]">{formatCurrency(payment.total_amount)}</p>
+                            <p className="text-2xl font-extrabold text-emerald-700 tabular-nums">{formatCurrency(payment.total_amount)}</p>
                         </div>
                     </div>
 
@@ -99,14 +99,14 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
                             <h3 className="font-semibold mb-3">Consultas Incluídas ({bookings.length})</h3>
                             <div className="max-h-64 overflow-y-auto space-y-2">
                                 {bookings.map(booking => (
-                                    <div key={booking.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                    <div key={booking.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
                                         <div>
                                             <p className="font-medium">{booking.patient_name}</p>
                                             <p className="text-sm text-gray-600">
                                                 {formatDate(booking.booking_date)} - {booking.booking_time}
                                             </p>
                                         </div>
-                                        <p className="font-semibold text-[#2d8659]">
+                                        <p className="font-bold text-emerald-700 tabular-nums">
                                             {formatCurrency(booking.valor_repasse_profissional)}
                                         </p>
                                     </div>
@@ -115,11 +115,24 @@ export function PaymentDetailsModal({ open, onClose, payment, bookings = [] }) {
                         </div>
                     )}
 
-                    {/* Notas */}
+                    {/* Notas e Discriminativo de Repasse */}
                     {payment.notes && (
                         <div className="border-t pt-4">
-                            <h3 className="font-semibold mb-2">Observações</h3>
-                            <p className="text-gray-700 whitespace-pre-wrap">{payment.notes}</p>
+                            <h3 className="font-semibold mb-2 text-sm text-slate-800">Observações & Extrato</h3>
+                            {payment.notes.includes('[Extrato de Repasse:') ? (
+                                <div className="space-y-2">
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium">
+                                        {payment.notes.split('[Extrato de Repasse:')[0].trim() && (
+                                            <p className="mb-2 text-slate-600">{payment.notes.split('[Extrato de Repasse:')[0].trim()}</p>
+                                        )}
+                                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold text-[11px]">
+                                            Extrato Consolidado: [Extrato de Repasse:{payment.notes.split('[Extrato de Repasse:')[1]}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-gray-700 text-xs whitespace-pre-wrap bg-slate-50 p-3 rounded-xl border border-slate-200">{payment.notes}</p>
+                            )}
                         </div>
                     )}
                 </div>

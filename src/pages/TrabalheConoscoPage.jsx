@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { SecureStorage } from '@/lib/secureStorage';
 import emailService from '@/lib/emailService';
 import { logger } from '@/lib/logger';
+import { supabase } from '@/lib/customSupabaseClient';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 
 const TrabalheConoscoPage = () => {
   const { toast } = useToast();
@@ -16,12 +18,14 @@ const TrabalheConoscoPage = () => {
     name: '',
     email: '',
     phone: '',
+    cpf_cnpj: '',
     specialty: '',
     crp: '',
     experience: '',
     message: ''
   });
   
+  const [documentType, setDocumentType] = useState('cpf');
   const [resumeFile, setResumeFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [emailError, setEmailError] = useState('');
@@ -41,22 +45,36 @@ const TrabalheConoscoPage = () => {
   };
 
   /**
-   * Formata CRP: 06/123456
-   */
-  const formatCRP = (value) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 2) {
-      return numbers;
-    }
-    return numbers.replace(/(\d{2})(\d{0,6})/, '$1/$2');
-  };
-
-  /**
    * Valida formato de email
    */
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
+  };
+
+  /**
+   * Formata CPF ou CNPJ
+   */
+  const formatDocument = (val, type) => {
+    let v = val.replace(/\D/g, '');
+    if (type === 'cpf') {
+      if (v.length > 11) v = v.slice(0, 11);
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    } else {
+      if (v.length > 14) v = v.slice(0, 14);
+      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    return v;
+  };
+
+  const handleDocTypeChange = (type) => {
+    setDocumentType(type);
+    setFormData(prev => ({ ...prev, cpf_cnpj: '' }));
   };
 
   /**
@@ -70,8 +88,8 @@ const TrabalheConoscoPage = () => {
     // Aplicar máscaras
     if (name === 'phone') {
       formattedValue = formatPhone(value);
-    } else if (name === 'crp') {
-      formattedValue = formatCRP(value);
+    } else if (name === 'cpf_cnpj') {
+      formattedValue = formatDocument(value, documentType);
     } else if (name === 'email') {
       // Validar email ao digitar
       if (value && !validateEmail(value)) {
@@ -168,13 +186,12 @@ const TrabalheConoscoPage = () => {
       return;
     }
 
-    // Validar CRP (formato: 06/123456)
-    const crpDigits = formData.crp.replace(/\D/g, '');
-    if (crpDigits.length < 8) {
+    // Validar Registro Profissional (básico)
+    if (!formData.crp || formData.crp.trim().length < 3) {
       toast({
         variant: 'destructive',
-        title: 'CRP inválido',
-        description: 'Por favor, insira um CRP válido (ex: 06/123456).',
+        title: 'Registro inválido',
+        description: 'Por favor, insira um registro profissional válido.',
       });
       return;
     }
@@ -183,74 +200,133 @@ const TrabalheConoscoPage = () => {
       setUploading(true);
       
       logger.info('Job application form submitted', { 
-        name: formData.name,
-        email: formData.email 
+        name: formData.name ? `${formData.name.substring(0, 2)}***` : 'N/A',
+        email: formData.email ? `${formData.email.substring(0, 2)}***@***` : 'N/A'
       });
       
-      // Converter arquivo para Base64
-      let resumeBase64 = null;
+      // 1. Upload resume to Supabase Storage if provided
+      let resumeUrl = null;
+      let resumePath = null;
       if (resumeFile) {
-        resumeBase64 = await convertFileToBase64(resumeFile);
-        logger.debug('Resume converted to Base64', { 
-          fileName: resumeFile.name 
-        });
+        const fileExt = resumeFile.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('resumes')
+          .upload(filePath, resumeFile);
+          
+        if (uploadError) {
+          logger.warn(`Falha ao fazer upload do currículo no Supabase: ${uploadError.message}. O arquivo será enviado por e-mail como fallback.`);
+          // Don't throw, we will just use the email fallback
+        } else {
+          resumePath = filePath;
+          resumeUrl = filePath;
+        }
       }
       
-      // Enviar email com currículo anexado
+      // 2. Insert into database (mesmo se o upload falhar, queremos registrar a candidatura)
+      const { error: dbError } = await supabase
+        .from('professional_applications')
+        .insert([{
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          cpf_cnpj: formData.cpf_cnpj,
+          crp: formData.crp,
+          specialty: formData.specialty,
+          experience: formData.experience,
+          message: formData.message,
+          resume_url: resumeUrl,
+          status: 'pending'
+        }]);
+        
+      if (dbError) {
+        throw new Error(`Erro ao salvar candidatura: ${dbError.message}`);
+      }
+
+      // 3. Send email to HR
       const emailData = {
         to: 'doxologos@doxologos.com.br', // Email do RH
         subject: `Nova Candidatura: ${formData.name}`,
         html: `
-          <h2>Nova Candidatura Recebida</h2>
+          <h2>Nova Candidatura Recebida via Site</h2>
+          <p>Uma nova candidatura foi recebida e está aguardando avaliação no Painel de Controle (Hub 360 > Profissionais > Em Avaliação).</p>
+          <hr>
           <p><strong>Nome:</strong> ${formData.name}</p>
           <p><strong>Email:</strong> ${formData.email}</p>
           <p><strong>Telefone:</strong> ${formData.phone}</p>
-          <p><strong>CRP:</strong> ${formData.crp}</p>
+          <p><strong>CPF/CNPJ:</strong> ${formData.cpf_cnpj}</p>
+          <p><strong>Registro Profissional:</strong> ${formData.crp}</p>
           <p><strong>Especialidade:</strong> ${formData.specialty}</p>
           <p><strong>Experiência:</strong> ${formData.experience}</p>
           <p><strong>Mensagem:</strong></p>
           <p>${formData.message || 'Não informada'}</p>
-          <hr>
-          <p><em>Currículo em anexo (se enviado)</em></p>
+          ${!resumeUrl ? '<p style="color: #d97706;"><strong>Aviso:</strong> O currículo está em anexo neste e-mail (falha ao salvar na nuvem).</p>' : ''}
         `,
-        attachments: resumeFile ? [{
-          filename: resumeFile.name,
-          content: resumeBase64,
-          encoding: 'base64',
-          contentType: 'application/pdf'
-        }] : []
+        attachments: []
       };
-      
-      // Enviar email
-      const result = await emailService.sendEmail(emailData);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao enviar email');
+
+      // Se o upload falhou (ou como backup), anexa o arquivo no email
+      if (resumeFile && !resumeUrl) {
+        try {
+          const base64Content = await convertFileToBase64(resumeFile);
+          emailData.attachments.push({
+            filename: resumeFile.name,
+            content: base64Content,
+            encoding: 'base64'
+          });
+        } catch (convErr) {
+          logger.error('Erro ao converter arquivo para base64', convErr);
+        }
       }
       
-      logger.success('Job application email sent', { 
-        to: emailData.to,
-        hasAttachment: !!resumeFile
-      });
-      
-      // Salvar candidatura localmente (backup)
-      const application = {
-        ...formData,
-        resumeFileName: resumeFile?.name,
-        date: new Date().toISOString()
-      };
-      
-      const applications = SecureStorage.getArray('jobApplications', []);
-      applications.push(application);
-      SecureStorage.set('jobApplications', applications);
-      
-      logger.success('Job application saved locally', { 
-        applicationId: applications.length 
-      });
+      // Attempt to send email but don't fail the whole process if email fails
+      try {
+        await emailService.sendEmail(emailData);
+        logger.success('Job application email sent');
+      } catch (emailErr) {
+        logger.error('Failed to send notification email to HR', emailErr);
+        // Continue anyway since it's saved in DB
+      }
 
+      // 4. Send confirmation email to candidate
+      try {
+        const candidateEmailData = {
+          to: formData.email,
+          subject: 'Candidatura Recebida - Trabalhe Conosco Doxologos',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+              <div style="background-color: #2d8659; padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 22px;">Doxologos Psicologia</h1>
+                <p style="color: #e6f4ea; margin: 6px 0 0 0; font-size: 14px;">Confirmação de Candidatura</p>
+              </div>
+              <div style="background-color: #ffffff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+                <h2 style="color: #2d8659; margin-top: 0;">Olá, ${formData.name}!</h2>
+                <p>Recebemos sua candidatura para fazer parte do corpo de profissionais da <strong>Doxologos</strong> com sucesso.</p>
+                <div style="background-color: #f8fafc; border-left: 4px solid #2d8659; padding: 16px; margin: 20px 0; border-radius: 4px;">
+                  <p style="margin: 0 0 8px 0; font-weight: bold; color: #1e293b;">Resumo dos dados cadastrados:</p>
+                  <p style="margin: 4px 0; font-size: 14px;"><strong>Especialidade:</strong> ${formData.specialty}</p>
+                  <p style="margin: 4px 0; font-size: 14px;"><strong>Registro Profissional:</strong> ${formData.crp}</p>
+                  <p style="margin: 4px 0; font-size: 14px;"><strong>Status:</strong> Em avaliação pela equipe de curadoria</p>
+                </div>
+                <p>Nossa equipe de curadoria analisará o seu perfil, histórico e documentação. Assim que a avaliação for concluída, você receberá um e-mail com o retorno e as instruções de ativação da sua conta.</p>
+                <p>Ficamos muito felizes pelo seu interesse em fazer parte da nossa missão.</p>
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                <p style="font-size: 12px; color: #64748b; margin: 0;">Equipe Doxologos Psicologia • contato@doxologos.com.br</p>
+              </div>
+            </div>
+          `
+        };
+        await emailService.sendEmail(candidateEmailData);
+        logger.success('Job application confirmation email sent to candidate');
+      } catch (candEmailErr) {
+        logger.error('Failed to send confirmation email to candidate', candEmailErr);
+      }
+      
       toast({
-        title: "✅ Candidatura enviada!",
-        description: "Recebemos sua candidatura e currículo. Entraremos em contato em breve!",
+        title: "✅ Candidatura enviada com sucesso!",
+        description: "Enviamos uma confirmação para seu e-mail. Nossa equipe analisará seu perfil em breve.",
       });
 
       // Reset form
@@ -258,6 +334,7 @@ const TrabalheConoscoPage = () => {
         name: '',
         email: '',
         phone: '',
+        cpf_cnpj: '',
         specialty: '',
         crp: '',
         experience: '',
@@ -270,7 +347,7 @@ const TrabalheConoscoPage = () => {
       toast({
         variant: 'destructive',
         title: 'Erro ao enviar candidatura',
-        description: 'Ocorreu um erro ao enviar o email. Por favor, tente novamente.',
+        description: error.message || 'Ocorreu um erro ao enviar sua candidatura. Por favor, tente novamente.',
       });
     } finally {
       setUploading(false);
@@ -287,9 +364,8 @@ const TrabalheConoscoPage = () => {
       <header className="bg-white shadow-sm">
         <nav className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center space-x-2">
-              <Heart className="w-8 h-8 text-[#2d8659]" />
-              <span className="text-2xl font-bold gradient-text">Doxologos</span>
+            <Link to="/" className="flex items-center space-x-2" aria-label="Doxologos - Página inicial">
+              <DoxologosLogo className="h-9 md:h-10 w-auto" />
             </Link>
             <Link to="/">
               <Button variant="outline" className="border-[#2d8659] text-[#2d8659]">
@@ -473,24 +549,56 @@ const TrabalheConoscoPage = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
-
+                  
                   <div>
-                    <label className="block text-sm font-medium mb-2">CRP *</label>
+                    <label className="block text-sm font-medium mb-2">CPF ou CNPJ (Opcional)</label>
+                    <div className="flex gap-4 mb-2">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input 
+                          type="radio" 
+                          name="docType" 
+                          checked={documentType === 'cpf'} 
+                          onChange={() => handleDocTypeChange('cpf')}
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        CPF
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm">
+                        <input 
+                          type="radio" 
+                          name="docType" 
+                          checked={documentType === 'cnpj'} 
+                          onChange={() => handleDocTypeChange('cnpj')}
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        CNPJ
+                      </label>
+                    </div>
+                    <input
+                      type="text"
+                      name="cpf_cnpj"
+                      value={formData.cpf_cnpj}
+                      onChange={handleInputChange}
+                      placeholder={documentType === 'cpf' ? "000.000.000-00" : "00.000.000/0000-00"}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Registro Profissional (Ex: CRP, CRN, CRM) *</label>
                     <input
                       type="text"
                       name="crp"
                       required
                       value={formData.crp}
                       onChange={handleInputChange}
-                      placeholder="Ex: 06/123456"
-                      maxLength="9"
+                      placeholder="Ex: 06/123456 ou CRM-SP 12345"
+                      maxLength="30"
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2d8659] focus:border-transparent"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Especialidade *</label>
                   <select
                     name="specialty"
                     required

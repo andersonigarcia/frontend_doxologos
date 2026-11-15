@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle } from 'lucide-react';
+import { Clock, User, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, ArrowLeft, Quote, CheckCircle, ShieldCheck, Zap, Moon, Brain, Sprout, MessageCircle, Filter, X } from 'lucide-react';
 import analytics from '@/lib/analytics';
 
 const ProfessionalStep = ({
@@ -128,18 +128,85 @@ const ProfessionalStep = ({
     };
   };
 
-  const quickFilterDefinitions = [
+  const dayMappingKeys = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+  const getProfessionalApproach = (professional) => {
+    const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+    if (text.includes('logoterapia') || text.includes('logoterapeuta')) return '🌱 Logoterapia';
+    if (text.includes('tcc') || text.includes('cognitivo-comportamental') || text.includes('cognitiva')) return '🧠 TCC (Cognitiva)';
+    if (text.includes('psicanálise') || text.includes('psicanalítica') || text.includes('psicanalista')) return '🗣️ Psicanálise';
+    if (text.includes('humanista') || text.includes('centrada na pessoa') || text.includes('gestalt')) return '🤝 Humanista / Gestalt';
+    if (text.includes('sistêmica') || text.includes('família')) return '👨‍👩‍👧 Sistêmica';
+    return null;
+  };
+
+  const quickFilterDefinitions = useMemo(() => [
     {
-      id: 'available',
-      label: 'Disponível esta semana',
-      predicate: (professional) => professionalHasAvailability(professional),
+      id: 'available-today',
+      label: 'Disponível Hoje',
+      icon: Zap,
+      iconColor: 'text-amber-500',
+      predicate: (professional) => {
+        const nextSlot = getNextAvailableSlot(professional);
+        if (!nextSlot) return false;
+        const todayKey = dayMappingKeys[new Date().getDay()];
+        return nextSlot.day?.toLowerCase() === todayKey;
+      },
     },
     {
-      id: 'top-rated',
-      label: 'Mais indicado',
-      predicate: (professional) => Number(professional.rating || 0) >= 4.8,
+      id: 'logoterapia',
+      label: 'Logoterapia',
+      icon: Sprout,
+      iconColor: 'text-emerald-600',
+      predicate: (professional) => {
+        const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+        return text.includes('logoterapia') || text.includes('logoterapeuta');
+      },
     },
-  ];
+    {
+      id: 'tcc',
+      label: 'TCC (Cognitiva)',
+      icon: Brain,
+      iconColor: 'text-blue-500',
+      predicate: (professional) => {
+        const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+        return text.includes('tcc') || text.includes('cognitivo-comportamental') || text.includes('cognitiva');
+      },
+    },
+    {
+      id: 'psicanalise',
+      label: 'Psicanálise',
+      icon: MessageCircle,
+      iconColor: 'text-purple-500',
+      predicate: (professional) => {
+        const text = ((professional?.mini_curriculum || '') + ' ' + (professional?.name || '')).toLowerCase();
+        return text.includes('psicanálise') || text.includes('psicanalítica') || text.includes('psicanalista');
+      },
+    },
+    {
+      id: 'night-slots',
+      label: 'Atendimento Noturno',
+      icon: Moon,
+      iconColor: 'text-indigo-500',
+      predicate: (professional) => {
+        const profAvail = availability[professional.id];
+        if (!profAvail) return false;
+        return Object.values(profAvail).some((dayData) => {
+          let times = [];
+          if (Array.isArray(dayData)) {
+            times = dayData.flatMap((entry) => (entry?.times ? entry.times : (typeof entry === 'string' ? [entry] : [])));
+          } else if (dayData?.times && Array.isArray(dayData.times)) {
+            times = dayData.times;
+          }
+          return times.some((t) => {
+            const timeStr = typeof t === 'string' ? t : (t?.time || '');
+            const hour = parseInt(timeStr.split(':')[0], 10);
+            return !isNaN(hour) && hour >= 18;
+          });
+        });
+      },
+    },
+  ], [availability]);
 
   const filteredProfessionals = useMemo(() => {
     if (!activeFilters.length) {
@@ -153,7 +220,7 @@ const ProfessionalStep = ({
     );
   }, [activeFilters, availableProfessionals, quickFilterDefinitions]);
 
-  // Sort professionals: available first, then by next available slot
+  // Sort professionals: available first, then by next available slot dynamically starting from TODAY, with Fair Share Rotation
   const sortedProfessionals = useMemo(() => {
     return [...filteredProfessionals].sort((a, b) => {
       const aHasAvail = professionalHasAvailability(a);
@@ -168,20 +235,30 @@ const ProfessionalStep = ({
         const aNext = getNextAvailableSlot(a);
         const bNext = getNextAvailableSlot(b);
         if (aNext && bNext) {
-          // Compare days first
-          const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-          const aDayIndex = dayOrder.indexOf(aNext.day);
-          const bDayIndex = dayOrder.indexOf(bNext.day);
+          // Dynamic day order starting from TODAY's weekday index
+          const todayIdx = new Date().getDay();
+          const dynamicDayOrder = [];
+          for (let i = 0; i < 7; i++) {
+            dynamicDayOrder.push(dayMappingKeys[(todayIdx + i) % 7]);
+          }
+
+          const aDayIndex = dynamicDayOrder.indexOf(aNext.day?.toLowerCase());
+          const bDayIndex = dynamicDayOrder.indexOf(bNext.day?.toLowerCase());
           if (aDayIndex !== bDayIndex) return aDayIndex - bDayIndex;
+
           // Then compare times - ensure they are strings
           const aTime = String(aNext.time || '');
           const bTime = String(bNext.time || '');
-          return aTime.localeCompare(bTime);
+          const timeDiff = aTime.localeCompare(bTime);
+          if (timeDiff !== 0) return timeDiff;
+
+          // Rotatividade Equitativa (Fair Share tie-breaker): usa o ID do profissional para alternar exibição justa
+          return (a.id || '').localeCompare(b.id || '');
         }
       }
 
       // Keep original order for professionals without availability
-      return 0;
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [filteredProfessionals, availability]);
 
@@ -308,9 +385,88 @@ const ProfessionalStep = ({
     trackBookingEvent('view_professionals', { via: 'cta' });
   };
 
+  const [selectedServiceCategory, setSelectedServiceCategory] = useState('all');
+
+  const serviceCategories = [
+    { id: 'all', label: 'Todos' },
+    { id: 'individual', label: 'Para Você (Individual)' },
+    { id: 'casal_familia', label: 'Casal & Família' },
+    { id: 'jovens_idosos', label: 'Crianças, Jovens & Idosos' },
+    { id: 'carreira_testes', label: 'Carreira & Avaliações' },
+  ];
+
+  const getServiceCategory = (serviceName) => {
+    const nameLower = (serviceName || '').toLowerCase();
+    if (nameLower.includes('casal') || nameLower.includes('familiar')) {
+      return 'casal_familia';
+    }
+    if (nameLower.includes('criança') || nameLower.includes('adolescente') || nameLower.includes('idoso')) {
+      return 'jovens_idosos';
+    }
+    if (nameLower.includes('empresarial') || nameLower.includes('vocacional') || nameLower.includes('recrutamento') || nameLower.includes('escolar') || nameLower.includes('avaliação')) {
+      return 'carreira_testes';
+    }
+    return 'individual';
+  };
+
+  const servicesWithDetails = useMemo(() => {
+    return services.map((service) => {
+      const professionalCount = professionals.filter(
+        (professional) => professional.services_ids && professional.services_ids.includes(service.id)
+      ).length;
+      return {
+        ...service,
+        professionalCount,
+        category: getServiceCategory(service.name)
+      };
+    });
+  }, [services, professionals]);
+
+  const maxProfCount = useMemo(() => {
+    if (!servicesWithDetails.length) return 0;
+    return Math.max(...servicesWithDetails.map(s => s.professionalCount));
+  }, [servicesWithDetails]);
+
+  const filteredAndSortedServices = useMemo(() => {
+    let list = servicesWithDetails;
+
+    // Filtrar por categoria selecionada
+    if (selectedServiceCategory !== 'all') {
+      list = list.filter((s) => s.category === selectedServiceCategory);
+    }
+
+    // Ordenação Inteligente:
+    // 1. Serviços com profissionais disponíveis primeiro
+    // 2. Por volume de profissionais atendendo (decrescente)
+    return [...list].sort((a, b) => {
+      if (a.professionalCount > 0 && b.professionalCount === 0) return -1;
+      if (a.professionalCount === 0 && b.professionalCount > 0) return 1;
+      return b.professionalCount - a.professionalCount;
+    });
+  }, [servicesWithDetails, selectedServiceCategory]);
+
   const handleSelectService = (serviceId) => {
     onSelectService?.(serviceId);
     trackBookingEvent('select_service', { serviceId });
+
+    // Auto-advance de zero-fricção: avança automaticamente após 250ms de animação do clique
+    if (isServiceOnly) {
+      setTimeout(() => {
+        onNext?.();
+      }, 250);
+    }
+  };
+
+  const handleSelectProfessional = (profId) => {
+    onSelectProfessional?.(profId);
+    trackBookingEvent('select_professional', { professionalId: profId });
+
+    // Auto-advance na escolha do profissional: avança para o Calendário (Etapa 3) em 250ms
+    if (isProfessionalOnly) {
+      setTimeout(() => {
+        onNext?.();
+      }, 250);
+    }
   };
 
   const handleContinue = () => {
@@ -359,29 +515,29 @@ const ProfessionalStep = ({
       className={`bg-white rounded-xl shadow-lg p-8 ${reserveMobileCtaSpace ? 'pb-24' : ''}`}
     >
       {stageIndicator === 'service' ? <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold mb-3">Escolha o Serviço e Profissional</h2>
-        <p className="text-gray-600 text-lg">Comece selecionando o serviço ideal e depois escolha quem irá atendê-lo.</p>
+        <h2 className="text-3xl font-bold mb-3">Qual atendimento você procura?</h2>
+        <p className="text-gray-600 text-lg">Selecione a especialidade desejada para encontrarmos o psicólogo ideal para o seu momento.</p>
       </div> : ''}
 
 
-      {servicePriceRange && (
-        <div className="mb-8 p-5 bg-gradient-to-r from-[#2d8659]/10 via-white to-blue-50 border border-[#2d8659]/20 rounded-xl">
-          <p className="text-sm font-semibold text-[#2d8659] uppercase tracking-wide mb-1">Investimento transparente</p>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <p className="text-gray-700 text-base md:text-lg">
-              Consultas a partir de
-              <span className="font-bold text-[#2d8659] ml-2">
-                R$ {servicePriceRange.min.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-              {servicePriceRange.max !== servicePriceRange.min && (
-                <span className="text-gray-600">
-                  {' '}
-                  e até R$ {servicePriceRange.max.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              )}
-            </p>
-            <p className="text-sm text-gray-600 md:text-right">
-              Você só informa seus dados após confirmar o profissional e horário ideal.
+      {servicePriceRange && stageIndicator === 'service' && (
+        <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 md:p-5 bg-gray-50/80 rounded-xl border border-gray-100 shadow-sm">
+          <div className="flex items-start md:items-center gap-3 md:gap-4">
+            <div className="bg-[#2d8659]/10 p-2.5 rounded-full text-[#2d8659] shrink-0">
+              <ShieldCheck className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 text-sm md:text-base mb-0.5">Agendamento sem compromisso inicial</p>
+              <p className="text-xs md:text-sm text-gray-600">Você só informa seus dados após escolher o profissional e horário ideal.</p>
+            </div>
+          </div>
+          <div className="text-left md:text-right pt-3 md:pt-0 border-t md:border-0 border-gray-200 mt-1 md:mt-0">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Valor das sessões</p>
+            <p className="font-bold text-[#2d8659] text-base md:text-lg">
+              {servicePriceRange.max !== servicePriceRange.min 
+                ? `R$ ${servicePriceRange.min.toLocaleString('pt-BR')} a R$ ${servicePriceRange.max.toLocaleString('pt-BR')}`
+                : `R$ ${servicePriceRange.min.toLocaleString('pt-BR')}`
+              }
             </p>
           </div>
         </div>
@@ -426,97 +582,124 @@ const ProfessionalStep = ({
               </div>
             </div> */}
 
+            {/* Category Chips Bar */}
+            <div className="mb-6 flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-2 px-2 md:m-0 md:px-0 md:flex-wrap md:justify-center" role="toolbar" aria-label="Categorias de serviços">
+              {serviceCategories.map((cat) => {
+                const isActive = selectedServiceCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedServiceCategory(cat.id)}
+                    aria-pressed={isActive}
+                    className={`px-4 py-2 min-h-[44px] inline-flex items-center rounded-full text-xs font-semibold whitespace-nowrap border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47] ${
+                      isActive
+                        ? 'bg-[#236b47] text-white border-[#236b47] shadow-sm'
+                        : 'bg-white text-gray-800 border-gray-200 hover:border-[#236b47] hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Service Cards - Vertical Stack (Mobile) / Grid (Desktop) */}
             <div className="space-y-3 md:space-y-0 md:grid md:gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {services.map((service, index) => {
-                const professionalCount = professionals.filter(
-                  (professional) => professional.services_ids && professional.services_ids.includes(service.id)
-                ).length;
+              {filteredAndSortedServices.map((service) => {
+                const professionalCount = service.professionalCount;
                 const isSelected = selectedService === service.id;
+                const isDisabled = professionalCount === 0;
+                const isTopPopular = maxProfCount > 0 && professionalCount === maxProfCount;
+                const isPopular = !isTopPopular && professionalCount >= 7;
 
                 return (
                   <button
                     key={service.id}
                     type="button"
-                    onClick={() => handleSelectService(service.id)}
-                    className={`w-full p-4 md:p-6 rounded-xl border-2 transition-all text-left group
-                    active:scale-95 touch-manipulation
-                    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]
-                    ${isSelected
-                        ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-lg'
-                        : 'border-gray-200 hover:border-[#2d8659] bg-white hover:shadow-md'
+                    disabled={isDisabled}
+                    aria-pressed={isSelected}
+                    onClick={() => !isDisabled && handleSelectService(service.id)}
+                    className={`relative w-full p-3.5 md:p-4 rounded-xl border transition-all text-left group min-h-[44px]
+                    ${isDisabled ? 'opacity-50 cursor-not-allowed border-gray-100 bg-gray-50' : 'active:scale-95 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]'}
+                    ${!isDisabled && isSelected
+                        ? 'border-[#236b47] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-sm ring-1 ring-[#236b47]'
+                        : !isDisabled ? 'border-gray-200 hover:border-[#236b47] bg-white hover:shadow-sm' : ''
                       }`}
                   >
+                    {/* Badge Social Proof */}
+                    {isTopPopular && (
+                      <span className="absolute -top-2.5 right-3 bg-amber-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs tracking-wide">
+                        ⭐ Mais Procurado
+                      </span>
+                    )}
+                    {isPopular && (
+                      <span className="absolute -top-2.5 right-3 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs tracking-wide">
+                        Popular
+                      </span>
+                    )}
+
                     {/* Mobile Compact Layout */}
                     <div className="md:hidden">
                       {/* Header: Title + Price */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <h3 className="font-bold text-base text-gray-900 leading-tight flex-1">
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <h3 className="font-bold text-sm text-gray-900 leading-tight flex-1 line-clamp-1">
                           {service.name}
                         </h3>
-                        <div className="text-lg font-bold text-[#2d8659] whitespace-nowrap">
+                        <div className="text-sm font-bold text-[#2d8659] whitespace-nowrap">
                           R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </div>
                       </div>
 
                       {/* Info Row - Duration + Professionals */}
-                      <div className="flex items-center gap-4 text-xs text-gray-600 mb-3">
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
                           {service.duration_minutes >= 60
                             ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? `${service.duration_minutes % 60}m` : ''
                             }`
                             : `${service.duration_minutes}min`}
                         </span>
-                        <span className="flex items-center gap-1.5">
-                          <User className="w-3.5 h-3.5" />
-                          {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {professionalCount === 0 ? (
+                            <span className="text-gray-300">Indisponível</span>
+                          ) : (
+                            `${professionalCount} prof.`
+                          )}
                         </span>
                       </div>
-
-                      {/* Selection Indicator */}
-                      {isSelected && (
-                        <div className="flex items-center gap-2 text-sm font-semibold text-[#2d8659]">
-                          <CheckCircle className="w-4 h-4" />
-                          <span>Selecionado</span>
-                        </div>
-                      )}
                     </div>
 
-                    {/* Desktop Layout - Original */}
+                    {/* Desktop Layout - Compact */}
                     <div className="hidden md:block">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
+                      <div className="flex flex-col h-full justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-sm mb-1 text-gray-900 group-hover:text-[#2d8659] transition-colors line-clamp-2 leading-tight">
                             {service.name}
                           </h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
+                          <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
+                              <Clock className="w-3.5 h-3.5" />
                               {service.duration_minutes >= 60
                                 ? `${Math.floor(service.duration_minutes / 60)}h${service.duration_minutes % 60 > 0 ? ` ${service.duration_minutes % 60}min` : ''
                                 }`
-                                : `${service.duration_minutes}min`}
+                                : `${service.duration_minutes}m`}
                             </span>
                             <span className="flex items-center gap-1">
-                              <User className="w-4 h-4" />
-                              {professionalCount} {professionalCount === 1 ? 'profissional' : 'profissionais'}
+                              <User className="w-3.5 h-3.5" />
+                              {professionalCount === 0 ? (
+                                <span className="text-gray-400">Indisponível</span>
+                              ) : (
+                                `${professionalCount} prof.`
+                              )}
                             </span>
                           </div>
-                          {service.description && (
-                            <p className="text-gray-600 text-sm mb-3 line-clamp-2">{service.description}</p>
-                          )}
                         </div>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-2xl font-bold text-[#2d8659]">
-                          R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium transition-opacity ${isSelected
-                          ? 'bg-[#2d8659] text-white opacity-100'
-                          : 'bg-[#2d8659] text-white opacity-0 group-hover:opacity-100'
-                          }`}>
-                          {isSelected ? '✓ Selecionado' : 'Selecionar'}
+                        <div className="flex justify-between items-center mt-1 border-t border-gray-100 pt-2">
+                          <div className="text-base font-bold text-[#2d8659]">
+                            R$ {parseFloat(service.price).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -562,7 +745,7 @@ const ProfessionalStep = ({
                 <button
                   type="button"
                   onClick={() => setMobileStage('service')}
-                  className="mt-3 text-sm font-medium text-[#2d8659] underline"
+                  className="mt-3 text-sm font-semibold text-[#1e5c3c] underline min-h-[44px] inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
                 >
                   Trocar serviço
                 </button>
@@ -570,15 +753,15 @@ const ProfessionalStep = ({
             </div>
 
             <div className="mb-6 flex flex-col gap-3">
-              <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#2d8659]/10 text-[#2d8659] text-sm font-semibold w-full justify-center">
-                <Quote className="w-4 h-4" />
+              <div className="flex items-center gap-2 px-4 py-3 rounded-full bg-[#2d8659]/10 text-[#1e5c3c] text-sm font-semibold w-full justify-center">
+                <Quote className="w-4 h-4" aria-hidden="true" />
                 97% dos pacientes recomendam a experiência de agendamento da Doxologos.
               </div>
               <div className="flex flex-wrap gap-2 justify-center text-sm">
                 <div className="px-4 py-2 bg-white border border-[#2d8659]/30 rounded-full shadow-sm flex items-center gap-2">
-                  <span className="font-semibold text-[#2d8659]">{selectedServiceData?.name}</span>
+                  <span className="font-semibold text-[#1e5c3c]">{selectedServiceData?.name}</span>
                   {selectedServiceData?.price && (
-                    <span className="text-gray-600">
+                    <span className="text-gray-700">
                       · R$
                       {parseFloat(selectedServiceData.price).toLocaleString('pt-BR', {
                         minimumFractionDigits: 2,
@@ -587,7 +770,7 @@ const ProfessionalStep = ({
                     </span>
                   )}
                   {selectedServiceData?.duration_minutes && (
-                    <span className="text-gray-500">
+                    <span className="text-gray-700">
                       · {selectedServiceData.duration_minutes}min
                     </span>
                   )}
@@ -596,70 +779,87 @@ const ProfessionalStep = ({
             </div>
 
             <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-2 font-semibold">Filtros rápidos</p>
-              <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4 md:m-0 md:px-0" role="toolbar" aria-label="Filtros de profissionais">
-                {quickFilterDefinitions.map((filter) => {
-                  const isActive = activeFilters.includes(filter.id);
-                  return (
-                    <button
-                      key={filter.id}
-                      type="button"
-                      onClick={() =>
-                        setActiveFilters((prev) =>
-                          prev.includes(filter.id)
-                            ? prev.filter((id) => id !== filter.id)
-                            : [...prev, filter.id]
-                        )
-                      }
-                      className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${isActive ? 'bg-[#2d8659] text-white border-[#2d8659]' : 'border-gray-300 text-gray-700'
-                        }`}
-                    >
-                      {filter.label}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                  <Filter className="w-3.5 h-3.5 text-[#1b3c37]" aria-hidden="true" />
+                  Filtros rápidos
+                </p>
                 {activeFilters.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setActiveFilters([])}
-                    className="text-sm text-[#2d8659] underline whitespace-nowrap"
+                    className="text-xs text-[#1e5c3c] hover:text-[#132d29] font-semibold flex items-center gap-1 underline transition-colors min-h-[44px] px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
+                    aria-label={`Limpar ${activeFilters.length} filtros selecionados`}
                   >
-                    Limpar filtros
+                    <X className="w-3 h-3" aria-hidden="true" />
+                    Limpar ({activeFilters.length})
                   </button>
                 )}
+              </div>
+
+              <div className="relative -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-0.5 no-scrollbar scroll-smooth" role="toolbar" aria-label="Filtros de profissionais">
+                  {quickFilterDefinitions.map((filter) => {
+                    const isActive = activeFilters.includes(filter.id);
+                    const IconComponent = filter.icon;
+                    return (
+                      <button
+                        key={filter.id}
+                        type="button"
+                        onClick={() =>
+                          setActiveFilters((prev) =>
+                            prev.includes(filter.id)
+                              ? prev.filter((id) => id !== filter.id)
+                              : [...prev, filter.id]
+                          )
+                        }
+                        aria-pressed={isActive}
+                        className={`whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 min-h-[44px] rounded-full text-xs font-semibold border transition-all duration-200 shadow-xs touch-manipulation active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1b3c37] ${isActive
+                            ? 'bg-[#1b3c37] text-white border-[#1b3c37] ring-2 ring-[#1b3c37]/20 shadow-md'
+                            : 'bg-white text-gray-800 border-gray-200 hover:border-[#1b3c37]/40 hover:bg-gray-50'
+                          }`}
+                      >
+                        {IconComponent && (
+                          <IconComponent className={`w-3.5 h-3.5 ${isActive ? 'text-white' : filter.iconColor}`} aria-hidden="true" />
+                        )}
+                        <span>{filter.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             {availableProfessionals.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <User className="w-8 h-8 text-gray-400" />
+                  <User className="w-8 h-8 text-gray-400" aria-hidden="true" />
                 </div>
-                <p className="text-gray-500 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
+                <p className="text-gray-700 mb-4 font-medium">Nenhum profissional disponível para este serviço</p>
                 {onBack && (
-                  <Button onClick={onBack} variant="outline" className="border-[#2d8659] text-[#2d8659]">
-                    <ArrowLeft className="w-4 h-4 mr-2" />Escolher outro serviço
+                  <Button onClick={onBack} variant="outline" className="border-[#236b47] text-[#236b47] min-h-[44px]">
+                    <ArrowLeft className="w-4 h-4 mr-2" aria-hidden="true" />Escolher outro serviço
                   </Button>
                 )}
               </div>
             ) : (
               <div className="relative">
-                <div className="flex justify-end gap-2 mb-2" aria-hidden="true">
+                <div className="flex justify-end gap-2 mb-2">
                   <button
                     type="button"
-                    className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    className="hidden md:inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-gray-300 text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]"
                     onClick={() => scrollProfessionalCarousel('prev')}
                     aria-label="Ver profissionais anteriores"
                   >
-                    <ChevronLeft className="w-4 h-4" />
+                    <ChevronLeft className="w-5 h-5" aria-hidden="true" />
                   </button>
                   <button
                     type="button"
-                    className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]"
+                    className="hidden md:inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-gray-300 text-gray-700 transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]"
                     onClick={() => scrollProfessionalCarousel('next')}
                     aria-label="Ver mais profissionais"
                   >
-                    <ChevronRight className="w-4 h-4" />
+                    <ChevronRight className="w-5 h-5" aria-hidden="true" />
                   </button>
                 </div>
                 <div
@@ -672,20 +872,22 @@ const ProfessionalStep = ({
                   {sortedAvailable.map((professional) => {
                     const isSelectable = professionalHasAvailability(professional);
                     const nextSlot = getNextAvailableSlot(professional);
+                    const approachTag = getProfessionalApproach(professional);
+
                     return (
                       <button
                         key={professional.id}
                         type="button"
-                        onClick={() => isSelectable && onSelectProfessional?.(professional.id)}
+                        onClick={() => isSelectable && handleSelectProfessional(professional.id)}
                         disabled={!isSelectable}
                         role="option"
                         aria-selected={selectedProfessional === professional.id}
                         aria-disabled={!isSelectable}
-                        className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center ${selectedProfessional === professional.id && isSelectable
-                          ? 'border-[#2d8659] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md'
+                        className={`relative p-6 rounded-lg border-2 transition-all text-left group snap-center min-h-[44px] ${selectedProfessional === professional.id && isSelectable
+                          ? 'border-[#236b47] bg-gradient-to-br from-[#2d8659]/5 to-[#2d8659]/10 shadow-md ring-2 ring-[#236b47]/20'
                           : 'border-gray-200 bg-white'
                           } ${isSelectable
-                            ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2d8659]'
+                            ? 'hover:shadow-lg hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#236b47]'
                             : 'opacity-60 cursor-not-allowed'
                           }`}
                       >
@@ -700,8 +902,8 @@ const ProfessionalStep = ({
 
                           if (dayInfo.index === todayIndex) {
                             return (
-                              <div className="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
+                              <div className="absolute top-4 right-4 bg-[#1b5e20] text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <Clock className="w-3 h-3" aria-hidden="true" />
                                 Disponível Hoje
                               </div>
                             );
@@ -709,8 +911,8 @@ const ProfessionalStep = ({
 
                           if (dayInfo.index === tomorrowIndex) {
                             return (
-                              <div className="absolute top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
+                              <div className="absolute top-4 right-4 bg-blue-700 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                <Clock className="w-3 h-3" aria-hidden="true" />
                                 Disponível Amanhã
                               </div>
                             );
@@ -726,7 +928,7 @@ const ProfessionalStep = ({
                                 alt={professional.name}
                                 loading="lazy"
                                 decoding="async"
-                                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#2d8659] transition-colors"
+                                className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 group-hover:border-[#236b47] transition-colors"
                                 onError={(e) => {
                                   // Fallback to initials if image fails to load
                                   e.target.style.display = 'none';
@@ -737,36 +939,44 @@ const ProfessionalStep = ({
                             <div
                               className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2d8659] to-[#236b47] flex items-center justify-center text-white font-bold text-xl"
                               style={{ display: professional.image_url ? 'none' : 'flex' }}
+                              aria-hidden="true"
                             >
                               {professional.name.charAt(0)}
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-xl mb-2 text-gray-900 group-hover:text-[#2d8659] transition-colors">
-                              {professional.name}
-                            </h4>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h4 className="font-bold text-xl text-gray-900 group-hover:text-[#236b47] transition-colors">
+                                {professional.name}
+                              </h4>
+                              {approachTag && (
+                                <span className="inline-block bg-[#2d8659]/10 text-[#1e5c3c] text-xs font-semibold px-2.5 py-0.5 rounded-full border border-[#2d8659]/20">
+                                  {approachTag}
+                                </span>
+                              )}
+                            </div>
                             {professional.mini_curriculum && (
-                              <p className="text-sm text-gray-600 mb-3">
+                              <p className="text-sm text-gray-700 mb-3">
                                 {professional.mini_curriculum.length > 120
                                   ? `${professional.mini_curriculum.substring(0, 120)}...`
                                   : professional.mini_curriculum}
                               </p>
                             )}
                             {professional.email && (
-                              <p className="text-xs text-gray-500 mb-2">📧 {professional.email}</p>
+                              <p className="text-xs text-gray-600 mb-2">📧 {professional.email}</p>
                             )}
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500">✓ Especialista em {selectedServiceData?.name}</span>
-                              <div className="bg-[#2d8659] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-xs text-gray-700">✓ Especialista em {selectedServiceData?.name}</span>
+                              <div className="bg-[#236b47] text-white px-3 py-1 rounded-full text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                                 Selecionar
                               </div>
                             </div>
                             {nextSlot && (
                               <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
-                                <Clock className="w-4 h-4 text-green-600" />
+                                <Clock className="w-4 h-4 text-green-700" aria-hidden="true" />
                                 <div className="flex-1">
-                                  <p className="text-xs text-gray-600">Próximo horário</p>
-                                  <p className="text-sm font-bold text-green-700">
+                                  <p className="text-xs text-gray-700">Próximo horário</p>
+                                  <p className="text-sm font-bold text-[#1b5e20]">
                                     {formatNextSlotLabel(nextSlot.day, nextSlot.time)}
                                   </p>
                                 </div>
@@ -777,12 +987,12 @@ const ProfessionalStep = ({
                         {!isSelectable && (
                           <div className="absolute inset-0 rounded-lg bg-gray-50/95 backdrop-blur-sm border-2 border-gray-300 flex flex-col items-center justify-center gap-2">
                             <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                              <Clock className="w-6 h-6 text-gray-400" />
+                              <Clock className="w-6 h-6 text-gray-500" aria-hidden="true" />
                             </div>
-                            <span className="text-sm font-semibold text-gray-700">
+                            <span className="text-sm font-semibold text-gray-800">
                               Sem horários disponíveis
                             </span>
-                            <span className="text-xs text-gray-500 px-4 text-center">
+                            <span className="text-xs text-gray-600 px-4 text-center">
                               Este profissional não tem agenda aberta no momento
                             </span>
                           </div>
@@ -799,7 +1009,7 @@ const ProfessionalStep = ({
                         <div className="col-span-full my-4">
                           <div className="flex items-center gap-4">
                             <div className="flex-1 h-px bg-gray-300"></div>
-                            <span className="text-sm text-gray-500 font-medium">
+                            <span className="text-sm text-gray-700 font-medium">
                               Profissionais sem agenda disponível
                             </span>
                             <div className="flex-1 h-px bg-gray-300"></div>
@@ -813,10 +1023,10 @@ const ProfessionalStep = ({
                           <button
                             type="button"
                             onClick={() => setShowUnavailable(true)}
-                            className="w-full py-3 px-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-3 px-4 min-h-[44px] border-2 border-dashed border-gray-300 rounded-lg text-gray-700 hover:border-gray-400 hover:text-gray-900 transition-colors flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#236b47]"
                           >
                             <span>Exibir {unavailableProfessionals.length} {unavailableProfessionals.length === 1 ? 'profissional' : 'profissionais'} sem agenda</span>
-                            <ChevronDown className="w-4 h-4" />
+                            <ChevronDown className="w-4 h-4" aria-hidden="true" />
                           </button>
                         </div>
                       )}
@@ -925,20 +1135,24 @@ const ProfessionalStep = ({
         </div>
       )}
 
-      <div className="mt-8 flex flex-wrap gap-4">
-        {onBack && (
-          <Button onClick={onBack} variant="outline">
-            <ArrowLeft className="w-4 h-4 mr-2" />Voltar
-          </Button>
-        )}
-        <Button
-          disabled={!canContinue}
-          className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleContinue}
-        >
-          Continuar
-        </Button>
-      </div>
+      {(!isServiceOnly || onBack) && (
+        <div className="mt-8 flex flex-wrap gap-4">
+          {onBack && (
+            <Button onClick={onBack} variant="outline">
+              <ArrowLeft className="w-4 h-4 mr-2" />Voltar
+            </Button>
+          )}
+          {!isServiceOnly && (
+            <Button
+              disabled={!canContinue}
+              className="bg-[#2d8659] hover:bg-[#236b47] disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleContinue}
+            >
+              Continuar
+            </Button>
+          )}
+        </div>
+      )}
     </motion.div>
   );
 };

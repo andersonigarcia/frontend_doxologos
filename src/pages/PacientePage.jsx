@@ -3,11 +3,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X } from 'lucide-react';
+import { ArrowLeft, LogOut, Calendar, Clock, AlertTriangle, CheckCircle, XCircle, Star, Edit, Copy, ExternalLink, CreditCard, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronDown, ChevronUp, Menu, X, Video, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
+import { rescheduleBooking } from '@/services/bookingService';
+import { executePatientCancellation, evaluatePatientCancellationEligibility } from '@/services/refundService';
 import MercadoPagoService from '@/lib/mercadoPagoService';
 import { logger } from '@/lib/logger';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -16,22 +18,46 @@ import UserBadge from '@/components/UserBadge';
 // Novos imports - Fase 4
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { SessionValidator } from '@/components/auth/SessionValidator';
 import { ProtectedAction } from '@/components/auth/ProtectedAction';
 import { DashboardCard } from '@/components/shared/DashboardCard';
+import BookShelfSection from '@/components/shared/BookShelfSection';
+import { PatientAcompanhamento } from '@/components/shared/PatientAcompanhamento';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
+import { ChangePasswordModal } from '@/components/auth/ChangePasswordModal';
+import { SecurityPasswordBanner } from '@/components/auth/SecurityPasswordBanner';
+import { KeyRound } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { usePatientBookingsQuery, usePatientReviewsQuery } from '@/hooks/queries';
 
 const MAX_RESCHEDULE_ATTEMPTS = 2;
 const ALLOWED_PAYMENT_STATUSES = ['approved', 'authorized', 'settled', 'paid'];
 
 const PacientePage = () => {
     const { toast } = useToast();
-    const { user, session, signIn, signOut } = useAuth();
+    const { user, session, userRole, signIn, signOut } = useAuth();
     const [loginData, setLoginData] = useState({ email: '', password: '' });
-    const [bookings, setBookings] = useState([]);
-    const [reviews, setReviews] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
+    const {
+        data: patientBookingsData = [],
+        isLoading: bookingsLoading,
+        error: bookingsQueryError,
+        refetch: refetchBookings
+    } = usePatientBookingsQuery(user?.id);
+
+    const {
+        data: patientReviewsData = [],
+        isLoading: reviewsLoading,
+        refetch: refetchReviews
+    } = usePatientReviewsQuery(user?.id);
+
+    const bookings = patientBookingsData || [];
+    const reviews = patientReviewsData || [];
+    const loading = !user ? false : (bookingsLoading || reviewsLoading);
+
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
     const [reviewingBooking, setReviewingBooking] = useState(null);
     const [reviewData, setReviewData] = useState({ rating: 0, comment: '' });
@@ -75,38 +101,37 @@ const PacientePage = () => {
         setCreditError(null);
 
         try {
-            const accessToken = session?.access_token;
+            const { data: walletData, error: walletError } = await supabase
+                .from('patient_wallets')
+                .select('balance')
+                .eq('id', user.id)
+                .single();
 
-            if (!accessToken) {
-                throw new Error('Sessão expirada. Faça login novamente.');
+            if (walletError && walletError.code !== 'PGRST116') {
+                throw new Error(walletError.message || 'Erro ao consultar saldo da carteira');
             }
 
-            const { data, error } = await supabase.functions.invoke('financial-credit-manager', {
-                body: { action: 'list' },
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
+            const { data: txData, error: txError } = await supabase
+                .from('wallet_transactions')
+                .select('*')
+                .eq('patient_id', user.id)
+                .order('created_at', { ascending: false });
 
-            if (error) {
-                throw new Error(error.message || 'Erro ao consultar créditos');
-            }
-
-            if (data?.error) {
-                throw new Error(data.error);
+            if (txError) {
+                throw new Error(txError.message || 'Erro ao consultar transações da carteira');
             }
 
             setCreditSummary({
-                balance: data?.balance ?? null,
-                credits: Array.isArray(data?.credits) ? data.credits : [],
+                balance: { available_amount: walletData?.balance || 0, reserved_amount: 0 },
+                credits: txData || [],
             });
         } catch (err) {
-            logger.error('Erro ao carregar créditos do paciente', err);
-            setCreditError(err instanceof Error ? err.message : 'Erro ao carregar créditos');
+            logger.error('Erro ao carregar carteira do paciente', err);
+            setCreditError(err instanceof Error ? err.message : 'Erro ao carregar carteira');
         } finally {
             setCreditLoading(false);
         }
-    }, [user, session]);
+    }, [user]);
 
     const resolvePaymentRecord = (booking) => {
         if (!booking) return null;
@@ -200,49 +225,22 @@ const PacientePage = () => {
         }));
     };
 
-    const fetchData = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        const { data: bookingsData, error: bookingsError } = await supabase
-            .from('bookings')
-            .select(`
-                *,
-                meeting_link,
-                meeting_password,
-                meeting_id,
-                meeting_start_url,
-                professional:professionals(name),
-                service:services(name),
-                payment:payments(id, mp_payment_id, status, qr_code, qr_code_base64, ticket_url, amount)
-            `)
-            .eq('user_id', user.id)
-            .order('booking_date', { ascending: false });
-
-        if (bookingsError) {
-            toast({ variant: 'destructive', title: 'Erro ao buscar agendamentos', description: bookingsError.message });
-        } else {
-            setBookings(bookingsData);
-        }
-
-        const { data: reviewsData, error: reviewsError } = await supabase
-            .from('reviews')
-            .select('booking_id')
-            .eq('patient_id', user.id);
-
-        if (reviewsError) {
-            logger.apiError('fetchReviews', reviewsError, { userId: user.id });
-        } else {
-            setReviews(reviewsData.map(r => r.booking_id));
-        }
-
-        setLoading(false);
-    }, [user, toast]);
-
     useEffect(() => {
-        if (user) {
-            fetchData();
+        if (bookingsQueryError) {
+            toast({
+                variant: 'destructive',
+                title: 'Erro ao buscar agendamentos',
+                description: bookingsQueryError.message || 'Falha ao buscar agendamentos'
+            });
         }
-    }, [user, fetchData]);
+    }, [bookingsQueryError, toast]);
+
+    const fetchData = useCallback(() => {
+        return Promise.all([
+            refetchBookings(),
+            refetchReviews()
+        ]);
+    }, [refetchBookings, refetchReviews]);
 
     useEffect(() => {
         if (user) {
@@ -270,27 +268,11 @@ const PacientePage = () => {
                 throw new Error('Sessão expirada. Faça login novamente.');
             }
 
-            // Registrar no audit log
-            await auditLogger.info(AuditAction.BOOKING_CANCEL, {
-                resourceType: 'booking',
-                resourceId: bookingId,
-                details: { triggered_by: 'patient_portal' }
+            const data = await executePatientCancellation({
+                bookingId,
+                accessToken,
+                reason: 'Cancelamento solicitado pelo paciente via portal'
             });
-
-            const { data, error } = await supabase.functions.invoke('patient-cancel-booking', {
-                body: { booking_id: bookingId },
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
-
-            if (error) {
-                throw new Error(error.message || 'Falha ao cancelar agendamento');
-            }
-
-            if (data?.error) {
-                throw new Error(data.error);
-            }
 
             const creditCreated = Boolean(data?.credit_created);
             const creditCurrency = data?.credit?.currency || 'BRL';
@@ -309,6 +291,9 @@ const PacientePage = () => {
             });
 
             await loadCreditSummary();
+            queryClient.invalidateQueries({ queryKey: ['patient-bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['availability'] });
             fetchData();
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Erro desconhecido ao cancelar';
@@ -352,18 +337,18 @@ const PacientePage = () => {
         if (!booking) return null;
 
         if (booking.status === 'cancelled_by_patient' || booking.status === 'cancelled_by_professional') {
-            return 'Agendamentos cancelados não podem ser reagendados automaticamente.';
+            return 'Sessões já canceladas não podem ser reagendadas diretamente. Quando desejar, sinta-se à vontade para agendar um novo horário.';
         }
 
         const attemptsUsed = booking.reschedule_count || 0;
         if (attemptsUsed >= MAX_RESCHEDULE_ATTEMPTS) {
-            return 'Limite de reagendamentos atingido. Entre em contato com nossa equipe para mais suporte.';
+            return 'Você atingiu o limite de reagendamentos para esta sessão. Se precisar de acolhimento especial, conte com o nosso suporte.';
         }
 
         const paymentRecord = resolvePaymentRecord(booking);
         const paymentStatus = paymentRecord?.status?.toLowerCase();
         if (!paymentStatus || !ALLOWED_PAYMENT_STATUSES.includes(paymentStatus)) {
-            return 'O reagendamento ficará disponível após a confirmação do pagamento.';
+            return 'O reagendamento estará disponível assim que o pagamento for confirmado.';
         }
 
         const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
@@ -371,7 +356,7 @@ const PacientePage = () => {
         const hoursDifference = (bookingDateTime - now) / (1000 * 60 * 60);
 
         if (hoursDifference <= 24) {
-            return 'O reagendamento só é permitido com pelo menos 24 horas de antecedência.';
+            return 'Reagendamentos gratuitos podem ser feitos com até 24h de antecedência, permitindo reorganizar o tempo com carinho.';
         }
 
         return null;
@@ -635,43 +620,13 @@ const PacientePage = () => {
                 newTime: newBookingTime
             });
 
-            const nextCount = attemptsUsed + 1;
-            const rescheduleRootId = reschedulingBooking.rescheduled_from_id || reschedulingBooking.id;
-
-            const { error } = await supabase
-                .from('bookings')
-                .update({
-                    booking_date: selectedNewSlot.date,
-                    booking_time: newBookingTime,
-                    reschedule_count: nextCount,
-                    rescheduled_from_id: rescheduleRootId,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', reschedulingBooking.id);
-
-            if (error) throw error;
-
-            const historyPayload = {
-                booking_id: reschedulingBooking.id,
-                previous_booking_date: reschedulingBooking.booking_date,
-                previous_booking_time: reschedulingBooking.booking_time,
-                new_booking_date: selectedNewSlot.date,
-                new_booking_time: newBookingTimeWithSeconds,
-                attempt_number: nextCount,
-                status: 'success',
-                metadata: {
-                    triggered_by: 'patient_portal',
-                    user_id: user?.id || null
-                }
-            };
-
-            const { error: historyError } = await supabase
-                .from('booking_reschedule_history')
-                .insert([historyPayload]);
-
-            if (historyError) {
-                logger.error('Failed to log reschedule history', historyError);
-            }
+            await rescheduleBooking(reschedulingBooking.id, {
+                newDate: selectedNewSlot.date,
+                newTime: newBookingTime,
+                attemptsUsed,
+                rescheduledFromId: reschedulingBooking.rescheduled_from_id,
+                userId: user?.id
+            });
 
             logger.success('Booking rescheduled successfully', {
                 bookingId: reschedulingBooking.id
@@ -685,6 +640,9 @@ const PacientePage = () => {
             setReschedulingBooking(null);
             setSelectedNewSlot(null);
             setAvailableSlots([]);
+            queryClient.invalidateQueries({ queryKey: ['patient-bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['availability'] });
             fetchData();
         } catch (error) {
             logger.error('Error rescheduling booking', error);
@@ -715,14 +673,15 @@ const PacientePage = () => {
             toast({ title: 'Avaliação enviada com sucesso!' });
             setReviewingBooking(null);
             setReviewData({ rating: 0, comment: '' });
+            queryClient.invalidateQueries({ queryKey: ['patient-reviews'] });
             fetchData();
         }
     };
 
     const availableCreditAmount = creditSummary.balance ? Number(creditSummary.balance.available_amount) || 0 : 0;
     const reservedCreditAmount = creditSummary.balance ? Number(creditSummary.balance.reserved_amount) || 0 : 0;
-    const availableCreditsList = (creditSummary.credits || []).filter((credit) => credit.status === 'available');
-    const hasCreditInfo = availableCreditAmount > 0 || reservedCreditAmount > 0;
+    const availableCreditsList = creditSummary.credits || [];
+    const hasCreditInfo = availableCreditAmount > 0 || availableCreditsList.length > 0;
 
     if (!user) {
         return (
@@ -732,8 +691,7 @@ const PacientePage = () => {
                     <nav className="container mx-auto px-3 md:px-4 py-3 md:py-4">
                         <div className="flex items-center justify-between gap-3">
                             <Link to="/" className="flex items-center space-x-2">
-                                <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 md:w-8 h-7 md:h-8" />
-                                <span className="text-xl md:text-2xl font-bold gradient-text">Doxologos</span>
+                                <DoxologosLogo className="h-7 md:h-9 w-auto" />
                             </Link>
                             <Link to="/">
                                 <Button variant="outline" className="border-[#2d8659] text-[#2d8659] text-sm md:text-base">
@@ -775,8 +733,7 @@ const PacientePage = () => {
                     {/* Desktop Header */}
                     <div className="hidden md:flex items-center justify-between gap-4">
                         <Link to="/" className="flex items-center space-x-2">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-8 h-8" />
-                            <span className="text-2xl font-bold gradient-text">Doxologos</span>
+                            <DoxologosLogo className="h-9 w-auto" />
                         </Link>
                         <div className="flex items-center gap-4 flex-wrap justify-end">
                             <ThemeToggle />
@@ -790,19 +747,27 @@ const PacientePage = () => {
                             <div className="h-6 w-px bg-gray-300"></div>
                             <UserBadge
                                 user={user}
-                                userRole="patient"
+                                userRole={userRole}
                                 onLogout={handleLogout}
                                 layout="row"
                                 showLogoutButton={true}
                             />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsChangePasswordOpen(true)}
+                                className="border-slate-300 text-slate-700 hover:text-[#2d8659]"
+                            >
+                                <KeyRound className="w-4 h-4 mr-1.5 text-[#2d8659]" />
+                                Alterar Senha
+                            </Button>
                         </div>
                     </div>
 
                     {/* Mobile Header */}
                     <div className="flex md:hidden items-center justify-between">
                         <Link to="/" className="flex items-center space-x-2">
-                            <img src="/favicon.svg" alt="Doxologos Logo" className="w-7 h-7" />
-                            <span className="text-xl font-bold gradient-text">Doxologos</span>
+                            <DoxologosLogo className="h-7 w-auto" />
                         </Link>
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -826,7 +791,7 @@ const PacientePage = () => {
                         >
                             <UserBadge
                                 user={user}
-                                userRole="patient"
+                                userRole={userRole}
                                 onLogout={() => {
                                     handleLogout();
                                     setMobileMenuOpen(false);
@@ -836,6 +801,18 @@ const PacientePage = () => {
                                 compact={true}
                             />
                             <div className="border-t border-gray-200 mt-3 pt-3 space-y-2 px-3">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        setIsChangePasswordOpen(true);
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className="w-full border-slate-300 text-slate-700 hover:text-[#2d8659]"
+                                >
+                                    <KeyRound className="w-4 h-4 mr-1.5 text-[#2d8659]" />
+                                    Alterar Senha
+                                </Button>
                                 <Link
                                     to="/minhas-inscricoes"
                                     className="block px-2 py-2 rounded-md text-sm font-medium text-[#2d8659] hover:bg-gray-50 transition-colors"
@@ -850,8 +827,24 @@ const PacientePage = () => {
             </header>
             <div className="min-h-screen bg-gray-50 py-8 md:py-12 pt-28 md:pt-24">
                 <div className="container mx-auto px-3 md:px-4 max-w-4xl">
-                    <h1 className="text-4xl font-bold mb-2">Área do Paciente</h1>
-                    <p className="text-gray-500 mb-8">Gerencie seus agendamentos e consultas</p>
+                    <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
+                    {['professional', 'admin'].includes(userRole) && (
+                        <div className="mb-6 p-4 rounded-xl bg-blue-50/90 border border-blue-200 text-blue-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                            <div className="flex items-center gap-3">
+                                <Stethoscope className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                                <p className="text-sm">
+                                    Você está conectado com sua conta de <strong>{userRole === 'admin' ? 'Administrador' : 'Profissional'}</strong>. Este é o seu espaço pessoal de paciente.
+                                </p>
+                            </div>
+                            <Link to={userRole === 'admin' ? '/admin' : '/profissional'}>
+                                <Button size="sm" variant="outline" className="border-blue-300 text-blue-800 hover:bg-blue-100 text-xs whitespace-nowrap">
+                                    Ir para Painel {userRole === 'admin' ? 'Admin' : 'Profissional'} →
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
+                    <h1 className="text-4xl font-bold mb-2">Seu Espaço de Cuidado e Acolhimento</h1>
+                    <p className="text-gray-500 mb-8">Aqui você acompanha seus encontros, acessa sua sala e cuida do seu bem mais precioso: você.</p>
 
                     {/* Dashboard com Métricas */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -883,6 +876,26 @@ const PacientePage = () => {
                         />
                     </div>
 
+                    {/* Banner de Upsell de Pacote */}
+                    <div className="mb-8">
+                        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-6 shadow-md text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div>
+                                <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
+                                    <Star className="w-5 h-5 text-yellow-300" fill="currentColor" />
+                                    Mantenha a constância do seu processo
+                                </h3>
+                                <p className="text-emerald-50">
+                                    A terapia traz resultados mais profundos quando contínua. Com o acompanhamento mensal de 4 sessões, você assegura seu horário regular com mais tranquilidade e praticidade.
+                                </p>
+                            </div>
+                            <Link to="/agendamento?pacote=4">
+                                <Button className="bg-white text-emerald-600 hover:bg-emerald-50 font-semibold whitespace-nowrap">
+                                    Conhecer o Acompanhamento Mensal
+                                </Button>
+                            </Link>
+                        </div>
+                    </div>
+
                     {creditError && (
                         <div className="mb-6">
                             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
@@ -892,59 +905,57 @@ const PacientePage = () => {
                     )}
                     {hasCreditInfo && (
                         <div className="mb-6">
-                            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-                                <div className="flex items-start gap-3">
-                                    <CreditCard className="w-6 h-6 text-emerald-600 mt-1" />
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-emerald-900">Créditos disponíveis para novas consultas</p>
-                                        <p className="text-sm text-emerald-800 mt-1">
-                                            Você possui <strong>{formatCurrency(availableCreditAmount)}</strong> que pode ser aplicado no próximo agendamento.
-                                        </p>
+                            <div className="bg-white border border-emerald-100 shadow-sm rounded-2xl p-5">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-600 flex-shrink-0">
+                                            <CreditCard className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-500">Saldo em Carteira</p>
+                                            <div className="flex items-baseline gap-2">
+                                                <p className="text-2xl font-bold text-gray-900">{formatCurrency(availableCreditAmount)}</p>
+                                                {creditLoading && <span className="text-xs text-gray-400">Atualizando...</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-gray-500 sm:text-right max-w-xs">
+                                        <p>Aplicado automaticamente no próximo agendamento.</p>
                                         {reservedCreditAmount > 0 && (
-                                            <p className="text-xs text-emerald-700 mt-2">
-                                                {formatCurrency(reservedCreditAmount)} estão reservados enquanto um pagamento está em andamento.
+                                            <p className="text-emerald-600 font-medium mt-1">
+                                                {formatCurrency(reservedCreditAmount)} reservados.
                                             </p>
                                         )}
-                                        {creditLoading && (
-                                            <p className="text-xs text-emerald-600 mt-2">Atualizando informações de crédito...</p>
-                                        )}
-                                        {availableCreditsList.length > 0 && (
-                                            <ul className="mt-3 space-y-2">
-                                                {availableCreditsList.slice(0, 3).map((credit) => {
-                                                    const creditDate = credit.created_at ? new Date(credit.created_at) : null;
-                                                    const formattedDate = creditDate && !Number.isNaN(creditDate.getTime())
-                                                        ? creditDate.toLocaleDateString('pt-BR')
-                                                        : 'Data indisponível';
-                                                    const sourceLabel = credit.source_type === 'cancellation'
-                                                        ? 'Crédito por cancelamento'
-                                                        : credit.source_reason || `Origem: ${credit.source_type || 'manual'}`;
-                                                    const currencyCode = credit.currency || 'BRL';
-                                                    return (
-                                                        <li
-                                                            key={credit.id}
-                                                            className="flex items-center justify-between bg-white/70 border border-emerald-100 rounded-lg px-3 py-2 text-sm text-emerald-900"
-                                                        >
-                                                            <span className="pr-3 truncate">
-                                                                {formattedDate} • {sourceLabel}
-                                                            </span>
-                                                            <span className="font-semibold whitespace-nowrap">
-                                                                {formatCurrency(credit.amount, currencyCode)}
-                                                            </span>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        )}
-                                        {availableCreditsList.length > 3 && (
-                                            <p className="text-xs text-emerald-700 mt-2">
-                                                Você possui {availableCreditsList.length - 3} crédito(s) adicional(is). Todos ficam disponíveis na tela de pagamento.
-                                            </p>
-                                        )}
-                                        <p className="text-xs text-emerald-800 mt-3">
-                                            Durante o checkout, selecione a opção 'Usar crédito' para aplicar o saldo automaticamente.
-                                        </p>
                                     </div>
                                 </div>
+                                {availableCreditsList.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-gray-100">
+                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Últimas Movimentações</p>
+                                        <ul className="space-y-2">
+                                            {availableCreditsList.slice(0, 5).map((tx) => {
+                                                const txDate = tx.created_at ? new Date(tx.created_at) : null;
+                                                const formattedDate = txDate && !Number.isNaN(txDate.getTime())
+                                                    ? txDate.toLocaleDateString('pt-BR')
+                                                    : '';
+                                                let sourceLabel = tx.transaction_type;
+                                                if (tx.transaction_type === 'credit_cancellation') sourceLabel = 'Estorno de Cancelamento';
+                                                else if (tx.transaction_type === 'debit_payment') sourceLabel = 'Pagamento de Consulta';
+                                                else if (tx.transaction_type === 'admin_adjustment') sourceLabel = 'Ajuste Manual';
+                                                
+                                                const isCredit = Number(tx.amount) > 0;
+                                                
+                                                return (
+                                                    <li key={tx.id} className="flex items-center justify-between text-sm py-1 border-b border-gray-50 last:border-0">
+                                                        <span className="text-gray-600">{formattedDate} • {sourceLabel}</span>
+                                                        <span className={`font-medium ${isCredit ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                            {isCredit ? '+' : ''}{formatCurrency(tx.amount, 'BRL')}
+                                                        </span>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -955,13 +966,13 @@ const PacientePage = () => {
                                 Meus Agendamentos ({bookings.length})
                             </h2>
                             {bookings.length > 0 && (
-                                <div className="flex flex-wrap gap-2 items-center">
-                                    <div className="flex gap-2">
+                                <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center w-full sm:w-auto">
+                                    <div className="flex overflow-x-auto pb-2 sm:pb-0 gap-2 w-full sm:w-auto hide-scrollbar">
                                         <Button
                                             onClick={() => handleSort('default')}
                                             variant="outline"
                                             size="sm"
-                                            className={sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                            className={`rounded-full whitespace-nowrap flex-shrink-0 ${sortField === 'default' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}`}
                                         >
                                             Padrão
                                         </Button>
@@ -969,7 +980,7 @@ const PacientePage = () => {
                                             onClick={() => handleSort('status')}
                                             variant="outline"
                                             size="sm"
-                                            className={sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                            className={`rounded-full whitespace-nowrap flex-shrink-0 ${sortField === 'status' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}`}
                                         >
                                             Status {sortField === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
                                         </Button>
@@ -977,35 +988,42 @@ const PacientePage = () => {
                                             onClick={() => handleSort('date')}
                                             variant="outline"
                                             size="sm"
-                                            className={sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47]' : ''}
+                                            className={`rounded-full whitespace-nowrap flex-shrink-0 ${sortField === 'date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}`}
                                         >
                                             Data {sortField === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
                                         </Button>
                                     </div>
 
                                     {/* Seletor de itens por página */}
-                                    <div className="flex items-center gap-2 border-l pl-2">
-                                        <label className="text-sm text-gray-600">Itens:</label>
+                                    <div className="flex items-center gap-2 sm:border-l sm:pl-3 w-full sm:w-auto justify-end sm:justify-start">
+                                        <label className="text-sm text-gray-500 font-medium">Exibir:</label>
                                         <select
                                             value={itemsPerPage}
                                             onChange={(e) => {
                                                 setItemsPerPage(Number(e.target.value));
                                                 setCurrentPage(1);
                                             }}
-                                            className="border rounded px-2 py-1 text-sm"
+                                            className="border-gray-200 rounded-lg px-2 py-1 text-sm bg-gray-50 hover:bg-gray-100 transition-colors focus:ring-[#2d8659] focus:border-[#2d8659]"
                                         >
-                                            <option value="5">5</option>
-                                            <option value="10">10</option>
-                                            <option value="20">20</option>
+                                            <option value="5">5 itens</option>
+                                            <option value="10">10 itens</option>
+                                            <option value="20">20 itens</option>
                                         </select>
                                     </div>
                                 </div>
                             )}
                         </div>
                         {loading ? <p>Carregando seus agendamentos...</p> : bookings.length === 0 ? (
-                            <div className="text-center py-10">
-                                <p className="text-gray-500 mb-4">Você ainda não tem agendamentos.</p>
-                                <Link to="/agendamento"><Button className="bg-[#2d8659] hover:bg-[#236b47]">Agendar sua primeira consulta</Button></Link>
+                            <div className="text-center py-12 px-4 max-w-md mx-auto">
+                                <p className="text-gray-700 font-semibold text-lg mb-2">Você ainda não possui sessões agendadas.</p>
+                                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+                                    Dar o primeiro passo pode parecer desafiador, mas você não está sozinho(a). Quando se sentir pronto(a), estamos aqui para caminhar com você.
+                                </p>
+                                <Link to="/agendamento">
+                                    <Button className="bg-[#2d8659] hover:bg-[#236b47] rounded-full px-6 py-2.5 font-medium shadow-sm">
+                                        Encontrar um Profissional
+                                    </Button>
+                                </Link>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -1023,92 +1041,53 @@ const PacientePage = () => {
                                     const paymentNeedsRetry = latestPaymentStatus === 'rejected' || latestPaymentStatus === 'cancelled';
 
                                     return (
-                                        <div key={booking.id} className="border rounded-lg p-4 transition-all hover:shadow-md">
-                                            <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-3">
+                                        <div key={booking.id} className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 transition-all hover:shadow-lg mb-4">
+                                            <div className="flex flex-col sm:flex-row justify-between sm:items-start mb-4">
                                                 <div>
-                                                    <h3 className="font-bold text-lg">{booking.service.name}</h3>
-                                                    <p className="text-sm text-gray-600">com {booking.professional.name}</p>
+                                                    <h3 className="font-bold text-lg text-gray-900">{booking.service.name}</h3>
+                                                    <p className="text-sm text-gray-500 font-medium mt-0.5">com {booking.professional.name}</p>
                                                 </div>
-                                                <span className={`mt-2 sm:mt-0 px-3 py-1 rounded-full text-sm font-medium ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                                                    booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                                        booking.status.includes('cancelled') ? 'bg-red-100 text-red-800' :
-                                                            'bg-yellow-100 text-yellow-800'
-                                                    }`}>
+                                                <span className={`mt-3 sm:mt-0 px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase border ${
+                                                    booking.status === 'confirmed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                                    booking.status === 'completed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                    booking.status.includes('cancelled') ? 'bg-red-50 text-red-700 border-red-200' :
+                                                    'bg-amber-50 text-amber-700 border-amber-200'
+                                                }`}>
                                                     {booking.status === 'confirmed' ? 'Confirmado' :
                                                         booking.status === 'completed' ? 'Concluído' :
                                                             booking.status.includes('cancelled') ? 'Cancelado' : 'Pendente'}
                                                 </span>
                                             </div>
-                                            <div className="grid md:grid-cols-2 gap-2 text-sm mb-4">
-                                                <p className="flex items-center"><Calendar className="w-4 h-4 mr-2" /> {new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                                <p className="flex items-center"><Clock className="w-4 h-4 mr-2" /> {booking.booking_time}</p>
+
+                                            {/* Detalhes Estilo Ticket */}
+                                            <div className="bg-gray-50 rounded-xl p-4 flex flex-col md:flex-row gap-4 text-sm mb-5 border border-gray-100">
+                                                <div className="flex items-center text-gray-700">
+                                                    <Calendar className="w-4 h-4 mr-2 text-[#2d8659]" />
+                                                    <span className="font-medium">{new Date(booking.booking_date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: 'long', year: 'numeric' })}</span>
+                                                </div>
+                                                <div className="hidden md:block w-px bg-gray-200"></div>
+                                                <div className="flex items-center text-gray-700">
+                                                    <Clock className="w-4 h-4 mr-2 text-[#2d8659]" />
+                                                    <span className="font-medium">{booking.booking_time}</span>
+                                                </div>
                                             </div>
 
-                                            {/* Exibir Link do Zoom para consultas confirmadas ou pagas - VERSÃO MINIMIZADA */}
-                                            {(booking.status === 'confirmed' || booking.status === 'paid') && booking.meeting_link && (
-                                                <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg mb-4 overflow-hidden">
-                                                    {/* Cabeçalho sempre visível */}
-                                                    <div className="p-4">
-                                                        <div className="flex items-center justify-between">
-                                                            <h4 className="font-semibold text-blue-900 flex items-center">
-                                                                🎥 Consulta Online
-                                                            </h4>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => toggleZoomDetails(booking.id)}
-                                                                className="text-blue-700 hover:text-blue-900"
-                                                            >
-                                                                {expandedZoom[booking.id] ? (
-                                                                    <>
-                                                                        <ChevronUp className="w-4 h-4 mr-1" />
-                                                                        Ocultar
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <ChevronDown className="w-4 h-4 mr-1" />
-                                                                        Ver detalhes
-                                                                    </>
-                                                                )}
-                                                            </Button>
-                                                        </div>
-
-                                                        {/* Botão principal sempre visível */}
-                                                        <div className="mt-3">
-                                                            <a
-                                                                href={booking.meeting_link}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm"
-                                                            >
-                                                                🔗 Entrar na Sala Zoom
-                                                            </a>
-                                                        </div>
+                                            {/* Link da Consulta / Sala Virtual Segura */}
+                                            {(booking.status === 'confirmed' || booking.status === 'paid') && (
+                                                <div className="mb-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                                                    <div>
+                                                        <h4 className="font-semibold text-emerald-900 text-sm">🌱 Sua Consulta está Confirmada</h4>
+                                                        <p className="text-xs text-emerald-700 mt-1">Sua sessão virtual segura está confirmada. Recomendamos acessar a Sala Virtual alguns minutos antes do horário para testar áudio e vídeo.</p>
                                                     </div>
-
-                                                    {/* Detalhes expandíveis */}
-                                                    {expandedZoom[booking.id] && (
-                                                        <motion.div
-                                                            initial={{ height: 0, opacity: 0 }}
-                                                            animate={{ height: 'auto', opacity: 1 }}
-                                                            exit={{ height: 0, opacity: 0 }}
-                                                            transition={{ duration: 0.3 }}
-                                                            className="px-4 pb-4 space-y-3"
+                                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full md:w-auto">
+                                                        <Link
+                                                            to={`/sala-espera/${booking.id}`}
+                                                            className="inline-flex items-center justify-center w-full md:w-auto px-5 py-2.5 bg-[#2d8659] text-white rounded-full hover:bg-[#236b47] transition-colors font-medium text-sm shadow-sm"
                                                         >
-                                                            {booking.meeting_password && (
-                                                                <div className="bg-white p-3 rounded border border-blue-200">
-                                                                    <p className="text-sm text-gray-600 mb-1">🔑 Senha de acesso:</p>
-                                                                    <code className="text-base font-mono font-bold text-blue-900 bg-blue-100 px-3 py-1 rounded">
-                                                                        {booking.meeting_password}
-                                                                    </code>
-                                                                </div>
-                                                            )}
-                                                            <div className="text-xs text-blue-800 space-y-1 bg-white p-3 rounded border border-blue-200">
-                                                                <p>💡 <strong>Dica:</strong> Entre 5 minutos antes do horário agendado</p>
-                                                                <p>📱 Baixe o Zoom: <a href="https://zoom.us/download" target="_blank" rel="noopener noreferrer" className="underline">zoom.us/download</a></p>
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
+                                                            <Video className="w-4 h-4 mr-2" />
+                                                            Acessar Sala Virtual
+                                                        </Link>
+                                                    </div>
                                                 </div>
                                             )}
 
@@ -1118,27 +1097,27 @@ const PacientePage = () => {
                                                         <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
                                                         <div className="flex-1">
                                                             <h4 className="font-semibold text-amber-900 mb-1">
-                                                                Pagamento Pendente
+                                                                Quase lá! Seu horário está pré-reservado
                                                             </h4>
                                                             <p className="text-sm text-amber-800 mb-3">
-                                                                {latestPaymentMessage || 'Complete o pagamento para confirmar seu agendamento.'}
+                                                                {latestPaymentMessage || 'Basta finalizar o pagamento para garantirmos a sua vaga exclusiva com o profissional.'}
                                                             </p>
 
                                                             {/* Exibir QR Code PIX se disponível */}
                                                             {booking.payment?.[0]?.qr_code && (
                                                                 <div className="bg-white rounded-lg p-4 border-2 border-amber-200">
                                                                     <div className="flex flex-col md:flex-row gap-4 items-start">
-                                                                        {/* QR Code */}
-                                                                        <div className="flex flex-col items-center">
-                                                                            <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                                                                        {/* QR Code com tamanho mínimo de 200px para mobile */}
+                                                                        <div className="w-full sm:w-auto flex flex-col items-center">
+                                                                            <div className="bg-white p-3 rounded-xl border-2 border-gray-200 shadow-sm inline-flex items-center justify-center min-w-[220px] min-h-[220px]">
                                                                                 <QRCodeSVG
                                                                                     value={booking.payment[0].qr_code}
-                                                                                    size={160}
+                                                                                    size={220}
                                                                                     level="H"
                                                                                 />
                                                                             </div>
-                                                                            <p className="text-xs text-gray-600 mt-2 text-center">
-                                                                                Escaneie com seu app bancário
+                                                                            <p className="text-xs text-gray-600 mt-2 text-center font-medium">
+                                                                                Escaneie com a câmera do app do seu banco
                                                                             </p>
                                                                         </div>
 
@@ -1219,10 +1198,10 @@ const PacientePage = () => {
                                                     </div>
                                                 </div>
                                             )}
-                                            {booking.status === 'confirmed' && !booking.meeting_link && (
+                                            {booking.status === 'confirmed' && !booking.meeting_link && !booking.professional?.personal_meet_link && (
                                                 <div className="flex items-center gap-2 bg-green-50 border-l-4 border-green-400 p-3 rounded-r-lg">
                                                     <CheckCircle className="w-5 h-5 text-green-600" />
-                                                    <p className="text-sm text-green-800">Seu agendamento está confirmado! O link da consulta será disponibilizado em breve.</p>
+                                                    <p className="text-sm text-green-800">Seu agendamento está confirmado! Sua Sala Virtual estará disponível no dia da consulta.</p>
                                                 </div>
                                             )}
                                             <div className="mt-4 space-y-2">
@@ -1272,18 +1251,28 @@ const PacientePage = () => {
                                                     </Dialog>
                                                 )}
                                                 {booking.status !== 'cancelled_by_patient' && new Date(booking.booking_date) > new Date() && (
-                                                    <ProtectedAction
-                                                        action="booking:cancel_own"
-                                                        requireConfirmation
-                                                        confirmTitle="Cancelar Agendamento"
-                                                        confirmMessage={`Tem certeza que deseja cancelar este agendamento?`}
-                                                        destructive
-                                                        onConfirm={() => cancelBooking(booking.id)}
-                                                    >
-                                                        <Button size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700">
-                                                            <XCircle className="w-4 h-4 mr-1" /> Cancelar
-                                                        </Button>
-                                                    </ProtectedAction>
+                                                    (() => {
+                                                        const { isEligibleForCredit } = evaluatePatientCancellationEligibility(booking.booking_date, booking.booking_time);
+                                                        const bookingAmount = Number(booking.payment?.[0]?.amount || booking.valor_consulta || 150);
+                                                        const cancelMessage = isEligibleForCredit
+                                                            ? `Como você está cancelando com mais de 24h de antecedência, o valor integral de R$ ${bookingAmount.toFixed(2)} será creditado na sua carteira Doxologos para você reagendar quando quiser. Deseja confirmar?`
+                                                            : `Como faltam menos de 24 horas para o seu encontro, o profissional já reservou este horário exclusivo para cuidar de você e não é possível gerar créditos ou reembolso. Se preferir manter sua sessão, estamos aqui. Deseja mesmo cancelar?`;
+                                                            
+                                                        return (
+                                                            <ProtectedAction
+                                                                action="booking:cancel_own"
+                                                                requireConfirmation
+                                                                confirmTitle="Cancelar Agendamento"
+                                                                confirmMessage={cancelMessage}
+                                                                destructive
+                                                                onConfirm={() => cancelBooking(booking.id)}
+                                                            >
+                                                                <Button size="sm" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 hover:text-red-700">
+                                                                    <XCircle className="w-4 h-4 mr-1" /> Cancelar
+                                                                </Button>
+                                                            </ProtectedAction>
+                                                        );
+                                                    })()
                                                 )}
                                                 {isEligibleForReschedule && (
                                                     <Dialog open={reschedulingBooking?.id === booking.id} onOpenChange={(open) => !open && setReschedulingBooking(null)}>
@@ -1454,8 +1443,23 @@ const PacientePage = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Meu Acompanhamento */}
+                    <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+                        <PatientAcompanhamento />
+                    </div>
+
+                    {/* Seção Meus Materiais do Livro */}
+                    <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+                        <BookShelfSection />
+                    </div>
                 </div>
             </div>
+
+            <ChangePasswordModal
+                isOpen={isChangePasswordOpen}
+                onClose={() => setIsChangePasswordOpen(false)}
+            />
         </>
     );
 };

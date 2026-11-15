@@ -46,9 +46,9 @@ const TermosCondicoesPage = () => {
                 <p><strong>b)</strong> Em caso de atrasos, o tempo será ajustado para não ultrapassar o horário final previsto para a sessão, a fim de não prejudicar o próximo paciente.</p>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">4. Atendimentos Online</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">4. Atendimentos Online e Sala Virtual</h2>
               <p className="mb-6">
-                As plataformas de comunicação utilizadas são ZOOM e Google Meet. Elas oferecem segurança, estabilidade e são acessíveis via navegador em celular ou computador. Certifique-se de que sua conexão de internet, câmera e microfone estejam configurados antes do início do atendimento. Em alguns casos, pode ser necessário instalar o aplicativo desses serviços.
+                Os atendimentos ocorrem por meio da Sala Virtual segura da plataforma Doxologos. O acesso é liberado pontualmente no dia e horário da consulta mediante validação temporal e autenticação segura, preservando a privacidade do paciente e os registros de presença clínica. Certifique-se de que sua conexão de internet, câmera e microfone estejam configurados antes do início do atendimento.
               </p>
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">5. Requisitos Técnicos</h2>
@@ -65,9 +65,10 @@ const TermosCondicoesPage = () => {
                 <p><strong>c)</strong> A frequência ideal é semanal, mas você pode optar por quinzenal, mensal ou sazonal, desde que haja espaço na agenda do profissional.</p>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">7. Valores e Pagamento</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">7. Valores, Pagamento e Exclusividade de Intermediação</h2>
               <div className="space-y-2 mb-6">
                 <p><strong>a)</strong> O valor das sessões será pago exclusivamente por meio da plataforma e poderá ser realizado via PIX, cartão de crédito/débito, conforme sua preferência.</p>
+                <p><strong>b)</strong> Para segurança jurídica, sigilo e garantia de conformidade com o Código de Ética Profissional do Psicólogo, todos os agendamentos subsequentes, pagamentos e atendimentos originados na Doxologos devem ser intermediados estritamente dentro da plataforma. É vedado o desvio para transações diretas ou canais externos não auditados, sob pena de perda de garantias e descredenciamento.</p>
               </div>
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">8. Duração do Processo Terapêutico</h2>
@@ -76,11 +77,15 @@ const TermosCondicoesPage = () => {
                 <p><strong>b)</strong> Você pode encerrar o processo a qualquer momento. O profissional poderá pontuar e oferecer um feedback, mas a decisão final é sempre sua. Em hipótese alguma você será induzido ou pressionado a continuar o processo terapêutico.</p>
               </div>
 
-              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">9. Faltas e Cancelamentos</h2>
+              <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">9. Faltas, Cancelamentos e Reembolso de Pacotes</h2>
               <div className="space-y-2 mb-6">
-                <p><strong>a)</strong> O não comparecimento à sessão, sem aviso prévio de menos 24 horas, não será reembolsado.</p>
-                <p><strong>b)</strong> Casos excepcionais justificáveis deverão ser comunicados à administração da plataforma pelo e-mail: contato@doxologos.com.br.</p>
+                <p><strong>a)</strong> O não comparecimento à sessão sem aviso prévio de no mínimo 24 horas não será reembolsado, sendo o horário considerado disponibilizado e reservado na agenda do profissional.</p>
+                <p><strong>b)</strong> No caso de contratação de <strong>Pacotes de Consultas (Agendamentos Múltiplos)</strong>, o paciente poderá solicitar o cancelamento e reembolso parcial do saldo não utilizado a qualquer momento.</p>
+                <p><strong>c)</strong> O reembolso corresponderá a <strong>80% do valor restante das sessões elegíveis</strong> (agendadas para mais de 24 horas de antecedência). A retenção de 20% destina-se a cobrir despesas administrativas, bancárias, tributárias e operacionais da plataforma.</p>
+                <p><strong>d)</strong> Consultas agendadas para as próximas 24 horas em relação ao pedido de cancelamento são consideradas confirmadas e não reembolsáveis.</p>
+                <p><strong>e)</strong> Casos excepcionais justificáveis deverão ser comunicados à administração da plataforma pelo e-mail: contato@doxologos.com.br.</p>
               </div>
+
 
               <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">10. Comunicação e Confirmação</h2>
               <p className="mb-6">

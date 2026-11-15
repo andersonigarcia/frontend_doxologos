@@ -1,0 +1,187 @@
+{
+  "id": "dependencia-emocional",
+  "slug": "teste-dependencia-emocional-autoestima",
+  "aliases": [
+    "dependencia-emocional",
+    "dependencia",
+    "autoestima",
+    "teste-dependencia",
+    "teste-dependencia-emocional",
+    "teste-autoestima",
+    "idea"
+  ],
+  "title": "Inventário de Dependência Emocional e Autoestima",
+  "subtitle": "Identifique seu grau de apego ansioso, necessidade de validação e limites nas relações",
+  "category": "Identidade & Vínculos",
+  "icon": "Sparkles",
+  "badge": "Viral",
+  "estimatedTime": "3 a 4 min",
+  "scientificBasis": "Inspirado na Escala de Codependência (SFCDS), Cuestionario de Dependencia Emocional (CDE) e Escala de Rosenberg (RSE)",
+  "disclaimer": "Esta autoavaliação tem caráter reflexivo e educativo. Ela não substitui uma avaliação psicológica completa.",
+  "timeframePrompt": "Pensando nos seus relacionamentos e no seu dia a dia, com que frequência você se identifica com as afirmações abaixo?",
+  "maxScore": 36,
+  "options": [
+    { "label": "Raramente ou Nunca", "value": 0, "helper": "Quase nunca sinto isso" },
+    { "label": "Às vezes", "value": 1, "helper": "Em ocasiões específicas" },
+    { "label": "Frequentemente", "value": 2, "helper": "Com bastante frequência" },
+    { "label": "Quase sempre", "value": 3, "helper": "Intenso e diário" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Medo de Abandono",
+      "text": "Sinto um medo constante e angustiante de ser abandonado(a), rejeitado(a) ou trocado(a) por quem eu amo."
+    },
+    {
+      "id": 2,
+      "dimension": "Necessidade de Validação",
+      "text": "Minha autoestima e humor no dia dependem quase que exclusivamente de como o(a) parceiro(a) ou amigos me tratam."
+    },
+    {
+      "id": 3,
+      "dimension": "Anulação de Limites",
+      "text": "Tenho grande dificuldade para dizer 'não' e estabelecer limites, sentindo culpa imediata quando tento me priorizar."
+    },
+    {
+      "id": 4,
+      "dimension": "Camaleão Social / Anulação",
+      "text": "Costumo mudar meus gostos, planos, opiniões e valores apenas para agradar a outra pessoa e evitar conflitos."
+    },
+    {
+      "id": 5,
+      "dimension": "Medo da Solidão",
+      "text": "Estar sozinho(a) me causa uma sensação profunda de vazio, desamparo, angústia ou falta de sentido."
+    },
+    {
+      "id": 6,
+      "dimension": "Reafirmação Excessiva",
+      "text": "Sinto necessidade frequente de perguntar se a pessoa ainda gosta de mim ou se fiz algo errado ('Você está bravo(a) comigo?')."
+    },
+    {
+      "id": 7,
+      "dimension": "Tolerância a Desrespeito",
+      "text": "Já permaneci ou permaneço em relações que me fazem mal ou me desrespeitam por pavor de ficar sem ninguém."
+    },
+    {
+      "id": 8,
+      "dimension": "Insegurança & Hipervigilância",
+      "text": "Fico checando mensagens, redes sociais ou mudanças de tom de voz do outro por insegurança de perder seu afeto."
+    },
+    {
+      "id": 9,
+      "dimension": "Complexo de Salvador(a)",
+      "text": "Assumo a responsabilidade de 'salvar', consertar ou carregar os problemas emocionais dos outros nas minhas costas."
+    },
+    {
+      "id": 10,
+      "dimension": "Autocrítica & Sensação de Insuficiência",
+      "text": "Tenho dificuldade de reconhecer meu próprio valor, sentindo-me frequentemente insuficiente, imperfeito(a) e 'menos que os outros'."
+    },
+    {
+      "id": 11,
+      "dimension": "Perda de Identidade",
+      "text": "Quando estou em um relacionamento, acabo me esquecendo dos meus próprios projetos, amizades e sonhos individuais."
+    },
+    {
+      "id": 12,
+      "dimension": "Dificuldade de Decisão Autônoma",
+      "text": "Sinto insegurança para tomar decisões simples sobre minha vida sem antes pedir a aprovação ou opinião de terceiros."
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Paz Mental e na Autonomia",
+    "prompt": "Em que nível a dependência da aprovação alheia ou a insegurança têm desgastado suas energias e sua paz interior?",
+    "options": [
+      { "label": "Nenhum impacto (sinto-me seguro e em paz)", "value": 0 },
+      { "label": "Impacto leve (inseguranças pontuais)", "value": 1 },
+      { "label": "Impacto moderado (ansiedade frequente e desgaste emocional)", "value": 2 },
+      { "label": "Impacto severo (angústia contínua, perda de identidade e sofrimento nas relações)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 9,
+      "severity": "minimal",
+      "label": "Autonomia Afetiva & Autoestima Saudável",
+      "tag": "Vínculo Seguro & Autônomo",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua pontuação revela um padrão de apego seguro, boa maturidade emocional, clareza de identidade e capacidade de amar sem anular a si mesmo(a).",
+      "clinicalInsight": "Você consegue se conectar com profundidade mantendo sua individualidade e seus limites respeitados. A solidão é vivenciada como solitude saudável e não como abandono.",
+      "recommendations": [
+        "Continue nutrindo sua autoestima por meio do autoconhecimento e de projetos com propósito.",
+        "Mantenha relacionamentos baseados na reciprocidade e na liberdade mútua.",
+        "Apoie pessoas queridas a encontrarem a própria voz e segurança emocional."
+      ],
+      "spiritualBridge": "'Eu te louvo porque de um modo assombroso e tão maravilhoso fui feito.' (Salmo 139:14). Quando sabemos quem somos em Deus, somos libertos da necessidade de validação humana constante.",
+      "ctaText": "Conhecer Nossos Especialistas",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 10,
+      "max": 18,
+      "severity": "mild",
+      "label": "Insegurança Relacional Leve",
+      "tag": "Atenção & Fortalecimento",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta alguns traços de carência afetiva ou receio de desagradar que, em momentos de tensão ou rejeição, despertam insegurança.",
+      "clinicalInsight": "Pequenas dúvidas sobre o próprio valor podem fazer você ceder mais do que deveria ou ter receio de expressar suas vontades. Fortalecer a assertividade e o amor-próprio traz grande alívio.",
+      "recommendations": [
+        "Pratique expressar suas preferências em pequenas decisões cotidianas sem pedir desculpas.",
+        "Identifique momentos em que você está tentando 'adivinhar' o que o outro pensa em vez de dialogar.",
+        "Reserve tempo para cultivar hobbies e amizades independentes do relacionamento."
+      ],
+      "spiritualBridge": "'O temor do homem arma laços, mas o que confia no Senhor está seguro.' (Provérbios 29:25). A confiança no amor incondicional de Deus é a âncora da nossa segurança.",
+      "ctaText": "Agendar Sessão com Psicólogo",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 19,
+      "max": 27,
+      "severity": "moderate",
+      "label": "Padrão Significativo de Dependência Emocional",
+      "tag": "Alerta de Dependência Afetiva",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação indica um padrão marcado de apego ansioso, medo de rejeição e anulação pessoal, gerando montanhas-russas emocionais constantes.",
+      "clinicalInsight": "A dependência emocional faz o cérebro associar a aprovação do outro à própria sobrevivência psíquica. A psicoterapia fortalece sua identidade, ensina a colocar limites saudáveis e cura feridas de rejeição.",
+      "recommendations": [
+        "Inicie psicoterapia para desconstruir crenças de desamparo e trabalhar feridas de rejeição passadas.",
+        "Aprenda a tolerar o desconforto passageiro de dizer 'não' quando algo ultrapassar seus limites.",
+        "Comece a redescobrir seus próprios sonhos, gostos e talentos que foram deixados de lado."
+      ],
+      "spiritualBridge": "'Sobre tudo o que se deve guardar, guarda o teu coração, porque dele procedem as fontes da vida.' (Provérbios 4:23). Cuidar da sua alma é um ato sagrado.",
+      "ctaText": "Agendar Psicoterapia para Autoestima",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 28,
+      "max": 36,
+      "severity": "severe",
+      "label": "Dependência Afetiva Severa / Risco Relacional",
+      "tag": "Sofrimento Relacional Agudo / Alerta Vermelho",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado aponta para um nível agudo de dependência emocional, sensação de desamparo e vulnerabilidade a relações abusivas ou exaustivas.",
+      "clinicalInsight": "Nesta faixa, a pessoa frequentemente sente que 'não existe' sem o outro e tolera desrespeitos profundos por medo do abandono. O acolhimento psicológico é fundamental e urgente para resgatar sua dignidade e autonomia.",
+      "recommendations": [
+        "Agende com prioridade uma consulta psicológica especializada em dependência emocional e traumas de apego.",
+        "Busque uma rede de apoio segura (família, amigos de confiança ou mentores) para não enfrentar isso em isolamento.",
+        "Lembre-se: amar não significa tolerar abusos ou destruir a si mesmo(a)."
+      ],
+      "spiritualBridge": "'Porventura procuro eu agora o favor dos homens ou o de Deus? Se agradasse ainda a homens, não seria servo de Cristo.' (Gálatas 1:10). Seu valor é eterno e inegociável aos olhos do Pai.",
+      "ctaText": "Agendar Atendimento Prioritário",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

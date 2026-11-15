@@ -48,15 +48,13 @@ async function testWebhook() {
         user_id: '123456'
     };
 
-    // Generate Signature
+    // Generate Signature using the real secret from .env
     const ts = Date.now().toString();
     const requestId = crypto.randomUUID();
     const manifest = `id:${fakePaymentId};request-id:${requestId};ts:${ts};`;
 
-    // HMAC-SHA256 signature generation (Node.js style)
-    // Note: If we don't have the real SECRET used in the deployed function, verification might fail or be skipped if code allows.
-    // But testing connectivity is the main goal here.
-    const signature = crypto.createHmac('sha256', 'NON_MATCHING_SECRET') // Deliberately wrong secret if we don't have the real one
+    const signingSecret = MP_WEBHOOK_SECRET;
+    const signature = crypto.createHmac('sha256', signingSecret)
         .update(manifest)
         .digest('hex');
 
@@ -66,25 +64,33 @@ async function testWebhook() {
         'x-signature': `ts=${ts},v1=${signature}`
     };
 
+    // URL no formato v2.0 (Feed): data.id como query param
+    const targetUrl = `${WEBHOOK_URL}?data.id=${fakePaymentId}&type=payment`;
+
     try {
-        console.log('📤 Sending Webhook Request...');
-        const response = await fetch(WEBHOOK_URL, {
+        console.log('📤 Sending Webhook v2.0 Request (with HMAC)...');
+        console.log(`   URL: ${targetUrl}`);
+        console.log(`   x-request-id: ${requestId}`);
+        console.log(`   Manifest signed: "${manifest}"`);
+        const response = await fetch(targetUrl, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(payload)
         });
 
         const text = await response.text();
-        console.log(`📥 Response Status: ${response.status}`);
+        console.log(`\n📥 Response Status: ${response.status}`);
         console.log(`📥 Response Body: ${text}`);
 
-        if (response.status === 200) {
-            console.log('✅ Webhook accepted the request (or ignored gracefully).');
-        } else if (response.status === 500) {
-            console.log('✅ Webhook reached logic but failed likely due to MP Validation (Expected for fake ID).');
-            console.log('   This confirms the function is executing and attempting to validate with MercadoPago.');
+        if (response.status === 401) {
+            console.error('❌ HMAC verification FAILED — secret ainda incorreto ou divergente.');
+        } else if (response.status === 200 || response.status === 500) {
+            console.log('✅ HMAC verificado com sucesso! Webhook passou pela validação de assinatura.');
+            if (response.status === 500) {
+                console.log('   (500 esperado: ID de pagamento falso não encontrado na API do MP — correto)');
+            }
         } else {
-            console.warn('⚠️ Unexpected status code.');
+            console.warn(`⚠️ Status inesperado: ${response.status}`);
         }
 
     } catch (error) {

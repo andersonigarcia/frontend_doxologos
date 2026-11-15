@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { corsHeaders } from '../_shared/cors.ts'
+import { requireAdmin } from '../_shared/auth.ts'
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -8,12 +9,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verificar autenticação
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('Token de autorização não fornecido')
-    }
-
     // Criar cliente Supabase com service role
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -26,33 +21,67 @@ Deno.serve(async (req) => {
       }
     )
 
-    // Verificar se o usuário logado é admin
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-
-    if (userError || !user) {
-      throw new Error('Usuário não autenticado')
-    }
-
-    if (user.user_metadata?.role !== 'admin') {
-      throw new Error('Acesso negado. Apenas administradores podem acessar esta função.')
-    }
+    // Validar autenticação e RBAC (ADR 005 / ADR 012)
+    await requireAdmin(req, supabaseAdmin)
 
     // Receber dados do body
-    const { userId, userData } = await req.json()
+    const { userId, userData, professionalData } = await req.json()
 
     if (!userId) {
       throw new Error('ID do usuário não fornecido')
     }
 
-    // Atualizar usuário
-    const { data, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
+    // Tentar atualizar usuário (resolvendo fallback se userId for id de professionals)
+    let targetAuthUserId = userId
+    let updateResult = await supabaseAdmin.auth.admin.updateUserById(
+      targetAuthUserId,
       userData
     )
 
-    if (updateError) {
-      throw updateError
+    if (updateResult.error && (updateResult.error.message?.toLowerCase().includes('user not found') || updateResult.error.status === 404)) {
+      const { data: profRecord } = await supabaseAdmin
+        .from('professionals')
+        .select('user_id')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (profRecord?.user_id) {
+        targetAuthUserId = profRecord.user_id
+        updateResult = await supabaseAdmin.auth.admin.updateUserById(
+          targetAuthUserId,
+          userData
+        )
+      }
+    }
+
+    if (updateResult.error) {
+      throw updateResult.error
+    }
+
+    const data = updateResult.data
+
+    // Sincronizar dados do profissional caso fornecidos
+    if (professionalData) {
+      // Remover campos inexistentes no banco (ex: email)
+      const { email, ...cleanProfData } = professionalData
+
+      const { data: existingProf } = await supabaseAdmin
+        .from('professionals')
+        .select('id, user_id')
+        .or(`id.eq.${userId},user_id.eq.${targetAuthUserId}`)
+        .maybeSingle()
+
+      if (existingProf) {
+        const { error: profError } = await supabaseAdmin
+          .from('professionals')
+          .update(cleanProfData)
+          .eq('id', existingProf.id)
+
+        if (profError) {
+          console.error('Erro ao sincronizar dados do profissional:', profError)
+          throw new Error('Falha ao sincronizar dados públicos do profissional: ' + profError.message)
+        }
+      }
     }
 
     console.log(`✅ Admin ${user.email} atualizou usuário ${userId}`)

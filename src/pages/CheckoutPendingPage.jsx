@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Clock, Calendar, Copy, CheckCircle, AlertCircle, RefreshCw, Home, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/lib/customSupabaseClient';
+import { getPaymentByMpId } from '@/services/paymentService';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import analytics from '@/lib/analytics';
@@ -19,21 +20,65 @@ const CheckoutPendingPage = () => {
     const [loading, setLoading] = useState(true);
     const [checking, setChecking] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [timeLeftSeconds, setTimeLeftSeconds] = useState(null);
 
     const paymentId = searchParams.get('payment_id');
     const externalReference = searchParams.get('external_reference');
     const preferenceId = searchParams.get('preference_id');
 
     useEffect(() => {
+        if (!payment && !booking) return;
+
+        let expiresAtMs = null;
+        if (payment?.raw_payload?.date_of_expiration) {
+            expiresAtMs = new Date(payment.raw_payload.date_of_expiration).getTime();
+        } else {
+            const createdAtMs = booking?.created_at
+                ? new Date(booking.created_at).getTime()
+                : (payment?.created_at ? new Date(payment.created_at).getTime() : Date.now());
+
+            if (booking?.booking_date) {
+                let bTime = booking.booking_time || '00:00';
+                if (bTime.length === 5) bTime += ':00';
+                const bookingTimeMs = new Date(`${booking.booking_date}T${bTime}`).getTime();
+                const leadTimeMs = bookingTimeMs - createdAtMs;
+
+                let allowedWindowMs;
+                if (leadTimeMs < 3 * 60 * 60 * 1000) {
+                    allowedWindowMs = 15 * 60 * 1000;
+                } else if (leadTimeMs < 24 * 60 * 60 * 1000) {
+                    allowedWindowMs = 30 * 60 * 1000;
+                } else {
+                    allowedWindowMs = 60 * 60 * 1000;
+                }
+                expiresAtMs = createdAtMs + allowedWindowMs;
+            } else {
+                expiresAtMs = createdAtMs + 30 * 60 * 1000;
+            }
+        }
+
+        const updateTimer = () => {
+            const remaining = Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
+            setTimeLeftSeconds(remaining);
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [booking, payment]);
+
+    const formatTimer = (seconds) => {
+        if (seconds === null) return '--:--';
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    };
+
+    useEffect(() => {
         const fetchData = async () => {
             try {
                 if (paymentId) {
-                    const { data: paymentData } = await supabase
-                        .from('payments')
-                        .select('*')
-                        .eq('mp_payment_id', paymentId)
-                        .single();
-                    
+                    const paymentData = await getPaymentByMpId(paymentId);
                     if (paymentData) {
                         setPayment(paymentData);
                     }
@@ -80,29 +125,53 @@ const CheckoutPendingPage = () => {
         fetchData();
     }, [paymentId, externalReference, payment?.booking_id]);
 
-    // Auto-check payment status every 5 seconds
+    // Fase 2: Auto-check via Realtime + Fallback de Polling (30s)
     useEffect(() => {
         if (!payment?.mp_payment_id) return;
 
-        const interval = setInterval(async () => {
-            try {
-                const { data: updatedPayment } = await supabase
-                    .from('payments')
-                    .select('status')
-                    .eq('mp_payment_id', payment.mp_payment_id)
-                    .single();
+        // 1. Subscription via Realtime
+        const channel = supabase.channel(`payment-${payment.mp_payment_id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'payments',
+                    filter: `mp_payment_id=eq.${payment.mp_payment_id}`
+                },
+                (payload) => {
+                    const status = payload.new.status;
+                    const refParam = booking?.id || payment.external_reference || externalReference || '';
+                    if (status === 'approved') {
+                        navigate(`/checkout/success?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
+                    } else if (status === 'rejected' || status === 'cancelled') {
+                        navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
+                    }
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('Realtime inscrito no pagamento:', payment.mp_payment_id);
+                }
+            });
 
+        // 2. Fallback de Polling seguro (a cada 30s)
+        const checkStatus = async () => {
+            try {
+                const updatedPayment = await getPaymentByMpId(payment.mp_payment_id);
+
+                const refParam = booking?.id || payment.external_reference || externalReference || '';
                 if (updatedPayment?.status === 'approved') {
-                    // Payment approved! Redirect to success
-                    navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                    navigate(`/checkout/success?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
                 } else if (updatedPayment?.status === 'rejected' || updatedPayment?.status === 'cancelled') {
-                    // Payment failed, redirect to failure
-                    navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                    navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
                 }
             } catch (error) {
-                console.error('Erro ao verificar status:', error);
+                console.error('Erro ao verificar status (fallback):', error);
             }
-        }, 5000);
+        };
+
+        const interval = setInterval(checkStatus, 30000);
 
         // Stop checking after 10 minutes
         const timeout = setTimeout(() => clearInterval(interval), 600000);
@@ -110,22 +179,20 @@ const CheckoutPendingPage = () => {
         return () => {
             clearInterval(interval);
             clearTimeout(timeout);
+            supabase.removeChannel(channel);
         };
     }, [payment?.mp_payment_id, booking?.id, navigate]);
 
     const handleManualCheck = async () => {
         setChecking(true);
         try {
-            const { data: updatedPayment } = await supabase
-                .from('payments')
-                .select('status')
-                .eq('mp_payment_id', payment.mp_payment_id)
-                .single();
+            const updatedPayment = await getPaymentByMpId(payment.mp_payment_id);
 
+            const refParam = booking?.id || payment.external_reference || externalReference || '';
             if (updatedPayment?.status === 'approved') {
-                navigate(`/checkout/success?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                navigate(`/checkout/success?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
             } else if (updatedPayment?.status === 'rejected' || updatedPayment?.status === 'cancelled') {
-                navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}&external_reference=${booking?.id}`);
+                navigate(`/checkout/failure?payment_id=${payment.mp_payment_id}${refParam ? `&external_reference=${refParam}` : ''}`);
             } else {
                 alert('O pagamento ainda está pendente. Aguarde a confirmação.');
             }
@@ -193,14 +260,44 @@ const CheckoutPendingPage = () => {
                         {/* PIX QR Code */}
                         {isPix && payment?.qr_code && (
                             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
-                                <h3 className="font-semibold text-gray-900 mb-4 text-center">
+                                <h3 className="font-semibold text-gray-900 mb-2 text-center">
                                     Pagamento via PIX
                                 </h3>
+
+                                {/* Timer de Expiração da Reserva */}
+                                {timeLeftSeconds !== null && (
+                                    <div className={`mb-4 p-3 rounded-lg text-center font-medium border flex items-center justify-center gap-2 ${
+                                        timeLeftSeconds > 300
+                                            ? 'bg-amber-50 border-amber-200 text-amber-900'
+                                            : timeLeftSeconds > 0
+                                            ? 'bg-red-50 border-red-200 text-red-700 animate-pulse'
+                                            : 'bg-gray-100 border-gray-300 text-gray-700'
+                                    }`}>
+                                        <Clock className="w-5 h-5" />
+                                        {timeLeftSeconds > 0 ? (
+                                            <span>
+                                                Reserva garantida por: <strong className="font-mono text-lg">{formatTimer(timeLeftSeconds)}</strong> min
+                                            </span>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <span>⚠️ Reserva expirada. O horário foi liberado para outros pacientes.</span>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => navigate('/agendamento')}
+                                                    className="mt-1 bg-white text-xs"
+                                                >
+                                                    Escolher outro horário
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 
                                 {/* QR Code */}
                                 <div className="flex justify-center mb-4">
-                                    <div className="bg-white p-4 rounded-lg shadow-lg">
-                                        <QRCodeSVG value={payment.qr_code} size={200} />
+                                    <div className="bg-white p-4 rounded-2xl shadow-lg border-2 border-emerald-100 min-w-[220px] min-h-[220px] inline-flex items-center justify-center">
+                                        <QRCodeSVG value={payment.qr_code} size={220} level="M" />
                                     </div>
                                 </div>
 
@@ -314,7 +411,7 @@ const CheckoutPendingPage = () => {
                                         <img
                                             src={booking.professional.image_url}
                                             alt={booking.professional.name}
-                                            className="w-12 h-12 rounded-full object-cover mr-3"
+                                            className="w-12 h-12 rounded-full object-cover mr-3" width={48} height={48} loading="lazy"
                                         />
                                     )}
                                     <div>

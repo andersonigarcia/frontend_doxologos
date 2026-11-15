@@ -7,9 +7,27 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, ExternalLink, Heart, ArrowLeft, Video, Lock, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { fetchEventMeeting } from '@/services/eventAccessService';
+import { registerCheckIn, sendHeartbeat } from '@/services/eventPresenceService';
+import emailService from '@/lib/emailService';
+import emailTemplates from '@/lib/emailTemplates';
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { AlertTriangle, PlayCircle } from 'lucide-react';
+
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|live\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = String(url).match(regExp);
+  if (match && match[2] && match[2].length === 11) {
+    return `https://www.youtube-nocookie.com/embed/${match[2]}?autoplay=1&modestbranding=1&rel=0`;
+  }
+  return null;
+}
 
 export default function MinhasInscricoesPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [inscricoes, setInscricoes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +35,12 @@ export default function MinhasInscricoesPage() {
   const [meetingAccess, setMeetingAccess] = useState({});
   const [meetingLoading, setMeetingLoading] = useState({});
   const [meetingErrors, setMeetingErrors] = useState({});
+
+  // Cancellation State
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [selectedInscricao, setSelectedInscricao] = useState(null);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -60,6 +84,72 @@ export default function MinhasInscricoesPage() {
       setLoading(false);
     }
   };
+
+  const handleOpenCancel = (inscricao) => {
+    setSelectedInscricao(inscricao);
+    setCancellationReason('');
+    setCancelModalOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!selectedInscricao) return;
+
+    try {
+      setIsCancelling(true);
+
+      const { data, error } = await supabase.rpc('cancel_event_registration', {
+        p_inscricao_id: selectedInscricao.id,
+        p_reason: cancellationReason
+      });
+
+      if (error) throw error;
+
+      // Send Cancellation Email
+      try {
+        const evento = selectedInscricao.eventos;
+        const refundMessage = data.refund_status === 'requested'
+          ? 'O reembolso foi solicitado e está sob análise. Em breve você receberá mais informações.'
+          : null;
+
+        const emailHtml = emailTemplates.eventoCancelamento(
+          selectedInscricao,
+          evento,
+          cancellationReason,
+          refundMessage
+        );
+
+        await emailService.sendEmail({
+          to: user.email,
+          subject: `Cancelamento - ${evento.titulo}`,
+          html: emailHtml,
+          type: 'event_cancellation'
+        });
+      } catch (emailErr) {
+        console.error('Erro ao enviar email de cancelamento:', emailErr);
+      }
+
+      toast({
+        title: "Cancelamento realizado",
+        description: data.message || "Sua inscrição foi cancelada com sucesso.",
+        variant: "default" // or success if available
+      });
+
+      setCancelModalOpen(false);
+      fetchInscricoes(); // Refresh list
+
+    } catch (err) {
+      console.error('Erro ao cancelar:', err);
+      toast({
+        title: "Erro ao cancelar",
+        description: err.message || "Não foi possível cancelar sua inscrição.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+
 
   const getStatusBadge = (inscricao) => {
     const { status, payment_status } = inscricao;
@@ -270,7 +360,7 @@ export default function MinhasInscricoesPage() {
               {inscricoes.map((inscricao, index) => {
                 const evento = inscricao.eventos;
                 const isPast = isEventoPast(evento.data_fim);
-                
+
                 // Lógica ajustada:
                 // - Eventos GRATUITOS: sempre mostra Zoom (se disponível)
                 // - Eventos PAGOS: mostra Zoom apenas se status='confirmed'
@@ -303,9 +393,8 @@ export default function MinhasInscricoesPage() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className={`bg-white rounded-xl shadow-lg overflow-hidden ${
-                      isPast ? 'opacity-75' : ''
-                    }`}
+                    className={`bg-white rounded-xl shadow-lg overflow-hidden ${isPast ? 'opacity-75' : ''
+                      }`}
                   >
                     <div className="p-6">
                       <div className="flex items-start justify-between mb-4">
@@ -355,7 +444,7 @@ export default function MinhasInscricoesPage() {
                           <MapPin className="w-5 h-5 text-[#2d8659]" />
                           <div>
                             <p className="text-sm text-gray-500">Local</p>
-                            <p className="font-medium">Online (Zoom)</p>
+                            <p className="font-medium">Online (Google Meet)</p>
                           </div>
                         </div>
 
@@ -383,16 +472,15 @@ export default function MinhasInscricoesPage() {
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <div>
                               <span className="text-gray-500">Status:</span>
-                              <span className={`ml-2 font-medium ${
-                                inscricao.payment_status === 'approved'
-                                  ? 'text-green-600'
-                                  : 'text-amber-600'
-                              }`}>
+                              <span className={`ml-2 font-medium ${inscricao.payment_status === 'approved'
+                                ? 'text-green-600'
+                                : 'text-amber-600'
+                                }`}>
                                 {inscricao.payment_status === 'approved'
                                   ? 'Pago'
                                   : inscricao.payment_status === 'pending'
-                                  ? 'Aguardando Pagamento'
-                                  : 'Pendente'}
+                                    ? 'Aguardando Pagamento'
+                                    : 'Pendente'}
                               </span>
                             </div>
                             {inscricao.payment_date && (
@@ -407,27 +495,82 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
-                      {/* Link Zoom (somente se confirmado) */}
+                      {/* Link Zoom ou YouTube Embed (somente se confirmado) */}
                       {showZoomLink && (
-                        <div className="mb-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                        <div className="mb-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl shadow-sm">
                           <div className="flex items-start gap-3">
                             <Video className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
                             <div className="flex-1">
-                              <h3 className="font-semibold text-green-900 mb-2">
-                                🎥 Sala Zoom do Evento
+                              <h3 className="font-semibold text-green-900 mb-1 flex items-center gap-2">
+                                🔴 Transmissão da Sala do Evento
                               </h3>
-                              <p className="text-sm text-green-800 mb-3">
-                                Acesse a sala Zoom no dia e horário do evento:
-                              </p>
-                              <a
-                                href={meetingInfo.meetingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-                              >
-                                <ExternalLink className="w-4 h-4" />
-                                Acessar Sala Zoom
-                              </a>
+                              {/* Link Release Check */}
+                              {(() => {
+                                const eventDate = new Date(inscricao.eventos.data_inicio);
+                                const releaseMinutes = inscricao.eventos.meeting_link_release_minutes ?? 60; // Default 60 min
+
+                                const releaseTime = new Date(eventDate.getTime() - releaseMinutes * 60000);
+                                const now = new Date();
+
+                                const isReleased = now >= releaseTime;
+                                const youtubeEmbedUrl = getYouTubeEmbedUrl(meetingInfo.meetingLink);
+
+                                if (isReleased) {
+                                  if (youtubeEmbedUrl) {
+                                    return (
+                                      <div className="mt-3 space-y-3">
+                                        <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg border border-gray-200 bg-black">
+                                          <iframe
+                                            src={youtubeEmbedUrl}
+                                            title={evento.titulo}
+                                            className="w-full h-full border-0"
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                            allowFullScreen
+                                          />
+                                        </div>
+                                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-green-800 bg-green-100/80 px-3 py-2 rounded-md">
+                                          <span className="flex items-center gap-1 font-medium">
+                                            <PlayCircle className="w-4 h-4 text-green-700 animate-pulse" />
+                                            Transmissão Exclusiva Doxologos — Presença em tempo real ativa
+                                          </span>
+                                          <a
+                                            href={meetingInfo.meetingLink}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="underline hover:text-green-950 font-medium"
+                                          >
+                                            Abrir no YouTube ↗
+                                          </a>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div className="mt-2">
+                                      <p className="text-sm text-green-800 mb-3">
+                                        Acesse a sala no dia e horário do evento:
+                                      </p>
+                                      <a
+                                        href={meetingInfo.meetingLink}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                        Acessar Sala do Evento
+                                      </a>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="bg-white/60 rounded px-3 py-2 text-sm text-green-800 border border-green-200 inline-block mt-2">
+                                      <span className="font-semibold block mb-1">🔒 Link Protegido</span>
+                                      Disponível a partir das {releaseTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} ({releaseMinutes} min antes do início)
+                                    </div>
+                                  );
+                                }
+                              })()}
                               {meetingInfo.meetingPassword && (
                                 <div className="mt-3 flex items-center gap-2 text-sm">
                                   <Lock className="w-4 h-4 text-green-700" />
@@ -487,9 +630,9 @@ export default function MinhasInscricoesPage() {
                                 ⏳ Pagamento Pendente
                               </p>
                               <p className="text-sm text-amber-800 mb-3">
-                                Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Zoom após a confirmação do pagamento.
+                                Complete o pagamento para confirmar sua vaga. Você receberá o link da sala Google Meet após a confirmação do pagamento.
                               </p>
-                              
+
                               <Button
                                 onClick={() => handleOpenCheckout(inscricao)}
                                 className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-700"
@@ -503,7 +646,20 @@ export default function MinhasInscricoesPage() {
                         </div>
                       )}
 
-                      {/* Mensagem se Zoom não disponível mas confirmado */}
+                      {/* Botão de Cancelamento */}
+                      {inscricao.status !== 'cancelled' && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                          <Button
+                            variant="ghost"
+                            onClick={() => handleOpenCancel(inscricao)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 text-sm h-auto py-2 px-3"
+                          >
+                            Cancelar Inscrição
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Mensagem se link de videochamada não disponível mas confirmado */}
                     </div>
                   </motion.div>
                 );
@@ -512,6 +668,49 @@ export default function MinhasInscricoesPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de Cancelamento */}
+      <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancelar Inscrição</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja cancelar sua inscrição?
+              {selectedInscricao?.eventos?.valor > 0 && ['paid', 'approved', 'confirmed'].includes(selectedInscricao?.payment_status) && (
+                <span className="block mt-2 font-medium text-amber-600 flex items-center">
+                  <AlertTriangle className="inline w-4 h-4 mr-1" />
+                  Atenção: Para eventos pagos, o reembolso passará por análise.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <label className="block text-sm font-medium mb-2 text-gray-700">
+              Motivo (opcional)
+            </label>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d8659]"
+              placeholder="Indique o motivo do cancelamento..."
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelModalOpen(false)}>
+              Manter Inscrição
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={isCancelling}
+            >
+              {isCancelling ? 'Processando...' : 'Confirmar Cancelamento'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -1,0 +1,164 @@
+{
+  "id": "phq-9",
+  "slug": "teste-depressao-phq9",
+  "aliases": ["phq-9", "phq9", "teste-depressao", "depressao", "escala-depressao"],
+  "title": "Escala de Depressão e Humor (PHQ-9)",
+  "subtitle": "Avaliação clínica de sintomas de humor, desânimo e vitalidade",
+  "category": "Humor & Bem-Estar",
+  "icon": "HeartHandshake",
+  "badge": "Padrão Ouro",
+  "estimatedTime": "2 a 3 min",
+  "scientificBasis": "Baseado no Patient Health Questionnaire (PHQ-9 - Kroenke et al., 2001) e DSM-5",
+  "disclaimer": "Esta autoavaliação tem caráter informativo e educativo. Ela não substitui uma avaliação clínica presencial ou online por psicólogo ou psiquiatra.",
+  "timeframePrompt": "Nas últimas 2 semanas, com que frequência você foi incomodado(a) por qualquer um dos seguintes problemas?",
+  "maxScore": 27,
+  "options": [
+    { "label": "Nenhuma vez", "value": 0, "helper": "0 dias" },
+    { "label": "Vários dias", "value": 1, "helper": "1 a 6 dias" },
+    { "label": "Mais da metade dos dias", "value": 2, "helper": "7 a 11 dias" },
+    { "label": "Quase todos os dias", "value": 3, "helper": "12 a 14 dias" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Anedonia",
+      "text": "Pouco interesse ou pouco prazer em fazer as coisas que você costumava gostar."
+    },
+    {
+      "id": 2,
+      "dimension": "Humor Deprimido",
+      "text": "Sentir-se para baixo, deprimido(a), triste ou sem perspectiva de esperança."
+    },
+    {
+      "id": 3,
+      "dimension": "Sono",
+      "text": "Dificuldade para pegar no sono, acordar no meio da noite ou dormir em excesso."
+    },
+    {
+      "id": 4,
+      "dimension": "Energia & Vitalidade",
+      "text": "Sentir-se cansado(a), com pouca energia ou esgotamento físico constante."
+    },
+    {
+      "id": 5,
+      "dimension": "Apetite",
+      "text": "Falta de apetite ou comer muito mais do que o habitual."
+    },
+    {
+      "id": 6,
+      "dimension": "Autovalor & Culpa",
+      "text": "Sentir-se mal consigo mesmo(a), achar que é um fracasso ou que decepcionou sua família."
+    },
+    {
+      "id": 7,
+      "dimension": "Concentração",
+      "text": "Dificuldade para se concentrar nas atividades cotidianas, como ler notícias ou assistir à TV."
+    },
+    {
+      "id": 8,
+      "dimension": "Lentificação Psicomotora",
+      "text": "Movimentar-se ou falar tão devagar que outras pessoas notaram, ou o oposto: estar tão agitado(a) que não consegue parar quieto(a)."
+    },
+    {
+      "id": 9,
+      "dimension": "Ideação & Desejo de Fim",
+      "text": "Pensamentos recorrentes de que seria melhor estar morto(a) ou de ferir a si mesmo(a) de alguma maneira."
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto no Dia a Dia",
+    "prompt": "Se você assinalou qualquer problema neste teste, qual foi o nível de dificuldade que esses sintomas causaram no seu trabalho, tarefas de casa ou convivência?",
+    "options": [
+      { "label": "Nenhuma dificuldade", "value": 0 },
+      { "label": "Um pouco difícil", "value": 1 },
+      { "label": "Muito difícil", "value": 2 },
+      { "label": "Extremamente difícil", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 4,
+      "severity": "minimal",
+      "label": "Depressão Mínima ou Ausente",
+      "tag": "Faixa Saudável",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Sua pontuação indica ausência de sintomas depressivos significativos nas últimas duas semanas, refletindo boa vitalidade e estabilidade do humor.",
+      "clinicalInsight": "Você mantém um bom equilíbrio emocional. Cultivar rotinas saudáveis e redes de apoio comunitário é o caminho ideal para sustentar esse bem-estar.",
+      "recommendations": [
+        "Mantenha uma rotina diária de atividade física leve a moderada.",
+        "Preserve momentos regulares de oração, leitura bíblica e comunhão.",
+        "Pratique a autorreflexão e cuide do sono como pilar biológico do humor."
+      ],
+      "spiritualBridge": "A alegria do Senhor é a vossa força (Neemias 8:10). Celebrar os dias de paz e cultivar gratidão fortalece a mente para os desafios da vida.",
+      "ctaText": "Conhecer Nossos Especialistas",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 5,
+      "max": 9,
+      "severity": "mild",
+      "label": "Sintomas Depressivos Leves",
+      "tag": "Atenção Preventiva",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta alguns sinais esporádicos de desânimo, fadiga ou alteração de sono que merecem atenção para não se aprofundarem.",
+      "clinicalInsight": "Sintomas leves são comuns em fases de transição, perdas recentes ou estresse prolongado. Intervenções precoces de autocuidado e psicoterapia breves são altamente eficazes.",
+      "recommendations": [
+        "Evite o isolamento: compartilhe seus sentimentos com pessoas de confiança.",
+        "Estruture metas pequenas e viáveis para evitar a sensação de paralisia.",
+        "Considere uma conversa com um psicólogo para organizar pensamentos e emoções."
+      ],
+      "spiritualBridge": "'O Senhor está perto dos que têm o coração quebrantado e salva os de espírito abatido.' (Salmo 34:18). Reconhecer o desânimo é o primeiro passo para o acolhimento.",
+      "ctaText": "Agendar Conversa com Psicólogo",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 10,
+      "max": 14,
+      "severity": "moderate",
+      "label": "Depressão Moderada",
+      "tag": "Indicação Clínica",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação atingiu o ponto de corte clínico (cut-off $\\ge$ 10), indicando um quadro de depressão moderada que requer acompanhamento especializado.",
+      "clinicalInsight": "Nesta faixa, a tristeza e a perda de energia afetam a capacidade produtiva e as relações interpessoais. A psicoterapia estruturada (TCC) é amplamente recomendada pelas diretrizes mundiais.",
+      "recommendations": [
+        "Inicie acompanhamento psicoterapêutico para trabalhar padrões de pensamento e reativação comportamental.",
+        "Não se culpe pela falta de energia; a depressão é uma condição de saúde real e tratável.",
+        "Mantenha contato próximo com sua rede de apoio afetivo e espiritual."
+      ],
+      "spiritualBridge": "Você não precisa carregar esse peso em silêncio. Buscar ajuda profissional é um ato de sabedoria e coragem que Deus abençoa para a sua restauração.",
+      "ctaText": "Agendar Psicoterapia Especializada",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 15,
+      "max": 27,
+      "severity": "severe",
+      "label": "Depressão Severa / Esgotamento Profundo",
+      "tag": "Atenção Prioritária",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado indica um nível elevado de sofrimento psíquico, com impacto significativo na vitalidade, no humor e na esperança.",
+      "clinicalInsight": "Quadros severos demandam uma abordagem integrada e acolhedora (Psicoterapia + Avaliação Psiquiátrica Médica). Há tratamentos altamente eficazes e você não está desamparado(a).",
+      "recommendations": [
+        "Agende atendimento psicológico e médico psiquiátrico com prioridade.",
+        "Caso sinta desesperança intensa ou pensamentos de desistir, ligue imediatamente para o CVV no número 188 (gratuito, 24h).",
+        "Permita que familiares e amigos próximos ofereçam suporte e estejam ao seu lado."
+      ],
+      "spiritualBridge": "'Ainda que eu ande pelo vale da sombra da morte, não temerei mal algum, porque tu estás comigo.' (Salmo 23:4). Sua vida é preciosa e existe um caminho de alívio e renovação.",
+      "ctaText": "Agendar Atendimento Prioritário",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

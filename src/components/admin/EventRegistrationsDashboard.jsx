@@ -313,8 +313,8 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
 
   if (!isAdmin) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-        <Ticket className="w-12 h-12 mx-auto text-[#2d8659] mb-4" />
+      <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-8 text-center">
+        <Ticket className="w-12 h-12 mx-auto text-slate-800 mb-4" />
         <p className="text-gray-600">
           Apenas administradores conseguem gerenciar inscrições em eventos.
         </p>
@@ -323,22 +323,22 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6">
+    <div className="bg-white rounded-xl shadow-xs border border-slate-200/80 p-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold flex items-center">
-            <Ticket className="w-6 h-6 mr-2 text-[#2d8659]" />
+          <h2 className="text-xl font-bold flex items-center text-slate-900">
+            <Ticket className="w-6 h-6 mr-2 text-slate-800" />
             Inscrições em Eventos
-            <span className="ml-2 text-lg text-gray-500">({filteredRegistrations.length}/{registrations.length})</span>
+            <span className="ml-2 text-base text-slate-400 font-semibold">({filteredRegistrations.length}/{registrations.length})</span>
           </h2>
-          <p className="text-sm text-gray-500">Controle completo das inscrições, pagamentos e status de participação.</p>
+          <p className="text-xs text-slate-500 mt-0.5">Controle completo das inscrições, pagamentos e status de participação.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowFilters((prev) => !prev)}>
+          <Button variant="outline" size="sm" onClick={() => setShowFilters((prev) => !prev)} className="text-xs">
             <Filter className="w-4 h-4 mr-1" />
             {showFilters ? 'Ocultar filtros' : 'Filtros'}
           </Button>
-          <Button onClick={fetchRegistrations} disabled={loading} className="bg-[#2d8659] hover:bg-[#236b47]">
+          <Button size="sm" onClick={fetchRegistrations} disabled={loading} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs">
             {loading ? <LoadingSpinner size="sm" className="mr-2" /> : <RefreshCcw className="w-4 h-4 mr-2" />}
             Atualizar
           </Button>
@@ -458,7 +458,7 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
           <Button
             variant="outline"
             size="sm"
-            className={sortField === 'registration_date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}
+            className={sortField === 'registration_date' ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900 font-bold' : 'text-slate-600'}
             onClick={() => handleSort('registration_date')}
           >
             📥 Data da inscrição {sortField === 'registration_date' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -466,7 +466,7 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
           <Button
             variant="outline"
             size="sm"
-            className={sortField === 'event_date' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}
+            className={sortField === 'event_date' ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900 font-bold' : 'text-slate-600'}
             onClick={() => handleSort('event_date')}
           >
             📆 Data do evento {sortField === 'event_date' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -474,7 +474,7 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
           <Button
             variant="outline"
             size="sm"
-            className={sortField === 'valor_pago' ? 'bg-[#2d8659] text-white hover:bg-[#236b47] border-[#2d8659]' : ''}
+            className={sortField === 'valor_pago' ? 'bg-slate-900 text-white hover:bg-slate-800 border-slate-900 font-bold' : 'text-slate-600'}
             onClick={() => handleSort('valor_pago')}
           >
             💰 Valor {sortField === 'valor_pago' && (sortOrder === 'asc' ? '↑' : '↓')}
@@ -493,7 +493,7 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-          <LoadingSpinner className="text-[#2d8659] mb-3" />
+          <LoadingSpinner className="text-slate-800 mb-3" />
           Carregando inscrições...
         </div>
       ) : filteredRegistrations.length === 0 ? (
@@ -602,7 +602,7 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
                         href={`/evento/${event.link_slug}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-center text-sm text-[#2d8659] underline"
+                        className="text-center text-xs text-slate-800 hover:underline font-semibold"
                       >
                         Ver página do evento ↗
                       </a>
@@ -729,7 +729,7 @@ const EventRegistrationsDashboard = ({ events = [], userRole }) => {
               <Button type="button" variant="outline" onClick={closeEditModal}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={savingEdit} className="bg-[#2d8659] hover:bg-[#236b47]">
+              <Button type="submit" disabled={savingEdit} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold">
                 {savingEdit ? <LoadingSpinner size="sm" className="mr-2" /> : null}
                 Salvar alterações
               </Button>

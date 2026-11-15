@@ -1,0 +1,169 @@
+{
+  "id": "burnout",
+  "slug": "teste-burnout",
+  "aliases": ["burnout", "sobrecarga-emocional", "esgotamento-profissional"],
+  "title": "Inventário de Burnout e Sobrecarga Emocional",
+  "subtitle": "Avaliação científica de exaustão física, emocional e desgaste ocupacional",
+  "category": "Saúde Ocupacional & Emocional",
+  "icon": "Flame",
+  "badge": "Mais Procurado",
+  "estimatedTime": "3 a 4 min",
+  "scientificBasis": "Inspirado no Maslach Burnout Inventory (MBI) e na CID-11 (QD85: Síndrome de Burnout)",
+  "disclaimer": "Esta autoavaliação tem caráter informativo e educativo. Ela não substitui uma avaliação clínica realizada por psicólogo ou médico do trabalho.",
+  "timeframePrompt": "Nas últimas 4 semanas, com que frequência você tem vivenciado cada uma das seguintes situações?",
+  "maxScore": 30,
+  "options": [
+    { "label": "Nunca ou Raramente", "value": 0, "helper": "Menos de 1 vez por semana" },
+    { "label": "Às vezes", "value": 1, "helper": "1 a 2 vezes por semana" },
+    { "label": "Frequentemente", "value": 2, "helper": "3 a 4 vezes por semana" },
+    { "label": "Quase sempre ou Diariamente", "value": 3, "helper": "Todos os dias úteis" }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "dimension": "Exaustão Emocional",
+      "text": "Sinto-me emocionalmente esgotado(a) e sem energia antes mesmo de começar o dia de trabalho/estudos."
+    },
+    {
+      "id": 2,
+      "dimension": "Exaustão Física",
+      "text": "Ao final do dia, sinto um cansaço físico e mental profundo que não passa apenas com uma noite de sono."
+    },
+    {
+      "id": 3,
+      "dimension": "Despersonalização",
+      "text": "Tenho me tornado mais impaciente, irritado(a) ou emocionalmente distante das pessoas com quem convivo ou atendo."
+    },
+    {
+      "id": 4,
+      "dimension": "Sobrecarga Cognitiva",
+      "text": "Tenho dificuldades para me concentrar, falhas frequentes de memória ou sensação constante de mente 'bloqueada'."
+    },
+    {
+      "id": 5,
+      "dimension": "Desilusão & Cinismo",
+      "text": "Sinto uma perda progressiva de propósito, cinismo ou desânimo em relação às minhas funções profissionais."
+    },
+    {
+      "id": 6,
+      "dimension": "Redução da Eficácia",
+      "text": "Tenho a sensação de que, por mais que me esforce, meu trabalho nunca é suficiente ou reconhecido."
+    },
+    {
+      "id": 7,
+      "dimension": "Sintomas Psicossomáticos",
+      "text": "Apresento dores físicas recorrentes (cabeça, tensão muscular, estômago) ou alterações frequentes de sono ligadas ao trabalho."
+    },
+    {
+      "id": 8,
+      "dimension": "Hiperconexão & Culpa",
+      "text": "Sinto dificuldade real de me desconectar mentalmente das tarefas profissionais nos fins de semana e momentos de folga."
+    },
+    {
+      "id": 9,
+      "dimension": "Isolamento Protetivo",
+      "text": "Tenho vontade frequente de me isolar socialmente para economizar a pouca energia emocional que me resta."
+    },
+    {
+      "id": 10,
+      "dimension": "Sensação de Limite",
+      "text": "Sinto que cheguei ao meu limite biológico e emocional, com medo constante de 'desmoronar' a qualquer momento."
+    }
+  ],
+  "functionalImpactQuestion": {
+    "title": "Impacto na Qualidade de Vida",
+    "prompt": "Qual o grau de impacto que esse nível de cansaço ou sobrecarga tem gerado na sua saúde, vida familiar ou rendimento?",
+    "options": [
+      { "label": "Nenhum impacto perceptível", "value": 0 },
+      { "label": "Impacto leve (pequenos desentendimentos ou lentidão)", "value": 1 },
+      { "label": "Impacto moderado (prejuízo claro na convivência e rotina)", "value": 2 },
+      { "label": "Impacto severo (dificuldade de sair da cama ou manter compromissos)", "value": 3 }
+    ]
+  },
+  "ranges": [
+    {
+      "min": 0,
+      "max": 9,
+      "severity": "minimal",
+      "label": "Equilíbrio & Resiliência Ocupacional",
+      "tag": "Nível Seguro",
+      "color": "#10b981",
+      "lightColor": "#ecfdf5",
+      "borderColor": "#a7f3d0",
+      "badgeClass": "bg-emerald-100 text-emerald-800 border-emerald-300",
+      "summary": "Seus níveis atuais de desgaste e sobrecarga estão em uma faixa saudável de adaptação cotidiana, demonstrando boa capacidade de recuperação física e mental.",
+      "clinicalInsight": "Você mantém uma relação equilibrada com suas responsabilidades e preserva espaços de restauração. O segredo é manter hábitos preventivos de descanso.",
+      "recommendations": [
+        "Mantenha rotinas consistentes de desconexão digital após o expediente.",
+        "Pratique momentos intencionais de lazer sem metas de produtividade.",
+        "Cultive a gratidão e a oração como refúgio diário de paz."
+      ],
+      "spiritualBridge": "O descanso não é perda de tempo, é um mandamento sagrado de mordomia do corpo e da mente criado por Deus para a nossa preservação.",
+      "ctaText": "Conhecer Nossos Especialistas",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 10,
+      "max": 17,
+      "severity": "mild",
+      "label": "Sobrecarga Inicial / Alerta Amarelo",
+      "tag": "Atenção Necessária",
+      "color": "#eab308",
+      "lightColor": "#fefce8",
+      "borderColor": "#fde047",
+      "badgeClass": "bg-yellow-100 text-yellow-800 border-yellow-300",
+      "summary": "Você apresenta sinais iniciais de fadiga cumulativa e estresse ocupacional que demandam ajustes na rotina antes que evoluam para um quadro crônico.",
+      "clinicalInsight": "O corpo e a mente já estão sinalizando que o ritmo atual é insustentável a médio prazo. É o momento ideal para estabelecer limites claros e reorganizar prioridades.",
+      "recommendations": [
+        "Aprenda a dizer 'não' a novas demandas não prioritárias sem carregar sentimento de culpa.",
+        "Estabeleça micropausas de 5 a 10 minutos a cada 90 minutos de foco intenso.",
+        "Avalie conversar com um psicólogo para desenvolver estratégias de manejo de estresse e assertividade."
+      ],
+      "spiritualBridge": "'Vinde a mim, todos os que estais cansados e sobrecarregados, e eu vos aliviarei.' (Mateus 11:28). Reconhecer nossos limites humanos é um ato de maturidade e fé.",
+      "ctaText": "Agendar Sessão de Orientação",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 18,
+      "max": 24,
+      "severity": "moderate",
+      "label": "Risco Elevado de Burnout",
+      "tag": "Esgotamento Moderado",
+      "color": "#f97316",
+      "lightColor": "#fff7ed",
+      "borderColor": "#ffedd5",
+      "badgeClass": "bg-orange-100 text-orange-800 border-orange-300",
+      "summary": "Sua pontuação indica um padrão significativo de exaustão emocional, cinismo e sobrecarga crônica. Seu organismo está operando em modo de sobrevivência.",
+      "clinicalInsight": "Neste estágio, a força de vontade isolada não é suficiente para reverter o quadro. Há um desgaste neurobiológico real que afeta o sono, a memória e a imunidade.",
+      "recommendations": [
+        "Inicie acompanhamento psicoterapêutico para resgatar limites, autoaceitação e reestruturação de rotina.",
+        "Considere rever contratos de trabalho ou conversar com lideranças sobre redistribuição de tarefas.",
+        "Evite tomar decisões radicais de vida enquanto estiver sob forte exaustão cognitiva."
+      ],
+      "spiritualBridge": "Deus não nos criou para sermos máquinas de produtividade ininterrupta. Cuidar da sua saúde psíquica é honrar a vida que você recebeu.",
+      "ctaText": "Agendar Psicoterapia com Especialista",
+      "ctaLink": "/agendamento"
+    },
+    {
+      "min": 25,
+      "max": 30,
+      "severity": "severe",
+      "label": "Síndrome de Burnout Estabelecida",
+      "tag": "Esgotamento Severo / Alerta Vermelho",
+      "color": "#ef4444",
+      "lightColor": "#fef2f2",
+      "borderColor": "#fee2e2",
+      "badgeClass": "bg-red-100 text-red-800 border-red-300",
+      "summary": "Seu resultado aponta para um nível crítico de esgotamento físico e psíquico, compatível com a Síndrome de Burnout (CID-11 QD85).",
+      "clinicalInsight": "O esgotamento severo compromete funções executivas, humor e saúde física geral. É indispensável buscar acolhimento profissional com urgência para estancar a sobrecarga.",
+      "recommendations": [
+        "Agende uma consulta psicológica com prioridade para suporte emergencial e acolhimento.",
+        "Consulte um médico para avaliar sintomas psicossomáticos e necessidade de afastamento temporário ou suporte medicamentoso.",
+        "Compartilhe sua situação com pessoas de confiança da família ou igreja para não enfrentar essa fase sozinho(a)."
+      ],
+      "spiritualBridge": "No meio do cansaço extremo de Elias, Deus não o repreendeu; enviou alimento, sono e renovação (1 Reis 19). Permita-se ser cuidado(a) e acolhido(a) neste momento.",
+      "ctaText": "Agendar Atendimento Prioritário",
+      "ctaLink": "/agendamento"
+    }
+  ]
+}

@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Heart, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Heart, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import DoxologosLogo from '@/components/brand/DoxologosLogo';
+import { PasswordStrengthMeter, isPasswordValid } from '@/components/auth/PasswordStrengthMeter';
 
 export default function RedefinirSenhaPage() {
   const { updatePassword, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,50 +24,109 @@ export default function RedefinirSenhaPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [validatingToken, setValidatingToken] = useState(true);
+  const [tokenError, setTokenError] = useState(false);
 
-  // Validações
-  const passwordLength = newPassword.length >= 6;
+  // Ref para evitar dupla execução em React.StrictMode
+  const hasAttemptedVerification = useRef(false);
+
+  // Validações com o novo padrão LGPD/HIPAA (10+ caracteres, maiúsculas, números, especiais)
+  const passwordStrong = isPasswordValid(newPassword);
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
-  const isValid = passwordLength && passwordsMatch;
+  const isValid = passwordStrong && passwordsMatch;
 
   useEffect(() => {
-    // Verificar se há um token de recuperação na URL
+    // Prevenir dupla execução (React.StrictMode remonta o componente em dev)
+    if (hasAttemptedVerification.current) return;
+    hasAttemptedVerification.current = true;
+
     const checkRecoveryToken = async () => {
       const hash = window.location.hash;
-      
-      // Se houver um hash com access_token, o Supabase já processou automaticamente
-      if (hash && hash.includes('access_token')) {
-        console.log('✅ Token de recuperação detectado na URL');
-        // Aguardar o contexto de autenticação processar
-        setTimeout(() => {
-          setValidatingToken(false);
-        }, 2000);
-        return;
-      }
-      
-      // Se não há hash mas há usuário, está OK
-      if (user) {
-        console.log('✅ Usuário autenticado:', user.email);
-        setValidatingToken(false);
-        return;
-      }
-      
-      // Se não há token nem usuário após 5 minutos (300000ms), mostrar erro mas NÃO redirecionar
-      setTimeout(() => {
-        if (!user && !window.location.hash.includes('access_token')) {
-          console.error('❌ Token não encontrado ou expirado');
-          toast({
-            variant: 'destructive',
-            title: 'Link inválido ou expirado',
-            description: 'O link de recuperação pode ter expirado. Solicite um novo link.',
+      const urlParams = new URLSearchParams(window.location.search);
+
+      // ─── Prioridade 1: token_hash via verifyOtp (funciona cross-browser) ───
+      // Este é o fluxo principal. O link do email envia token_hash diretamente
+      // para a página, sem passar pelo endpoint /auth/v1/verify do Supabase.
+      // Não depende de code_verifier no localStorage, então funciona mesmo
+      // quando o paciente abre o link em outro navegador/dispositivo.
+      const tokenHash = urlParams.get('token_hash');
+      const type = urlParams.get('type');
+
+      if (tokenHash && type === 'recovery') {
+        console.log('🔑 Token hash detectado, verificando via verifyOtp...');
+        try {
+          const { data, error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: 'recovery',
           });
+          if (error) {
+            console.error('❌ Erro ao verificar token_hash:', error.message);
+            setTokenError(true);
+            toast({
+              variant: 'destructive',
+              title: 'Link expirado ou inválido',
+              description: 'O link de recuperação expirou ou já foi utilizado. Solicite um novo link.',
+            });
+          } else {
+            console.log('✅ Sessão de recuperação criada para:', data?.user?.email ? `${data.user.email.substring(0, 2)}***@***` : 'N/A');
+          }
+        } catch (err) {
+          console.error('❌ Erro inesperado ao verificar token:', err);
+          setTokenError(true);
         }
         setValidatingToken(false);
-      }, 300000);
+        return;
+      }
+
+      // ─── Prioridade 2: code PKCE (fallback para emails já enviados) ───
+      // Mantido para compatibilidade com emails enviados antes da atualização
+      // do template. Funciona apenas se o code_verifier estiver no localStorage
+      // (mesmo navegador que solicitou o reset).
+      const code = urlParams.get('code');
+      if (code) {
+        console.log('🔑 Código PKCE detectado, trocando por sessão...');
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) {
+            console.error('❌ Erro ao trocar código PKCE:', error.message);
+            setTokenError(true);
+            toast({
+              variant: 'destructive',
+              title: 'Link expirado ou inválido',
+              description: 'O link de recuperação expirou. Solicite um novo link.',
+            });
+          } else {
+            console.log('✅ Sessão de recuperação criada via PKCE para:', data?.user?.email ? `${data.user.email.substring(0, 2)}***@***` : 'N/A');
+          }
+        } catch (err) {
+          console.error('❌ Erro inesperado ao processar código:', err);
+          setTokenError(true);
+        }
+        setValidatingToken(false);
+        return;
+      }
+
+      // ─── Prioridade 3: hash com access_token (fluxo legado/implicit) ───
+      if (hash && hash.includes('access_token')) {
+        console.log('✅ Token de recuperação (hash) detectado na URL');
+        setTimeout(() => setValidatingToken(false), 2000);
+        return;
+      }
+
+      // ─── Prioridade 4: usuário já autenticado (ex: recarregou a página) ───
+      if (user) {
+        console.log('✅ Usuário já autenticado (session activa)');
+        setValidatingToken(false);
+        return;
+      }
+
+      // Sem token e sem usuário = link inválido ou acesso direto
+      console.error('❌ Nenhum token de recuperação encontrado na URL');
+      setTokenError(true);
+      setValidatingToken(false);
     };
 
     checkRecoveryToken();
-  }, [user, navigate, toast]);
+  }, [user, toast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -85,7 +146,7 @@ export default function RedefinirSenhaPage() {
 
     if (!error) {
       setSuccess(true);
-      
+
       // Redirecionar após 3 segundos
       setTimeout(() => {
         navigate('/area-do-paciente');
@@ -110,7 +171,7 @@ export default function RedefinirSenhaPage() {
                 <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-                
+
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Validando link de recuperação...
@@ -121,6 +182,75 @@ export default function RedefinirSenhaPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Estado de erro do token (link expirado ou inválido)
+  if (tokenError) {
+    return (
+      <>
+        <Helmet>
+          <title>Link Expirado - Doxologos</title>
+        </Helmet>
+
+        <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-center mb-8"
+            >
+              <Link to="/" className="inline-flex items-center gap-2">
+                <DoxologosLogo className="h-10 w-auto" />
+              </Link>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <Card>
+                <CardContent className="pt-6 text-center space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <AlertTriangle className="w-8 h-8 text-red-600" />
+                  </div>
+
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                      Link Expirado ou Inválido
+                    </h2>
+                    <p className="text-gray-600">
+                      O link de recuperação de senha expirou ou já foi utilizado.
+                      Solicite um novo link para redefinir sua senha.
+                    </p>
+                  </div>
+
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-sm text-amber-800">
+                      <strong>💡 Dica:</strong> Os links de recuperação expiram após 1 hora por motivos de segurança.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={() => navigate('/recuperar-senha')}
+                    className="w-full bg-[#2d8659] hover:bg-[#236b47]"
+                  >
+                    Solicitar Novo Link
+                  </Button>
+
+                  <Link
+                    to="/"
+                    className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#2d8659] transition-colors"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar para o site
+                  </Link>
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </>
@@ -145,7 +275,7 @@ export default function RedefinirSenhaPage() {
                 <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
                   <CheckCircle2 className="w-8 h-8 text-green-600" />
                 </div>
-                
+
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     Senha Atualizada!
@@ -185,14 +315,13 @@ export default function RedefinirSenhaPage() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
-            <Link to="/" className="inline-flex items-center gap-2 text-3xl font-bold text-[#2d8659]">
-              <Heart className="w-8 h-8 fill-[#2d8659]" />
-              Doxologos
+            <Link to="/" className="inline-flex items-center justify-center" aria-label="Doxologos - Página inicial">
+              <DoxologosLogo className="h-10 md:h-12 w-auto" />
             </Link>
           </motion.div>
 
@@ -268,34 +397,16 @@ export default function RedefinirSenhaPage() {
                     </div>
                   </div>
 
-                  {/* Requisitos da Senha */}
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-                    <p className="text-sm font-medium text-gray-700 mb-2">
-                      Requisitos da senha:
+                  {/* Requisitos da Senha e Medidor de Força */}
+                  {newPassword && (
+                    <PasswordStrengthMeter password={newPassword} />
+                  )}
+
+                  {confirmPassword && confirmPassword !== newPassword && (
+                    <p className="text-xs font-semibold text-red-600 bg-red-50 p-2 rounded-lg border border-red-200">
+                      ⚠️ As senhas digitadas não coincidem.
                     </p>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                          passwordLength ? 'bg-green-100' : 'bg-gray-200'
-                        }`}>
-                          {passwordLength && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                        </div>
-                        <span className={passwordLength ? 'text-green-700' : 'text-gray-600'}>
-                          Mínimo de 6 caracteres
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
-                          passwordsMatch ? 'bg-green-100' : 'bg-gray-200'
-                        }`}>
-                          {passwordsMatch && <CheckCircle2 className="w-3 h-3 text-green-600" />}
-                        </div>
-                        <span className={passwordsMatch ? 'text-green-700' : 'text-gray-600'}>
-                          As senhas coincidem
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   <Button
                     type="submit"

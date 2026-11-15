@@ -34,6 +34,7 @@ export function useSessionValidation(options = {}) {
 
     const validationTimerRef = useRef(null);
     const expiryTimerRef = useRef(null);
+    const isRefreshingRef = useRef(false);
 
     /**
      * Valida a sessão atual
@@ -68,12 +69,13 @@ export function useSessionValidation(options = {}) {
      * Faz refresh do token de autenticação
      */
     const refreshToken = useCallback(async () => {
-        if (isRefreshing) {
+        if (isRefreshingRef.current) {
             console.log('⏳ Refresh já em andamento, aguardando...');
             return false;
         }
 
         try {
+            isRefreshingRef.current = true;
             setIsRefreshing(true);
             console.log('🔄 Iniciando refresh de token...');
 
@@ -100,25 +102,23 @@ export function useSessionValidation(options = {}) {
             setIsValid(false);
             return false;
         } finally {
+            isRefreshingRef.current = false;
             setIsRefreshing(false);
         }
-    }, [isRefreshing, onSessionExpired]);
+    }, [onSessionExpired]);
+
 
     /**
      * Calcula tempo até expiração da sessão
      */
     const calculateTimeUntilExpiry = useCallback(() => {
         if (!session?.expires_at) {
-            setTimeUntilExpiry(null);
             return null;
         }
 
         const expiryTime = new Date(session.expires_at * 1000).getTime();
         const now = Date.now();
-        const timeLeft = expiryTime - now;
-
-        setTimeUntilExpiry(timeLeft);
-        return timeLeft;
+        return expiryTime - now;
     }, [session]);
 
     /**
@@ -128,6 +128,7 @@ export function useSessionValidation(options = {}) {
         const timeLeft = calculateTimeUntilExpiry();
         return timeLeft !== null && timeLeft > 0 && timeLeft <= gracePeriod;
     }, [calculateTimeUntilExpiry, gracePeriod]);
+
 
     // Efeito para validação periódica
     useEffect(() => {

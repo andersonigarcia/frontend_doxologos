@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, Download, Calendar, AlertCircle, FileText, Sparkles, HelpCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatCard } from '@/components/common/StatCard';
 import { SkeletonStatsGrid, SkeletonList } from '@/components/common/SkeletonLoaders';
 import { InfoTooltip, EmptyState } from '@/components/common';
 import { useFinancialData } from '@/hooks/useFinancialData';
+import { usePaymentCalculation } from '@/hooks/usePaymentCalculation';
 import { cn } from '@/lib/utils';
 
 /**
@@ -25,35 +26,55 @@ export function FinancialDashboard({ professionalId, className = '' }) {
         dailyRevenue,
         weeklyRevenue,
         monthlyRevenue,
+        grossRevenue = monthlyRevenue,
+        netRevenue = monthlyRevenue,
+        aiDeductionsTotal = 0,
+        aiUsageSummary = null,
         pendingPayments,
         serviceBreakdown,
         totalPending,
-        loading
+        loading: financialLoading
     } = useFinancialData(professionalId, dateRange.start, dateRange.end);
+
+    const { 
+        pendingPayments: payoutsPending, 
+        paidPayments: payoutsPaid, 
+        totalPending: totalPayoutPending, 
+        totalPaid: totalPayoutPaid, 
+        loading: payoutsLoading 
+    } = usePaymentCalculation(professionalId, dateRange.start, dateRange.end);
+
+    const loading = financialLoading || payoutsLoading;
 
     const handleExportCSV = () => {
         // Prepare CSV data
         const csvData = [
-            ['Relatório Financeiro'],
+            ['Relatório Financeiro do Profissional — Doxologos'],
             ['Período', `${dateRange.start} a ${dateRange.end}`],
             [''],
-            ['Resumo'],
-            ['Receita Diária', dailyRevenue.toFixed(2)],
-            ['Receita Semanal', weeklyRevenue.toFixed(2)],
-            ['Receita do Período', monthlyRevenue.toFixed(2)],
-            ['Pagamentos Pendentes', totalPending.toFixed(2)],
+            ['Resumo de Repasse'],
+            ['Honorários Brutos de Consultas (Período)', grossRevenue.toFixed(2)],
+            ['Dedução Uso de Assistente IA (Add-on)', (-aiDeductionsTotal).toFixed(2)],
+            ['Repasse Líquido do Período', netRevenue.toFixed(2)],
+            ['Sessões com Assistente IA Pagas', aiUsageSummary?.paidAiSessionsCount || 0],
+            ['Sessões com Degustação Gratuita IA', aiUsageSummary?.trialSessionsCount || 0],
+            ['Receita Diária Bruta', dailyRevenue.toFixed(2)],
+            ['Receita Semanal Bruta', weeklyRevenue.toFixed(2)],
+            ['Repasses Já Pagos (Período)', totalPayoutPaid.toFixed(2)],
+            ['Repasses Pendentes de Liquidação', totalPayoutPending.toFixed(2)],
+            ['Consultas Aguardando Pagamento de Pacientes', totalPending.toFixed(2)],
             [''],
             ['Receita por Serviço'],
-            ['Serviço', 'Receita (R$)', 'Quantidade', 'Percentual (%)'],
+            ['Serviço', 'Receita Bruta (R$)', 'Quantidade', 'Percentual (%)'],
             ...serviceBreakdown.map(s => [
                 s.name,
                 s.revenue.toFixed(2),
                 s.count,
-                ((s.revenue / monthlyRevenue) * 100).toFixed(1)
+                ((s.revenue / (grossRevenue || 1)) * 100).toFixed(1)
             ]),
             [''],
-            ['Pagamentos Pendentes'],
-            ['Paciente', 'Data', 'Horário', 'Valor (R$)'],
+            ['Sessões com Pagamento Pendente'],
+            ['Paciente', 'Data', 'Horário', 'Valor Repasse (R$)'],
             ...pendingPayments.map(p => [
                 p.patient_name,
                 new Date(p.booking_date).toLocaleDateString('pt-BR'),
@@ -68,6 +89,52 @@ export function FinancialDashboard({ professionalId, className = '' }) {
         const link = document.createElement('a');
         link.href = url;
         link.download = `relatorio-financeiro-${dateRange.start}-${dateRange.end}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleExportCarneLeao = () => {
+        // Relatório Canônico Livro-Caixa / Carnê-Leão (Receita Federal)
+        // Código Ocupação: 2515-10 (Psicólogo Clínico)
+        const carneLeaoData = [
+            ['RELATÓRIO LIVRO-CAIXA / CARNÊ-LEÃO - RECEITA FEDERAL'],
+            ['Profissional ID', professionalId || 'Psicólogo Doxologos'],
+            ['Período de Apuração', `${new Date(dateRange.start + 'T12:00:00').toLocaleDateString('pt-BR')} até ${new Date(dateRange.end + 'T12:00:00').toLocaleDateString('pt-BR')}`],
+            ['Regime de Apuração', 'Regime de Caixa (Sessões Realizadas / Liquidadas)'],
+            ['Total Apurado (R$)', totalPayoutPaid.toFixed(2)],
+            [''],
+            [
+                'Data da Sessão',
+                'CBO Ocupação',
+                'Descrição Ocupação',
+                'Nome do Paciente',
+                'CPF do Paciente / Titular',
+                'Discriminação do Serviço',
+                'Valor Recebido (R$)',
+                'Status'
+            ],
+            ...payoutsPaid.map(p => [
+                p.booking_date ? new Date(p.booking_date + 'T12:00:00').toLocaleDateString('pt-BR') : '',
+                '2515-10',
+                'Psicólogo Clínico',
+                p.patient_name || 'Paciente',
+                p.patient_cpf || 'Não informado',
+                p.service_name || 'Atendimento Psicológico Clínico Individual',
+                parseFloat(p.valor_repasse_profissional || p.amount || 0).toFixed(2),
+                'Realizado / Pago'
+            ])
+        ];
+
+        if (payoutsPaid.length === 0 && pendingPayments.length > 0) {
+            carneLeaoData.push(['* Nenhuma sessão marcada como liquidada no período. Sessões pendentes não devem ser declaradas no Carnê-Leão até o efetivo recebimento.']);
+        }
+
+        const csvContent = '\uFEFF' + carneLeaoData.map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `carne-leao-livro-caixa-${dateRange.start}-${dateRange.end}.csv`;
         link.click();
         URL.revokeObjectURL(url);
     };
@@ -149,7 +216,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('today')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Hoje
                         </Button>
@@ -157,7 +224,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('week')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Semana
                         </Button>
@@ -165,7 +232,7 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('month')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Mês
                         </Button>
@@ -173,18 +240,146 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                             size="sm"
                             variant="outline"
                             onClick={() => handlePresetFilter('year')}
-                            className="text-xs"
+                            className="text-xs rounded-full"
                         >
                             Ano
                         </Button>
                         <Button
                             size="sm"
+                            variant="outline"
+                            onClick={handleExportCarneLeao}
+                            className="rounded-xl border-slate-300 hover:border-slate-800 text-slate-800 font-semibold text-xs h-9 px-3.5 flex items-center gap-1.5 shadow-xs"
+                        >
+                            <FileText className="w-3.5 h-3.5 text-indigo-600" />
+                            Carnê-Leão (Livro-Caixa)
+                        </Button>
+                        <Button
+                            size="sm"
                             onClick={handleExportCSV}
-                            className="bg-[#2d8659] hover:bg-[#236b47] text-xs"
+                            className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs h-9 px-4 shadow-xs"
                         >
                             <Download className="w-4 h-4 mr-2" />
                             Exportar CSV
                         </Button>
+                    </div>
+                </div>
+            </div>
+
+            {/* BANNER INFORMATIVO: STATUS DO ASSISTENTE DE IA & DEGUSTAÇÃO */}
+            {aiUsageSummary && (
+                <div className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                                <Sparkles className="w-4 h-4 text-emerald-700" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                                        Assistente de Evolução Clínica IA
+                                    </h4>
+                                    {aiUsageSummary.trialsRemaining > 0 ? (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                            Degustação Gratuita Ativa ({aiUsageSummary.trialsRemaining} de {aiUsageSummary.trialLimit} restantes)
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                            Plano Add-on Ativo (R$ 2,90/sessão)
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    {aiUsageSummary.trialsRemaining > 0
+                                        ? `Aproveite ${aiUsageSummary.trialsRemaining} consulta(s) de teste sem nenhum desconto no seu repasse.`
+                                        : 'A IA sintetiza suas notas clínicas no padrão SOAP automaticamente, economizando seu tempo entre atendimentos.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                            <span className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg font-medium">
+                                Usos no período: <strong className="text-slate-900 font-bold tabular-nums">{aiUsageSummary.totalAiSessions}</strong> ({aiUsageSummary.paidAiSessionsCount} com taxa • {aiUsageSummary.trialSessionsCount} gratuitos)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* DEMONSTRATIVO SIMPLES DO SEU REPASSE (DIDÁTICA ACOLHEDORA PARA PSICÓLOGOS) */}
+            <div className="bg-linear-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-700/80 pb-4">
+                    <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-2.5 py-0.5 rounded-full inline-block mb-1">
+                            Extrato Transparente
+                        </span>
+                        <h3 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                            Entenda o Cálculo do Seu Repasse
+                        </h3>
+                        <p className="text-xs text-slate-300 mt-0.5">
+                            Sem contas complicadas: tudo o que você atendeu e o que cai no seu bolso.
+                        </p>
+                    </div>
+
+                    <div className="text-right">
+                        <span className="text-[11px] text-slate-400 block">Seu Repasse Líquido Estimado</span>
+                        <span className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tabular-nums">
+                            R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                    </div>
+                </div>
+
+                {/* FLUXO VISUAL EM 3 PASSOS SIMPLES */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mt-4">
+                    {/* Passo 1: Bruto */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                1. Suas Consultas
+                            </span>
+                            <p className="text-lg font-extrabold text-white mt-1 tabular-nums">
+                                R$ {grossRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-2">
+                            Total de honorários das consultas confirmadas e atendidas.
+                        </p>
+                    </div>
+
+                    {/* Passo 2: Dedução IA */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wider">
+                                    2. Assistente IA
+                                </span>
+                                <span className="text-[10px] text-slate-400">100% Tecnologia</span>
+                            </div>
+                            <p className="text-lg font-extrabold text-amber-300 mt-1 tabular-nums">
+                                {aiDeductionsTotal > 0
+                                    ? `- R$ ${aiDeductionsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    : 'R$ 0,00'}
+                            </p>
+                        </div>
+                        <p className="text-[11px] text-slate-300 mt-2">
+                            {aiDeductionsTotal > 0
+                                ? `${aiUsageSummary?.paidAiSessionsCount || 0} prontuário(s) assistido(s) (R$ 2,90 cada).`
+                                : 'Nenhum desconto de IA no período (usou degustação ou não utilizou).'}
+                        </p>
+                    </div>
+
+                    {/* Passo 3: Líquido */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3.5 flex flex-col justify-between">
+                        <div>
+                            <span className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider">
+                                3. Líquido a Receber
+                            </span>
+                            <p className="text-lg font-extrabold text-emerald-300 mt-1 tabular-nums">
+                                R$ {netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                        </div>
+                        <p className="text-[11px] text-emerald-200 mt-2">
+                            Consultas menos o custo da IA. Valor exato do repasse para você.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -198,16 +393,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <span>Receita Hoje</span>
-                                    <InfoTooltip content="Soma dos valores recebidos hoje de consultas confirmadas, pagas ou completadas" />
-                                </div>
-                            }
-                            value={`R$ ${dailyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            icon={<DollarSign className="w-5 h-5" />}
-                            iconColor="text-green-600"
-                            iconBgColor="bg-green-100"
+                            label="Receita Hoje"
+                            tooltip="Soma dos valores recebidos hoje de consultas confirmadas, pagas ou completadas"
+                            value={dailyRevenue}
+                            format="currency"
                         />
                     </div>
                 </motion.div>
@@ -219,16 +408,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <span>Receita Semana</span>
-                                    <InfoTooltip content="Receita dos últimos 7 dias (consultas confirmadas, pagas ou completadas)" />
-                                </div>
-                            }
-                            value={`R$ ${weeklyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            icon={<TrendingUp className="w-5 h-5" />}
-                            iconColor="text-blue-600"
-                            iconBgColor="bg-blue-100"
+                            label="Receita Semana"
+                            tooltip="Receita dos últimos 7 dias (consultas confirmadas, pagas ou completadas)"
+                            value={weeklyRevenue}
+                            format="currency"
                         />
                     </div>
                 </motion.div>
@@ -240,16 +423,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 >
                     <div className="relative">
                         <StatCard
-                            title={
-                                <div className="flex items-center gap-2">
-                                    <span>Receita do Período</span>
-                                    <InfoTooltip content="Receita total do período selecionado (consultas confirmadas, pagas ou completadas)" />
-                                </div>
-                            }
-                            value={`R$ ${monthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                            icon={<Calendar className="w-5 h-5" />}
-                            iconColor="text-purple-600"
-                            iconBgColor="bg-purple-100"
+                            label="Repasse Líquido do Período"
+                            tooltip="Receita líquida total a receber no período selecionado (já deduzido o uso do assistente de IA)"
+                            value={netRevenue}
+                            format="currency"
                         />
                     </div>
                 </motion.div>
@@ -263,9 +440,9 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 className="bg-white rounded-xl border border-gray-200 shadow-sm p-6"
             >
                 <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-orange-600" />
-                        <h3 className="text-lg font-semibold">Pagamentos Pendentes</h3>
+                    <div className="flex items-center gap-3">
+                        <Clock className="w-5 h-5 text-amber-500" />
+                        <h3 className="font-bold text-gray-900">Sessões com Pagamento Pendente</h3>
                     </div>
                     <span className="text-2xl font-bold text-orange-600">
                         R$ {totalPending.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -300,8 +477,8 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 ) : (
                     <EmptyState
                         icon={Clock}
-                        title="Nenhum pagamento pendente"
-                        description="Todos os pagamentos estão em dia! 🎉"
+                        title="Nenhum pagamento aguardando"
+                        description="Todos os pacientes estão em dia! 🎉"
                         compact={true}
                     />
                 )}
@@ -312,10 +489,10 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white rounded-xl border border-gray-200 shadow-sm p-6"
+                className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-6"
             >
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <DollarSign className="w-5 h-5 text-[#2d8659]" />
+                <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-slate-800" />
                     Receita por Serviço
                 </h3>
 
@@ -334,20 +511,20 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                                     <div className="flex justify-between items-center">
                                         <span className="font-medium text-gray-900">{service.name}</span>
                                         <div className="text-right">
-                                            <span className="font-semibold text-[#2d8659]">
+                                            <span className="font-bold text-emerald-700 tabular-nums">
                                                 R$ {service.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                             </span>
-                                            <span className="text-sm text-gray-600 ml-2">
+                                            <span className="text-xs text-slate-500 ml-2 font-medium">
                                                 ({percentage.toFixed(1)}%)
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div className="w-full bg-slate-100 rounded-full h-2.5">
                                         <motion.div
                                             initial={{ width: 0 }}
                                             animate={{ width: `${percentage}%` }}
                                             transition={{ delay: 0.7 + index * 0.05, duration: 0.5 }}
-                                            className="bg-[#2d8659] h-2.5 rounded-full"
+                                            className="bg-emerald-600 h-2.5 rounded-full"
                                         />
                                     </div>
                                     <p className="text-xs text-gray-500">
@@ -365,6 +542,82 @@ export function FinancialDashboard({ professionalId, className = '' }) {
                         compact={true}
                     />
                 )}
+            </motion.div>
+
+            {/* Payouts Section */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+            >
+                <div className="p-6 border-b border-gray-100 bg-slate-50/50">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-emerald-600" />
+                        Repasses Financeiros (Período Selecionado)
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">Histórico de pagamentos da clínica para o profissional.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                    {/* Paid Payouts */}
+                    <div className="p-6 bg-emerald-50/30">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-emerald-800 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4" /> Pagos
+                            </h4>
+                            <span className="font-bold text-emerald-700">R$ {totalPayoutPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        
+                        {payoutsPaid.length > 0 ? (
+                            <div className="space-y-3">
+                                {payoutsPaid.map(p => (
+                                    <div key={p.id} className="bg-white p-3 rounded-lg border border-emerald-100 shadow-sm flex justify-between items-center text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-700">{new Date(p.period_start).toLocaleDateString('pt-BR')} - {new Date(p.period_end).toLocaleDateString('pt-BR')}</p>
+                                            <p className="text-xs text-slate-500">{p.total_bookings} consultas</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-semibold text-emerald-600 block">R$ {parseFloat(p.total_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            {p.payment_date && <span className="text-[10px] text-emerald-500">Em {new Date(p.payment_date).toLocaleDateString('pt-BR')}</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-emerald-600/70 text-center py-4">Nenhum repasse pago neste período.</p>
+                        )}
+                    </div>
+
+                    {/* Pending Payouts */}
+                    <div className="p-6 bg-amber-50/30">
+                        <div className="flex items-center justify-between mb-4">
+                            <h4 className="font-medium text-amber-800 flex items-center gap-2">
+                                <Clock className="w-4 h-4" /> A Liberar
+                            </h4>
+                            <span className="font-bold text-amber-700">R$ {totalPayoutPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        
+                        {payoutsPending.length > 0 ? (
+                            <div className="space-y-3">
+                                {payoutsPending.map(p => (
+                                    <div key={p.id} className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex justify-between items-center text-sm">
+                                        <div>
+                                            <p className="font-medium text-slate-700">{new Date(p.period_start).toLocaleDateString('pt-BR')} - {new Date(p.period_end).toLocaleDateString('pt-BR')}</p>
+                                            <p className="text-xs text-slate-500">{p.total_bookings} consultas</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="font-semibold text-amber-600 block">R$ {parseFloat(p.total_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                            <span className="text-[10px] text-amber-500 uppercase font-bold">Pendente</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-amber-600/70 text-center py-4">Nenhum repasse a liberar neste período.</p>
+                        )}
+                    </div>
+                </div>
             </motion.div>
         </div>
     );

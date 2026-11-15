@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
+import { isAdminUser } from '../_shared/auth.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -63,8 +64,7 @@ serve(async (req) => {
   }
 
   const user = userData.user;
-  const role = (user.user_metadata?.role || user.app_metadata?.role || '').toString().toLowerCase();
-  const isAdmin = ['admin', 'superadmin'].includes(role);
+  const isAdmin = isAdminUser(user);
 
   if (!isAdmin) {
     const { data: registration, error: registrationError } = await supabaseAdmin

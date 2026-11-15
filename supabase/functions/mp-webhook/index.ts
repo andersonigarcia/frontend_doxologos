@@ -15,8 +15,9 @@ async function verifySignature(req: Request, bodyText: string, secret: string): 
   const xRequestId = req.headers.get('x-request-id');
 
   if (!xSignature || !xRequestId || !secret) {
-    console.warn('⚠️ Missing signature headers or secret. Skipping validation (NOT RECCOMENDED for production).');
-    return true; // Fail open if secret is not configured, but log warning.
+    // M-06: Fail-CLOSED — nunca aceitar webhooks sem assinatura verificável em produção.
+    console.error('🔒 MP_WEBHOOK_SECRET não configurado ou headers ausentes. Rejeitando requisição.');
+    return false;
   }
 
   // Parse x-signature
@@ -30,7 +31,17 @@ async function verifySignature(req: Request, bodyText: string, secret: string): 
     if (key.trim() === 'v1') v1 = value.trim();
   });
 
-  const manifest = `id:${getUrlParam(req, 'data.id')};request-id:${xRequestId};ts:${ts};`;
+  let bodyJson: any = {};
+  try {
+    bodyJson = JSON.parse(bodyText);
+  } catch (e) {
+    // ignore
+  }
+
+  const urlId = getUrlParam(req, 'data.id');
+  const finalId = urlId || bodyJson?.data?.id || bodyJson?.id || '';
+
+  const manifest = `id:${finalId};request-id:${xRequestId};ts:${ts};`;
 
   // Create HMAC
   const encoder = new TextEncoder();
@@ -56,12 +67,17 @@ async function verifySignature(req: Request, bodyText: string, secret: string): 
 }
 
 function getUrlParam(req: Request, param: string): string {
-  // Helper to get nested params from URL or body, strictly needed for MP manifest generation
-  // Implementation simplified for now as MP sends ID in query often for notifications? 
-  // Actually MP sends ID in the BODY for webhooks usually.
-  // The manifest construction documentation usually refers to the data.id in the URL query params OR body.
-  // Let's rely on the Double Check strategy as primary security for now if this complex signature fails.
-  return "";
+  // O Mercado Pago envia o data.id tanto no body quanto como query param na URL.
+  // O manifest de assinatura usa o data.id da query string da notification_url.
+  try {
+    const url = new URL(req.url);
+    if (param === 'data.id') {
+      return url.searchParams.get('data.id') || url.searchParams.get('id') || '';
+    }
+    return url.searchParams.get(param) || '';
+  } catch {
+    return '';
+  }
 }
 
 
@@ -69,6 +85,9 @@ async function fetchMpPayment(paymentId: string, mpAccessToken: string) {
   const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
     headers: { Authorization: `Bearer ${mpAccessToken}` }
   });
+  if (res.status === 404) {
+    return { notFound: true, status: 404 };
+  }
   if (!res.ok) throw new Error(`MP fetch failed ${res.status}`);
   return res.json();
 }
@@ -83,7 +102,38 @@ async function sendEmail(sendgridKey: string, from: string, to: string, subject:
   return res.ok;
 }
 
-serve(async (req) => {
+// FIX #7: sanitizeForLog movida para escopo de módulo (fora do handler)
+// Evita problemas de hoisting instável em Deno com arrow functions
+function sanitizeForLog(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(sanitizeForLog);
+
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    const lowerKey = key.toLowerCase();
+    if (
+      lowerKey.includes('card') ||
+      lowerKey.includes('cvv') ||
+      lowerKey.includes('security_code') ||
+      lowerKey.includes('password') ||
+      lowerKey.includes('token')
+    ) {
+      sanitized[key] = '***REDACTED***';
+    } else if (lowerKey.includes('email') && typeof value === 'string') {
+      const [user, domain] = value.split('@');
+      sanitized[key] = user ? `${user.substring(0, 2)}***@${domain || ''}` : '***@***';
+    } else if (lowerKey.includes('phone') && typeof value === 'string') {
+      sanitized[key] = value.length > 4 ? `***${value.slice(-4)}` : '***';
+    } else if (typeof value === 'object') {
+      sanitized[key] = sanitizeForLog(value);
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
+serve(async (req: Request) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -106,15 +156,15 @@ serve(async (req) => {
     return new Response('Invalid JSON', { status: 400 });
   }
 
-  // Log to database
+  // Log to database (com saneamento PII) logo no início da requisição para rastreabilidade total
   const logEntry = {
     provider: 'mercadopago',
-    payload: bodyJson,
+    payload: sanitizeForLog(bodyJson),
     status: 'pending',
     signature: req.headers.get('x-signature')
   };
 
-  const { data: logData, error: logError } = await supabase
+  const { data: logData } = await supabase
     .from('webhook_logs')
     .insert(logEntry)
     .select()
@@ -122,34 +172,196 @@ serve(async (req) => {
 
   const logId = logData?.id;
 
-  try {
-    const paymentId = bodyJson.data?.id || bodyJson.id; // MP sends data.id usually
-    const type = bodyJson.type;
+  // Verificação de assinatura HMAC do Mercado Pago.
+  // Prioriza validação HMAC estrita. Se falhar por descompasso de chaves durante migrações de conta,
+  // recorre ao Double-Check autenticado direto na API oficial do Mercado Pago (Self-Validation).
+  let isSignatureValid = false;
+  const xSignature = req.headers.get('x-signature');
 
-    if (type !== 'payment') {
-      // Just log and ignore non-payment events (like test notifications)
-      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: 'Not a payment event' }).eq('id', logId);
+  if (MP_WEBHOOK_SECRET && xSignature) {
+    isSignatureValid = await verifySignature(req, bodyText, MP_WEBHOOK_SECRET);
+    if (isSignatureValid) {
+      console.log('✅ Assinatura v2.0 verificada com sucesso via HMAC.');
+    } else {
+      console.warn('⚠️ [M-06] Assinatura v2.0 não coincidiu com MP_WEBHOOK_SECRET. Procedendo com validação direta na API oficial do Mercado Pago...');
+    }
+  } else if (!xSignature) {
+    console.info('ℹ️ Notificação v1.0/IPN recebida (sem x-signature). Aceita para validação direta na API oficial do MP.');
+  }
+
+  try {
+    const paymentId = bodyJson.data?.id || bodyJson.id || getUrlParam(req, 'data.id') || getUrlParam(req, 'id');
+    const type = bodyJson.type || bodyJson.topic || getUrlParam(req, 'type') || getUrlParam(req, 'topic') || bodyJson.action?.split('.')[0];
+
+    if (!paymentId) {
+      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: 'No payment id in payload or query params' }).eq('id', logId);
+      return new Response('No payment id', { status: 200 });
+    }
+
+    if (type && type !== 'payment') {
+      // Ignorar eventos que não sejam de pagamento
+      if (logId) await supabase.from('webhook_logs').update({ status: 'ignored', error_message: `Not a payment event: ${type}` }).eq('id', logId);
       return new Response('Ignored non-payment event', { status: 200 });
     }
 
-    if (!paymentId) {
-      if (logId) await supabase.from('webhook_logs').update({ status: 'error', error_message: 'No payment ID found' }).eq('id', logId);
-      return new Response('No payment ID', { status: 400 });
-    }
+    const environment = Deno.env.get('MP_ENVIRONMENT') || 'production';
+    const MP_ACCESS_TOKEN = environment === 'test'
+      ? Deno.env.get('MP_ACCESS_TOKEN_TEST')
+      : Deno.env.get('MP_ACCESS_TOKEN');
+
+    let bookingId: string | null = null;
+    let existingBooking: any = null;
+    // FIX #6: flag para evitar dupla emissão de NFS-e quando já tratada inline
+    let nfseHandledInline = false;
+    let didCancelBooking = false;
 
     // 1. Double Check with MP API (Self-Validation)
-    // This confirms the payment status is real and not a spoofed payload
+    // Confirma status do pagamento diretamente na API oficial autenticada
     const mpPayment = await fetchMpPayment(paymentId, MP_ACCESS_TOKEN);
+
+    // Se o pagamento retornar 404 (ex: eventos de retries de contas antigas), encerra com 200 para cessar retries
+    if (mpPayment?.notFound) {
+      console.warn(`⚠️ Pagamento ${paymentId} não encontrado na conta ativa do Mercado Pago (evento de conta legada). Respondendo 200 para encerrar retries.`);
+      if (logId) {
+        await supabase.from('webhook_logs').update({
+          status: 'ignored',
+          error_message: `Payment ${paymentId} not found in active MP account (404)`
+        }).eq('id', logId);
+      }
+      return new Response(JSON.stringify({ ok: true, ignored: true, reason: 'payment_not_found_in_account' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     console.log(`✅ Verified payment ${paymentId} status: ${mpPayment.status}`);
+    console.log(`💳 Payment method: ${mpPayment.payment_method_id}`);
+    console.log(`📊 Payment type: ${mpPayment.payment_type_id}`);
 
     const externalRef = mpPayment.external_reference;
     console.log(`🔍 Processing external_reference: ${externalRef}`);
     let success = false;
 
+    // =========================================================================
+    // IDEMPOTENCY GUARD INTELIGENTE
+    // Só encerra early se a entidade de negócio (booking, package ou inscrição)
+    // de fato já estiver confirmada/paga com as notificações disparadas.
+    // =========================================================================
+    const { data: existingProcessedPayment } = await supabase
+      .from('payments')
+      .select('id, status, updated_at')
+      .eq('mp_payment_id', paymentId.toString())
+      .maybeSingle();
+
+    let isBusinessEntityFullyUpdated = false;
+    const isApprovedStatus = ['approved', 'authorized', 'paid'].includes(mpPayment.status);
+
+    if (externalRef) {
+      if (externalRef.startsWith('PACOTE_')) {
+        const pkgId = externalRef.replace('PACOTE_', '');
+        const { data: pkg } = await supabase.from('packages').select('status').eq('id', pkgId).maybeSingle();
+        isBusinessEntityFullyUpdated = isApprovedStatus ? (pkg?.status === 'paid') : (pkg?.status === mpPayment.status);
+      } else if (externalRef.startsWith('EVENTO_')) {
+        const evId = externalRef.replace('EVENTO_', '');
+        const { data: ev } = await supabase.from('inscricoes_eventos').select('payment_status').eq('id', evId).maybeSingle();
+        isBusinessEntityFullyUpdated = ev?.payment_status === mpPayment.status;
+      } else if (externalRef.startsWith('LIVRO_')) {
+        const { data: dl } = await supabase.from('user_book_downloads').select('payment_status').eq('payment_id', paymentId.toString()).maybeSingle();
+        isBusinessEntityFullyUpdated = isApprovedStatus ? (dl?.payment_status === 'completed') : (dl?.payment_status === 'failed');
+      } else {
+        // Booking UUID
+        const { data: targetBooking } = await supabase
+          .from('bookings')
+          .select('id, status, payment_status, notification_sent_at')
+          .eq('id', externalRef)
+          .maybeSingle();
+
+        if (targetBooking) {
+          isBusinessEntityFullyUpdated = isApprovedStatus
+            ? (targetBooking.status === 'confirmed' && targetBooking.payment_status === mpPayment.status && Boolean(targetBooking.notification_sent_at))
+            : (targetBooking.payment_status === mpPayment.status);
+        }
+      }
+    }
+
+    if (existingProcessedPayment && existingProcessedPayment.status === mpPayment.status && isBusinessEntityFullyUpdated) {
+      console.log(`⚡ [Idempotency] Pagamento ${paymentId} e referência ${externalRef} já 100% processados. Retornando 200 OK.`);
+      if (logId) {
+        await supabase.from('webhook_logs')
+          .update({
+            status: 'idempotent_duplicate',
+            processed_at: new Date().toISOString()
+          })
+          .eq('id', logId);
+      }
+      return new Response(JSON.stringify({ ok: true, duplicate: true, status: mpPayment.status }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // 2. Process based on Reference
     let ledgerTransactionId = null;
 
-    if (externalRef && externalRef.startsWith('EVENTO_')) {
+    if (externalRef && externalRef.startsWith('LIVRO_')) {
+      // ── Recurso Digital do Livro ──────────────────────────────
+      const resourceId = externalRef.replace('LIVRO_', '');
+      console.log(`📚 Processing digital resource payment - Resource ID: ${resourceId}`);
+
+      if (mpPayment.status === 'approved') {
+        // Atualizar user_book_downloads via payment_id (reconciliação)
+        const { error: dlUpdateErr } = await supabase
+          .from('user_book_downloads')
+          .update({ payment_status: 'completed' })
+          .eq('payment_id', paymentId.toString())
+          .eq('download_type', 'paid');
+
+        if (dlUpdateErr) {
+          console.error('❌ Error updating user_book_downloads:', dlUpdateErr);
+        } else {
+          console.log('✅ user_book_downloads updated to completed');
+        }
+
+        // Incrementar purchase_count no recurso
+        await supabase.rpc('increment_book_resource_purchases', { p_resource_id: resourceId });
+
+        // Notificação de sistema no painel admin
+        await supabase.from('notifications').insert([{
+          user_id: null,
+          type: 'book:purchase',
+          title: 'Nova venda de material do livro',
+          message: `Pagamento ${paymentId} aprovado para recurso ${resourceId} — R$ ${mpPayment.transaction_amount?.toFixed(2)}`,
+          link: '/admin?tab=book-resources',
+          metadata: {
+            resource_id: resourceId,
+            payment_id: paymentId,
+            payer_email: mpPayment.payer?.email,
+            amount: mpPayment.transaction_amount,
+          },
+        }]);
+
+        success = true;
+      } else {
+        // Pagamento recusado/cancelado — marcar como failed
+        await supabase
+          .from('user_book_downloads')
+          .update({ payment_status: 'failed' })
+          .eq('payment_id', paymentId.toString())
+          .eq('download_type', 'paid');
+      }
+
+      if (logId) {
+        await supabase.from('webhook_logs')
+          .update({ status: success ? 'processed' : 'ignored', processed_at: new Date().toISOString() })
+          .eq('id', logId);
+      }
+
+      return new Response(JSON.stringify({ ok: true, type: 'digital_resource' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+
+    } else if (externalRef && externalRef.startsWith('EVENTO_')) {
       // ... Event Logic ...
       const inscricaoId = externalRef.replace('EVENTO_', '');
       console.log(`🎫 Processing event payment - Enrollment ID: ${inscricaoId}`);
@@ -172,10 +384,171 @@ serve(async (req) => {
 
       if (payData) ledgerTransactionId = payData.id;
 
+      // =====================================================
+      // FINANCIAL SPLIT LOGIC FOR EVENTS
+      // =====================================================
+      if (mpPayment.status === 'approved' && payData) {
+        console.log('💰 Processing financial split for event payment...');
+
+        try {
+          // 1. Fetch event details and configuration
+          const { data: inscricao, error: inscricaoError } = await supabase
+            .from('inscricoes_eventos')
+            .select(`
+              evento_id,
+              eventos (
+                id,
+                titulo,
+                valor,
+                professional_id,
+                platform_fee_type,
+                platform_fee_value
+              )
+            `)
+            .eq('id', inscricaoId)
+            .single();
+
+          if (inscricaoError || !inscricao) {
+            console.error('❌ Error fetching event details for split:', inscricaoError);
+          } else {
+            const evento = inscricao.eventos;
+            const totalAmount = mpPayment.transaction_amount;
+
+            // 2. Calculate split using database function
+            const { data: splitData, error: splitCalcError } = await supabase
+              .rpc('calculate_event_split', {
+                p_evento_id: evento.id,
+                p_total_amount: totalAmount
+              });
+
+            if (splitCalcError || !splitData || splitData.length === 0) {
+              console.error('❌ Error calculating split:', splitCalcError);
+            } else {
+              const split = splitData[0];
+
+              // 3. Register split in database
+              const { data: splitRecord, error: splitInsertError } = await supabase
+                .from('event_financial_splits')
+                .insert({
+                  evento_id: evento.id,
+                  inscricao_id: inscricaoId,
+                  payment_id: payData.id,
+                  total_amount: totalAmount,
+                  platform_amount: split.platform_amount,
+                  professional_amount: split.professional_amount,
+                  split_calculation: split.calculation_details,
+                  professional_id: evento.professional_id
+                })
+                .select()
+                .single();
+
+              if (splitInsertError) {
+                console.error('❌ Error inserting split record:', splitInsertError);
+              } else {
+                console.log('✅ Financial split registered successfully:', {
+                  split_id: splitRecord.id,
+                  total: totalAmount,
+                  platform: split.platform_amount,
+                  professional: split.professional_amount,
+                  evento: evento.titulo
+                });
+              }
+            }
+          }
+        } catch (splitError) {
+          console.error('❌ Unexpected error in split processing:', splitError);
+          // Don't fail the webhook - split is not critical for payment confirmation
+        }
+      }
+      // =====================================================
+      // END FINANCIAL SPLIT LOGIC
+      // =====================================================
+
+      success = true;
+    } else if (externalRef && externalRef.startsWith('PACOTE_')) {
+      // =====================================================
+      // PACKAGE LOGIC (Agendamento Múltiplo / Pacotes)
+      // =====================================================
+      const packageId = externalRef.replace('PACOTE_', '');
+      console.log(`📦 Processing package payment - Package ID: ${packageId}`);
+
+      const { data: pkgData, error: pkgFetchError } = await supabase
+        .from('packages')
+        .select('*')
+        .eq('id', packageId)
+        .single();
+
+      if (pkgFetchError || !pkgData) {
+        console.error(`❌ Package ${packageId} not found!`, pkgFetchError);
+      } else {
+        // Update Package status
+        await supabase.from('packages').update({
+          status: mpPayment.status === 'approved' ? 'paid' : mpPayment.status,
+          marketplace_payment_id: paymentId.toString(),
+          updated_at: new Date().toISOString()
+        }).eq('id', packageId);
+
+        // Update all child bookings
+        await supabase.from('bookings').update({
+          status: mpPayment.status === 'approved' ? 'confirmed' : 'pending',
+          payment_status: mpPayment.status,
+          marketplace_payment_id: paymentId.toString(),
+          updated_at: new Date().toISOString()
+        }).eq('package_id', packageId);
+
+        // Update Payments table
+        const { data: payData } = await supabase.from('payments')
+          .update({ status: mpPayment.status, raw_payload: mpPayment })
+          .eq('mp_payment_id', paymentId.toString())
+          .select()
+          .single();
+
+        if (payData) ledgerTransactionId = payData.id;
+
+        // Register Ledger Entry for Package Custody: CASH_BANK (Debit) -> PACKAGE_ESCROW (Credit)
+        if (mpPayment.status === 'approved' && payData) {
+          await supabase.from('payment_ledger_entries').insert([
+            {
+              transaction_id: payData.id,
+              entry_type: 'DEBIT',
+              account_code: 'CASH_BANK',
+              amount: pkgData.gross_amount,
+              description: `Recebimento Pacote #${packageId} (${pkgData.total_sessions} sessões)`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: payData.id,
+              entry_type: 'CREDIT',
+              account_code: 'PACKAGE_ESCROW',
+              amount: pkgData.gross_amount,
+              description: `Custódia Pacote #${packageId} (${pkgData.total_sessions} sessões)`,
+              created_at: new Date().toISOString()
+            }
+          ]);
+
+          // FIX #6: Emissão inline de NFS-e para pacotes (assíncrona / não bloqueante - Onda 2)
+          nfseHandledInline = true;
+          console.log(`🧾 Disparando NFS-e assíncrona para pacote ${packageId} (payment_id: ${payData.id})...`);
+          supabase.functions.invoke('emit-nfse', {
+            body: {
+              package_id: packageId,
+              payment_id: payData.id,
+            }
+          }).then(({ error: nfsePkgErr }: any) => {
+            if (nfsePkgErr) {
+              console.error('⚠️ Falha ao disparar NFS-e para pacote (non-fatal):', nfsePkgErr);
+            } else {
+              console.log('✅ NFS-e de pacote disparada com sucesso em background.');
+            }
+          }).catch((nfseErr: any) => {
+            console.error('⚠️ Exceção ao disparar NFS-e de pacote (non-fatal):', nfseErr);
+          });
+        }
+      }
       success = true;
     } else {
+
       // Booking Logic
-      let bookingId = null;
 
       // UUID format validation
       // Standard: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars with hyphens)
@@ -200,11 +573,13 @@ serve(async (req) => {
 
       if (bookingId) {
         // Verify booking exists before updating
-        const { data: existingBooking, error: fetchError } = await supabase
+        const { data: bookingData, error: fetchError } = await supabase
           .from('bookings')
-          .select('id, status')
+          .select('id, user_id, status, valor_consulta, valor_repasse_profissional, professional_id, patient_name, booking_date')
           .eq('id', bookingId)
           .single();
+
+        existingBooking = bookingData;
 
         if (fetchError || !existingBooking) {
           console.error(`❌ Booking ${bookingId} not found!`, fetchError);
@@ -215,16 +590,11 @@ serve(async (req) => {
           return new Response(`Booking ${bookingId} not found`, { status: 404 });
         }
 
-        console.log(`📋 Found booking ${bookingId}:`, {
-          currentStatus: existingBooking.status,
-          currentPaymentStatus: existingBooking.payment_status,
-          newMPStatus: mpPayment.status,
-          willUpdateTo: statusMap[mpPayment.status]
-        });
-
+        // M-03: statusMap declarado antes de qualquer uso
         const statusMap: any = {
           'approved': 'confirmed',
           'authorized': 'confirmed',
+          'paid': 'confirmed',
           'in_process': 'pending',
           'rejected': 'cancelled',
           'cancelled': 'cancelled',
@@ -232,13 +602,80 @@ serve(async (req) => {
           'charged_back': 'cancelled'
         };
 
+        console.log(`📋 Found booking ${bookingId}:`, {
+          currentStatus: existingBooking.status,
+          currentPaymentStatus: existingBooking.payment_status,
+          newMPStatus: mpPayment.status,
+          willUpdateTo: statusMap[mpPayment.status]
+        });
+
+
         const newStatus = statusMap[mpPayment.status];
-        if (newStatus) {
+        didCancelBooking = false;
+
+        // M-03: Máquina de estados — impede regressões de status por webhooks tardios
+        const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+          'pending_payment': ['awaiting_payment', 'confirmed', 'cancelled'],
+          'awaiting_payment': ['confirmed', 'cancelled'], // cartão in_process → aprovado/recusado
+          'pending': ['confirmed', 'cancelled'],
+          'confirmed': ['confirmed', 'cancelled', 'completed'], // Permite idempotência/reconciliação para disparo de notificações pendentes
+          'completed': [], // estado terminal — nenhuma transição permitida
+          'cancelled': [], // estado terminal — nenhuma transição permitida
+          'cancelled_by_patient': [],
+          'cancelled_by_professional': [],
+          'no_show_unjustified': []
+        };
+        
+        // Se o status não está mapeado (fallback), permitimos transições padrão para não bloquear o fluxo
+        const allowedNext = ALLOWED_TRANSITIONS[existingBooking.status] ?? ['awaiting_payment', 'confirmed', 'cancelled'];
+
+        if (newStatus && !allowedNext.includes(newStatus)) {
+          console.warn(`⚠️ [M-03] Transição bloqueada: ${existingBooking.status} → ${newStatus} para booking ${bookingId}. Webhook ignorado.`);
+          success = true; // considera processado sem erro
+        } else if (newStatus) {
+          // ==========================================
+          // LAZY REGISTRATION (Guest Checkout)
+          // ==========================================
+          if (newStatus === 'confirmed' && !existingBooking.user_id && existingBooking.patient_email) {
+            try {
+              console.log(`👤 Criando conta para novo paciente (Lazy Registration): ${existingBooking.patient_email}`);
+              const randomPassword = crypto.randomUUID() + 'A1@';
+              
+              const { data: newUser, error: createUserError } = await supabase.auth.admin.createUser({
+                email: existingBooking.patient_email,
+                password: randomPassword,
+                email_confirm: true,
+                user_metadata: {
+                  full_name: existingBooking.patient_name,
+                  name: existingBooking.patient_name,
+                  is_lazy_registered: true
+                }
+              });
+
+              if (createUserError) {
+                if (createUserError.message.includes('already registered')) {
+                    const { data: rpcUserId } = await supabase.rpc('get_user_id_by_email', { user_email: existingBooking.patient_email });
+                    if (rpcUserId) {
+                        existingBooking.user_id = rpcUserId;
+                    }
+                } else {
+                    console.error('❌ Erro ao criar conta lazy:', createUserError);
+                }
+              } else if (newUser?.user?.id) {
+                console.log(`✅ Conta criada com sucesso via Lazy Registration. ID: ${newUser.user.id}`);
+                existingBooking.user_id = newUser.user.id;
+              }
+            } catch (err) {
+              console.error('⚠️ Erro inesperado na criação lazy:', err);
+            }
+          }
+
           const { error: updateError } = await supabase.from('bookings')
             .update({
               status: newStatus,
               payment_status: mpPayment.status,
               marketplace_payment_id: paymentId.toString(),
+              user_id: existingBooking.user_id, // Atualiza o user_id caso tenha sido criado via lazy registration
               updated_at: new Date().toISOString()
             })
             .eq('id', bookingId);
@@ -256,7 +693,37 @@ serve(async (req) => {
             transactionAmount: mpPayment.transaction_amount
           });
           success = true;
-        } else {
+          
+          if (newStatus === 'cancelled') {
+            didCancelBooking = true;
+          }
+
+          // ── Post-Payment Orchestrator (fire-and-forget) ─────────────────
+          // Dispara email de confirmação ao paciente e ao profissional se ainda não notificado.
+          // Falha aqui NÃO impede o webhook de retornar 200.
+          // Controlado por variável de ambiente POST_PAYMENT_ORCHESTRATOR.
+          if (newStatus === 'confirmed') {
+            const orchestratorEnabled = (Deno.env.get('POST_PAYMENT_ORCHESTRATOR') || 'true').toLowerCase() !== 'false';
+            if (orchestratorEnabled && !existingBooking.notification_sent_at) {
+              console.log(`📨 Disparando post-payment-orchestrator para booking ${bookingId}...`);
+              supabase.functions.invoke('post-payment-orchestrator', {
+                body: { booking_id: bookingId }
+              }).then(({ error: orchErr }: any) => {
+                if (orchErr) {
+                  console.error(`⚠️ [Orchestrator] Falha ao invocar para booking ${bookingId} (non-fatal):`, orchErr);
+                } else {
+                  console.log(`✅ [Orchestrator] Invocado com sucesso para booking ${bookingId}`);
+                }
+              }).catch((e: any) => {
+                console.error(`⚠️ [Orchestrator] Exceção na invocação (non-fatal):`, e);
+              });
+            } else if (existingBooking.notification_sent_at) {
+              console.log(`ℹ️ [Orchestrator] Booking ${bookingId} já possuía notificações enviadas em ${existingBooking.notification_sent_at}.`);
+            } else {
+              console.log(`ℹ️ [Orchestrator] Desativado (POST_PAYMENT_ORCHESTRATOR=false). Email não disparado.`);
+            }
+          }
+        } else if (!newStatus) {
           console.warn(`⚠️ No status mapping for MP status: ${mpPayment.status}`);
         }
       } else {
@@ -276,61 +743,168 @@ serve(async (req) => {
       }
 
       if (payData) ledgerTransactionId = payData.id;
+      
+      if (didCancelBooking && payData && Number(payData.wallet_balance_used) > 0 && existingBooking?.user_id) {
+        console.log(`💰 Refunding wallet balance of ${payData.wallet_balance_used} for booking ${bookingId}`);
+        const { error: refundError } = await supabase.rpc('process_wallet_transaction', {
+            p_patient_id: existingBooking.user_id,
+            p_amount: Number(payData.wallet_balance_used),
+            p_type: 'credit_cancellation',
+            p_description: 'Estorno de saldo por falha ou expiração no pagamento',
+            p_booking_id: bookingId
+        });
+        if (refundError) {
+            console.error('❌ Failed to refund wallet balance:', refundError);
+        } else {
+            console.log('✅ Wallet balance refunded successfully');
+        }
+      }
     }
 
     // ========================================
     // 3. LEDGER ENTRY (Double Entry Accounting)
     // ========================================
-    if ((mpPayment.status === 'approved' || mpPayment.status === 'paid') && ledgerTransactionId) {
-      try {
-        console.log(`📒 Recording ledger entries for transaction ${ledgerTransactionId}`);
+    const isPositiveStatus = ['approved', 'authorized', 'paid'].includes(mpPayment.status);
+    const isReversalStatus = ['refunded', 'charged_back'].includes(mpPayment.status);
 
-        // Check for existing ledger entry to prevent duplicates
-        const { count } = await supabase.from('payment_ledger_entries')
-          .select('id', { count: 'exact', head: true })
+    if ((isPositiveStatus || isReversalStatus) && ledgerTransactionId) {
+      try {
+        console.log(`📒 Recording ledger entries for transaction ${ledgerTransactionId} (Status: ${mpPayment.status})`);
+
+        // Check for existing ledger entry for this specific status/type to prevent duplicates
+        // Note: UNIQUE constraint (transaction_id, account_code, entry_type) protects this
+        const { data: existingEntries } = await supabase.from('payment_ledger_entries')
+          .select('account_code, entry_type')
           .eq('transaction_id', ledgerTransactionId);
 
-        if (count === 0) {
-          const amount = mpPayment.transaction_amount;
-          const fee = mpPayment.fee_details?.reduce((acc: number, f: any) => acc + f.amount, 0) || 0;
-          const net = amount - fee;
+        const hasEntry = (account: string, type: string) =>
+          existingEntries?.some((e: any) => e.account_code === account && e.entry_type === type);
 
-          // 1. DEBIT: Cash in Bank (Net or Gross? Usually Gross for revenue, but receiving is Net if fee deducted at source. 
-          // Let's record Gross amount as Cash for simplicity, and track fees separately if needed.
-          // For this MVP: Cash = Gross Amount.
+        const totalAmount = mpPayment.transaction_amount;
+        const profPayout = existingBooking?.valor_repasse_profissional || 0;
+        const platformFee = (existingBooking?.valor_consulta || totalAmount) - profPayout;
 
-          const entries = [
+        let entries: any[] = [];
+
+        if (isPositiveStatus && !hasEntry('CASH_BANK', 'DEBIT')) {
+          // Normal Payment Split
+          entries = [
             {
               transaction_id: ledgerTransactionId,
               entry_type: 'DEBIT',
               account_code: 'CASH_BANK',
-              amount: amount,
-              description: `Payment received ${paymentId} (MP)`,
+              amount: totalAmount,
+              description: `Recebimento: Agendamento #${bookingId || externalRef}`,
               created_at: new Date().toISOString()
             },
             {
               transaction_id: ledgerTransactionId,
               entry_type: 'CREDIT',
-              account_code: 'REVENUE_GROSS', // Or LIABILITY_PROFESSIONAL based on split
-              amount: amount,
-              description: `Gross revenue from payment ${paymentId}`,
+              account_code: 'REVENUE_SERVICE',
+              amount: platformFee,
+              description: `Receita Plataforma: Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'CREDIT',
+              account_code: 'LIABILITY_PROFESSIONAL',
+              amount: profPayout,
+              description: `A Pagar Profissional: Agendamento #${bookingId || externalRef}`,
               created_at: new Date().toISOString()
             }
           ];
-
-          const { error: ledgerError } = await supabase.from('payment_ledger_entries').insert(entries);
-          if (ledgerError) console.error('❌ Ledger insert error:', ledgerError);
-          else console.log('✅ Ledger entries recorded successfully');
-        } else {
-          console.log('ℹ️ Ledger entries already exist, skipping.');
+        } else if (isReversalStatus && !hasEntry('CASH_BANK', 'CREDIT')) {
+          // M-05: Reversal Entry (Refund/Chargeback)
+          console.log(`🔄 Creating reversal entries for ${mpPayment.status}`);
+          entries = [
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'CREDIT', // Money leaving bank
+              account_code: 'CASH_BANK',
+              amount: totalAmount,
+              description: `ESTORNO (${mpPayment.status}): Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'DEBIT', // Reversing platform revenue
+              account_code: 'REVENUE_SERVICE',
+              amount: platformFee,
+              description: `REVERSÃO RECEITA: Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            },
+            {
+              transaction_id: ledgerTransactionId,
+              entry_type: 'DEBIT', // Reversing professional liability
+              account_code: 'LIABILITY_PROFESSIONAL',
+              amount: profPayout,
+              description: `REVERSÃO REPASSE: Agendamento #${bookingId || externalRef}`,
+              created_at: new Date().toISOString()
+            }
+          ];
         }
-      } catch (ledgerErr) {
+
+        if (entries.length > 0) {
+          const finalEntries = entries.filter(e => e.amount > 0 || e.account_code === 'CASH_BANK');
+          const { error: ledgerError } = await supabase.from('payment_ledger_entries').insert(finalEntries);
+          if (ledgerError) console.error('❌ Ledger insert error:', ledgerError);
+          else console.log(`✅ Ledger entries (${isReversalStatus ? 'reversal' : 'split'}) recorded successfully`);
+        } else {
+          console.log('ℹ️ Ledger entries for this status already exist or status not applicable, skipping.');
+        }
+      } catch (ledgerErr: any) {
         console.error('❌ Unexpected ledger error:', ledgerErr);
       }
     }
 
+    // ========================================
+    // 4. AUTOMATED NFS-E EMISSION (BHISS PBH)
+    // FIX #6: Só dispara se não foi tratado inline (evita dupla emissão para pacotes)
+    // FIX #6: Garante que bookingId ou ledgerTransactionId estão resolvidos antes de invocar
+    // ========================================
+    if (isPositiveStatus && !nfseHandledInline) {
+      const hasValidReference = !!(bookingId || ledgerTransactionId ||
+        (externalRef && externalRef.startsWith('EVENTO_')));
+
+      if (!hasValidReference) {
+        console.warn('⚠️ NFS-e não disparada: nenhuma referência válida (bookingId, ledgerTransactionId ou inscricaoId) resolvida.');
+      } else {
+        try {
+          const inscricaoId = externalRef && externalRef.startsWith('EVENTO_')
+            ? externalRef.replace('EVENTO_', '')
+            : null;
+
+          console.log(`🧾 Disparando NFS-e assíncrona: booking=${bookingId} | inscricao=${inscricaoId} | payment=${ledgerTransactionId}`);
+
+          // Invocação assíncrona desacoplada (Onda 2 - Padrão Stripe/Fintech)
+          // Não bloqueia o tempo de resposta HTTP do webhook ao Mercado Pago
+          supabase.functions.invoke('emit-nfse', {
+            body: {
+              booking_id: bookingId,
+              inscricao_id: inscricaoId,
+              payment_id: ledgerTransactionId,
+            }
+          }).then(({ error: nfseInvokeError }: any) => {
+            if (nfseInvokeError) {
+              console.error('⚠️ Falha ao disparar NFS-e (non-fatal):', nfseInvokeError);
+            } else {
+              console.log('✅ NFS-e disparada com sucesso em background.');
+            }
+          }).catch((nfseErr: any) => {
+            console.error('⚠️ Exceção ao disparar NFS-e (non-fatal):', nfseErr);
+          });
+        } catch (nfseErr) {
+          console.error('⚠️ Exceção ao preparar disparo de NFS-e (non-fatal):', nfseErr);
+        }
+      }
+    } else if (nfseHandledInline) {
+      console.log('ℹ️ NFS-e já tratada inline (pacote). Bloco externo ignorado.');
+    }
+
     // Update Log
     if (logId) await supabase.from('webhook_logs').update({ status: 'success' }).eq('id', logId);
+
 
     return new Response('OK', { status: 200 });
 

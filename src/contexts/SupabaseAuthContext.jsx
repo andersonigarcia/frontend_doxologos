@@ -7,14 +7,86 @@ import { auditLogger, AuditAction } from '@/lib/auditLogger';
 
 const AuthContext = createContext(null);
 
+export const ACTIVE_ROLE_STORAGE_KEY = 'doxologos_preferred_active_role';
+
+/**
+ * Resolve todos os papéis elegíveis para o usuário autenticado.
+ * Todo usuário autenticado tem direito ao perfil de 'patient'.
+ * Se possuir role 'professional' ou 'admin', tem direito aos respectivos papéis.
+ * Admin também tem acesso a 'professional' e 'patient'.
+ * 
+ * @param {Object} currentUser - Objeto do usuário Supabase Auth
+ * @returns {string[]} Lista de roles elegíveis normalizadas
+ */
+export function resolveAvailableRoles(currentUser) {
+  if (!currentUser) return [];
+
+  const roles = new Set();
+  
+  // 1. Todo usuário é elegível ao perfil de Paciente
+  roles.add('patient');
+
+  // 2. Extrai role do servidor (app_metadata tem prioridade, fallback em user_metadata)
+  const serverRole = (currentUser.app_metadata?.role ?? currentUser.user_metadata?.role ?? '').toLowerCase();
+
+  // 3. Extrai roles múltiplas caso existam no app_metadata.roles
+  const serverRolesList = Array.isArray(currentUser.app_metadata?.roles) 
+    ? currentUser.app_metadata.roles.map(r => String(r).toLowerCase())
+    : [];
+
+  serverRolesList.forEach(r => {
+    if (['admin', 'professional', 'patient', 'user'].includes(r)) {
+      roles.add(r === 'user' ? 'patient' : r);
+    }
+  });
+
+  if (serverRole === 'admin') {
+    roles.add('admin');
+    roles.add('professional');
+    roles.add('patient');
+  } else if (serverRole === 'professional') {
+    roles.add('professional');
+    roles.add('patient');
+  } else if (serverRole === 'patient' || serverRole === 'user') {
+    roles.add('patient');
+  }
+
+  return Array.from(roles);
+}
+
+/**
+ * Determina o activeRole inicial considerando persistência no localStorage e prioridade de privilégio.
+ * @param {string[]} availableRoles 
+ * @returns {string|null} activeRole selecionado
+ */
+export function resolveInitialActiveRole(availableRoles) {
+  if (!availableRoles || availableRoles.length === 0) return null;
+
+  try {
+    const savedRole = localStorage.getItem(ACTIVE_ROLE_STORAGE_KEY);
+    if (savedRole && availableRoles.includes(savedRole)) {
+      return savedRole;
+    }
+  } catch (e) {
+    // LocalStorage indisponível em SSR ou storage bloqueado
+  }
+
+  // Ordem de prioridade padrão: admin > professional > patient
+  if (availableRoles.includes('admin')) return 'admin';
+  if (availableRoles.includes('professional')) return 'professional';
+  return 'patient';
+}
+
 export function AuthProvider({ children }) {
   const { toast } = useToast();
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [userRole, setUserRole] = useState(null);
+  const [activeRole, setActiveRole] = useState(null);
+  const [availableRoles, setAvailableRoles] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Processar sessão de forma mais simples
+  // Processar sessão de forma flexível e resiliente
   const handleSession = (session) => {
     console.log('🔐 Processando sessão:', session ? 'ativa' : 'nula');
 
@@ -23,9 +95,15 @@ export function AuthProvider({ children }) {
     setUser(currentUser);
 
     if (currentUser) {
-      setUserRole(currentUser.user_metadata?.role || 'user');
-      console.log('👤 Usuário logado:', currentUser.email);
+      const available = resolveAvailableRoles(currentUser);
+      setAvailableRoles(available);
+      const initialActive = resolveInitialActiveRole(available);
+      setActiveRole(initialActive);
+      setUserRole(initialActive);
+      console.log('👤 Usuário autenticado | roles disponíveis:', available, '| perfil ativo:', initialActive);
     } else {
+      setAvailableRoles([]);
+      setActiveRole(null);
       setUserRole(null);
       console.log('👤 Usuário deslogado');
     }
@@ -53,7 +131,23 @@ export function AuthProvider({ children }) {
           handleSession(null);
         } else {
           console.log('✅ Sessão inicial obtida');
-          handleSession(data.session);
+          let currentSession = data.session;
+          if (currentSession?.user) {
+            const userMetaRole = (currentSession.user.user_metadata?.role || '').toLowerCase();
+            const appMetaRole = (currentSession.user.app_metadata?.role || '').toLowerCase();
+            if (userMetaRole === 'admin' && appMetaRole !== 'admin') {
+              try {
+                console.log('🔄 Sincronizando permissões de administrador (refreshSession)...');
+                const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession();
+                if (!refreshError && refreshedData?.session) {
+                  currentSession = refreshedData.session;
+                }
+              } catch (refErr) {
+                console.warn('Erro ao atualizar sessão:', refErr);
+              }
+            }
+          }
+          handleSession(currentSession);
         }
       } catch (error) {
         console.error('❌ Erro na inicialização:', error);
@@ -207,6 +301,10 @@ export function AuthProvider({ children }) {
       // Tentar fazer logout no servidor
       const { error } = await supabase.auth.signOut();
 
+      try {
+        localStorage.removeItem(ACTIVE_ROLE_STORAGE_KEY);
+      } catch (e) {}
+
       // Limpar estado local mesmo se houver erro (session_not_found é aceitável)
       handleSession(null);
 
@@ -329,8 +427,11 @@ export function AuthProvider({ children }) {
   }, [toast]);
 
   const updatePassword = useCallback(async (newPassword) => {
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
+    const { data, error } = await supabase.auth.updateUser({
+      password: newPassword,
+      data: {
+        has_strong_password: true
+      }
     });
 
     if (error) {
@@ -424,23 +525,75 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
+   * Alterna o perfil ativo entre as roles disponíveis para o usuário
+   * @param {string} newRole - Novo perfil desejado ('patient', 'professional', 'admin')
+   * @returns {boolean} Se a troca foi realizada com sucesso
+   */
+  const switchActiveRole = useCallback(
+    (newRole) => {
+      if (!newRole) return false;
+      const normalized = newRole.toLowerCase() === 'user' ? 'patient' : newRole.toLowerCase();
+
+      if (!availableRoles.includes(normalized)) {
+        console.warn(`[switchActiveRole] Role '${newRole}' não autorizada.`, { availableRoles });
+        toast({
+          variant: "destructive",
+          title: "Perfil não autorizado",
+          description: "Você não tem permissão para alternar para este perfil.",
+        });
+        return false;
+      }
+
+      setActiveRole(normalized);
+      setUserRole(normalized);
+
+      try {
+        localStorage.setItem(ACTIVE_ROLE_STORAGE_KEY, normalized);
+      } catch (e) {}
+
+      auditLogger.info(AuditAction.ROLE_SWITCH, {
+        details: { previousRole: activeRole, newRole: normalized, userId: user?.id }
+      }).catch?.(() => {});
+
+      toast({
+        title: "Perfil alternado",
+        description: `Navegando agora como ${
+          normalized === 'admin' ? 'Administrador' : normalized === 'professional' ? 'Profissional' : 'Paciente'
+        }.`,
+      });
+
+      return true;
+    },
+    [availableRoles, activeRole, toast, user]
+  );
+
+  /**
    * Verifica se usuário tem permissão específica
    * @param {string} permission - Permissão a verificar
    * @returns {boolean} Se usuário tem permissão
    */
   const checkPermission = useCallback(
     (permission) => {
-      if (!user || !userRole) {
+      const currentRole = activeRole || userRole;
+      if (!user || !currentRole) {
         return false;
       }
 
       // Admin tem todas as permissões
-      if (userRole === 'admin') {
+      if (currentRole === 'admin') {
         return true;
       }
 
       // Permissões base por role
       const rolePermissions = {
+        patient: [
+          'booking:create',
+          'booking:view_own',
+          'booking:cancel_own',
+          'booking:reschedule_own',
+          'profile:view_own',
+          'profile:edit_own',
+        ],
         user: [
           'booking:create',
           'booking:view_own',
@@ -461,10 +614,10 @@ export function AuthProvider({ children }) {
         ],
       };
 
-      const permissions = rolePermissions[userRole] || [];
+      const permissions = rolePermissions[currentRole] || [];
       return permissions.includes(permission);
     },
-    [user, userRole]
+    [user, activeRole, userRole]
   );
 
   /**
@@ -481,7 +634,11 @@ export function AuthProvider({ children }) {
   const value = useMemo(() => ({
     user,
     session,
-    userRole,
+    userRole: activeRole || userRole,
+    activeRole: activeRole || userRole,
+    availableRoles,
+    isHybridUser: availableRoles.length > 1,
+    switchActiveRole,
     loading,
     signUp,
     signIn,
@@ -494,7 +651,7 @@ export function AuthProvider({ children }) {
     refreshToken,
     checkPermission,
     getSessionExpiry,
-  }), [user, session, userRole, loading, signUp, signIn, signOut, signInWithMagicLink, resetPassword, updatePassword, validateSession, refreshToken, checkPermission, getSessionExpiry]);
+  }), [user, session, userRole, activeRole, availableRoles, switchActiveRole, loading, signUp, signIn, signOut, signInWithMagicLink, resetPassword, updatePassword, validateSession, refreshToken, checkPermission, getSessionExpiry]);
 
   // Sempre renderiza children - componentes individuais decidem se mostram loading
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

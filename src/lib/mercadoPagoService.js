@@ -5,9 +5,10 @@ import { isFeatureEnabled } from './paymentFeatureFlags.js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const buildPaymentLogContext = ({ booking_id, inscricao_id, amount, description, payment_method_id }) => ({
+const buildPaymentLogContext = ({ booking_id, inscricao_id, package_id, amount, description, payment_method_id }) => ({
     bookingId: booking_id || null,
     inscricaoId: inscricao_id || null,
+    packageId: package_id || null,
     amount,
     description,
     paymentMethod: payment_method_id || 'pix'
@@ -72,7 +73,8 @@ export class MercadoPagoService {
      * Cria um pagamento PIX direto no Mercado Pago
      * Retorna QR Code para pagamento inline (sem redirecionamento)
      * @param {Object} paymentData - Dados do pagamento
-     * @param {string} paymentData.booking_id - ID do agendamento
+     * @param {string} paymentData.booking_id - ID do agendamento (opcional)
+     * @param {string} paymentData.package_id - ID do pacote (opcional)
      * @param {number} paymentData.amount - Valor a ser pago
      * @param {string} paymentData.description - Descrição do pagamento
      * @param {Object} paymentData.payer - Dados do pagador
@@ -82,23 +84,27 @@ export class MercadoPagoService {
      */
     static async createPixPayment(paymentData, options = {}) {
         try {
-            const { booking_id, inscricao_id, amount, description, payer } = paymentData;
+            const { booking_id, inscricao_id, package_id, amount, wallet_used, description, payer } = paymentData;
             const { idempotencyKey } = options;
 
-            if ((!booking_id && !inscricao_id) || !amount) {
-                throw new Error('booking_id ou inscricao_id e amount são obrigatórios');
+            if ((!booking_id && !inscricao_id && !package_id) || !amount) {
+                throw new Error('booking_id, inscricao_id ou package_id e amount são obrigatórios');
             }
 
-            const referenceId = booking_id || inscricao_id;
+            const referenceId = booking_id || inscricao_id || package_id;
 
             // Chamar Edge Function para criar pagamento PIX
             const payload = {
                 ...(booking_id ? { booking_id } : {}),
                 ...(inscricao_id ? { inscricao_id } : {}),
+                ...(package_id ? { package_id } : {}),
                 amount,
-                description: description || (booking_id
-                    ? `Consulta Online - Agendamento ${referenceId}`
-                    : `Pagamento de Evento - Inscrição ${referenceId}`),
+                wallet_used,
+                description: description || (package_id
+                    ? `Pacote de Consultas - Pacote ${package_id}`
+                    : booking_id
+                        ? `Consulta Online - Agendamento ${referenceId}`
+                        : `Pagamento de Evento - Inscrição ${referenceId}`),
                 payer: payer || {},
                 payment_method_id: 'pix'
             };
@@ -578,12 +584,13 @@ export class MercadoPagoService {
             'cc_rejected_call_for_authorize': 'O banco emissor não autorizou a compra. Entre em contato com o banco e tente novamente.',
             'cc_rejected_card_disabled': 'O cartão está desabilitado para compras. Fale com o banco emissor ou utilize outro cartão.',
             'cc_rejected_duplicated_payment': 'Identificamos uma tentativa duplicada. Confira se a cobrança anterior foi aprovada.',
-            'cc_rejected_high_risk': 'Pagamento recusado por segurança. Utilize outro cartão ou método de pagamento.',
+            'cc_rejected_high_risk': 'O banco emissor do seu cartão não autorizou esta transação online por segurança. Pague via PIX com aprovação imediata para garantir seu horário.',
+            'cc_rejected_2_step_high_risk': 'O banco solicitou validação adicional não concluída. Pague via PIX com aprovação imediata para garantir seu horário.',
             'cc_rejected_invalid_installments': 'Número de parcelas inválido para este cartão. Ajuste as parcelas ou escolha outro cartão.',
-            'cc_rejected_max_attempts': 'Você atingiu o número máximo de tentativas. Aguarde alguns minutos ou tente outro cartão.',
+            'cc_rejected_max_attempts': 'Você atingiu o número máximo de tentativas no cartão. Pague via PIX para garantir seu horário imediatamente.',
             'cc_rejected_other_reason': 'O banco não autorizou a compra. Verifique com o banco ou escolha outro método.',
             'rejected_other_reason': 'O pagamento foi rejeitado pelo emissor. Tente novamente com outro método.',
-            'cc_rejected_blacklist': 'Não foi possível aprovar o pagamento. Utilize outro cartão ou entre em contato com o banco.'
+            'cc_rejected_blacklist': 'Não foi possível aprovar o pagamento. Utilize outro cartão ou pague via PIX.'
         };
 
         if (statusDetail && detailMap[statusDetail]) {
@@ -622,6 +629,8 @@ export class MercadoPagoService {
         const logContext = {
             bookingId: paymentData?.booking_id || paymentData?.reference_id || null,
             amount: paymentData?.transaction_amount || paymentData?.amount || null,
+            walletUsed: paymentData?.wallet_used || null,
+            userId: paymentData?.user_id || null,
             installments: paymentData?.installments || null,
             paymentMethod: paymentData?.payment_method_id || 'card',
             hasToken: Boolean(paymentData?.token)
@@ -630,12 +639,17 @@ export class MercadoPagoService {
         try {
             logger.info('MercadoPagoService.processCardPayment:start', logContext);
 
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            };
+            if (paymentData?.device_id) {
+                headers['X-Meli-Session-Id'] = paymentData.device_id;
+            }
+
             const response = await fetch(`${SUPABASE_URL}/functions/v1/mp-process-card-payment`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                },
+                headers,
                 body: JSON.stringify(paymentData)
             });
 
@@ -665,7 +679,13 @@ export class MercadoPagoService {
                 success: result?.success !== false && normalizedStatus === 'approved'
             });
 
-            if (normalizedStatus && normalizedStatus !== 'approved') {
+            // Falhas terminais: rejected e cancelled → retornar imediatamente como erro
+            // in_process e pending NÃO são falhas — o cartão está em análise antifraude.
+            // Nesse caso, retornamos success: true para que o polling do CardPaymentStrategy
+            // aguarde a resolução sem exibir mensagem de erro ao usuário.
+            const isTerminalFailure = normalizedStatus === 'rejected' || normalizedStatus === 'cancelled';
+
+            if (normalizedStatus && isTerminalFailure) {
                 const fallbackMessage = friendlyMessage
                     || result?.message
                     || result?.error

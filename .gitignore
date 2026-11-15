@@ -20,6 +20,7 @@ temp/
 *.tmp
 
 # Credentials & Secrets
+config/credentials/
 *.json.backup
 doxologos-*.json
 *-credentials.json
