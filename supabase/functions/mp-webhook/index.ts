@@ -2,6 +2,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { crypto } from "https://deno.land/std@0.177.0/crypto/mod.ts";
+import { logEdgeError } from '../_shared/errorLogger.ts';
 
 declare const Deno: any;
 
@@ -910,6 +911,14 @@ serve(async (req: Request) => {
 
   } catch (error: any) {
     console.error('Webhook processing error:', error);
+    await logEdgeError({
+      service: 'mp-webhook',
+      severity: 'critical',
+      message: 'Erro ao processar webhook do Mercado Pago',
+      error,
+      context: { logId },
+      req,
+    });
     if (logId) await supabase.from('webhook_logs').update({ status: 'error', error_message: error.message }).eq('id', logId);
     return new Response('Internal Error', { status: 500 });
   }

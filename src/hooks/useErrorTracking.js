@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import analytics from '../lib/analytics';
+import { rumMonitor } from '../lib/observability/rumMonitoring';
 
 // Error boundary tracking hook
 export const useErrorBoundary = () => {
@@ -36,37 +37,26 @@ export const useNetworkErrorTracking = () => {
       return ignoredUrls.some(ignored => urlString.includes(ignored));
     };
 
-    // Monitor fetch errors
-    const originalFetch = window.fetch;
-    window.fetch = async function(...args) {
-      try {
-        const response = await originalFetch.apply(this, args);
-        
-        // Ignorar erros de URLs específicas
-        if (!response.ok && !shouldIgnoreUrl(args[0])) {
-          analytics.trackEvent('network_error', {
-            event_category: 'Network',
-            event_label: 'HTTP Error',
-            value: response.status,
-            custom_parameter_1: args[0], // URL
-            custom_parameter_2: response.statusText
-          });
-        }
-        
-        return response;
-      } catch (error) {
-        // Ignorar erros de URLs específicas
-        if (!shouldIgnoreUrl(args[0])) {
-          analytics.trackEvent('network_request_error', {
-            event_category: 'Network',
-            event_label: error?.message || 'Network Error',
-            url: args[0],
-            method: args[1]?.method || 'GET'
-          });
-        }
-        throw error;
+    // Monitor fetch errors via singleton rumMonitor (evita duplo monkey-patch em window.fetch)
+    const unsubscribeFetch = rumMonitor.addApiErrorListener((metric) => {
+      if (shouldIgnoreUrl(metric.url)) return;
+      if (metric.status > 0) {
+        analytics.trackEvent('network_error', {
+          event_category: 'Network',
+          event_label: 'HTTP Error',
+          value: metric.status,
+          custom_parameter_1: metric.url,
+          custom_parameter_2: metric.statusText || ''
+        });
+      } else {
+        analytics.trackEvent('network_request_error', {
+          event_category: 'Network',
+          event_label: metric.error || 'Network Error',
+          url: metric.url,
+          method: metric.method || 'GET'
+        });
       }
-    };
+    });
 
     // Monitor XMLHttpRequest errors
     const originalXHROpen = XMLHttpRequest.prototype.open;
@@ -88,7 +78,7 @@ export const useNetworkErrorTracking = () => {
 
     // Cleanup
     return () => {
-      window.fetch = originalFetch;
+      unsubscribeFetch();
       XMLHttpRequest.prototype.open = originalXHROpen;
     };
   }, []);

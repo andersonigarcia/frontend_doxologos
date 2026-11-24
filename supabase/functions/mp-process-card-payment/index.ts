@@ -1,6 +1,8 @@
 // Supabase Edge Function - Process Card Payment with Mercado Pago
 // Recebe token do cartão e processa o pagamento
 
+import { logEdgeError } from '../_shared/errorLogger.ts';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, x-idempotency-key',
@@ -184,6 +186,15 @@ Deno.serve(async (req) => {
     if (!mpRes.ok) {
       const errorText = await mpRes.text();
       console.error('[MP Card] Erro do Mercado Pago:', errorText);
+      await logEdgeError({
+        service: 'mp-process-card-payment',
+        severity: 'critical',
+        message: `Mercado Pago Card API error (${mpRes.status})`,
+        errorCode: String(mpRes.status),
+        context: { booking_id, inscricao_id, package_id, payment_method_id, details: errorText.slice(0, 500) },
+        userId: user_id || null,
+        req,
+      });
       return new Response(
         JSON.stringify({ error: 'mercadopago error', details: errorText }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -391,6 +402,13 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     console.error('[MP Card] Erro:', err);
+    await logEdgeError({
+      service: 'mp-process-card-payment',
+      severity: 'critical',
+      message: 'Erro inesperado ao processar pagamento com cartão',
+      error: err,
+      req,
+    });
     return new Response(
       JSON.stringify({ error: 'internal error', details: (err as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

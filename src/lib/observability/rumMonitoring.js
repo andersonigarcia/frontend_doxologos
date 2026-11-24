@@ -4,9 +4,31 @@
  * e anomalias de execução do cliente.
  */
 
+import { reportOperationalError } from './sentry';
+
+const IGNORED_TELEMETRY_URLS = [
+  'google-analytics.com',
+  'googletagmanager.com',
+  'doubleclick.net',
+  'analytics.google.com',
+  'stats.g.doubleclick.net',
+  '/gtag/',
+  '/collect',
+  '/r/collect',
+  'sentry.io',
+  '/functions/v1/log-client-error',
+];
+
+function shouldIgnoreTelemetryUrl(url) {
+  if (!url) return true;
+  const urlString = String(url);
+  return IGNORED_TELEMETRY_URLS.some((ignored) => urlString.includes(ignored));
+}
+
 class RumMonitoringService {
   constructor() {
     this.initialized = false;
+    this.apiErrorListeners = [];
     this.metrics = {
       webVitals: {
         LCP: null,
@@ -118,28 +140,82 @@ class RumMonitoringService {
         const response = await originalFetch.apply(this, args);
         const duration = Math.round(performance.now() - startTime);
 
-        self.recordApiMetric({
-          url,
-          method,
-          durationMs: duration,
-          status: response.status,
-          ok: response.ok,
-        });
+        if (!shouldIgnoreTelemetryUrl(url)) {
+          self.recordApiMetric({
+            url,
+            method,
+            durationMs: duration,
+            status: response.status,
+            ok: response.ok,
+          });
+
+          if (!response.ok) {
+            self.notifyApiErrorListeners({
+              url,
+              method,
+              status: response.status,
+              statusText: response.statusText,
+              durationMs: duration,
+            });
+
+            if (response.status >= 500 || response.status === 429) {
+              const isPayment = url.includes('mp-') || url.includes('mercadopago');
+              const isAuth = url.includes('/auth/v1/');
+              reportOperationalError({
+                service: isPayment ? 'payment_api' : isAuth ? 'supabase_auth' : 'api_fetch',
+                flow: isPayment ? 'payment' : isAuth ? 'auth' : 'network',
+                severity: isPayment && response.status >= 500 ? 'critical' : 'error',
+                message: `HTTP ${response.status} em ${method} ${url.split('?')[0]}`,
+                errorCode: String(response.status),
+                context: { method, status: response.status, durationMs: duration },
+              });
+            }
+          }
+        }
 
         return response;
       } catch (err) {
         const duration = Math.round(performance.now() - startTime);
-        self.recordApiMetric({
-          url,
-          method,
-          durationMs: duration,
-          status: 0,
-          ok: false,
-          error: err.message,
-        });
+        if (!shouldIgnoreTelemetryUrl(url)) {
+          self.recordApiMetric({
+            url,
+            method,
+            durationMs: duration,
+            status: 0,
+            ok: false,
+            error: err.message,
+          });
+          self.notifyApiErrorListeners({
+            url,
+            method,
+            status: 0,
+            error: err.message,
+            durationMs: duration,
+          });
+        }
         throw err;
       }
     };
+  }
+
+  addApiErrorListener(listener) {
+    if (typeof listener === 'function') {
+      this.apiErrorListeners.push(listener);
+      return () => {
+        this.apiErrorListeners = this.apiErrorListeners.filter((fn) => fn !== listener);
+      };
+    }
+    return () => {};
+  }
+
+  notifyApiErrorListeners(errorMetric) {
+    this.apiErrorListeners.forEach((fn) => {
+      try {
+        fn(errorMetric);
+      } catch {
+        // ignore listener errors
+      }
+    });
   }
 
   attachGlobalErrorHandlers() {

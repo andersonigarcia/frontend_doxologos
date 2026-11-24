@@ -4,6 +4,8 @@
  * Previne exposição de dados sensíveis em produção
  */
 
+import { captureError } from '@/lib/observability/sentry';
+
 const isDev = import.meta.env.DEV;
 const isProd = import.meta.env.PROD;
 
@@ -42,10 +44,13 @@ export const secureLog = {
   error: (...args) => {
     console.error('❌', ...args);
     
-    // Em produção, enviar para serviço de monitoring
+    // Em produção, enviar para serviço de monitoring (Sentry)
     if (isProd) {
-      // TODO: Integrar com Sentry, LogRocket, etc
-      // Exemplo: Sentry.captureException(args[0]);
+      const errorObj = args.find((arg) => arg instanceof Error) || args.map(String).join(' ');
+      captureError(errorObj, {
+        service: 'secureLogger',
+        extraArgs: args.filter((arg) => !(arg instanceof Error)).slice(0, 5),
+      });
     }
   },
 

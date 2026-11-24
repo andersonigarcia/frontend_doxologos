@@ -1,5 +1,6 @@
 import React from 'react';
 import { useErrorBoundary } from '../hooks/useErrorTracking';
+import { reportOperationalError } from '@/lib/observability/sentry';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -17,6 +18,18 @@ class ErrorBoundary extends React.Component {
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
+
+    reportOperationalError({
+      service: 'react_error_boundary',
+      flow: 'ui',
+      severity: 'error',
+      message: error?.message || 'React ErrorBoundary crash',
+      error,
+      context: {
+        page: this.props.pageName || 'Global',
+        componentStack: errorInfo?.componentStack?.slice(0, 1500),
+      },
+    });
 
     this.setState({
       error,

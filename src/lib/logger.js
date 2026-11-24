@@ -14,6 +14,8 @@
  * - Via console: window.setLogLevel('DEBUG')
  */
 
+import { reportOperationalError } from './observability/sentry.js';
+
 // Níveis de log
 export const LOG_LEVELS = {
   SILENT: 0,
@@ -191,11 +193,9 @@ class Logger {
   }
 
   /**
-   * Log de erro (ERROR level - sempre adiciona ao buffer)
+   * Log de erro (ERROR level - sempre adiciona ao buffer e reporta em produção)
    */
   error(message, error = null, context = {}) {
-    if (!this.shouldLog(LOG_LEVELS.ERROR)) return;
-
     const errorData = {
       message: error?.message || 'Unknown error',
       stack: error?.stack,
@@ -203,15 +203,29 @@ class Logger {
       ...context
     };
 
-    if (this.isDevelopment || this.currentLevel >= LOG_LEVELS.ERROR) {
+    if (this.isDevelopment || this.shouldLog(LOG_LEVELS.ERROR)) {
       console.error(`❌ [ERROR] ${message}`, this.sanitize(errorData));
     }
 
     // Erros SEMPRE vão para o buffer (mesmo em SILENT)
     this.addToBuffer('error', message, errorData);
 
-    // Em produção, poderia enviar para serviço de tracking
-    // this.sendToTrackingService(errorData);
+    // Em produção, envia para Sentry + Supabase system_error_logs
+    if (this.isProduction) {
+      const isPayment = String(message).toLowerCase().includes('mercadopago') ||
+        String(message).toLowerCase().includes('payment') ||
+        Boolean(context?.bookingId || context?.packageId || context?.inscricaoId);
+
+      reportOperationalError({
+        service: isPayment ? 'mercado_pago_client' : 'app_logger',
+        flow: isPayment ? 'payment' : 'general',
+        severity: isPayment ? 'critical' : 'error',
+        message: String(message),
+        error,
+        errorCode: error?.code || context?.status ? String(error?.code || context?.status) : undefined,
+        context: this.sanitize(context),
+      });
+    }
   }
 
   /**

@@ -9,9 +9,11 @@ import { usePageTracking } from '@/hooks/useAnalytics';
 import { useComprehensiveErrorTracking } from '@/hooks/useErrorTracking';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 
-// Initialize Web Vitals and RUM monitoring (Onda 4)
+// Initialize Web Vitals, Sentry and RUM monitoring (Onda 4)
 import '@/lib/webVitals';
+import { initSentry } from '@/lib/observability/sentry';
 import { rumMonitor, initRumMonitoring } from '@/lib/observability/rumMonitoring';
+initSentry();
 initRumMonitoring();
 
 // PERF (P-01): HomePage permanece estático pois é a rota inicial —

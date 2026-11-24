@@ -4,6 +4,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 import { loginRateLimiter, passwordResetRateLimiter, RateLimiter } from '@/lib/rateLimiter';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
+import { reportOperationalError } from '@/lib/observability/sentry';
 
 const AuthContext = createContext(null);
 
@@ -235,6 +236,15 @@ export function AuthProvider({ children }) {
         errorMessage = "Por favor, insira um endereço de email válido.";
       }
 
+      reportOperationalError({
+        service: 'auth_password_update',
+        flow: 'auth',
+        severity: error.status >= 500 ? 'critical' : 'warning',
+        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
+        context: { errorTitle },
+      });
+
       toast({
         variant: "destructive",
         title: errorTitle,
@@ -292,6 +302,15 @@ export function AuthProvider({ children }) {
         errorTitle = "Erro de conexão";
         errorMessage = "Verifique sua conexão com a internet e tente novamente.";
       }
+
+      reportOperationalError({
+        service: 'auth_password_update',
+        flow: 'auth',
+        severity: error.status >= 500 ? 'critical' : 'warning',
+        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
+        context: { errorTitle },
+      });
 
       toast({
         variant: "destructive",
@@ -409,6 +428,25 @@ export function AuthProvider({ children }) {
 
       const { errorTitle, errorMessage } = classifyResetPasswordError(error);
 
+      const emailDomain = typeof email === 'string' && email.includes('@') ? email.split('@')[1] : 'unknown';
+      reportOperationalError({
+        service: 'auth_password_reset',
+        flow: 'auth',
+        severity: error.status >= 500 ? 'critical' : 'warning',
+        message: `Falha ao solicitar recuperação de senha: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || 'reset_password_error'),
+        context: { emailDomain, errorTitle },
+      });
+
+      reportOperationalError({
+        service: 'auth_password_update',
+        flow: 'auth',
+        severity: error.status >= 500 ? 'critical' : 'warning',
+        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
+        context: { errorTitle },
+      });
+
       toast({
         variant: "destructive",
         title: errorTitle,
@@ -461,6 +499,15 @@ export function AuthProvider({ children }) {
         errorTitle = "Senha inválida";
         errorMessage = "A senha deve ter no mínimo 6 caracteres.";
       }
+
+      reportOperationalError({
+        service: 'auth_password_update',
+        flow: 'auth',
+        severity: error.status >= 500 ? 'critical' : 'warning',
+        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
+        context: { errorTitle },
+      });
 
       toast({
         variant: "destructive",

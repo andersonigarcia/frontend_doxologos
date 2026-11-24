@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { reportOperationalError } from '@/lib/observability/sentry';
 import DoxologosLogo from '@/components/brand/DoxologosLogo';
 import { PasswordStrengthMeter, isPasswordValid } from '@/components/auth/PasswordStrengthMeter';
 
@@ -60,6 +61,13 @@ export default function RedefinirSenhaPage() {
           });
           if (error) {
             console.error('❌ Erro ao verificar token_hash:', error.message);
+            reportOperationalError({
+              service: 'redefinir_senha_verify_otp',
+              flow: 'auth',
+              severity: 'warning',
+              message: `Erro ao verificar token_hash de recuperação: ${error.message}`,
+              errorCode: String(error.status || error.code || 'verify_otp_error'),
+            });
             setTokenError(true);
             toast({
               variant: 'destructive',
@@ -88,6 +96,13 @@ export default function RedefinirSenhaPage() {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) {
             console.error('❌ Erro ao trocar código PKCE:', error.message);
+            reportOperationalError({
+              service: 'redefinir_senha_pkce',
+              flow: 'auth',
+              severity: 'warning',
+              message: `Erro ao trocar código PKCE de recuperação: ${error.message}`,
+              errorCode: String(error.status || error.code || 'pkce_exchange_error'),
+            });
             setTokenError(true);
             toast({
               variant: 'destructive',
