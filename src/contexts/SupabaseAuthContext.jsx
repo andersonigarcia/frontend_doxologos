@@ -77,6 +77,43 @@ export function resolveInitialActiveRole(availableRoles) {
   return 'patient';
 }
 
+export function classifyResetPasswordError(error) {
+  let errorTitle = "Erro ao enviar email";
+  let errorMessage = "Não foi possível enviar o email de recuperação. Tente novamente.";
+
+  const errorCode = error?.message?.toLowerCase() || '';
+  const errorStatus = error?.status || 0;
+
+  if (errorStatus === 429 || errorCode.includes('over_email_send_rate_limit')) {
+    const match = error?.message?.match(/after (\d+) seconds/);
+    const waitSeconds = match ? parseInt(match[1], 10) : 3600;
+    const waitMinutes = Math.ceil(waitSeconds / 60);
+    const waitHours = Math.floor(waitMinutes / 60);
+
+    errorTitle = "⏰ Limite de segurança atingido";
+
+    if (waitHours > 0) {
+      errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitHours} hora${waitHours > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado ou entre em contato com o suporte.`;
+    } else {
+      errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitMinutes} minuto${waitMinutes > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado.`;
+    }
+  } else if (errorStatus >= 500 || errorCode.includes('unexpected_failure')) {
+    errorTitle = "Serviço de email temporariamente indisponível";
+    errorMessage = "Não foi possível enviar o email de recuperação no momento. Tente novamente em alguns instantes ou entre em contato com o suporte.";
+  } else if (errorCode.includes('not found') || errorCode.includes('user not found')) {
+    errorTitle = "Email não encontrado";
+    errorMessage = "Não existe uma conta com este email. Verifique o email digitado.";
+  } else if (errorCode.includes('rate limit')) {
+    errorTitle = "Muitas tentativas";
+    errorMessage = "Você fez muitas solicitações. Aguarde alguns minutos e tente novamente.";
+  } else if (errorCode.includes('network')) {
+    errorTitle = "Erro de conexão";
+    errorMessage = "Verifique sua conexão com a internet e tente novamente.";
+  }
+
+  return { errorTitle, errorMessage };
+}
+
 export function AuthProvider({ children }) {
   const { toast } = useToast();
   const [user, setUser] = useState(null);
@@ -360,51 +397,17 @@ export function AuthProvider({ children }) {
       return { error: new Error('Rate limit exceeded') };
     }
 
-    // Registrar tentativa
-    passwordResetRateLimiter.recordAttempt(email);
-
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/redefinir-senha`,
-      // Token expira em 1 hora (3600 segundos)
-      options: {
-        // Nota: O tempo de expiração é configurado no Supabase Dashboard > Authentication > Email Templates
-        // Este parâmetro garante que o link será válido por 1 hora
-        expiresIn: 3600
-      }
     });
 
     if (error) {
-      let errorTitle = "Erro ao enviar email";
-      let errorMessage = "Não foi possível enviar o email de recuperação. Tente novamente.";
-
-      const errorCode = error.message?.toLowerCase() || '';
-      const errorStatus = error.status || 0;
-
-      // Tratar erro 429 (Too Many Requests) do Supabase
-      if (errorStatus === 429 || errorCode.includes('over_email_send_rate_limit')) {
-        // Extrair tempo de espera da mensagem do erro
-        const match = error.message?.match(/after (\d+) seconds/);
-        const waitSeconds = match ? parseInt(match[1]) : 3600; // Default 1 hora
-        const waitMinutes = Math.ceil(waitSeconds / 60);
-        const waitHours = Math.floor(waitMinutes / 60);
-
-        errorTitle = "⏰ Limite de segurança atingido";
-
-        if (waitHours > 0) {
-          errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitHours} hora${waitHours > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado ou entre em contato com o suporte.`;
-        } else {
-          errorMessage = `Por segurança, você só pode solicitar recuperação de senha novamente após ${waitMinutes} minuto${waitMinutes > 1 ? 's' : ''}. Verifique se o email anterior já foi enviado.`;
-        }
-      } else if (errorCode.includes('not found') || errorCode.includes('user not found')) {
-        errorTitle = "Email não encontrado";
-        errorMessage = "Não existe uma conta com este email. Verifique o email digitado.";
-      } else if (errorCode.includes('rate limit')) {
-        errorTitle = "Muitas tentativas";
-        errorMessage = "Você fez muitas solicitações. Aguarde alguns minutos e tente novamente.";
-      } else if (errorCode.includes('network')) {
-        errorTitle = "Erro de conexão";
-        errorMessage = "Verifique sua conexão com a internet e tente novamente.";
+      // Só consome cota local se o servidor respondeu com 429; falhas 5xx de infra não devem bloquear o usuário por 1h
+      if (error.status === 429 || error.message?.toLowerCase().includes('over_email_send_rate_limit')) {
+        passwordResetRateLimiter.recordAttempt(email);
       }
+
+      const { errorTitle, errorMessage } = classifyResetPasswordError(error);
 
       toast({
         variant: "destructive",
@@ -412,6 +415,8 @@ export function AuthProvider({ children }) {
         description: errorMessage,
       });
     } else {
+      passwordResetRateLimiter.recordAttempt(email);
+
       // Registrar solicitação de reset de senha
       auditLogger.info(AuditAction.PASSWORD_RESET, {
         details: { email }

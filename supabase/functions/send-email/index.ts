@@ -1,4 +1,4 @@
-// Supabase Edge Function para envio de e-mails via SMTP Hostinger
+// Supabase Edge Function para envio de e-mails via Resend (API REST) com fallback SMTP
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -21,6 +21,7 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+  const viteAnonKey = Deno.env.get("VITE_SUPABASE_ANON_KEY");
 
   const rawToken = authHeader ? authHeader.replace(/^Bearer\s+/i, '').trim() : (apiKeyHeader || '');
 
@@ -33,7 +34,7 @@ serve(async (req) => {
   }
 
   const isServiceKey = serviceKey && rawToken === serviceKey;
-  const isAnonKey = anonKey && rawToken === anonKey;
+  const isAnonKey = (anonKey && rawToken === anonKey) || (viteAnonKey && rawToken === viteAnonKey);
 
   // Se não for service key nem anon key, validar se é JWT válido de usuário autenticado
   if (!isServiceKey && !isAnonKey) {
@@ -96,19 +97,20 @@ serve(async (req) => {
     // Anti-Injection: Sanitização de assunto (RFC 2822)
     const cleanSubject = String(subject).replace(/[\r\n]/g, ' ').slice(0, 100).trim();
 
-    // Configurar SMTP com variáveis de ambiente do Supabase
-    const smtpHost = Deno.env.get("SMTP_HOST") || "smtp.hostinger.com";
+    // Configurar provedor de e-mail (Resend API prioritário, com fallback para SMTP)
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const smtpHost = Deno.env.get("SMTP_HOST") || "smtp.resend.com";
     const smtpPort = parseInt(Deno.env.get("SMTP_PORT") || "465");
     const smtpUser = Deno.env.get("SMTP_USER");
     const smtpPassword = Deno.env.get("SMTP_PASSWORD");
 
     // Anti-Spoofing: O e-mail de envio é sempre estritamente o do domínio autorizado da clínica
-    const fromEmail = Deno.env.get("FROM_EMAIL") || smtpUser || "doxologos@doxologos.com.br";
+    const fromEmail = Deno.env.get("FROM_EMAIL") || (smtpUser && smtpUser.includes("@") ? smtpUser : "doxologos@doxologos.com.br");
     const fromName = from?.name ? String(from.name).replace(/[\r\n]/g, '').slice(0, 50) : "Doxologos";
 
-    if (!smtpUser || !smtpPassword) {
+    if (!resendApiKey && (!smtpUser || !smtpPassword)) {
       return new Response(
-        JSON.stringify({ error: "SMTP não configurado" }),
+        JSON.stringify({ error: "Provedor de e-mail não configurado (RESEND_API_KEY ou SMTP)" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -130,49 +132,83 @@ serve(async (req) => {
       );
     }
 
+    const ccRecipients = cc
+      ? (Array.isArray(cc) ? cc : [cc]).map(c => String(c).trim()).filter(Boolean)
+      : [];
+
     console.log("📧 Enviando email para:", recipients.map(maskEmail), "| Assunto:", cleanSubject);
-
-    // Criar cliente SMTP
-    const client = new SMTPClient({
-      connection: {
-        hostname: smtpHost,
-        port: smtpPort,
-        tls: true,
-        auth: {
-          username: smtpUser,
-          password: smtpPassword,
-        },
-      },
-    });
-
-    // Preparar estrutura do email
-    const emailContent: any = {
-      from: `${fromName} <${fromEmail}>`,
-      to: recipients.join(", "),
-      subject: cleanSubject,
-      html,
-    };
-
-    // Adicionar CC se fornecido
-    if (cc) {
-      const ccRecipients = (Array.isArray(cc) ? cc : [cc]).map(c => String(c).trim()).filter(Boolean);
-      emailContent.cc = ccRecipients.join(", ");
+    if (ccRecipients.length > 0) {
       console.log(" Com cópia para:", ccRecipients.map(maskEmail));
     }
 
-    // Adicionar ReplyTo se fornecido
-    if (replyTo) {
-      emailContent.replyTo = replyTo;
-    }
+    let messageId = String(Date.now());
 
-    // Enviar email
-    await client.send(emailContent);
-    await client.close();
+    if (resendApiKey) {
+      const resendPayload: Record<string, unknown> = {
+        from: `${fromName} <${fromEmail}>`,
+        to: recipients,
+        subject: cleanSubject,
+        html,
+      };
+      if (ccRecipients.length > 0) {
+        resendPayload.cc = ccRecipients;
+      }
+      if (replyTo) {
+        resendPayload.reply_to = String(replyTo).trim();
+      }
+
+      const resendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(resendPayload),
+      });
+
+      const resendData = await resendResponse.json().catch(() => ({}));
+      if (!resendResponse.ok) {
+        throw new Error(`Resend API error (${resendResponse.status}): ${resendData?.message || resendData?.error || 'Unknown error'}`);
+      }
+      if (resendData?.id) {
+        messageId = String(resendData.id);
+      }
+    } else {
+      // Fallback SMTP (ex: smtp.resend.com porta 465)
+      const client = new SMTPClient({
+        connection: {
+          hostname: smtpHost,
+          port: smtpPort,
+          tls: true,
+          auth: {
+            username: smtpUser!,
+            password: smtpPassword!,
+          },
+        },
+      });
+
+      const emailContent: Record<string, unknown> = {
+        from: `${fromName} <${fromEmail}>`,
+        to: recipients.join(", "),
+        subject: cleanSubject,
+        html,
+      };
+
+      if (ccRecipients.length > 0) {
+        emailContent.cc = ccRecipients.join(", ");
+      }
+      if (replyTo) {
+        emailContent.replyTo = replyTo;
+      }
+
+      await client.send(emailContent as any);
+      await client.close();
+    }
 
     console.log(" Email enviado com sucesso");
 
     return new Response(
-      JSON.stringify({ success: true, messageId: String(Date.now()) }),
+      JSON.stringify({ success: true, messageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

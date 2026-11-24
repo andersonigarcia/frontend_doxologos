@@ -1,6 +1,7 @@
 import {
   resolveAvailableRoles,
   resolveInitialActiveRole,
+  classifyResetPasswordError,
   ACTIVE_ROLE_STORAGE_KEY
 } from '../SupabaseAuthContext';
 
@@ -90,6 +91,30 @@ describe('Multi-Perfil Híbrido: Resolução de Roles (SupabaseAuthContext)', ()
     test('deve priorizar "professional" sobre "patient" por padrão', () => {
       const initial = resolveInitialActiveRole(['patient', 'professional']);
       expect(initial).toBe('professional');
+    });
+  });
+
+  describe('classifyResetPasswordError', () => {
+    test('deve classificar erro 500 ou unexpected_failure como serviço de email indisponível', () => {
+      const res500 = classifyResetPasswordError({ status: 500, message: 'Error sending recovery email' });
+      expect(res500.errorTitle).toBe('Serviço de email temporariamente indisponível');
+
+      const resUnexpected = classifyResetPasswordError({ message: 'unexpected_failure' });
+      expect(resUnexpected.errorTitle).toBe('Serviço de email temporariamente indisponível');
+    });
+
+    test('deve classificar erro 429 over_email_send_rate_limit com tempo restante', () => {
+      const res429 = classifyResetPasswordError({
+        status: 429,
+        message: 'For security purposes, you can only request this after 120 seconds.'
+      });
+      expect(res429.errorTitle).toBe('⏰ Limite de segurança atingido');
+      expect(res429.errorMessage).toContain('2 minutos');
+    });
+
+    test('deve classificar erro de rede', () => {
+      const resNet = classifyResetPasswordError({ message: 'Network request failed' });
+      expect(resNet.errorTitle).toBe('Erro de conexão');
     });
   });
 });
