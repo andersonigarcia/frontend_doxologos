@@ -188,7 +188,7 @@
 
 
 
-	<!-- Meta Pixel Code -->
+	<!-- Meta Pixel Code (carregado apenas se VITE_META_PIXEL_ID estiver definido; caso contrário, GTM gerencia fbq sem conflito) -->
 	<script type="module">
 		const metaPixelId = import.meta.env.VITE_META_PIXEL_ID || '';
 		if (metaPixelId) {
@@ -205,8 +205,6 @@
 				'https://connect.facebook.net/en_US/fbevents.js');
 			fbq('init', metaPixelId);
 			fbq('track', 'PageView');
-		} else {
-			window.fbq = function () { console.log('Meta Pixel (Mock) called:', arguments) };
 		}
 	</script>
 	<!-- End Meta Pixel Code -->

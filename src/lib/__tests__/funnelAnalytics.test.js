@@ -41,13 +41,17 @@ describe('Funnel Analytics & Virtual Pageviews Suite', () => {
       search: ''
     };
 
-    // Clean localStorage
+    // Clean localStorage & sessionStorage
     localStorage.clear();
+    sessionStorage.clear();
+    analytics.hasTrackedInitiateCheckout = false;
+    analytics.hasTrackedInitialPageView = false;
   });
 
   afterEach(() => {
     global.gtag = originalGtag;
     global.dataLayer = originalDataLayer;
+    delete global.fbq;
   });
 
   it('deve disparar evento canônico, evento legado e virtual pageview para o Step 1 (Serviço)', () => {
@@ -153,5 +157,41 @@ describe('Funnel Analytics & Virtual Pageviews Suite', () => {
     const pv = capturedPageViews.find(p => p.page_path === '/agendamento/1-servico');
     expect(pv).toBeDefined();
     expect(pv.debug_mode).toBe(true);
+  });
+
+  it('deve disparar Meta Pixel InitiateCheckout apenas na Etapa 4+ (não no Step 1)', () => {
+    global.fbq = jest.fn();
+
+    analytics.trackBookingStep(1, 'prof_1', 'serv_1');
+    analytics.trackBookingStep(2, 'prof_1', 'serv_1');
+    analytics.trackBookingStep(3, 'prof_1', 'serv_1');
+    expect(global.fbq).not.toHaveBeenCalledWith('track', 'InitiateCheckout', expect.anything());
+
+    analytics.trackBookingStep(4, 'prof_1', 'serv_1');
+    expect(global.fbq).toHaveBeenCalledWith('track', 'InitiateCheckout', {
+      content_ids: ['serv_1'],
+      content_type: 'product'
+    });
+
+    // Não deve duplicar na Etapa 5
+    analytics.trackBookingStep(5, 'prof_1', 'serv_1');
+    const initCalls = global.fbq.mock.calls.filter(c => c[0] === 'track' && c[1] === 'InitiateCheckout');
+    expect(initCalls).toHaveLength(1);
+  });
+
+  it('deve capturar e persistir UTMs e fbclid sem PII entre navegações SPA', () => {
+    window.location.search = '?utm_source=meta&utm_medium=cpc&utm_campaign=ansiedade_nov&fbclid=fb_123';
+    analytics.captureAttributionParams();
+
+    // Simula navegação para outra rota sem query string
+    window.location.search = '';
+    analytics.trackEvent('cta_click', { event_label: 'agendar_consulta' });
+
+    const event = capturedEvents.find(e => e.eventName === 'cta_click');
+    expect(event).toBeDefined();
+    expect(event.params.utm_source).toBe('meta');
+    expect(event.params.utm_medium).toBe('cpc');
+    expect(event.params.utm_campaign).toBe('ansiedade_nov');
+    expect(event.params.fbclid).toBe('fb_123');
   });
 });

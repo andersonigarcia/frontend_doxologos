@@ -17,7 +17,7 @@ const trustIndicators = [
     },
     {
         icon: Users,
-        value: '100+',
+        value: '280+',
         label: 'Consultas',
         color: 'blue',
         bgColor: 'from-blue-500 to-cyan-500'
@@ -38,8 +38,8 @@ const trustIndicators = [
     },
     {
         icon: Award,
-        value: '98%',
-        label: 'Satisfação',
+        value: '100%',
+        label: 'Sigilo CFP',
         color: 'indigo',
         bgColor: 'from-indigo-500 to-blue-500'
     },

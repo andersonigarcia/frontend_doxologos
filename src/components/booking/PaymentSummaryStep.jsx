@@ -251,10 +251,10 @@ const PaymentSummaryStep = ({
               onClick={onSupport}
               variant="outline"
               aria-label="Fale conosco no WhatsApp para tirar dúvidas"
-              className="hidden sm:inline-flex rounded-full border-green-700 text-[#1b5e20] hover:bg-green-50 min-h-[44px]"
+              className="inline-flex w-full sm:w-auto justify-center rounded-full border-green-700 text-[#1b5e20] hover:bg-green-50 min-h-[44px]"
             >
               <MessageCircle className="w-4 h-4 mr-2" />
-              Precisa de ajuda? Fale conosco no WhatsApp
+              Dúvidas? Fale no WhatsApp
             </Button>
           )}
         </div>

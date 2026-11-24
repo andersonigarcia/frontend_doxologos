@@ -1,8 +1,10 @@
 import React from 'react';
-import { Smartphone, Clock } from 'lucide-react';
+import { Smartphone, Clock, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { QRCodeSVG } from 'qrcode.react';
+import { CLINIC_CONTACT } from '@/constants/contact';
+import analytics from '@/lib/analytics';
 
 const CheckoutPixDisplay = ({
     pixPayment,
@@ -73,6 +75,25 @@ const CheckoutPixDisplay = ({
                     <p className="text-xs text-gray-500">
                         Status: <span className="font-mono font-bold text-gray-700">{paymentStatus?.status || 'pendente'}</span> • A confirmação é automática (sem precisar recarregar a tela).
                     </p>
+                    <div className="mt-4 pt-3 border-t border-gray-100">
+                        <a
+                            href={`https://wa.me/${CLINIC_CONTACT.whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent('Olá! Estou na tela de pagamento PIX e preciso de ajuda para concluir meu agendamento.')}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => {
+                                try {
+                                    analytics.trackEvent('whatsapp_click', {
+                                        event_category: 'checkout',
+                                        event_label: 'pix_help'
+                                    });
+                                } catch (e) {}
+                            }}
+                            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-[#1b5e20] hover:underline min-h-[36px]"
+                        >
+                            <MessageCircle className="w-4 h-4" />
+                            Teve dificuldade com o PIX? Fale conosco no WhatsApp
+                        </a>
+                    </div>
                 </div>
             </div>
         </Card>

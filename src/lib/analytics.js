@@ -1,16 +1,72 @@
 // Analytics and Performance Monitoring Utilities
 // Now exclusively using Google Ecosystem (GTM/GA4/GSC) via DataLayer
 
+const ATTRIBUTION_STORAGE_KEY = 'doxologos_attribution';
+const ATTRIBUTION_KEYS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'fbclid',
+  'gclid'
+];
+
 class AnalyticsManager {
   constructor() {
     this.isProduction = import.meta.env.PROD;
     this.gaId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-FSXFYQVCEC';
     this.sessionId = this.generateSessionId();
     this.pageLoadTime = performance.now();
+    this.hasTrackedInitialPageView = false;
+    this.hasTrackedInitiateCheckout = false;
+
+    if (typeof window !== 'undefined') {
+      this.captureAttributionParams();
+    }
 
     if (this.isProduction) {
       this.initializeAnalytics();
       this.setupPerformanceMonitoring();
+    }
+  }
+
+  captureAttributionParams() {
+    try {
+      const search = window.location?.search || '';
+      if (!search) return;
+      const params = new URLSearchParams(search);
+      const captured = {};
+      let hasNewParam = false;
+
+      for (const key of ATTRIBUTION_KEYS) {
+        const val = params.get(key);
+        if (val) {
+          captured[key] = val.slice(0, 120);
+          hasNewParam = true;
+        }
+      }
+
+      if (hasNewParam) {
+        const existing = this.getAttributionParams();
+        sessionStorage.setItem(
+          ATTRIBUTION_STORAGE_KEY,
+          JSON.stringify({ ...existing, ...captured })
+        );
+      }
+    } catch {
+      // ignore storage errors in restricted environments
+    }
+  }
+
+  getAttributionParams() {
+    try {
+      const raw = sessionStorage.getItem(ATTRIBUTION_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
     }
   }
 
@@ -138,6 +194,7 @@ class AnalyticsManager {
     const debugMode = this.isDebugMode();
 
     // 3. DataLayer Push for GTM (Best Practice)
+    const attribution = this.getAttributionParams();
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: 'page_view',
@@ -145,6 +202,7 @@ class AnalyticsManager {
       page_title: pageTitle,
       page_name: pageName,
       user_type: userType,
+      ...attribution,
       ...(testMode ? { test_mode: 'true', traffic_type: 'test' } : {}),
       ...(debugMode ? { debug_mode: true } : {})
     });
@@ -169,6 +227,16 @@ class AnalyticsManager {
         ...(testMode ? { traffic_type: 'test', test_mode: 'true' } : {}),
         ...(debugMode ? { debug_mode: true } : {})
       });
+    }
+
+    // 5. Meta Pixel PageView for SPA transitions (initial load already fires in index.html)
+    try {
+      if (this.hasTrackedInitialPageView && typeof fbq === 'function' && userType !== 'staff_internal') {
+        fbq('track', 'PageView');
+      }
+      this.hasTrackedInitialPageView = true;
+    } catch {
+      // ignore pixel errors
     }
   }
 
@@ -201,8 +269,10 @@ class AnalyticsManager {
     const userType = this.getUserType();
     const testMode = this.isTestMode();
     const debugMode = this.isDebugMode();
+    const attribution = this.getAttributionParams();
 
     const enrichedParams = {
+      ...attribution,
       ...parameters,
       ...(userType === 'staff_internal' && !testMode ? { traffic_type: 'internal' } : {}),
       ...(testMode ? { traffic_type: 'test', test_mode: 'true' } : {}),
@@ -300,6 +370,24 @@ class AnalyticsManager {
     // 3. Disparar Virtual Pageview (registra nas páginas em tempo real do GA4)
     if (virtualPath) {
       this.trackPageView(virtualPath, pageTitle);
+    }
+
+    // 4. Meta Pixel InitiateCheckout apenas quando há intenção real (Etapa 4+ Dados/Resumo)
+    this.trackMetaInitiateCheckout(stepNumber, serviceId);
+  }
+
+  trackMetaInitiateCheckout(stepNumber, serviceId) {
+    try {
+      if (this.hasTrackedInitiateCheckout || Number(stepNumber) < 4) return;
+      if (typeof fbq === 'function' && this.getUserType() !== 'staff_internal') {
+        fbq('track', 'InitiateCheckout', {
+          content_ids: serviceId ? [String(serviceId)] : undefined,
+          content_type: 'product'
+        });
+        this.hasTrackedInitiateCheckout = true;
+      }
+    } catch (pixelError) {
+      console.warn('Meta Pixel error (non-critical):', pixelError);
     }
   }
 
@@ -469,15 +557,8 @@ class AnalyticsManager {
       ...metadata
     });
 
-    // Notify Meta Pixel of Checkout Initiation if it's the beginning of a booking process
-    try {
-      if (typeof fbq === 'function') {
-        if (funnelName.toLowerCase().includes('booking') && step === 1) {
-          fbq('track', 'InitiateCheckout');
-        }
-      }
-    } catch (pixelError) {
-      console.warn('Meta Pixel error (non-critical):', pixelError);
+    if (funnelName.toLowerCase().includes('booking') && Number(step) >= 4) {
+      this.trackMetaInitiateCheckout(step, metadata?.service_id);
     }
   }
 

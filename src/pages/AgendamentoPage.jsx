@@ -74,67 +74,6 @@ const StepLoader = () => (
   </div>
 );
 
-
-
-
-
-// Live Activity Notification (Social Proof)
-const LiveActivity = ({ currentStep }) => {
-  const [activity, setActivity] = useState(null);
-  const [show, setShow] = useState(false);
-
-  const activities = [
-    { name: 'Mais um paciente', action: 'agendou', time: '5 minutos', service: 'Psicoterapia' },
-    { name: 'Mais um paciente', action: 'confirmou', time: '12 minutos', service: 'Terapia de Casal' },
-    { name: 'Mais um paciente', action: 'agendou', time: '8 minutos', service: 'Psicoterapia' },
-    { name: 'Mais um paciente', action: 'agendou', time: '15 minutos', service: 'Psicoterapia' },
-  ];
-
-  useEffect(() => {
-    const showActivity = () => {
-      const randomActivity = activities[Math.floor(Math.random() * activities.length)];
-      setActivity(randomActivity);
-      setShow(true);
-
-      setTimeout(() => setShow(false), 5000);
-    };
-
-    const interval = setInterval(showActivity, 45000); // Every 45s
-    const timeout = setTimeout(showActivity, 3000); // Show after 3s initially
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  // Hide on steps 4 (patient data) and 5 (payment summary) to prevent overlap
-  if (!show || !activity || currentStep >= 4) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -100 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -100 }}
-      role="status"
-      aria-live="polite"
-      className="fixed bottom-32 left-4 md:bottom-6 md:left-6 bg-white shadow-2xl rounded-lg p-3 max-w-xs z-30 border border-gray-200"
-    >
-      <div className="flex items-center gap-3">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-900 font-medium truncate">
-            <strong>{activity.name}</strong> {activity.action}
-          </p>
-          <p className="text-xs text-gray-600">
-            {activity.service} • há {activity.time}
-          </p>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
 const MEETING_OPTIONS = [
   {
     id: 'google_meet',
@@ -1950,9 +1889,6 @@ const AgendamentoPage = () => {
           </Suspense>
         </div>
       </div>
-
-      {/* Live Activity Notification */}
-      <LiveActivity currentStep={step} />
 
       {/* Floating Summary Card - Mobile Only */}
       {(selectedService || selectedProfessional || selectedDate || selectedTime) && step < 5 && (

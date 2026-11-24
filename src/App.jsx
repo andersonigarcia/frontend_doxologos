@@ -116,8 +116,8 @@ function AppContent() {
     }
   }, [location, navigate]);
 
-  // Hide WhatsApp button on booking page to prevent overlap with conversion CTAs
-  const shouldHideWhatsApp = location.pathname === '/agendamento';
+  // Keep WhatsApp support accessible across the booking funnel (button sits above mobile sticky CTAs)
+  const shouldHideWhatsApp = false;
 
   return (
     <div className="min-h-screen">
