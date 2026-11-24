@@ -33,6 +33,12 @@ jest.mock('@/components/ui/use-toast', () => ({
     })
 }));
 
+jest.mock('@/contexts/SupabaseAuthContext', () => ({
+    useAuth: () => ({
+        user: { id: 'user-rodrigo' }
+    })
+}));
+
 describe('Admin Modular Tabs (Onda 4 Architecture Deconstruction)', () => {
     describe('AdminServicesTab Helpers', () => {
         it('deve sanitizar entradas monetárias corretamente', () => {
@@ -139,6 +145,54 @@ describe('Admin Modular Tabs (Onda 4 Architecture Deconstruction)', () => {
             );
             expect(screen.getByText('Ana Silva')).toBeInTheDocument();
             expect(screen.getAllByText('Confirmado').length).toBeGreaterThan(0);
+        });
+
+        it('deve renderizar AdminProfessionalsTab em modo editável apenas para o próprio profissional autenticado', () => {
+            const otherProf = {
+                id: 'prof-outro',
+                user_id: 'user-outro',
+                name: 'Outro Psicólogo',
+                email: 'outro@doxologos.com.br',
+                personal_meet_link: 'https://meet.google.com/out-ro00-000'
+            };
+            const mockProf = {
+                id: 'prof-rodrigo',
+                user_id: 'user-rodrigo',
+                name: 'Rodrigo Psicólogo',
+                email: 'rodrigo@doxologos.com.br',
+                whatsapp: '31999999999',
+                personal_meet_link: 'https://meet.google.com/abc-defg-hij',
+                services_ids: ['srv-1']
+            };
+
+            render(
+                <AdminProfessionalsTab
+                    userRole="professional"
+                    professionals={[otherProf, mockProf]}
+                    services={[{ id: 'srv-1', name: 'Psicoterapia Individual' }]}
+                    onRefresh={jest.fn()}
+                />
+            );
+
+            expect(screen.getByText('Dados do Cadastro')).toBeInTheDocument();
+            expect(screen.getByDisplayValue('Rodrigo Psicólogo')).toBeInTheDocument();
+            expect(screen.queryByDisplayValue('Outro Psicólogo')).not.toBeInTheDocument();
+            expect(screen.getByDisplayValue('https://meet.google.com/abc-defg-hij')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Salvar Alterações do Profissional/i })).toBeInTheDocument();
+        });
+
+        it('deve bloquear edição em AdminProfessionalsTab quando papel não for admin nem professional', () => {
+            render(
+                <AdminProfessionalsTab
+                    userRole="patient"
+                    professionals={[{ id: 'prof-rodrigo', user_id: 'user-rodrigo', name: 'Rodrigo Psicólogo' }]}
+                    services={[]}
+                    onRefresh={jest.fn()}
+                />
+            );
+
+            expect(screen.getByText('Acesso Restrito')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: /Salvar Alterações do Profissional/i })).not.toBeInTheDocument();
         });
     });
 });

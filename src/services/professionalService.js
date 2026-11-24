@@ -21,14 +21,33 @@ export const ALLOWED_PROFESSIONAL_FIELDS = [
 ];
 
 /**
+ * Campos que o próprio profissional pode atualizar no seu cadastro (autoedição).
+ * Exclui 'status' e 'services_ids', que são gerenciados exclusivamente pelo admin.
+ */
+export const ALLOWED_SELF_PROFILE_FIELDS = [
+  'name',
+  'specialty',
+  'description',
+  'mini_curriculum',
+  'image_url',
+  'personal_meet_link',
+  'whatsapp',
+  'phone',
+  'cpf',
+  'cnpj',
+  'crp'
+];
+
+/**
  * Sanitiza o payload do profissional para enviar somente colunas válidas à tabela professionals.
  * @param {Object} rawData
+ * @param {string[]} allowedFields
  * @returns {Object} Payload limpo e seguro
  */
-export function sanitizeProfessionalPayload(rawData = {}) {
+export function sanitizeProfessionalPayload(rawData = {}, allowedFields = ALLOWED_PROFESSIONAL_FIELDS) {
   const sanitized = {};
 
-  for (const field of ALLOWED_PROFESSIONAL_FIELDS) {
+  for (const field of allowedFields) {
     if (field in rawData) {
       let value = rawData[field];
 
@@ -270,4 +289,77 @@ export async function updateProfessionalStatus(id, newStatus) {
   }
 
   return { id, status: newStatus };
+}
+
+/**
+ * Atualiza o próprio perfil do profissional autenticado (autoedição).
+ * Utiliza whitelist restrita (ALLOWED_SELF_PROFILE_FIELDS) para impedir alteração
+ * de status ou serviços habilitados, e sincroniza email/nome via supabase.auth.updateUser
+ * sem depender da Edge Function administrativa admin-update-user.
+ * @param {string} id - ID na tabela professionals
+ * @param {Object} formData - Dados submetidos pelo formulário
+ * @returns {Promise<Object>} Profissional atualizado
+ */
+export async function updateOwnProfessionalProfile(id, formData = {}) {
+  if (!id) {
+    throw new Error('ID do profissional é obrigatório para atualização.');
+  }
+
+  const { data: authData } = await supabase.auth.getUser();
+  const currentAuthUser = authData?.user;
+
+  if (!currentAuthUser?.id) {
+    throw new Error('Usuário não autenticado para atualizar perfil.');
+  }
+
+  if (formData.user_id && formData.user_id !== currentAuthUser.id) {
+    throw new Error('Acesso negado: você só pode editar o seu próprio perfil.');
+  }
+
+  const professionalUpdates = sanitizeProfessionalPayload(formData, ALLOWED_SELF_PROFILE_FIELDS);
+
+  const { data: updatedRecord, error: profError } = await supabase
+    .from('professionals')
+    .update(professionalUpdates)
+    .eq('id', id)
+    .eq('user_id', currentAuthUser.id)
+    .select()
+    .single();
+
+  if (profError) {
+    throw new Error(`Falha ao salvar seu perfil profissional: ${profError.message}`);
+  }
+
+  const trimmedEmail = (formData.email || '').trim();
+  let emailConfirmationSent = false;
+
+  try {
+    const currentEmail = (currentAuthUser.email || '').trim().toLowerCase();
+    const emailChanged = Boolean(trimmedEmail) && trimmedEmail.toLowerCase() !== currentEmail;
+    const nameChanged = Boolean(updatedRecord?.name) && updatedRecord.name !== currentAuthUser.user_metadata?.full_name;
+
+    if (emailChanged) {
+      const { error: emailErr } = await supabase.auth.updateUser({
+        email: trimmedEmail,
+        ...(nameChanged ? { data: { full_name: updatedRecord.name } } : {})
+      });
+      if (emailErr) {
+        throw new Error(`Dados salvos, mas não foi possível atualizar o e-mail de acesso: ${emailErr.message}`);
+      }
+      emailConfirmationSent = true;
+    } else if (nameChanged) {
+      await supabase.auth.updateUser({ data: { full_name: updatedRecord.name } });
+    }
+  } catch (authErr) {
+    if (authErr?.message?.includes('não foi possível atualizar o e-mail')) {
+      throw authErr;
+    }
+    console.warn('professionalService: Falha não-crítica ao sincronizar metadados do usuário autenticado:', authErr);
+  }
+
+  return {
+    ...updatedRecord,
+    email: trimmedEmail || formData.email || '',
+    emailConfirmationSent
+  };
 }

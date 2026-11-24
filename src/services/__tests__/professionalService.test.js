@@ -1,9 +1,11 @@
 import {
   ALLOWED_PROFESSIONAL_FIELDS,
+  ALLOWED_SELF_PROFILE_FIELDS,
   sanitizeProfessionalPayload,
   getProfessionalById,
   listProfessionals,
   updateProfessional,
+  updateOwnProfessionalProfile,
   updateProfessionalStatus
 } from '../professionalService';
 import { supabase } from '@/lib/customSupabaseClient';
@@ -18,7 +20,9 @@ jest.mock('@/lib/customSupabaseClient', () => {
         invoke: jest.fn()
       },
       auth: {
-        getSession: jest.fn()
+        getSession: jest.fn(),
+        getUser: jest.fn(),
+        updateUser: jest.fn()
       }
     }
   };
@@ -228,6 +232,69 @@ describe('professionalService — Domain Service Tests', () => {
       const res = await updateProfessionalStatus('prof-1', 'suspended');
       expect(res.status).toBe('suspended');
       expect(updateMock).toHaveBeenCalledWith({ status: 'suspended' });
+    });
+  });
+
+  describe('updateOwnProfessionalProfile (autoedição)', () => {
+    it('deve impedir alteração de status e services_ids na whitelist de autoedição', () => {
+      expect(ALLOWED_SELF_PROFILE_FIELDS).not.toContain('status');
+      expect(ALLOWED_SELF_PROFILE_FIELDS).not.toContain('services_ids');
+      expect(ALLOWED_SELF_PROFILE_FIELDS).toContain('personal_meet_link');
+    });
+
+    it('deve atualizar dados cadastrais sem chamar admin-update-user e sincronizar email via auth.updateUser', async () => {
+      const updatedRecord = {
+        id: 'prof-rodrigo',
+        name: 'Rodrigo Silva',
+        personal_meet_link: 'https://meet.google.com/rod-sala-123',
+        whatsapp: '5531999991111'
+      };
+
+      const singleMock = jest.fn().mockResolvedValue({ data: updatedRecord, error: null });
+      const selectMock = jest.fn(() => ({ single: singleMock }));
+      const eqUserIdMock = jest.fn(() => ({ select: selectMock }));
+      const eqIdMock = jest.fn(() => ({ eq: eqUserIdMock }));
+      const updateMock = jest.fn(() => ({ eq: eqIdMock }));
+
+      supabase.from.mockReturnValue({ update: updateMock });
+      supabase.auth.getUser.mockResolvedValue({
+        data: { user: { id: 'auth-rodrigo', email: 'rodrigo.antigo@doxologos.com', user_metadata: { full_name: 'Rodrigo' } } }
+      });
+      supabase.auth.updateUser.mockResolvedValue({ data: { user: {} }, error: null });
+
+      const result = await updateOwnProfessionalProfile('prof-rodrigo', {
+        name: 'Rodrigo Silva',
+        email: 'rodrigo.novo@doxologos.com',
+        personal_meet_link: 'https://meet.google.com/rod-sala-123',
+        whatsapp: '5531999991111',
+        status: 'suspended',
+        services_ids: ['srv-hack']
+      });
+
+      const payloadSent = updateMock.mock.calls[0][0];
+      expect(payloadSent.personal_meet_link).toBe('https://meet.google.com/rod-sala-123');
+      expect(payloadSent.status).toBeUndefined();
+      expect(payloadSent.services_ids).toBeUndefined();
+      expect(eqIdMock).toHaveBeenCalledWith('id', 'prof-rodrigo');
+      expect(eqUserIdMock).toHaveBeenCalledWith('user_id', 'auth-rodrigo');
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(supabase.auth.updateUser).toHaveBeenCalledWith({
+        email: 'rodrigo.novo@doxologos.com',
+        data: { full_name: 'Rodrigo Silva' }
+      });
+      expect(result.emailConfirmationSent).toBe(true);
+    });
+
+    it('deve bloquear edição quando usuário não está autenticado ou tenta editar outro profissional', async () => {
+      supabase.auth.getUser.mockResolvedValueOnce({ data: { user: null } });
+      await expect(updateOwnProfessionalProfile('prof-rodrigo', { name: 'Teste' }))
+        .rejects.toThrow('Usuário não autenticado');
+
+      supabase.auth.getUser.mockResolvedValueOnce({
+        data: { user: { id: 'auth-invasor', email: 'invasor@doxologos.com' } }
+      });
+      await expect(updateOwnProfessionalProfile('prof-rodrigo', { user_id: 'auth-rodrigo', name: 'Teste' }))
+        .rejects.toThrow('Acesso negado');
     });
   });
 });

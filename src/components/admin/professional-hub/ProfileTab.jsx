@@ -3,9 +3,9 @@ import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, Upload, X, User, Settings, DollarSign } from 'lucide-react';
 import { supabase } from '@/lib/customSupabaseClient';
-import { updateProfessional } from '@/services/professionalService';
+import { updateProfessional, updateOwnProfessionalProfile } from '@/services/professionalService';
 
-const ProfileTab = ({ professional, onUpdate }) => {
+const ProfileTab = ({ professional, onUpdate, isSelfService = false }) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -119,21 +119,35 @@ const ProfileTab = ({ professional, onUpdate }) => {
       }
 
       // Utilizar serviço canônico com validação e separação atômica
-      const updated = await updateProfessional(professional.id, {
-        ...formData,
-        user_id: professional.user_id,
-        services_ids: selectedServices
-      });
+      const updated = isSelfService
+        ? await updateOwnProfessionalProfile(professional.id, {
+            ...formData,
+            user_id: professional.user_id
+          })
+        : await updateProfessional(professional.id, {
+            ...formData,
+            user_id: professional.user_id,
+            services_ids: selectedServices
+          });
 
       // Atualizar o estado local imediatamente
       if (updated?.email) {
         setFormData(prev => ({ ...prev, email: updated.email }));
       }
 
-      toast({
-        title: "Sucesso!",
-        description: "Os dados do profissional foram atualizados com sucesso."
-      });
+      if (updated?.emailConfirmationSent) {
+        toast({
+          title: "Dados salvos! Confirme o novo e-mail",
+          description: "Enviamos um link de confirmação para o novo endereço de e-mail."
+        });
+      } else {
+        toast({
+          title: "Sucesso!",
+          description: isSelfService
+            ? "Seu perfil profissional foi atualizado com sucesso."
+            : "Os dados do profissional foram atualizados com sucesso."
+        });
+      }
       
       if (onUpdate) onUpdate();
       
@@ -216,7 +230,9 @@ const ProfileTab = ({ professional, onUpdate }) => {
                   placeholder="https://meet.google.com/abc-defg-hij"
                   className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">Enviado automaticamente aos pacientes em agendamentos online</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enviado automaticamente aos pacientes em agendamentos online. Utilize um link criado pela sua própria conta Google para entrar como anfitrião.
+                </p>
               </div>
             </div>
             <div>
@@ -329,36 +345,62 @@ const ProfileTab = ({ professional, onUpdate }) => {
           <h3 className="text-lg font-semibold text-gray-800 mb-2 flex items-center">
             <DollarSign className="w-5 h-5 mr-2 text-purple-600" /> Serviços que Atende
           </h3>
-          <p className="text-xs text-gray-500 mb-4">
-            Selecione quais modalidades de atendimento este profissional está apto a realizar na plataforma.
-          </p>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 h-64 overflow-y-auto space-y-2 shadow-inner">
-            {services.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-8 flex flex-col items-center">
-                <Loader2 className="w-6 h-6 animate-spin mb-2 text-gray-400" />
-                Carregando serviços...
+          {isSelfService ? (
+            <>
+              <p className="text-xs text-gray-500 mb-4">
+                Modalidades habilitadas para o seu perfil (gerenciadas pela administração da clínica).
               </p>
-            ) : (
-              services.map(service => (
-                <label key={service.id} className="flex items-start gap-3 p-3 hover:bg-purple-50/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-purple-100">
-                  <div className="flex items-center h-5 mt-0.5">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      checked={selectedServices.includes(service.id)}
-                      onChange={() => handleServiceToggle(service.id)}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-gray-900">{service.name}</span>
-                    <span className="text-xs text-gray-500 font-medium">
-                      {(service.duration_minutes || service.duration || 50)} min • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
-                    </span>
-                  </div>
-                </label>
-              ))
-            )}
-          </div>
+              <div className="flex flex-wrap gap-2">
+                {services.filter(s => selectedServices.includes(s.id)).length === 0 ? (
+                  <p className="text-sm text-gray-500">Nenhum serviço habilitado no momento.</p>
+                ) : (
+                  services
+                    .filter(s => selectedServices.includes(s.id))
+                    .map(service => (
+                      <span
+                        key={service.id}
+                        className="bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs px-3 py-1.5 rounded-full font-medium"
+                      >
+                        {service.name}
+                      </span>
+                    ))
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500 mb-4">
+                Selecione quais modalidades de atendimento este profissional está apto a realizar na plataforma.
+              </p>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 h-64 overflow-y-auto space-y-2 shadow-inner">
+                {services.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-8 flex flex-col items-center">
+                    <Loader2 className="w-6 h-6 animate-spin mb-2 text-gray-400" />
+                    Carregando serviços...
+                  </p>
+                ) : (
+                  services.map(service => (
+                    <label key={service.id} className="flex items-start gap-3 p-3 hover:bg-purple-50/50 rounded-lg cursor-pointer transition-colors border border-transparent hover:border-purple-100">
+                      <div className="flex items-center h-5 mt-0.5">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                          checked={selectedServices.includes(service.id)}
+                          onChange={() => handleServiceToggle(service.id)}
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-900">{service.name}</span>
+                        <span className="text-xs text-gray-500 font-medium">
+                          {(service.duration_minutes || service.duration || 50)} min • {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(service.price)}
+                        </span>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* FOOTER */}
