@@ -1,0 +1,8 @@
+# Política de Divulgação de Vulnerabilidades - Doxologos
+# RFC 9116 (https://securitytxt.org/)
+
+Contact: mailto:contato@doxologos.com.br
+Expires: 2027-11-24T04:18:17Z
+Preferred-Languages: pt, en
+Canonical: https://doxologos.com.br/.well-known/security.txt
+
