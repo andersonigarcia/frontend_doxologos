@@ -4,6 +4,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { requireAdmin, AuthError } from '../_shared/auth.ts';
 
 declare const Deno: any;
 
@@ -22,6 +23,13 @@ serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
+    // Blindagem RBAC: exige chamada interna com service_role ou administrador autenticado
+    const authHeader = req.headers.get('Authorization') || '';
+    const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim();
+    const isServiceRoleCaller = Boolean(supabaseKey && bearerToken === supabaseKey);
+    if (!isServiceRoleCaller) {
+      await requireAdmin(req, supabase);
+    }
     // Parâmetros opcionais via body
     let force = false;
     let targetCategories: string[] = ['PREFEITURA_OFFLINE', 'SYSTEM_ERROR'];
@@ -43,10 +51,10 @@ serve(async (req: Request) => {
 
     console.log(`🔄 retry-failed-nfse | categorias=${targetCategories.join(',')} | force=${force} | max_retries=${maxRetries}`);
 
-    // Buscar registros elegíveis para retentativa
+    // Buscar registros elegíveis para retentativa (sem trafegar PII desnecessária)
     const { data: recordsToRetry, error: fetchErr } = await supabase
       .from('nfse_emissions')
-      .select('id, error_category, retry_count, tomador_nome, tomador_cpf_cnpj')
+      .select('id, error_category, retry_count')
       .eq('status', 'error')
       .in('error_category', targetCategories)
       .lt('retry_count', maxRetries)
@@ -109,6 +117,12 @@ serve(async (req: Request) => {
     );
 
   } catch (err: any) {
+    if (err instanceof AuthError) {
+      return new Response(
+        JSON.stringify({ error: err.message }),
+        { status: err.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     console.error('❌ Exceção na Edge Function retry-failed-nfse:', err);
     return new Response(
       JSON.stringify({ error: err.message || 'Erro ao processar retentativas' }),

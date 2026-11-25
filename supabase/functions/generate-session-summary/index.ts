@@ -78,8 +78,8 @@ serve(async (req: Request) => {
 Você é um assistente clínico especializado para psicólogos no Brasil, operando estritamente sob as diretrizes do Código de Ética Profissional do Psicólogo e das Resoluções CFP nº 01/2009 e 11/2018.
 Sua função é gerar uma minuta técnica e estruturada de evolução clínica para prontuário psicológico no padrão internacional S.O.A.P. a partir dos tópicos e observações da sessão.
 
-DADOS DA SESSÃO:
-- Paciente: ${booking.patient_name || 'Paciente'}
+DADOS DA SESSÃO (Zero PII):
+- Paciente: Paciente (identidade preservada sob sigilo profissional)
 - Data: ${booking.booking_date}
 - Horário: ${booking.booking_time}
 - Notas brutas/observações do psicólogo: ${raw_notes || 'Sessão regular de psicoterapia online. Paciente compareceu pontualmente.'}
@@ -95,6 +95,7 @@ ESTRUTURA OBRIGATÓRIA DA MINUTA (Formate como JSON puro, sem markdown extra):
 `;
 
     let generatedDraft: any = null;
+    let usedGemini = false;
 
     if (GEMINI_API_KEY) {
       try {
@@ -103,10 +104,12 @@ ESTRUTURA OBRIGATÓRIA DA MINUTA (Formate como JSON puro, sem markdown extra):
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(12000),
             body: JSON.stringify({
               contents: [{ parts: [{ text: promptContext }] }],
               generationConfig: {
                 temperature: 0.3,
+                maxOutputTokens: 800,
                 responseMimeType: "application/json",
               },
             }),
@@ -118,6 +121,7 @@ ESTRUTURA OBRIGATÓRIA DA MINUTA (Formate como JSON puro, sem markdown extra):
           const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
           if (rawText) {
             generatedDraft = JSON.parse(rawText);
+            usedGemini = true;
           }
         } else {
           console.warn("[Gemini API] Falha na resposta da IA:", await geminiRes.text());
@@ -166,13 +170,13 @@ ESTRUTURA OBRIGATÓRIA DA MINUTA (Formate como JSON puro, sem markdown extra):
       throw new Error(`Falha ao salvar prontuário: ${evoErr.message}`);
     }
 
-    // 5. Registrar Ledger Financeiro de IA (Add-on R$ 2,90 vs Custo R$ 1,20)
+    // 5. Registrar Ledger Financeiro de IA (Add-on R$ 2,90 vs Custo R$ 1,20 apenas se Gemini foi acionado)
     await supabase.from("ai_usage_ledger").insert([{
       booking_id,
       professional_id: professional.id,
       is_trial: isTrial,
       add_on_amount: isTrial ? 0.00 : 2.90,
-      technical_cost: 1.20,
+      technical_cost: usedGemini ? 1.20 : 0.00,
       billing_status: isTrial ? "waived_trial" : "pending_payout_deduction",
     }]);
 
