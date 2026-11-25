@@ -70,11 +70,12 @@ export function ImmediateCareCard({
     const patientPhone = (appointment.patient_phone || '').replace(/\D/g, '');
     const bookingTime = appointment.booking_time ? `${appointment.booking_time}h` : 'Hoje';
     const serviceName = appointment.service?.name || 'Consulta Psicológica';
-    const meetingUrl = appointment.meeting_link || appointment.meeting_start_url || `/sala-espera/${appointment.id}`;
+    const meetingUrl = `/sala-espera/${appointment.id}`;
+    const publicRoomUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${meetingUrl}`;
 
     // WhatsApp quick reminder
     const whatsappText = encodeURIComponent(
-        `Olá ${patientName}! Aqui é da Doxologos. Nosso atendimento psicológico está agendado para hoje às ${appointment.booking_time}. Segue o link de acesso: ${meetingUrl}`
+        `Olá ${patientName}! Aqui é da Doxologos. Nosso atendimento psicológico está agendado para hoje às ${appointment.booking_time}. Segue o link de acesso: ${publicRoomUrl}`
     );
     const whatsappLink = patientPhone ? `https://wa.me/55${patientPhone}?text=${whatsappText}` : null;
 

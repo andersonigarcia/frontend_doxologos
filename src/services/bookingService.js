@@ -112,7 +112,7 @@ export async function getBookingById(id, { includeRelations = true, userId = nul
   if (includeRelations) {
     query = query.select(`
       *,
-      professional:professionals(id, name, specialty, image_url, personal_meet_link),
+      professional:professionals(id, user_id, name, specialty, image_url, personal_meet_link),
       service:services(id, name, price, duration_minutes),
       payment:payments(id, mp_payment_id, status, amount)
     `);

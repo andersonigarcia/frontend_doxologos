@@ -2374,6 +2374,34 @@ const ProfessionalDashboardPage = () => {
                 <div className="flex-1 min-w-0 p-4 md:p-8 pt-20 md:pt-24 overflow-y-auto">
                     <div className="container mx-auto max-w-7xl space-y-6">
                         <SecurityPasswordBanner onOpenChangePassword={() => setIsChangePasswordOpen(true)} />
+
+                        {isProfessionalView && currentProfessional && !currentProfessional.personal_meet_link?.trim() && (
+                            <div
+                                role="alert"
+                                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 shadow-xs"
+                            >
+                                <div className="flex items-start gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                        <AlertTriangle className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-sm font-bold text-amber-950">
+                                            Link do Google Meet não configurado no seu perfil
+                                        </h2>
+                                        <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+                                            Cadastre o link da sua sala fixa do Google Meet criada com a sua própria conta Google para entrar como anfitrião e evitar bloqueios de permissão.
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    type="button"
+                                    onClick={() => setActiveTab('professionals')}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shrink-0"
+                                >
+                                    Cadastrar meu Link do Meet agora
+                                </Button>
+                            </div>
+                        )}
                         
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div>

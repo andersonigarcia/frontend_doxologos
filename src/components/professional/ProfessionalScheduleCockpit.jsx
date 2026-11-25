@@ -250,12 +250,13 @@ export function ProfessionalScheduleCockpit({
                         const bookingTime = appointment.booking_time ? `${appointment.booking_time.slice(0, 5)}h` : '--:--';
                         const patientName = appointment.patient_name || 'Paciente';
                         const patientPhone = (appointment.patient_phone || '').replace(/\D/g, '');
-                        const meetingUrl = appointment.meeting_link || appointment.meeting_start_url || `/sala-espera/${appointment.id}`;
+                        const meetingUrl = `/sala-espera/${appointment.id}`;
+                        const publicRoomUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}${meetingUrl}`;
                         const googleCalendarUrl = generateGoogleCalendarUrl(appointment);
 
                         // WhatsApp Reminder Text
                         const whatsappMsg = encodeURIComponent(
-                            `Olá ${patientName}! Aqui é da Doxologos. Nosso atendimento psicológico está agendado para ${appointment.booking_date} às ${appointment.booking_time}. Segue o link de acesso seguro à consulta: ${meetingUrl}`
+                            `Olá ${patientName}! Aqui é da Doxologos. Nosso atendimento psicológico está agendado para ${appointment.booking_date} às ${appointment.booking_time}. Segue o link de acesso seguro à consulta: ${publicRoomUrl}`
                         );
                         const whatsappLink = patientPhone ? `https://wa.me/55${patientPhone}?text=${whatsappMsg}` : null;
 

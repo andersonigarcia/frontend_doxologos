@@ -12,7 +12,7 @@ import { EmbeddedConsultationRoom } from '@/components/telemedicina/EmbeddedCons
 const SalaEsperaPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, userRole } = useAuth();
     
     const [booking, setBooking] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -41,7 +41,20 @@ const SalaEsperaPage = () => {
         
         const fetchBooking = async () => {
             try {
-                const data = await getBookingById(id, { userId: user.id });
+                const isStaffRole = userRole === 'professional' || userRole === 'admin';
+                const data = await getBookingById(
+                    id,
+                    isStaffRole ? { includeRelations: true } : { userId: user.id }
+                );
+
+                const profObj = Array.isArray(data?.professional) ? data.professional[0] : data?.professional;
+                const isOwnerProf = Boolean(user?.id && profObj?.user_id === user.id);
+                const isPatientOwner = Boolean(user?.id && data?.user_id === user.id);
+
+                if (!isOwnerProf && !isPatientOwner && userRole !== 'admin') {
+                    throw new Error("Você não tem permissão para acessar esta sala de teleconsulta.");
+                }
+
                 setBooking(data);
             } catch (err) {
                 console.error("Erro ao carregar agendamento", err);
@@ -85,6 +98,17 @@ const SalaEsperaPage = () => {
     const handleJoinConsultation = async () => {
         setJoining(true);
         try {
+            const profObj = Array.isArray(booking?.professional) ? booking.professional[0] : booking?.professional;
+            const isProfEntering = Boolean(user?.id && profObj?.user_id === user.id);
+
+            if (isProfEntering && booking?.session_status !== 'in_progress') {
+                await supabase
+                    .from('bookings')
+                    .update({ session_status: 'in_progress' })
+                    .eq('id', id)
+                    .catch((e) => console.warn("Aviso ao atualizar session_status:", e));
+            }
+
             const { data, error: fnErr } = await supabase.functions.invoke('create-video-room', {
                 body: { booking_id: id }
             });
@@ -152,19 +176,24 @@ const SalaEsperaPage = () => {
     }
     
     if (error || !booking) {
+        const backPath = userRole === 'professional' ? '/profissional' : '/paciente';
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
                 <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center">
                     <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-gray-800 mb-2">Ops!</h2>
                     <p className="text-gray-600 mb-6">{error}</p>
-                    <Button onClick={() => navigate('/paciente')} className="w-full bg-[#2d8659] hover:bg-[#236b47]">
+                    <Button onClick={() => navigate(backPath)} className="w-full bg-[#2d8659] hover:bg-[#236b47]">
                         Voltar ao Painel
                     </Button>
                 </div>
             </div>
         );
     }
+
+    const professionalData = Array.isArray(booking.professional) ? booking.professional[0] : booking.professional;
+    const isAssignedProfessional = Boolean(user?.id && professionalData?.user_id === user.id);
+    const isStaffViewer = isAssignedProfessional || userRole === 'admin';
 
     // ── TELA DA TELECONSULTA EMBARCADA (FASE 2) ──
     if (activeSession) {
@@ -178,10 +207,13 @@ const SalaEsperaPage = () => {
                             token={activeSession.token}
                             durationMinutes={activeSession.durationMinutes}
                             isOwner={activeSession.isOwner}
-                            participantName={user?.user_metadata?.name || booking?.patient_name || 'Participante'}
+                            participantName={
+                                isAssignedProfessional
+                                    ? (professionalData?.name || user?.user_metadata?.full_name || 'Psicólogo(a)')
+                                    : (user?.user_metadata?.name || booking?.patient_name || 'Participante')
+                            }
                             onSessionEnd={async () => {
                                 setActiveSession(null);
-                                setShowReviewModal(true);
                                 try {
                                     await supabase.from('bookings').update({
                                         session_status: 'finished',
@@ -189,6 +221,11 @@ const SalaEsperaPage = () => {
                                     }).eq('id', id);
                                 } catch (e) {
                                     console.error('Erro ao atualizar status de encerramento:', e);
+                                }
+                                if (isStaffViewer) {
+                                    navigate('/profissional');
+                                } else {
+                                    setShowReviewModal(true);
                                 }
                             }}
                         />
@@ -228,8 +265,8 @@ const SalaEsperaPage = () => {
             const diffMs = scheduledDateTime.getTime() - currentTime.getTime();
             minutesUntilStart = Math.round(diffMs / 60000);
             
-            // Liberado apenas a partir de T-10 minutos
-            if (minutesUntilStart > 10 && !isReady) {
+            // Liberado apenas a partir de T-10 minutos para pacientes (profissional entra a qualquer momento)
+            if (minutesUntilStart > 10 && !isReady && !isStaffViewer) {
                 isTooEarly = true;
             }
             if (diffMs <= 0) {
@@ -268,11 +305,48 @@ const SalaEsperaPage = () => {
                                 <CheckCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                                 <h2 className="text-xl font-bold text-gray-800 mb-2">Sessão Finalizada</h2>
                                 <p className="text-gray-600 mb-6">Esta consulta já foi encerrada na plataforma.</p>
-                                <Button onClick={() => setShowReviewModal(true)} className="bg-[#2d8659] hover:bg-[#236b47] mr-3">
-                                    Avaliar & Reagendar
-                                </Button>
-                                <Button onClick={() => navigate('/paciente')} variant="outline" className="border-gray-300">
+                                {!isStaffViewer && (
+                                    <Button onClick={() => setShowReviewModal(true)} className="bg-[#2d8659] hover:bg-[#236b47] mr-3">
+                                        Avaliar & Reagendar
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={() => navigate(isStaffViewer ? '/profissional' : '/paciente')}
+                                    variant="outline"
+                                    className="border-gray-300"
+                                >
                                     Voltar ao Painel
+                                </Button>
+                            </motion.div>
+                        ) : isStaffViewer ? (
+                            /* Visão do Profissional (Anfitrião da Sala) */
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.96 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                className="bg-emerald-50 rounded-xl p-8 border border-emerald-100"
+                            >
+                                <div className="w-16 h-16 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Video className="w-8 h-8" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                    Sala pronta para iniciar
+                                </h2>
+                                <p className="text-gray-600 mb-6 text-sm">
+                                    Paciente: <strong>{booking.patient_name || 'Paciente'}</strong>. Ao clicar abaixo, você entrará como anfitrião e o paciente será liberado automaticamente na sala de espera.
+                                </p>
+                                <Button
+                                    disabled={joining}
+                                    className="w-full h-14 text-lg bg-[#2d8659] hover:bg-[#236b47] shadow-lg hover:shadow-xl transition-all"
+                                    onClick={handleJoinConsultation}
+                                >
+                                    {joining ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                                            Abrindo Sala Segura...
+                                        </>
+                                    ) : (
+                                        "Iniciar Atendimento Agora"
+                                    )}
                                 </Button>
                             </motion.div>
                         ) : isTooEarly ? (
