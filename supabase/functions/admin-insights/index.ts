@@ -93,6 +93,7 @@ FORMATO JSON OBRIGATÓRIO:
 `;
 
     let resultJson = null;
+    let usedGemini = false;
 
     if (GEMINI_API_KEY) {
       try {
@@ -101,10 +102,12 @@ FORMATO JSON OBRIGATÓRIO:
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(12000),
             body: JSON.stringify({
               contents: [{ parts: [{ text: promptText }] }],
               generationConfig: {
                 temperature: 0.2,
+                maxOutputTokens: 450,
                 responseMimeType: "application/json",
               },
             }),
@@ -116,6 +119,7 @@ FORMATO JSON OBRIGATÓRIO:
           const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
           if (rawText) {
             resultJson = JSON.parse(rawText);
+            usedGemini = true;
           }
         } else {
           console.warn("[Gemini Insights] Falha na API do Gemini:", await geminiRes.text());
@@ -146,7 +150,7 @@ FORMATO JSON OBRIGATÓRIO:
       JSON.stringify({
         ...resultJson,
         generatedAt: new Date().toISOString(),
-        isAiGenerated: !!GEMINI_API_KEY,
+        isAiGenerated: usedGemini,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

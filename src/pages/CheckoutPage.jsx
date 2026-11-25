@@ -56,6 +56,14 @@ const CheckoutPage = () => {
     const [payerEmailError, setPayerEmailError] = useState(''); // Mensagem de erro do campo e-mail
     const [acceptedTcle, setAcceptedTcle] = useState(false); // Aceite do TCLE Telepsicologia / CFP Resolução 11/2018
     const checkoutTrackedRef = useRef(false);
+    const pixDisplayRef = useRef(null);
+    const tcleCardRef = useRef(null);
+
+    useEffect(() => {
+        if (pixPayment && pixDisplayRef.current?.scrollIntoView) {
+            pixDisplayRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, [pixPayment]);
 
     // Helper de validação de e-mail (RFC básico + domínio com pelo menos 2 chars)
     const isValidEmail = (email) => {
@@ -628,6 +636,16 @@ const CheckoutPage = () => {
             if (result.success) {
                 if (result.qrCode) {
                     setPixPayment(result);
+                    try {
+                        analytics.trackEvent('pix_generated', {
+                            event_category: 'Checkout',
+                            payment_method: 'pix',
+                            checkout_type: type || (packageId ? 'package' : 'booking'),
+                            value: amount
+                        });
+                    } catch (trackingError) {
+                        logger.warn('CheckoutPage.analytics:pix_generated error', trackingError);
+                    }
                 }
 
                 if (result.stopMonitoring) {
@@ -937,24 +955,45 @@ const CheckoutPage = () => {
                         {/* QR Code e Código Copia e Cola do PIX */}
                         {pixPayment && selectedMethod === 'pix' && (
                             <CheckoutPixDisplay
+                                containerRef={pixDisplayRef}
                                 pixPayment={pixPayment}
                                 paymentStatus={paymentStatus}
-                                onCopyPix={() => {
-                                    navigator.clipboard.writeText(pixPayment.qrCode);
-                                    toast({
-                                        title: '✅ Código PIX Copiado!',
-                                        description: 'Abra o app do seu banco e escolha a opção PIX Copia e Cola.',
-                                    });
+                                onCopyPix={(copied) => {
+                                    try {
+                                        analytics.trackEvent('pix_code_copied', {
+                                            event_category: 'Checkout',
+                                            payment_method: 'pix',
+                                            checkout_type: type || (packageId ? 'package' : 'booking'),
+                                            copied: Boolean(copied)
+                                        });
+                                    } catch (trackingError) {
+                                        logger.warn('CheckoutPage.analytics:pix_code_copied error', trackingError);
+                                    }
+
+                                    if (copied) {
+                                        toast({
+                                            title: '✅ Código PIX Copiado!',
+                                            description: 'Abra o app do seu banco e escolha a opção PIX Copia e Cola.',
+                                        });
+                                    } else {
+                                        toast({
+                                            variant: 'destructive',
+                                            title: 'Não foi possível copiar automaticamente',
+                                            description: 'Toque e segure no campo do código PIX acima para copiar manualmente.',
+                                        });
+                                    }
                                 }}
                             />
                         )}
 
                         {/* Consentimento TCLE / CFP Resolução 11/2018 */}
                         {!pixPayment && (
-                            <CheckoutTcleCard
-                                acceptedTcle={acceptedTcle}
-                                setAcceptedTcle={setAcceptedTcle}
-                            />
+                            <div ref={tcleCardRef}>
+                                <CheckoutTcleCard
+                                    acceptedTcle={acceptedTcle}
+                                    setAcceptedTcle={setAcceptedTcle}
+                                />
+                            </div>
                         )}
 
                         {/* Botões Principais Desktop */}
@@ -1066,11 +1105,13 @@ const CheckoutPage = () => {
                     processing={processing}
                     onPay={() => {
                         if (!acceptedTcle) {
-                            setAcceptedTcle(true);
+                            tcleCardRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+                            document.getElementById('tcle-checkbox')?.focus?.();
                             toast({
-                                title: 'Termos aceitos',
-                                description: 'Prosseguindo com a confirmação do pagamento seguro.'
+                                title: 'Confirme os termos antes de continuar',
+                                description: 'Marque a caixa de sigilo ético e termos de cuidado acima para gerar seu pagamento.'
                             });
+                            return;
                         }
                         handlePayment();
                     }}
@@ -1086,7 +1127,9 @@ const CheckoutPage = () => {
                     onContinue={() => {
                         if (existingPayment?.qr_code && existingPayment?.payment_type === 'pix') {
                             setPixPayment({
+                                paymentId: existingPayment.mp_payment_id,
                                 payment_id: existingPayment.mp_payment_id,
+                                qrCode: existingPayment.qr_code,
                                 qr_code: existingPayment.qr_code,
                                 success: true
                             });
