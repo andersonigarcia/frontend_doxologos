@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { loginRateLimiter, passwordResetRateLimiter, RateLimiter } from '@/lib/rateLimiter';
 import { auditLogger, AuditAction } from '@/lib/auditLogger';
 import { reportOperationalError } from '@/lib/observability/sentry';
+import { clearSessionTimeoutStorage } from '@/hooks/useSessionTimeout';
 
 const AuthContext = createContext(null);
 
@@ -199,6 +200,9 @@ export function AuthProvider({ children }) {
 
     // Listener para mudanças de estado
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        clearSessionTimeoutStorage();
+      }
       if (mounted) {
         console.log('🔄 Mudança de estado auth:', event);
         handleSession(session);
@@ -237,11 +241,11 @@ export function AuthProvider({ children }) {
       }
 
       reportOperationalError({
-        service: 'auth_password_update',
+        service: 'auth_signup',
         flow: 'auth',
         severity: error.status >= 500 ? 'critical' : 'warning',
-        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
-        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
+        message: `Falha ao criar conta: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || error.error_code || 'signup_error'),
         context: { errorTitle },
       });
 
@@ -270,6 +274,11 @@ export function AuthProvider({ children }) {
 
     // Registrar tentativa
     loginRateLimiter.recordAttempt(email);
+
+    // Limpar timestamps de sessão/inatividade anteriores antes de autenticar,
+    // pois onAuthStateChange dispara durante signInWithPassword e o useSessionTimeout
+    // avaliaria timestamps antigos imediatamente após o login.
+    clearSessionTimeoutStorage();
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -304,11 +313,11 @@ export function AuthProvider({ children }) {
       }
 
       reportOperationalError({
-        service: 'auth_password_update',
+        service: 'auth_login',
         flow: 'auth',
         severity: error.status >= 500 ? 'critical' : 'warning',
-        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
-        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
+        message: `Falha ao fazer login: ${error.message || errorTitle}`,
+        errorCode: String(error.status || error.code || error.error_code || 'login_error'),
         context: { errorTitle },
       });
 
@@ -360,6 +369,7 @@ export function AuthProvider({ children }) {
       try {
         localStorage.removeItem(ACTIVE_ROLE_STORAGE_KEY);
       } catch (e) {}
+      clearSessionTimeoutStorage();
 
       // Limpar estado local mesmo se houver erro (session_not_found é aceitável)
       handleSession(null);
@@ -436,15 +446,6 @@ export function AuthProvider({ children }) {
         message: `Falha ao solicitar recuperação de senha: ${error.message || errorTitle}`,
         errorCode: String(error.status || error.code || 'reset_password_error'),
         context: { emailDomain, errorTitle },
-      });
-
-      reportOperationalError({
-        service: 'auth_password_update',
-        flow: 'auth',
-        severity: error.status >= 500 ? 'critical' : 'warning',
-        message: `Falha ao atualizar senha: ${error.message || errorTitle}`,
-        errorCode: String(error.status || error.code || normalizedCode || 'update_password_error'),
-        context: { errorTitle },
       });
 
       toast({

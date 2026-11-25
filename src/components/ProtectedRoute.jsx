@@ -3,7 +3,7 @@
  * Protege rotas que requerem autenticação
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { motion } from 'framer-motion';
@@ -117,6 +117,17 @@ export const ProtectedRoute = ({
   const location = useLocation();
 
   const currentRole = activeRole || userRole;
+  const matchedHybridRole =
+    !loading && user && requiredRoles.length > 0 && !requiredRoles.includes(currentRole)
+      ? requiredRoles.find((r) => availableRoles?.includes(r))
+      : null;
+
+  useEffect(() => {
+    if (matchedHybridRole && switchActiveRole) {
+      console.log(`🔄 [ProtectedRoute] Usuário híbrido autorizado via '${matchedHybridRole}'. Alternando perfil ativo...`);
+      switchActiveRole(matchedHybridRole);
+    }
+  }, [matchedHybridRole, switchActiveRole]);
 
   // Mostrar loading enquanto verifica autenticação
   if (loading) {
@@ -156,11 +167,8 @@ export const ProtectedRoute = ({
   // Verificar roles se necessário
   if (requiredRoles.length > 0 && !requiredRoles.includes(currentRole)) {
     // Multi-Perfil Híbrido: Se o usuário possui um dos papéis requeridos em availableRoles,
-    // auto-chavear o perfil ativo de forma transparente e autorizar o acesso.
-    const matchedRole = requiredRoles.find((r) => availableRoles?.includes(r));
-    if (matchedRole && switchActiveRole) {
-      console.log(`🔄 [ProtectedRoute] Usuário híbrido autorizado via '${matchedRole}'. Alternando perfil ativo...`);
-      switchActiveRole(matchedRole);
+    // o useEffect acima alterna o perfil ativo de forma transparente e autoriza o acesso.
+    if (matchedHybridRole && switchActiveRole) {
       return null;
     }
 
