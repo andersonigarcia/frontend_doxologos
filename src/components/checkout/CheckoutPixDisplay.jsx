@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Smartphone, Clock, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -9,12 +9,41 @@ import analytics from '@/lib/analytics';
 const CheckoutPixDisplay = ({
     pixPayment,
     paymentStatus,
-    onCopyPix
+    onCopyPix,
+    containerRef
 }) => {
-    if (!pixPayment?.qrCode) return null;
+    const inputRef = useRef(null);
+    const qrCode = pixPayment?.qrCode || pixPayment?.qr_code;
+
+    if (!qrCode) return null;
+
+    const handleCopyClick = async () => {
+        let copied = false;
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(qrCode);
+                copied = true;
+            }
+        } catch (err) {
+            copied = false;
+        }
+
+        if (!copied && inputRef.current) {
+            try {
+                inputRef.current.focus();
+                inputRef.current.select();
+                copied = document.execCommand('copy');
+            } catch (err) {
+                copied = false;
+            }
+        }
+
+        onCopyPix?.(copied);
+    };
 
     return (
-        <Card className="p-5 sm:p-6 border-2 border-emerald-500/30 shadow-lg">
+        <div ref={containerRef} id="checkout-pix-display">
+            <Card className="p-5 sm:p-6 border-2 border-emerald-500/30 shadow-lg">
             <h3 className="text-xl font-bold mb-4 text-center text-emerald-900 flex items-center justify-center gap-2">
                 <Smartphone className="w-5 h-5 text-emerald-600" />
                 Pague com PIX
@@ -29,7 +58,7 @@ const CheckoutPixDisplay = ({
 
                     <Button
                         size="lg"
-                        onClick={onCopyPix}
+                        onClick={handleCopyClick}
                         className="w-full bg-[#2d8659] hover:bg-[#236b47] text-white font-bold h-12 text-base shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all touch-manipulation"
                     >
                         <Smartphone className="w-5 h-5" />
@@ -38,9 +67,11 @@ const CheckoutPixDisplay = ({
 
                     <div className="mt-3 flex items-center gap-2">
                         <input
+                            ref={inputRef}
                             type="text"
-                            value={pixPayment.qrCode}
+                            value={qrCode}
                             readOnly
+                            aria-label="Código PIX Copia e Cola"
                             className="flex-1 px-3 py-1.5 bg-white border border-emerald-200 rounded-lg text-xs font-mono text-gray-700 truncate"
                         />
                     </div>
@@ -53,7 +84,7 @@ const CheckoutPixDisplay = ({
                     </p>
                     <div className="bg-white p-3 rounded-2xl border-2 border-emerald-100 shadow-sm inline-flex items-center justify-center min-w-[220px] min-h-[220px]">
                         <QRCodeSVG
-                            value={pixPayment.qrCode}
+                            value={qrCode}
                             size={220}
                             level="M"
                         />
@@ -97,6 +128,7 @@ const CheckoutPixDisplay = ({
                 </div>
             </div>
         </Card>
+        </div>
     );
 };
 
