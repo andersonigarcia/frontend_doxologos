@@ -164,10 +164,31 @@ export function useAdminData({ user, userRole }) {
                 : Promise.resolve({ data: [], error: null });
 
         const bookingsSelect = '*, meeting_link, meeting_password, meeting_id, meeting_start_url, professional:professionals(name), service:services(id, name, price, duration_minutes, professional_payout)';
+        const fetchPaginatedBookings = async (profIdFilter = null) => {
+            const PAGE_SIZE = 1000;
+            const allRows = [];
+            for (let from = 0; ; from += PAGE_SIZE) {
+                let q = supabase
+                    .from('bookings')
+                    .select(bookingsSelect)
+                    .order('booking_date', { ascending: false })
+                    .order('booking_time', { ascending: false })
+                    .range(from, from + PAGE_SIZE - 1);
+                if (profIdFilter) {
+                    q = q.eq('professional_id', profIdFilter);
+                }
+                const { data, error } = await q;
+                if (error) return { data: allRows, error };
+                allRows.push(...(data || []));
+                if (!data || data.length < PAGE_SIZE) break;
+            }
+            return { data: allRows, error: null };
+        };
+
         const bookingsPromise = isAdmin
-            ? supabase.from('bookings').select(bookingsSelect).order('booking_date', { ascending: false }).order('booking_time', { ascending: false }).range(0, 99)
+            ? fetchPaginatedBookings(null)
             : professionalFilterId
-                ? supabase.from('bookings').select(bookingsSelect).eq('professional_id', professionalFilterId).order('booking_date', { ascending: false }).order('booking_time', { ascending: false }).range(0, 99)
+                ? fetchPaginatedBookings(professionalFilterId)
                 : Promise.resolve({ data: [], error: null });
 
         const servicesPromise = supabase.from('services').select('*');
@@ -240,26 +261,33 @@ export function useAdminData({ user, userRole }) {
             secureLog.warn('Nenhum registro de profissional encontrado para o usuário atual.');
         }
 
-        // Mapear profissionais nos eventos + contagem inscrições
-        const eventsWithProfessionals = await Promise.all(
-            (eventsRes.data || []).map(async (event) => {
-                const professional = enrichedProfessionals.find((p) => p.id === event.professional_id);
-                let inscricoesCount = 0;
-                try {
-                    const { count, error } = await supabase
-                        .from('inscricoes_eventos')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('evento_id', event.id)
-                        .in('status', ['pending', 'confirmed']);
-                    if (!error) inscricoesCount = count || 0;
-                } catch { /* silenciar */ }
-                return {
-                    ...event,
-                    professional: professional ? { name: professional.name } : null,
-                    inscricoes_eventos: [{ count: inscricoesCount }],
-                };
-            })
-        );
+        // Mapear profissionais nos eventos + contagem inscrições em 1 query (sem N+1)
+        const eventIds = (eventsRes.data || []).map((e) => e.id).filter(Boolean);
+        const inscricoesCountByEvent = new Map();
+        if (eventIds.length > 0) {
+            try {
+                const { data: regRows, error: regError } = await supabase
+                    .from('inscricoes_eventos')
+                    .select('evento_id')
+                    .in('evento_id', eventIds)
+                    .in('status', ['pending', 'confirmed']);
+                if (!regError && regRows) {
+                    regRows.forEach((r) => {
+                        inscricoesCountByEvent.set(r.evento_id, (inscricoesCountByEvent.get(r.evento_id) || 0) + 1);
+                    });
+                }
+            } catch { /* silenciar */ }
+        }
+
+        const eventsWithProfessionals = (eventsRes.data || []).map((event) => {
+            const professional = enrichedProfessionals.find((p) => p.id === event.professional_id);
+            const inscricoesCount = inscricoesCountByEvent.get(event.id) || 0;
+            return {
+                ...event,
+                professional: professional ? { name: professional.name } : null,
+                inscricoes_eventos: [{ count: inscricoesCount }],
+            };
+        });
 
         // Normalizar avaliações
         const reviewsWithProfessionals = (reviewsRes.data || []).map((review) => {

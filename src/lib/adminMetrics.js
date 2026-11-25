@@ -1083,4 +1083,84 @@ export function computePatientFollowUpAndRetention(bookings = [], options = {}) 
     };
 }
 
+/**
+ * Calcula a DRE Gerencial Consolidada (consultas + IA + custos operacionais + taxas/tributos).
+ * Nunca mascara prejuízo operacional com Math.max(0, ...).
+ */
+export function computeConsolidatedDreMetrics({
+    bookings = [],
+    aiUsageRows = [],
+    platformCosts = [],
+    mpFeeRate = 0.0299,
+    nfseTaxRate = 0.06,
+    defaultRetentionPct = 40
+} = {}) {
+    const payoutShare = 1 - Number(defaultRetentionPct || 40) / 100;
+    const realizedBookings = (bookings || []).filter((b) =>
+        REALIZED_STATUSES.includes(String(b?.status || '').toLowerCase())
+    );
+
+    const gmv = realizedBookings.reduce(
+        (acc, b) => acc + toNumber(b?.valor_consulta || b?.service?.price),
+        0
+    );
+
+    const payoutTotal = realizedBookings.reduce((acc, b) => {
+        const value = toNumber(b?.valor_consulta || b?.service?.price);
+        const payout = b?.valor_repasse_profissional ?? b?.service?.professional_payout;
+        return acc + (payout !== null && payout !== undefined ? toNumber(payout) : value * payoutShare);
+    }, 0);
+
+    let aiGrossRevenue = 0;
+    let aiTechnicalCost = 0;
+    let aiTrialCount = 0;
+    (aiUsageRows || []).forEach((item) => {
+        if (item?.is_trial) {
+            aiTrialCount += 1;
+        } else {
+            aiGrossRevenue += toNumber(item?.add_on_amount ?? 2.90);
+        }
+        aiTechnicalCost += toNumber(item?.technical_cost ?? 1.20);
+    });
+
+    const operationalCosts = (platformCosts || []).reduce(
+        (acc, cost) => acc + toNumber(cost?.amount),
+        0
+    );
+
+    const platformConsultationMargin = gmv - payoutTotal;
+    const platformGrossMargin = platformConsultationMargin + aiGrossRevenue;
+    const estimatedMpFees = gmv * Number(mpFeeRate || 0);
+    const estimatedNfseTaxes = Math.max(0, platformGrossMargin) * Number(nfseTaxRate || 0);
+    const aiNetMargin = aiGrossRevenue - aiTechnicalCost;
+
+    // Resultado líquido real (pode ser negativo em caso de prejuízo operacional)
+    const netMargin =
+        platformGrossMargin - estimatedMpFees - estimatedNfseTaxes - aiTechnicalCost - operationalCosts;
+
+    const totalBase = gmv + aiGrossRevenue;
+    const takeRatePct = totalBase > 0 ? (platformGrossMargin / totalBase) * 100 : Number(defaultRetentionPct || 40);
+
+    return {
+        gmv,
+        payoutTotal,
+        count: realizedBookings.length,
+        aiGrossRevenue,
+        aiTechnicalCost,
+        aiSessionsCount: (aiUsageRows || []).length,
+        aiTrialCount,
+        aiNetMargin,
+        operationalCosts,
+        operationalCostsCount: (platformCosts || []).length,
+        platformConsultationMargin,
+        platformGrossMargin,
+        estimatedMpFees,
+        estimatedNfseTaxes,
+        netMargin,
+        takeRatePct,
+        isProfitable: netMargin >= 0
+    };
+}
+
+
 

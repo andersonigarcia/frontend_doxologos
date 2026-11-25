@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 import { motion } from 'framer-motion';
@@ -11,14 +11,22 @@ import {
   CheckCircle,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowRight,
   PieChart,
   ShieldCheck,
   Calendar,
   Sparkles,
-  Cpu
+  Cpu,
+  Loader2
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { REALIZED_STATUSES, computeConsolidatedDreMetrics } from '@/lib/adminMetrics';
+
+const ReconciliationPanel = lazy(() => import('@/components/admin/ReconciliationPanel').then(m => ({ default: m.ReconciliationPanel })));
+const LedgerStats = lazy(() => import('@/components/admin/LedgerStats').then(m => ({ default: m.LedgerStats })));
+const LedgerCharts = lazy(() => import('@/components/admin/LedgerCharts').then(m => ({ default: m.LedgerCharts })));
+const LedgerTable = lazy(() => import('@/components/admin/LedgerTable').then(m => ({ default: m.LedgerTable })));
 
 export function FinancialControlModule({
   financialData = {},
@@ -46,7 +54,7 @@ export function FinancialControlModule({
   const nfseTaxRate = (Number(settings.nfse_estimated_tax_rate_pct) || 6.00) / 100;
   const defaultRetentionPct = Number(settings.platform_default_retention_pct) || 40;
 
-  // Estado para armazenar os dados reais do DRE (paginado e sem cancelamentos)
+  // Estado para armazenar os dados reais do DRE (paginado, com custos operacionais e sem mascarar prejuízo)
   const [dreData, setDreData] = useState({
     gmv: 0,
     payoutTotal: 0,
@@ -55,6 +63,16 @@ export function FinancialControlModule({
     aiTechnicalCost: 0,
     aiSessionsCount: 0,
     aiTrialCount: 0,
+    aiNetMargin: 0,
+    operationalCosts: 0,
+    operationalCostsCount: 0,
+    platformConsultationMargin: 0,
+    platformGrossMargin: 0,
+    estimatedMpFees: 0,
+    estimatedNfseTaxes: 0,
+    netMargin: 0,
+    takeRatePct: defaultRetentionPct,
+    isProfitable: true,
     isLoading: true,
     error: null
   });
@@ -75,8 +93,8 @@ export function FinancialControlModule({
             service:services ( price, professional_payout )
           `);
 
-          // Anti Efeito Melancia: Considera apenas Receita Realizada / A Receber
-          query = query.in('status', ['paid', 'completed', 'confirmed']);
+          // Alinhado com REALIZED_STATUSES (inclui no_show_unjustified)
+          query = query.in('status', REALIZED_STATUSES);
 
           // Filtros de Data
           if (selectedYear !== 'all') {
@@ -101,11 +119,7 @@ export function FinancialControlModule({
         }
 
         // Buscar dados de uso de IA do mesmo período (ai_usage_ledger)
-        let aiGrossRevenue = 0;
-        let aiTechnicalCost = 0;
-        let aiSessionsCount = 0;
-        let aiTrialCount = 0;
-
+        let aiRows = [];
         try {
           let aiQuery = supabase.from('ai_usage_ledger').select('add_on_amount, technical_cost, is_trial, billing_status, created_at');
           if (selectedYear !== 'all') {
@@ -121,48 +135,58 @@ export function FinancialControlModule({
               aiQuery = aiQuery.gte('created_at', startDate).lte('created_at', endDate);
             }
           }
-          const { data: aiRows, error: aiError } = await aiQuery;
-          if (!aiError && aiRows) {
-            aiSessionsCount = aiRows.length;
-            aiRows.forEach(item => {
-              if (item.is_trial) {
-                aiTrialCount += 1;
-              } else {
-                aiGrossRevenue += Number(item.add_on_amount || 2.90);
-              }
-              aiTechnicalCost += Number(item.technical_cost || 1.20);
-            });
+          const { data: fetchedAiRows, error: aiError } = await aiQuery;
+          if (!aiError && fetchedAiRows) {
+            aiRows = fetchedAiRows;
           }
         } catch (aiErr) {
           console.warn('[FinancialControlModule] Erro ao carregar ai_usage_ledger para DRE:', aiErr);
         }
 
+        // Buscar custos operacionais fixos/variáveis (platform_costs) do mesmo período
+        let platformCostsRows = [];
+        try {
+          let costsQuery = supabase.from('platform_costs').select('amount, category, cost_date');
+          if (selectedYear !== 'all') {
+            const y = Number(selectedYear);
+            if (selectedMonth !== 'all') {
+              const m = Number(selectedMonth);
+              const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+              const endDate = new Date(y, m, 0).toISOString().split('T')[0];
+              costsQuery = costsQuery.gte('cost_date', startDate).lte('cost_date', endDate);
+            } else {
+              costsQuery = costsQuery.gte('cost_date', `${y}-01-01`).lte('cost_date', `${y}-12-31`);
+            }
+          }
+          const { data: fetchedCosts, error: costsError } = await costsQuery.limit(5000);
+          if (!costsError && fetchedCosts) {
+            platformCostsRows = fetchedCosts;
+          }
+        } catch (costErr) {
+          console.warn('[FinancialControlModule] Erro ao carregar platform_costs para DRE:', costErr);
+        }
+
         if (cancelled) return;
 
-        // Repasse ausente: usa o take rate configurado (nunca 100% do valor, que zeraria a margem)
-        const payoutShare = 1 - defaultRetentionPct / 100;
-        const gmv = rows.reduce((acc, b) => acc + (Number(b.valor_consulta || b?.service?.price || 0)), 0);
-        const payoutTotal = rows.reduce((acc, b) => {
-          const value = Number(b.valor_consulta || b?.service?.price || 0);
-          const payout = b.valor_repasse_profissional ?? b?.service?.professional_payout;
-          return acc + (payout !== null && payout !== undefined ? Number(payout) : value * payoutShare);
-        }, 0);
+        const computed = computeConsolidatedDreMetrics({
+          bookings: rows,
+          aiUsageRows: aiRows,
+          platformCosts: platformCostsRows,
+          mpFeeRate,
+          nfseTaxRate,
+          defaultRetentionPct
+        });
 
         setDreData({
-          gmv,
-          payoutTotal,
-          count: rows.length,
-          aiGrossRevenue,
-          aiTechnicalCost,
-          aiSessionsCount,
-          aiTrialCount,
+          ...computed,
           isLoading: false,
           error: null
         });
       } catch (err) {
         console.error("Erro na busca do DRE:", err);
         if (!cancelled) {
-          setDreData({
+          setDreData(prev => ({
+            ...prev,
             gmv: 0,
             payoutTotal: 0,
             count: 0,
@@ -170,79 +194,90 @@ export function FinancialControlModule({
             aiTechnicalCost: 0,
             aiSessionsCount: 0,
             aiTrialCount: 0,
+            operationalCosts: 0,
+            operationalCostsCount: 0,
+            netMargin: 0,
             isLoading: false,
             error: err?.message || 'Falha ao carregar a DRE'
-          });
+          }));
         }
       }
     }
     fetchDRE();
     return () => { cancelled = true; };
-  }, [selectedMonth, selectedYear, defaultRetentionPct]);
+  }, [selectedMonth, selectedYear, defaultRetentionPct, mpFeeRate, nfseTaxRate]);
 
-  // Cálculos da DRE Consolidada
-  const gmv = dreData.gmv;
-  const payoutTotal = dreData.payoutTotal;
-  const aiGrossRevenue = dreData.aiGrossRevenue || 0;
-  const aiTechnicalCost = dreData.aiTechnicalCost || 0;
-  const aiNetMargin = aiGrossRevenue - aiTechnicalCost;
-
-  const estimatedMpFees = gmv * mpFeeRate; // Taxa de Gateway cobra sobre o Transacionado (GMV)
-  const platformConsultationMargin = Math.max(0, gmv - payoutTotal);
-  
-  // MARGEM BRUTA CONSOLIDADA: Margem de Consultas + Receita de IA (que fica 100% com a plataforma)
-  const platformGrossMargin = platformConsultationMargin + aiGrossRevenue;
-  
-  // CORREÇÃO CONTÁBIL: NFS-e cobrada sobre a Margem da Plataforma (Take Rate de Consultas + Receita IA)
-  const estimatedNfseTaxes = platformGrossMargin * nfseTaxRate; 
-  
-  // RESULTADO LÍQUIDO OPERACIONAL: Margem Bruta - MP Fees - Impostos - Custos Técnicos de IA
-  const netMargin = Math.max(0, platformGrossMargin - estimatedMpFees - estimatedNfseTaxes - aiTechnicalCost);
-  const takeRatePct = (gmv + aiGrossRevenue) > 0 ? (platformGrossMargin / (gmv + aiGrossRevenue)) * 100 : defaultRetentionPct;
+  // Cálculos da DRE Consolidada (sem mascaramento de prejuízo)
+  const {
+    gmv,
+    payoutTotal,
+    aiGrossRevenue,
+    aiTechnicalCost,
+    aiNetMargin,
+    operationalCosts,
+    operationalCostsCount,
+    estimatedMpFees,
+    platformConsultationMargin,
+    platformGrossMargin,
+    estimatedNfseTaxes,
+    netMargin,
+    takeRatePct,
+    isProfitable
+  } = dreData;
 
   return (
     <div className="space-y-6 font-sans">
       {/* Header da Controladoria */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 text-slate-900">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-              Módulo de Controladoria Unificada
-            </span>
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs text-slate-900 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="bg-emerald-50 text-emerald-800 border border-emerald-200/80 text-xs font-semibold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                Módulo de Controladoria Unificada
+              </span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+              DRE, Extrato Financeiro & Ledger de Repasses
+            </h2>
+            <p className="text-xs text-slate-500 mt-1 max-w-3xl leading-relaxed">
+              Visão consolidada de caixa, conciliação de recebíveis do Mercado Pago, retenção de impostos e repasses aos profissionais.
+            </p>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            DRE, Extrato Financeiro & Ledger de Repasses
-          </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            Visão consolidada de caixa, conciliação de recebíveis do Mercado Pago, retenção de impostos e repasses aos profissionais.
-          </p>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onNavigateTab?.('payments')}
+            className="rounded-xl text-xs font-semibold border-slate-200 text-slate-700 hover:bg-slate-50 shrink-0 self-start"
+          >
+            Repasses Profissionais
+            <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+          </Button>
         </div>
 
-        {/* Sub-Navegação da Controladoria */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 overflow-x-auto w-full md:w-auto scrollbar-none flex-nowrap">
-          <button
-            onClick={() => setSubTab('dre')}
-            className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-[38px] ${
-              subTab === 'dre' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            DRE Consolidada
-          </button>
-          <button
-            onClick={() => setSubTab('ledger')}
-            className={`px-3 py-2 text-xs font-semibold rounded-lg transition-all whitespace-nowrap shrink-0 min-h-[38px] ${
-              subTab === 'ledger' ? 'bg-slate-900 text-white shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            Repasses (Ledger)
-          </button>
-          <button
-            onClick={() => onNavigateTab?.('payments')}
-            className="px-3 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/60 rounded-lg whitespace-nowrap shrink-0 min-h-[38px]"
-          >
-            Checkout MP
-          </button>
+        {/* Sub-Navegação da Controladoria (largura total abaixo do cabeçalho, sem scrollbar visível) */}
+        <div className="pt-3 border-t border-slate-100 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="inline-flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner gap-1 min-w-full sm:min-w-0">
+            {[
+              { id: 'dre', label: 'DRE Consolidada' },
+              { id: 'reconcile', label: 'Conciliação (4 Pontas)' },
+              { id: 'ledger', label: 'Livro Caixa (Ledger)' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setSubTab(tab.id)}
+                className={`text-xs px-3.5 py-2 rounded-lg transition-all whitespace-nowrap font-medium flex-1 sm:flex-initial text-center touch-manipulation ${
+                  subTab === tab.id
+                    ? 'bg-white text-slate-900 shadow-xs font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -332,10 +367,10 @@ export function FinancialControlModule({
               <p className="text-[10px] text-emerald-800 font-semibold mt-0.5 tabular-nums">Take Rate: {takeRatePct.toFixed(1)}%</p>
             </Card>
 
-            <Card className="p-3.5 sm:p-4 bg-slate-900 text-white rounded-xl shadow-xs border border-slate-800">
+            <Card className={`p-3.5 sm:p-4 rounded-xl shadow-xs border ${isProfitable ? 'bg-slate-900 text-white border-slate-800' : 'bg-rose-950 text-white border-rose-900'}`}>
               <span className="text-[10px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider">Resultado Líquido</span>
-              <p className="text-lg sm:text-xl font-extrabold text-white mt-1 tabular-nums">{formatBrl(netMargin)}</p>
-              <p className="text-[10px] text-slate-400 mt-0.5 truncate">Pós impostos, gateway e IA</p>
+              <p className={`text-lg sm:text-xl font-extrabold mt-1 tabular-nums ${isProfitable ? 'text-white' : 'text-rose-300'}`}>{formatBrl(netMargin)}</p>
+              <p className="text-[10px] text-slate-300 mt-0.5 truncate">Pós impostos, gateway, IA e custos</p>
             </Card>
           </div>
 
@@ -407,64 +442,43 @@ export function FinancialControlModule({
                 <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(estimatedNfseTaxes)})</span>
               </div>
 
-              <div className="py-3.5 flex justify-between font-extrabold text-sm sm:text-base bg-slate-900 text-white px-3.5 sm:px-4 rounded-xl mt-2 shadow-xs">
+              <div className="py-2.5 flex justify-between text-slate-600 px-3.5 sm:px-4 pl-6 sm:pl-8">
+                <div className="flex items-center gap-1.5">
+                  <span>(-) Custos Operacionais Fixos & Variáveis ({operationalCostsCount} lançamento(s))</span>
+                </div>
+                <span className="text-rose-600 font-semibold tabular-nums">({formatBrl(operationalCosts)})</span>
+              </div>
+
+              <div className={`py-3.5 flex justify-between font-extrabold text-sm sm:text-base px-3.5 sm:px-4 rounded-xl mt-2 shadow-xs ${isProfitable ? 'bg-slate-900 text-white' : 'bg-rose-950 text-white'}`}>
                 <div>
                   <span>(=) RESULTADO LÍQUIDO OPERACIONAL CONSOLIDADO</span>
                   <span className="text-[11px] text-slate-300 font-normal block">
-                    Reflete Margem Consultas ({formatBrl(platformConsultationMargin)}) + Margem Líquida IA ({formatBrl(aiNetMargin)}) - Gateway & Tributos
+                    Margem Consultas ({formatBrl(platformConsultationMargin)}) + Margem Líquida IA ({formatBrl(aiNetMargin)}) - Gateway, Tributos & Custos Operacionais
                   </span>
                 </div>
-                <span className="tabular-nums">{formatBrl(netMargin)}</span>
+                <span className={`tabular-nums ${isProfitable ? 'text-white' : 'text-rose-300'}`}>{formatBrl(netMargin)}</span>
               </div>
             </div>
           </Card>
         </div>
       )}
 
-      {/* RENDERIZADOR SUB-TAB: LEDGER DE REPASSES */}
-      {subTab === 'ledger' && (
-        <Card className="p-6 bg-white border border-slate-200 rounded-2xl shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Ledger de Repasses aos Profissionais</h3>
-              <p className="text-xs text-slate-500">Controle de honorários a pagar por psicólogo.</p>
-            </div>
-            <Button size="sm" variant="outline" className="text-xs">
-              Exportar Relatório PDF
-            </Button>
-          </div>
+      {/* RENDERIZADOR SUB-TAB: CONCILIAÇÃO POR EXCEÇÃO (4 PONTAS) */}
+      {subTab === 'reconcile' && (
+        <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-7 h-7 animate-spin text-slate-700" /></div>}>
+          <ReconciliationPanel onNavigateTab={onNavigateTab} onSelectSubTab={setSubTab} />
+        </Suspense>
+      )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left text-slate-700">
-              <thead className="text-[11px] uppercase bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
-                <tr>
-                  <th className="p-3">Data/Hora</th>
-                  <th className="p-3">Paciente</th>
-                  <th className="p-3">Profissional</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3 text-right">Valor Consulta</th>
-                  <th className="p-3 text-right">Repasse Psicólogo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {bookings.slice(0, 10).map((b, idx) => (
-                  <tr key={b.id || idx} className="hover:bg-slate-50/80">
-                    <td className="p-3 font-mono">{b.booking_date} {b.booking_time}</td>
-                    <td className="p-3 font-semibold text-slate-900">{b.patient_name || 'Paciente'}</td>
-                    <td className="p-3">{b.professional?.name || 'Psicólogo'}</td>
-                    <td className="p-3">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        {b.status || 'confirmado'}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right font-semibold">{formatBrl(b.valor_consulta || b.service?.price || 0)}</td>
-                    <td className="p-3 text-right font-bold text-emerald-700">{formatBrl(b.valor_repasse_profissional || b.service?.professional_payout || 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* RENDERIZADOR SUB-TAB: LIVRO CAIXA (LEDGER CANÔNICO) */}
+      {subTab === 'ledger' && (
+        <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-7 h-7 animate-spin text-slate-700" /></div>}>
+          <div className="space-y-6">
+            <LedgerStats />
+            <LedgerCharts />
+            <LedgerTable />
           </div>
-        </Card>
+        </Suspense>
       )}
     </div>
   );

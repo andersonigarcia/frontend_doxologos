@@ -29,6 +29,7 @@ import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { secureLog } from '@/lib/secureLogger';
 import { updateBookingStatus } from '@/services/bookingService';
+import { auditLogger, AuditAction, LogLevel } from '@/lib/auditLogger';
 import { bookingEmailManager } from '@/lib/bookingEmailManager';
 import { useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
@@ -532,25 +533,56 @@ export function AdminBookingsTab({
             : 'data não informada';
         const timeLabel = booking.booking_time ? `${booking.booking_time}h` : 'horário indefinido';
 
-        let warningMessage = '';
-        if (['confirmed', 'paid', 'completed'].includes(booking.status)) {
-            warningMessage = 'Este agendamento já estava confirmado/pago. Considere alterar o status para cancelado se precisar manter o histórico.';
-        }
+        const isFinancialOrClinicalRecord = ['confirmed', 'paid', 'completed', 'no_show_unjustified'].includes(
+            String(booking.status || '').toLowerCase()
+        );
+        const warningMessage = isFinancialOrClinicalRecord
+            ? 'Por integridade contábil, fiscal (NFS-e) e sigilo clínico, agendamentos pagos/confirmados/concluídos não são excluídos fisicamente — eles serão CANCELADOS preservando o histórico.'
+            : '';
 
         setConfirmDialog({
             isOpen: true,
-            title: 'Excluir Agendamento',
-            message: `Deseja excluir o agendamento de ${booking.patient_name || 'Paciente'} em ${dateLabel} às ${timeLabel}?`,
+            title: isFinancialOrClinicalRecord ? 'Cancelar Agendamento (Preservar Histórico)' : 'Excluir Agendamento Pendente',
+            message: isFinancialOrClinicalRecord
+                ? `Deseja cancelar o agendamento de ${booking.patient_name || 'Paciente'} em ${dateLabel} às ${timeLabel}?`
+                : `Deseja excluir o agendamento pendente de ${booking.patient_name || 'Paciente'} em ${dateLabel} às ${timeLabel}?`,
             warningMessage,
             type: 'danger',
             onConfirm: async () => {
                 await withItemLoading('delete', booking.id, async () => {
+                    if (isFinancialOrClinicalRecord) {
+                        const result = await updateBookingStatus(booking.id, 'cancelled', {
+                            bookingData: booking,
+                            cancellationReason: 'Cancelado pelo administrador (preservação de trilha contábil/fiscal)'
+                        });
+                        if (result?.error) {
+                            secureLog.error('Erro ao cancelar agendamento:', result.error?.message || result.error);
+                            toast({ variant: 'destructive', title: 'Erro ao cancelar agendamento', description: result.error?.message || 'Falha ao cancelar.' });
+                            return;
+                        }
+                        await auditLogger.log(AuditAction.BOOKING_CANCEL, {
+                            level: LogLevel.WARNING,
+                            resourceType: 'booking',
+                            resourceId: booking.id,
+                            details: { previous_status: booking.status, method: 'soft_delete_cancel' }
+                        });
+                        toast({ title: 'Agendamento cancelado com histórico preservado!' });
+                        onRefresh?.();
+                        return;
+                    }
+
                     const { error } = await supabase.from('bookings').delete().eq('id', booking.id);
                     if (error) {
                         secureLog.error('Erro ao excluir agendamento:', error?.message || error);
                         toast({ variant: 'destructive', title: 'Erro ao excluir agendamento', description: error.message });
                         return;
                     }
+                    await auditLogger.log(AuditAction.BOOKING_DELETE, {
+                        level: LogLevel.WARNING,
+                        resourceType: 'booking',
+                        resourceId: booking.id,
+                        details: { previous_status: booking.status }
+                    });
                     toast({ title: 'Agendamento excluído com sucesso!' });
                     onRefresh?.();
                 });
