@@ -2,8 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { Briefcase, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { supabase } from '@/lib/customSupabaseClient';
 import { secureLog } from '@/lib/secureLogger';
+import { auditLogger, AuditAction, LogLevel } from '@/lib/auditLogger';
 
 export const sanitizeCurrencyInput = (value) => {
     if (value === null || value === undefined) return '';
@@ -86,26 +88,56 @@ export function AdminServicesTab({ services = [], professionals = [], onRefresh 
         });
     };
 
-    const handleDeleteService = async (serviceId) => {
+    const [serviceToDelete, setServiceToDelete] = useState(null);
+
+    const handleDeleteService = (serviceId) => {
         const service = services.find(s => s.id === serviceId);
         if (!service) return;
+        setServiceToDelete(service);
+    };
 
-        if (!window.confirm(`Tem certeza que deseja excluir o serviço "${service.name}"?`)) {
-            return;
-        }
+    const confirmDeleteService = async () => {
+        if (!serviceToDelete) return;
+        const service = serviceToDelete;
 
         try {
-            const { error } = await supabase.from('services').delete().eq('id', serviceId);
+            const { data: linkedBookings, error: checkError } = await supabase
+                .from('bookings')
+                .select('id')
+                .eq('service_id', service.id)
+                .limit(1);
+
+            if (checkError) throw checkError;
+
+            if (linkedBookings && linkedBookings.length > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Exclusão bloqueada por auditoria',
+                    description: `O serviço "${service.name}" possui agendamentos históricos vinculados e não pode ser excluído.`
+                });
+                setServiceToDelete(null);
+                return;
+            }
+
+            const { error } = await supabase.from('services').delete().eq('id', service.id);
             if (error) {
                 secureLog.error('Erro ao excluir serviço:', error?.message || error);
                 toast({ variant: 'destructive', title: 'Erro ao excluir serviço', description: error.message });
             } else {
+                await auditLogger.log(AuditAction.SERVICE_DELETE, {
+                    level: LogLevel.WARNING,
+                    resourceType: 'service',
+                    resourceId: service.id,
+                    details: { name: service.name, price: service.price }
+                });
                 toast({ title: 'Serviço excluído com sucesso!' });
                 if (onRefresh) onRefresh();
             }
         } catch (error) {
             secureLog.error('Erro inesperado ao excluir serviço:', error);
             toast({ variant: 'destructive', title: 'Erro inesperado', description: 'Não foi possível excluir o serviço.' });
+        } finally {
+            setServiceToDelete(null);
         }
     };
 
@@ -364,6 +396,17 @@ export function AdminServicesTab({ services = [], professionals = [], onRefresh 
                     </div>
                 </form>
             </div>
+
+            <ConfirmDialog
+                isOpen={Boolean(serviceToDelete)}
+                onClose={() => setServiceToDelete(null)}
+                onConfirm={confirmDeleteService}
+                title="Excluir Serviço"
+                message={`Tem certeza que deseja excluir o serviço "${serviceToDelete?.name || ''}"?`}
+                warningMessage="Serviços com agendamentos vinculados são bloqueados automaticamente para preservar o histórico financeiro."
+                confirmText="Excluir Serviço"
+                type="danger"
+            />
         </div>
     );
 }

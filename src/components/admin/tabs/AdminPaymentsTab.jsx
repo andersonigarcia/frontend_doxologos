@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
+import { auditLogger, AuditAction, LogLevel } from '@/lib/auditLogger';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import { ProfessionalPaymentsList } from '@/components/admin/ProfessionalPaymentsList';
 import { PaymentFormModal } from '@/components/admin/PaymentFormModal';
 import { PaymentDetailsModal } from '@/components/admin/PaymentDetailsModal';
@@ -12,6 +14,7 @@ export function AdminPaymentsTab({ professionals = [] }) {
     const [isPaymentDetailsOpen, setIsPaymentDetailsOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
     const [paymentBookings, setPaymentBookings] = useState([]);
+    const [paymentToDelete, setPaymentToDelete] = useState(null);
 
     const handleCreatePayment = (payment = null) => {
         setSelectedPayment(payment);
@@ -46,36 +49,53 @@ export function AdminPaymentsTab({ professionals = [] }) {
         setIsPaymentDetailsOpen(true);
     };
 
-    const handleDeletePayment = async (payment) => {
-        if (!window.confirm(`Tem certeza que deseja excluir o pagamento de ${payment.professional?.name}?`)) {
+    const handleDeletePayment = (payment) => {
+        setPaymentToDelete(payment);
+    };
+
+    const confirmDeletePayment = async () => {
+        if (!paymentToDelete) return;
+        const payment = paymentToDelete;
+
+        if (payment.status === 'paid') {
+            toast({
+                title: 'Ação bloqueada por auditoria',
+                description: 'Repasses já liquidados (pagos) não podem ser excluídos ou cancelados para preservar a trilha contábil.',
+                variant: 'destructive'
+            });
+            setPaymentToDelete(null);
             return;
         }
 
         try {
-            await supabase
-                .from('payment_bookings')
-                .delete()
-                .eq('payment_id', payment.id);
-
             const { error } = await supabase
                 .from('professional_payments')
-                .delete()
+                .update({ status: 'cancelled' })
                 .eq('id', payment.id);
 
             if (error) throw error;
 
+            await auditLogger.log(AuditAction.ADMIN_SETTINGS_CHANGE, {
+                level: LogLevel.WARNING,
+                resourceType: 'professional_payment',
+                resourceId: payment.id,
+                details: { action: 'cancel_professional_payment', previous_status: payment.status, amount: payment.total_amount }
+            });
+
             toast({
-                title: 'Pagamento excluído',
-                description: `Pagamento de ${payment.professional?.name} excluído com sucesso.`
+                title: 'Repasse cancelado',
+                description: `Lote de repasse de ${payment.professional?.name || 'profissional'} marcado como cancelado (histórico preservado).`
             });
             setPaymentRefreshKey(prev => prev + 1);
         } catch (error) {
-            console.error('Error deleting payment:', error);
+            console.error('Error cancelling payment:', error);
             toast({
-                title: 'Erro ao excluir',
-                description: error.message || 'Não foi possível excluir o pagamento',
+                title: 'Erro ao cancelar',
+                description: error.message || 'Não foi possível cancelar o repasse',
                 variant: 'destructive'
             });
+        } finally {
+            setPaymentToDelete(null);
         }
     };
 
@@ -115,6 +135,17 @@ export function AdminPaymentsTab({ professionals = [] }) {
                 }}
                 payment={selectedPayment}
                 bookings={paymentBookings}
+            />
+
+            <ConfirmDialog
+                isOpen={Boolean(paymentToDelete)}
+                onClose={() => setPaymentToDelete(null)}
+                onConfirm={confirmDeletePayment}
+                title="Cancelar Lote de Repasse"
+                message={`Tem certeza que deseja cancelar o lote de repasse de ${paymentToDelete?.professional?.name || 'profissional'}?`}
+                warningMessage="O registro será mantido como 'Cancelado' para trilha de auditoria contábil. Repasses já pagos são protegidos contra cancelamento."
+                confirmText="Cancelar Repasse"
+                type="danger"
             />
         </div>
     );

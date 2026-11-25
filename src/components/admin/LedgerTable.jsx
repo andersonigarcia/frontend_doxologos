@@ -17,8 +17,7 @@ import {
     ArrowUpCircle,
     RefreshCw,
     Download,
-    Trash2,
-    Edit,
+    RotateCcw,
     ChevronLeft,
     ChevronRight,
     Filter,
@@ -37,6 +36,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from '@/lib/customSupabaseClient';
+import { reverseLedgerTransaction } from '@/services/ledgerService';
 import { ManualLedgerEntryModal } from '@/components/admin/ManualLedgerEntryModal';
 import { formatCurrency } from '@/utils/formatParams';
 import { useToast } from '@/components/ui/use-toast';
@@ -60,11 +60,10 @@ export function LedgerTable({ className = '' }) {
 
     // Values for modals
     const [isManualModalOpen, setIsManualModalOpen] = useState(false);
-    const [entryToEdit, setEntryToEdit] = useState(null);
 
-    // Values for delete
-    const [entryToDelete, setEntryToDelete] = useState(null);
-    const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
+    // Values for immutable reversal (estorno)
+    const [entryToReverse, setEntryToReverse] = useState(null);
+    const [isReverseAlertOpen, setIsReverseAlertOpen] = useState(false);
 
     useEffect(() => {
         fetchLedger();
@@ -116,35 +115,28 @@ export function LedgerTable({ className = '' }) {
         }
     };
 
-    const handleDelete = async () => {
-        if (!entryToDelete) return;
+    const handleReverseTransaction = async () => {
+        if (!entryToReverse?.transaction_id) return;
 
         try {
-            const { error } = await supabase
-                .from('payment_ledger_entries')
-                .delete()
-                .eq('id', entryToDelete.id);
-
-            if (error) throw error;
-
-            toast({ title: 'Sucesso', description: 'Lançamento excluído.' });
+            await reverseLedgerTransaction(entryToReverse.transaction_id, {
+                reason: 'Estorno via Livro Caixa Administrativo'
+            });
+            toast({
+                title: 'Transação estornada',
+                description: 'Lançamentos inversos de estorno registrados preservando o histórico contábil.'
+            });
             setRefreshKey(prev => prev + 1);
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Erro', description: 'Erro ao excluir lançamento.' });
+            toast({ variant: 'destructive', title: 'Erro ao estornar', description: error.message || 'Erro ao estornar transação.' });
         } finally {
-            setIsDeleteAlertOpen(false);
-            setEntryToDelete(null);
+            setIsReverseAlertOpen(false);
+            setEntryToReverse(null);
         }
     };
 
-    const handleEdit = (entry) => {
-        setEntryToEdit(entry);
-        setIsManualModalOpen(true);
-    };
-
     const handleCreate = () => {
-        setEntryToEdit(null);
         setIsManualModalOpen(true);
     };
 
@@ -379,28 +371,19 @@ export function LedgerTable({ className = '' }) {
                                                 {entry.entry_type === 'DEBIT' ? '+ ' : ''}{formatCurrency(entry.amount)}
                                             </TableCell>
                                             <TableCell className="py-3.5 text-right">
-                                                {isManual && (
+                                                {isManual && entry.metadata?.source !== 'manual_reversal' && (
                                                     <div className="flex gap-1 justify-end">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-7 w-7 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
-                                                            onClick={() => handleEdit(entry)}
-                                                            title="Editar Lançamento Manual"
-                                                        >
-                                                            <Edit className="w-3.5 h-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-7 w-7 text-rose-400 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+                                                            className="h-7 w-7 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg"
                                                             onClick={() => {
-                                                                setEntryToDelete(entry);
-                                                                setIsDeleteAlertOpen(true);
+                                                                setEntryToReverse(entry);
+                                                                setIsReverseAlertOpen(true);
                                                             }}
-                                                            title="Excluir Lançamento"
+                                                            title="Estornar Transação (Imutável)"
                                                         >
-                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            <RotateCcw className="w-3.5 h-3.5" />
                                                         </Button>
                                                     </div>
                                                 )}
@@ -450,21 +433,20 @@ export function LedgerTable({ className = '' }) {
                 open={isManualModalOpen}
                 onClose={() => setIsManualModalOpen(false)}
                 onSuccess={() => setRefreshKey(k => k + 1)}
-                entryToEdit={entryToEdit}
             />
 
-            <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+            <AlertDialog open={isReverseAlertOpen} onOpenChange={setIsReverseAlertOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir Lançamento?</AlertDialogTitle>
+                        <AlertDialogTitle>Estornar Transação (Partida Dobrada)?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso removerá permanentemente o lançamento manual do Livro Caixa.
+                            Por integridade contábil, lançamentos no Livro Caixa são imutáveis. Esta ação criará partidas inversas de estorno para zerar o efeito desta transação preservando o histórico.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setEntryToDelete(null)}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                            Excluir
+                        <AlertDialogCancel onClick={() => setEntryToReverse(null)}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleReverseTransaction} className="bg-amber-600 hover:bg-amber-700">
+                            Confirmar Estorno
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

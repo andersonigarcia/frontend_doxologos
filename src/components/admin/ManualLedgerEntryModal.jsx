@@ -1,52 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/lib/customSupabaseClient';
-import { Loader2 } from 'lucide-react';
-import { formatNumberToCurrencyInput, parseCurrencyToNumber } from '@/utils/formatParams';
+import { Loader2, ShieldCheck } from 'lucide-react';
+import { createDoubleEntryManualTransaction, LEDGER_ACCOUNTS } from '@/services/ledgerService';
 
-export function ManualLedgerEntryModal({ open, onClose, onSuccess, entryToEdit = null }) {
+export function ManualLedgerEntryModal({ open, onClose, onSuccess }) {
     const { toast } = useToast();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
-        entry_type: 'DEBIT', // or CREDIT
-        account_code: 'CASH_BANK',
+        debitAccount: 'CASH_BANK',
+        creditAccount: 'REVENUE_SERVICE',
         amount: '',
         description: ''
     });
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (open) {
-            if (entryToEdit) {
-                setFormData({
-                    entry_type: entryToEdit.entry_type,
-                    account_code: entryToEdit.account_code,
-                    amount: entryToEdit.amount,
-                    description: entryToEdit.description.replace(' (Manual)', '')
-                });
-            } else {
-                setFormData({
-                    entry_type: 'DEBIT',
-                    account_code: 'CASH_BANK',
-                    amount: '',
-                    description: ''
-                });
-            }
+            setFormData({
+                debitAccount: 'CASH_BANK',
+                creditAccount: 'REVENUE_SERVICE',
+                amount: '',
+                description: ''
+            });
         }
-    }, [open, entryToEdit]);
+    }, [open]);
 
-    // Helper functions for currency (simplified here if imports fail)
     const handleAmountChange = (e) => {
-        let value = e.target.value.replace(/\D/g, '');
+        const value = e.target.value.replace(/\D/g, '');
         const numberValue = Number(value) / 100;
         setFormData({ ...formData, amount: numberValue });
     };
@@ -56,48 +46,19 @@ export function ManualLedgerEntryModal({ open, onClose, onSuccess, entryToEdit =
         setLoading(true);
 
         try {
-            const { amount, entry_type, account_code, description } = formData;
+            await createDoubleEntryManualTransaction({
+                debitAccount: formData.debitAccount,
+                creditAccount: formData.creditAccount,
+                amount: formData.amount,
+                description: formData.description
+            });
 
-            // Validate
-            if (!amount || amount <= 0) throw new Error('Valor inválido');
-            if (!description) throw new Error('Descrição obrigatória');
-
-            const finalDescription = description.includes('(Manual)') ? description : `${description} (Manual)`;
-
-            if (entryToEdit) {
-                const { error } = await supabase
-                    .from('payment_ledger_entries')
-                    .update({
-                        entry_type,
-                        account_code,
-                        amount,
-                        description: finalDescription,
-                    })
-                    .eq('id', entryToEdit.id);
-
-                if (error) throw error;
-                toast({ title: 'Sucesso', description: 'Lançamento atualizado.' });
-
-            } else {
-                const transactionId = crypto.randomUUID();
-                const { error } = await supabase
-                    .from('payment_ledger_entries')
-                    .insert({
-                        transaction_id: transactionId,
-                        entry_type,
-                        account_code,
-                        amount,
-                        description: finalDescription,
-                        metadata: { source: 'manual_reconciliation' }
-                    });
-
-                if (error) throw error;
-                toast({ title: 'Sucesso', description: 'Lançamento registrado.' });
-            }
-
+            toast({
+                title: 'Partida dobrada registrada',
+                description: 'Lançamento de Débito e Crédito gravado de forma imutável no Livro Caixa.'
+            });
             onSuccess();
             onClose();
-
         } catch (error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Erro', description: error.message });
@@ -108,40 +69,39 @@ export function ManualLedgerEntryModal({ open, onClose, onSuccess, entryToEdit =
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
-                    <DialogTitle>{entryToEdit ? 'Editar Lançamento' : 'Novo Lançamento (Conciliação)'}</DialogTitle>
+                    <DialogTitle>Novo Lançamento (Partidas Dobradas)</DialogTitle>
+                    <DialogDescription className="text-xs flex items-center gap-1.5 text-slate-600">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        Todo lançamento manual gera Débito e Crédito balanceados e é imutável (correções via estorno).
+                    </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Conta Debitada (DEBIT)</Label>
+                        <select
+                            className="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white"
+                            value={formData.debitAccount}
+                            onChange={e => setFormData({ ...formData, debitAccount: e.target.value })}
+                        >
+                            {LEDGER_ACCOUNTS.map(acc => (
+                                <option key={acc.code} value={acc.code}>{acc.label}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label>Tipo</Label>
-                            <select
-                                className="w-full border rounded p-2 text-sm"
-                                value={formData.entry_type}
-                                onChange={e => setFormData({ ...formData, entry_type: e.target.value })}
-                            >
-                                <option value="DEBIT">Débito (Entrada/Ativo)</option>
-                                <option value="CREDIT">Crédito (Saída/Passivo)</option>
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Conta</Label>
-                            <select
-                                className="w-full border rounded p-2 text-sm"
-                                value={formData.account_code}
-                                onChange={e => setFormData({ ...formData, account_code: e.target.value })}
-                            >
-                                <option value="CASH_BANK">Conta Banco / Caixa</option>
-                                <option value="REVENUE_SERVICE">Receita Plataforma</option>
-                                <option value="LIABILITY_PROFESSIONAL">A Pagar (Profissional)</option>
-                                <option value="REVENUE_GROSS">Receita Bruta (Legado)</option>
-                                <option value="EXPENSE_FEE">Taxa Bancária</option>
-                                <option value="EXPENSE_OPERATIONAL">Despesa Operacional</option>
-                                <option value="EQUITY_ADJUSTMENT">Ajuste de Capital</option>
-                            </select>
-                        </div>
+                    <div className="space-y-2">
+                        <Label>Conta Creditada (CREDIT — Contrapartida)</Label>
+                        <select
+                            className="w-full border border-slate-200 rounded-lg p-2 text-sm bg-white"
+                            value={formData.creditAccount}
+                            onChange={e => setFormData({ ...formData, creditAccount: e.target.value })}
+                        >
+                            {LEDGER_ACCOUNTS.map(acc => (
+                                <option key={acc.code} value={acc.code}>{acc.label}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="space-y-2">
@@ -159,7 +119,7 @@ export function ManualLedgerEntryModal({ open, onClose, onSuccess, entryToEdit =
                         <Input
                             value={formData.description}
                             onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Ex: Ajuste de centavos, Taxa extra..."
+                            placeholder="Ex: Conciliação bancária, Taxa extra..."
                             required
                         />
                     </div>
@@ -168,7 +128,7 @@ export function ManualLedgerEntryModal({ open, onClose, onSuccess, entryToEdit =
                         <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
                         <Button type="submit" disabled={loading}>
                             {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            {entryToEdit ? 'Salvar Alterações' : 'Registrar'}
+                            Registrar Partida Dobrada
                         </Button>
                     </DialogFooter>
                 </form>

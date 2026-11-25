@@ -246,11 +246,11 @@ export function StrategicCockpitModule({
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* CABEÇALHO DO COCKPIT EXECUTIVO COM SELETOR DE PERÍODO E AÇÕES RÁPIDAS */}
-      <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200/80 shadow-xs text-slate-900 font-sans">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs text-slate-900 font-sans space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border border-slate-200">
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className="bg-slate-100 text-slate-700 text-xs font-semibold px-2.5 py-0.5 rounded-md flex items-center gap-1.5 border border-slate-200 whitespace-nowrap">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                 Cockpit Executivo & Governança
               </span>
@@ -264,51 +264,49 @@ export function StrategicCockpitModule({
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            {/* Seletor de Período Dinâmico com Rolagem Horizontal Suave para Mobile */}
-            <div className="w-full sm:w-auto overflow-x-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-0.5">
-              <div className="inline-flex bg-slate-100 p-1 rounded-lg border border-slate-200/80 shadow-inner gap-1 min-w-full sm:min-w-0">
-                {PERIOD_OPTIONS.map((opt) => {
-                  const isActive = selectedPeriod === opt.id;
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={() => setSelectedPeriod(opt.id)}
-                      className={`text-xs px-3 py-1.5 rounded-md transition-all whitespace-nowrap flex-1 sm:flex-initial text-center font-medium touch-manipulation ${
-                        isActive
-                          ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                          : 'text-slate-500 hover:text-slate-900 hover:bg-white/50'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+          {/* Ações Rápidas (DRE e CSV) */}
+          <div className="flex items-center gap-2 shrink-0 self-start">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportCsv}
+              className="border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs shadow-xs bg-white h-9 sm:h-8 whitespace-nowrap shrink-0"
+              title="Baixar demonstrativo de faturamento e atendimentos em formato CSV"
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
+              Exportar CSV
+            </Button>
 
-            {/* Ações Rápidas (DRE e CSV) */}
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleExportCsv}
-                className="flex-1 sm:flex-initial border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs shadow-xs bg-white h-9 sm:h-8"
-                title="Baixar demonstrativo de faturamento e atendimentos em formato CSV"
-              >
-                <Download className="w-3.5 h-3.5 mr-1.5 text-slate-500" />
-                Exportar CSV
-              </Button>
+            <Button
+              size="sm"
+              onClick={() => onNavigateTab?.('financial-control')}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-xs transition-all text-xs h-9 sm:h-8 whitespace-nowrap shrink-0"
+            >
+              <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
+              DRE Consolidada
+            </Button>
+          </div>
+        </div>
 
-              <Button
-                size="sm"
-                onClick={() => onNavigateTab?.('financial-control')}
-                className="flex-1 sm:flex-initial bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-xs transition-all text-xs h-9 sm:h-8"
-              >
-                <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
-                DRE Consolidada
-              </Button>
-            </div>
+        {/* Seletor de Período Dinâmico em largura total abaixo do cabeçalho */}
+        <div className="pt-3 border-t border-slate-100 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="inline-flex bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner gap-1 min-w-full sm:min-w-0">
+            {PERIOD_OPTIONS.map((opt) => {
+              const isActive = selectedPeriod === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setSelectedPeriod(opt.id)}
+                  className={`text-xs px-3.5 py-2 rounded-lg transition-all whitespace-nowrap flex-1 sm:flex-initial text-center font-medium touch-manipulation ${
+                    isActive
+                      ? 'bg-white text-slate-900 shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

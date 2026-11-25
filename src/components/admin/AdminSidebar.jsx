@@ -29,7 +29,7 @@ import { tabsConfig } from '@/config/tabsConfig';
 export const ADMIN_MODULES = [
   {
     id: 'cockpit',
-    title: '1. Cockpit Estratégico',
+    title: 'Cockpit Estratégico',
     description: 'KPIs Vitais, Projeções e Alertas Executivos',
     icon: LayoutDashboard,
     tabs: [
@@ -38,11 +38,10 @@ export const ADMIN_MODULES = [
   },
   {
     id: 'operacao',
-    title: '2. Operação da Clínica',
+    title: 'Operação da Clínica',
     description: 'Gestão de Agenda, Consultas e Grades',
     icon: Calendar,
     tabs: [
-      { id: 'patient-followup', label: 'Acompanhamento & Retenção', icon: HeartHandshake },
       { id: 'retention-ops', label: 'Retenção & No-Show', icon: Activity },
       { id: 'bookings', label: 'Agendamentos', icon: Calendar },
       { id: 'availability', label: 'Disponibilidade / Grades', icon: Clock },
@@ -50,23 +49,22 @@ export const ADMIN_MODULES = [
   },
   {
     id: 'financeiro',
-    title: '3. Controladoria & DRE',
-    description: 'DRE Consolidada, MP, Ledger e Reembolsos',
+    title: 'Controladoria & DRE',
+    description: 'DRE Consolidada, Conciliação, Ledger e Repasses',
     icon: TrendingUp,
     tabs: [
-      { id: 'financial-control', label: 'DRE & Controladoria', icon: TrendingUp },
-      { id: 'ai-economics', label: 'Copiloto IA & Custos', icon: Sparkles },
-      { id: 'profit-loss', label: 'Lucro / Prejuízo (DRE)', icon: TrendingUp },
+      { id: 'financial-control', label: 'DRE, Ledger & Conciliação', icon: TrendingUp },
+      { id: 'profit-loss', label: 'Custos & Lucro/Prejuízo', icon: TrendingUp },
       { id: 'financeiro', label: 'Meu Faturamento', icon: DollarSign },
-      { id: 'payments', label: 'Pagamentos / Checkout', icon: DollarSign },
-      { id: 'livro-caixa', label: 'Livro Caixa', icon: FileText },
-      { id: 'refunds', label: 'Reembolsos', icon: Receipt },
+      { id: 'payments', label: 'Repasses aos Profissionais', icon: DollarSign },
       { id: 'nfse', label: 'Resiliência NFS-e', icon: Building2 },
+      { id: 'refunds', label: 'Reembolsos (Eventos)', icon: Receipt },
+      { id: 'ai-economics', label: 'Copiloto IA & Custos', icon: Sparkles },
     ]
   },
   {
     id: 'pessoas',
-    title: '4. Pessoas & CRM',
+    title: 'Pessoas & CRM',
     description: 'Profissionais, Pacientes e Depoimentos',
     icon: Users,
     tabs: [
@@ -77,7 +75,7 @@ export const ADMIN_MODULES = [
   },
   {
     id: 'marketing',
-    title: '5. Growth & Marketing',
+    title: 'Growth & Marketing',
     description: 'Metas, Funil, Leads e Eventos',
     icon: Sparkles,
     tabs: [
@@ -91,7 +89,7 @@ export const ADMIN_MODULES = [
   },
   {
     id: 'configuracoes',
-    title: '6. Configurações',
+    title: 'Configurações',
     description: 'Serviços, Preços e Ajustes de Sistema',
     icon: Settings,
     tabs: [
@@ -137,7 +135,7 @@ export function AdminSidebar({
   };
 
   return (
-    <aside className={`w-full ${isMobile ? 'h-full bg-white' : 'w-64 bg-white min-h-screen border-r border-slate-200/80'} text-slate-800 flex flex-col flex-shrink-0 shadow-xs select-none font-sans`}>
+    <aside className={`w-full ${isMobile ? 'h-full bg-white' : 'w-[272px] bg-white min-h-screen border-r border-slate-200/80'} text-slate-800 flex flex-col flex-shrink-0 shadow-xs select-none font-sans`}>
       {/* Header do Painel */}
       <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/70 flex items-center justify-between">
         <div className="flex items-center gap-3">

@@ -14,7 +14,8 @@ import {
     computeChannelAcquisition,
     computeMonthlyGoalsProgress,
     computePatientFollowUpAndRetention,
-    summarizeAiEconomics
+    summarizeAiEconomics,
+    computeConsolidatedDreMetrics
 } from '../adminMetrics';
 
 describe('pctDelta', () => {
@@ -541,6 +542,54 @@ describe('generateExecutiveCsvReport com IA', () => {
         expect(csv).toContain('Receita de Add-on de IA (100% Plataforma);R$ 8,70');
         expect(csv).toContain('Custos Tecnicos de IA (Tokens & Processamento);R$ 3,60');
         expect(csv).toContain('Resultado Liquido de IA;R$ 5,10');
+    });
+});
+
+describe('computeConsolidatedDreMetrics (DRE Unificada P1)', () => {
+    it('inclui no_show_unjustified, IA e custos operacionais no cálculo da DRE', () => {
+        const result = computeConsolidatedDreMetrics({
+            bookings: [
+                { status: 'paid', valor_consulta: 150, valor_repasse_profissional: 90 },
+                { status: 'no_show_unjustified', valor_consulta: 150, valor_repasse_profissional: 90 },
+                { status: 'cancelled', valor_consulta: 150, valor_repasse_profissional: 90 }
+            ],
+            aiUsageRows: [
+                { is_trial: false, add_on_amount: 2.90, technical_cost: 1.20 },
+                { is_trial: true, add_on_amount: 0, technical_cost: 1.20 }
+            ],
+            platformCosts: [
+                { amount: 50 }
+            ],
+            mpFeeRate: 0.03,
+            nfseTaxRate: 0.06,
+            defaultRetentionPct: 40
+        });
+
+        expect(result.count).toBe(2);
+        expect(result.gmv).toBe(300);
+        expect(result.payoutTotal).toBe(180);
+        expect(result.aiGrossRevenue).toBeCloseTo(2.90, 2);
+        expect(result.aiTechnicalCost).toBeCloseTo(2.40, 2);
+        expect(result.operationalCosts).toBe(50);
+        // Margem bruta = (300 - 180) + 2.90 = 122.90
+        expect(result.platformGrossMargin).toBeCloseTo(122.90, 2);
+        expect(result.isProfitable).toBe(true);
+    });
+
+    it('expõe prejuízo operacional real (valor negativo) sem mascarar com Math.max(0, ...)', () => {
+        const result = computeConsolidatedDreMetrics({
+            bookings: [
+                { status: 'completed', valor_consulta: 100, valor_repasse_profissional: 60 }
+            ],
+            platformCosts: [
+                { amount: 500 }
+            ],
+            mpFeeRate: 0.03,
+            nfseTaxRate: 0.06
+        });
+
+        expect(result.netMargin).toBeLessThan(0);
+        expect(result.isProfitable).toBe(false);
     });
 });
 

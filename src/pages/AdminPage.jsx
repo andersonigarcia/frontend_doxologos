@@ -36,6 +36,7 @@ import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { bookingEmailManager } from '@/lib/bookingEmailManager';
 import { updateBookingStatus } from '@/services/bookingService';
+import { updateProfessionalStatus } from '@/services/professionalService';
 import { secureLog } from '@/lib/secureLogger';
 import { useLoadingState, useItemLoadingState } from '@/hooks/useLoadingState';
 import { LoadingOverlay, LoadingButton, LoadingSpinner, LoadingInput } from '@/components/LoadingOverlay';
@@ -296,7 +297,21 @@ const AdminPage = () => {
     const [bookingSortField, setBookingSortField] = useState('default');
     const [bookingSortOrder, setBookingSortOrder] = useState('asc');
     const [activeModule, setActiveModule] = useState('cockpit');
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const [activeTab, setActiveTabState] = useState('dashboard');
+    const setActiveTab = useCallback((tabId) => {
+        const aliases = {
+            'patient-followup': 'retention-ops',
+            'testimonials': 'reviews'
+        };
+        const resolvedTab = aliases[tabId] || tabId;
+        setActiveTabState(resolvedTab);
+        const matchingModule = ADMIN_MODULES.find((m) =>
+            m.tabs.some((t) => t.id === resolvedTab)
+        );
+        if (matchingModule) {
+            setActiveModule(matchingModule.id);
+        }
+    }, []);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [bookingView, setBookingView] = useState('list'); // 'list' ou 'calendar'
@@ -1772,25 +1787,44 @@ const AdminPage = () => {
 
     const executeProfessionalDeletion = async (profId, dependencies) => {
         try {
-            // Excluir dependências em ordem (foreign keys)
-            if (dependencies.reviews.length > 0) {
-                await supabase.from('reviews').delete().eq('professional_id', profId);
+            const hasHistoricalRecords =
+                (dependencies.bookings?.length || 0) > 0 ||
+                (dependencies.events?.length || 0) > 0 ||
+                (dependencies.reviews?.length || 0) > 0;
+
+            if (hasHistoricalRecords) {
+                // Soft-delete: inativar profissional preservando agendamentos, avaliações e eventos históricos
+                const res = await updateProfessionalStatus(profId, 'inactive');
+                if (res?.error) {
+                    throw res.error;
+                }
+                await auditLogger.log(AuditAction.PROFESSIONAL_UPDATE, {
+                    level: LogLevel.WARNING,
+                    resourceType: 'professional',
+                    resourceId: profId,
+                    details: {
+                        action: 'soft_delete_inactivate',
+                        preserved_bookings: dependencies.bookings?.length || 0,
+                        preserved_events: dependencies.events?.length || 0,
+                        preserved_reviews: dependencies.reviews?.length || 0
+                    }
+                });
+                toast({
+                    title: "Profissional inativado com histórico preservado!",
+                    description: "Como havia consultas, eventos ou avaliações vinculados, o cadastro foi inativado para manter a integridade contábil e clínica."
+                });
+                fetchAllData();
+                return;
             }
-            if (dependencies.bookings.length > 0) {
-                await supabase.from('bookings').delete().eq('professional_id', profId);
-            }
+
+            // Sem histórico financeiro/clínico: limpar apenas grades vazias e excluir cadastro
             if (dependencies.availability.length > 0) {
                 await supabase.from('availability').delete().eq('professional_id', profId);
             }
             if (dependencies.blockedDates.length > 0) {
                 await supabase.from('blocked_dates').delete().eq('professional_id', profId);
             }
-            if (dependencies.events.length > 0) {
-                // Para eventos, apenas remover a referência ao profissional
-                await supabase.from('eventos').update({ professional_id: null }).eq('professional_id', profId);
-            }
 
-            // Finalmente, excluir o profissional
             const { error } = await supabase.from('professionals').delete().eq('id', profId);
 
             if (error) {
@@ -1802,9 +1836,14 @@ const AdminPage = () => {
                     description: error.message
                 });
             } else {
+                await auditLogger.log(AuditAction.PROFESSIONAL_DELETE, {
+                    level: LogLevel.WARNING,
+                    resourceType: 'professional',
+                    resourceId: profId
+                });
                 toast({
                     title: "Profissional excluído com sucesso!",
-                    description: "Todos os registros associados foram removidos."
+                    description: "Cadastro sem histórico removido."
                 });
                 fetchAllData();
             }
@@ -2322,8 +2361,8 @@ const AdminPage = () => {
                         </span>
                         <ChevronDown className="w-3 h-3 text-slate-400" />
                     </button>
-                    <span className="text-[10px] font-bold text-slate-800 bg-slate-200 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                        {activeTab}
+                    <span className="text-[10px] font-bold text-slate-800 bg-slate-200 px-2 py-0.5 rounded-md truncate max-w-[140px]">
+                        {ADMIN_MODULES.flatMap(m => m.tabs).find(t => t.id === activeTab)?.label || activeTab}
                     </span>
                 </div>
             </header>
@@ -2953,17 +2992,6 @@ const AdminPage = () => {
                                     <EventRegistrationsDashboard events={events} userRole={userRole} />
                                 </Suspense>
 </TabsContent>
-                            )
-                        }
-
-                        {/* Depoimentos Section */}
-                        {
-                            userRole === 'admin' && (
-                                <TabsContent value="testimonials" className="mt-6">
-                                    <Suspense fallback={<div className="p-8 flex justify-center items-center"><Loader2 className="w-8 h-8 animate-spin text-[#2d8659]" /></div>}>
-                                        <AdminTestimonialsTab />
-                                    </Suspense>
-                                </TabsContent>
                             )
                         }
 

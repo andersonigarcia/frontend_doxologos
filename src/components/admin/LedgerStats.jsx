@@ -22,13 +22,20 @@ export function LedgerStats() {
         try {
             setLoading(true);
 
-            // Fetch all ledger entries
-            const { data, error } = await supabase
-                .from('payment_ledger_entries')
-                .select('account_code, entry_type, amount')
-                .limit(10000);
+            // Fetch all ledger entries (paginado para evitar truncamento em 1000 linhas)
+            const PAGE_SIZE = 1000;
+            const data = [];
+            for (let from = 0; ; from += PAGE_SIZE) {
+                const { data: pageRows, error } = await supabase
+                    .from('payment_ledger_entries')
+                    .select('account_code, entry_type, amount')
+                    .order('created_at', { ascending: true })
+                    .range(from, from + PAGE_SIZE - 1);
 
-            if (error) throw error;
+                if (error) throw error;
+                data.push(...(pageRows || []));
+                if (!pageRows || pageRows.length < PAGE_SIZE) break;
+            }
 
             let liability = 0;
             let cash = 0;
