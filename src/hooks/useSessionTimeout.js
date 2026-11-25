@@ -10,8 +10,22 @@ import { useToast } from '@/components/ui/use-toast';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
 
 const WARNING_BEFORE_LOGOUT = 2 * 60 * 1000; // Avisar 2 minutos antes
-const STORAGE_KEY_ACTIVITY = 'doxologos_last_activity';
-const STORAGE_KEY_SESSION_START = 'doxologos_session_start';
+export const STORAGE_KEY_ACTIVITY = 'doxologos_last_activity';
+export const STORAGE_KEY_SESSION_START = 'doxologos_session_start';
+
+/**
+ * Remove os marcadores de atividade e início de sessão do localStorage.
+ * Deve ser chamado no logout e antes de um novo login para evitar que
+ * timestamps expirados de sessões anteriores derrubem a nova sessão.
+ */
+export function clearSessionTimeoutStorage() {
+  try {
+    localStorage.removeItem(STORAGE_KEY_ACTIVITY);
+    localStorage.removeItem(STORAGE_KEY_SESSION_START);
+  } catch (e) {
+    // Ignorar erros de storage bloqueado
+  }
+}
 
 export const useSessionTimeout = (options = {}) => {
   const { user, signOut } = useAuth();
@@ -48,10 +62,7 @@ export const useSessionTimeout = (options = {}) => {
     console.log(`🔒 Logout automático disparado (${reason})`);
     
     // Limpar marcadores cross-tab
-    try {
-      localStorage.removeItem(STORAGE_KEY_ACTIVITY);
-      localStorage.removeItem(STORAGE_KEY_SESSION_START);
-    } catch (e) {}
+    clearSessionTimeoutStorage();
 
     const isHardTimeout = reason.includes('máximo');
 
