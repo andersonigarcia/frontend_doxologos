@@ -320,7 +320,7 @@ checkFileNotContains(
 );
 
 // 3. Verificação de Memória e Documentação
-console.log('3️⃣  Validando integridade da memória do squad e documentação...');
+console.log('3️⃣  Validando integridade da memória do .ai-engine e documentação...');
 if (checkFileExists('ARCH.md', 'Documentação de Arquitetura')) {
   checkFileContains(
     'ARCH.md',
@@ -337,20 +337,30 @@ if (checkFileExists('ARCH.md', 'Documentação de Arquitetura')) {
   );
 }
 
-if (checkFileExists('.squad/CORE_INVARIANTS.md', 'Invariantes Centrais (Tier 1)')) {
-  checkFileContains(
-    '.squad/CORE_INVARIANTS.md',
-    ['professionalService.js', 'bookingService.js', 'paymentService.js', 'patientService.js', 'npm run squad:check'],
-    'CORE_INVARIANTS.md com catálogo completo de serviços e pipeline'
-  );
-}
+const aiEngineBase = fs.existsSync(path.join(rootDir, '.ai-engine'))
+  ? '.ai-engine'
+  : fs.existsSync(path.join(rootDir, '..', '.ai-engine'))
+    ? '../.ai-engine'
+    : null;
 
-if (checkFileExists('.squad/03_SQUAD_MEMORY.md', 'Memória do Squad (Tier 2)')) {
-  checkFileContains(
-    '.squad/03_SQUAD_MEMORY.md',
-    ['ADR 006', 'ADR 007', 'ADR 008', 'ADR 009', 'ADR 010', 'ADR 011'],
-    'Memória do Squad com histórico completo de ADRs (006 a 011)'
-  );
+if (aiEngineBase) {
+  if (checkFileExists(`${aiEngineBase}/CORE_INVARIANTS.md`, 'Invariantes Centrais (Tier 1)')) {
+    checkFileContains(
+      `${aiEngineBase}/CORE_INVARIANTS.md`,
+      ['professionalService.js', 'bookingService.js', 'paymentService.js', 'patientService.js', 'npm run engine:check'],
+      'CORE_INVARIANTS.md com catálogo completo de serviços e pipeline'
+    );
+  }
+
+  if (checkFileExists(`${aiEngineBase}/03_MEMORY_INDEX.md`, 'Memória do .ai-engine (Tier 2)')) {
+    checkFileContains(
+      `${aiEngineBase}/03_MEMORY_INDEX.md`,
+      ['ADR 006', 'ADR 007', 'ADR 008', 'ADR 009', 'ADR 010', 'ADR 011', 'ADR 034'],
+      '03_MEMORY_INDEX.md com histórico completo de ADRs (006 a 034)'
+    );
+  }
+} else {
+  console.log('ℹ️  Pasta .ai-engine não encontrada no workspace (execução isolada de CI); validação externa ignorada.');
 }
 
 // 4. Verificação de Testes Unitários de Domínio
